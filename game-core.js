@@ -310,7 +310,7 @@ function updateEnhanceInfo() {
         const wStep = w.enhanceStep || 1;
         const wRate = ENHANCE_SUCCESS_RATES[wLvl];
         const wCost = ENHANCE_COST_MONEY[wLvl];
-        wText = `${w.name}+${wLvl}（耐久:${dur}） →+${wNext} 成功${Math.round(wRate*100)}% / +ATK${wStep} / ${wCost}G`;
+        wText = `${w.name}+${wLvl}（耐久:${dur}） →+${wNext} 成功${Math.round(wRate*100)}% / +ATK${wStep} / ${wCost}G（同名武器1個消費）`;
       }
     }
   }
@@ -329,7 +329,7 @@ function updateEnhanceInfo() {
         const aStep = a.enhanceStep || 1;
         const aRate = ENHANCE_SUCCESS_RATES[aLvl];
         const aCost = ENHANCE_COST_MONEY[aLvl];
-        aText = `${a.name}+${aLvl}（耐久:${dur}） →+${aNext} 成功${Math.round(aRate*100)}% / +DEF${aStep} / ${aCost}G`;
+        aText = `${a.name}+${aLvl}（耐久:${dur}） →+${aNext} 成功${Math.round(aRate*100)}% / +DEF${aStep} / ${aCost}G（同名防具1個消費）`;
       }
     }
   }
@@ -748,6 +748,8 @@ function craftWeapon(){
   weaponCounts[recipe.id] = (weaponCounts[recipe.id] || 0) + 1;
   addCraftSkillExp("weapon");
   setLog(`${recipe.name} をクラフトした`);
+
+  refreshEquipSelects();
   updateDisplay();
 }
 function craftArmor(){
@@ -761,6 +763,8 @@ function craftArmor(){
   armorCounts[recipe.id] = (armorCounts[recipe.id] || 0) + 1;
   addCraftSkillExp("armor");
   setLog(`${recipe.name} をクラフトした`);
+
+  refreshEquipSelects();
   updateDisplay();
 }
 function craftPotion(){
@@ -861,6 +865,25 @@ function equipArmor(){
   updateDisplay();
 }
 
+// ● 強化用のヘルパー：同名装備を1個素材として消費する（装備中の1本は残す想定）
+function consumeOneSameWeaponAsMaterial(weaponId){
+  const owned = weaponCounts[weaponId] || 0;
+  if(owned <= 1){
+    // 装備中の1本しかない or そもそも1本以下 → 素材がない扱い
+    return false;
+  }
+  weaponCounts[weaponId] = owned - 1;
+  return true;
+}
+function consumeOneSameArmorAsMaterial(armorId){
+  const owned = armorCounts[armorId] || 0;
+  if(owned <= 1){
+    return false;
+  }
+  armorCounts[armorId] = owned - 1;
+  return true;
+}
+
 function enhanceWeapon(){
   if(!equippedWeaponId){
     setLog("強化する武器が装備されていない");
@@ -873,21 +896,32 @@ function enhanceWeapon(){
     setLog("これ以上強化できない");
     return;
   }
+
+  // 同名武器を1個素材として消費（装備中の1本とは別）
+  if(!consumeOneSameWeaponAsMaterial(w.id)){
+    setLog("同じ武器がもう1本必要です");
+    return;
+  }
+
   const cost = ENHANCE_COST_MONEY[w.enhance];
   if(money < cost){
     setLog("お金が足りない");
+    // 素材だけ消えてしまうとキツいので、お金チェックを先にしたいならここを上に移動も可
     return;
   }
   money -= cost;
+
   const rate = ENHANCE_SUCCESS_RATES[w.enhance];
   if(Math.random()<rate){
     w.enhance++;
-    setLog(`武器強化成功！ ${w.name}+${w.enhance}になった`);
+    setLog(`武器強化成功！ ${w.name}+${w.enhance}になった（同名武器1本消費）`);
   }else{
-    setLog("武器強化失敗…");
+    setLog("武器強化失敗…（同名武器は消費された）");
   }
+  refreshEquipSelects();
   updateDisplay();
 }
+
 function enhanceArmor(){
   if(!equippedArmorId){
     setLog("強化する防具が装備されていない");
@@ -900,19 +934,28 @@ function enhanceArmor(){
     setLog("これ以上強化できない");
     return;
   }
+
+  // 同名防具を1個素材として消費
+  if(!consumeOneSameArmorAsMaterial(a.id)){
+    setLog("同じ防具がもう1つ必要です");
+    return;
+  }
+
   const cost = ENHANCE_COST_MONEY[a.enhance];
   if(money < cost){
     setLog("お金が足りない");
     return;
   }
   money -= cost;
+
   const rate = ENHANCE_SUCCESS_RATES[a.enhance];
   if(Math.random()<rate){
     a.enhance++;
-    setLog(`防具強化成功！ ${a.name}+${a.enhance}になった`);
+    setLog(`防具強化成功！ ${a.name}+${a.enhance}になった（同名防具1つ消費）`);
   }else{
-    setLog("防具強化失敗…");
+    setLog("防具強化失敗…（同名防具は消費された）");
   }
+  refreshEquipSelects();
   updateDisplay();
 }
 
