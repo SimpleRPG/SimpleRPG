@@ -552,3 +552,34 @@ select, input {
     max-width: 360px;
   }
 }
+/* ゲームエリアを縦方向にも広げて“画面いっぱい”感を出す */
+html, body {
+  height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ゲーム本体部分を伸ばす */
+#tabs,
+#statusBar,
+#detailPanel,
+#petInfo,
+.tab-page,
+#log {
+  width: 100%;
+}
+
+/* 採取〜ステータスのタブ部分を「メインコンテンツ」として伸ばす */
+main,
+#pageGather,
+#pageCraft,
+#pageEquip,
+#pageExplore,
+#pageShop,
+#pageMarket,
+#pageStatus {
+  min-height: calc(100vh - 140px); /* 上のステータスバーやタイトル分を引いた高さ */
+}
