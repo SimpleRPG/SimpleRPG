@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>しんぷるRPG</title>
+  <style>
+    /* ===== 全体レイアウト・テーマ（ファンタジー寄せ） ===== */
+    body {
+      font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      padding: 10px;
+      background: radial-gradient(circle at top, #302047 0%, #130d1f 45%, #08050d 100%);
+      color: #f4f0ff;
+    }
+
+    h1 {
+      font-family: "Georgia", "Times New Roman", serif;
+      letter-spacing: 1px;
+      text-shadow: 0 0 6px rgba(255,255,255,0.15), 0 0 18px rgba(142, 68, 173, 0.6);
+      color: #fdf5ff;
+      margin-top: 0;
+      margin-bottom: 6px;
+    }
+
+    h2, h3 {
+      font-family: "Georgia", "Times New Roman", serif;
+      color: #f8ecff;
+      text-shadow: 0 0 4px rgba(0,0,0,0.8);
+    }
+
+    p {
+      margin: 4px 0;
+    }
+
+    /* ===== ステータスバー ===== */
+    #statusBar {
+      border-bottom: 1px solid #5c3b80;
+      padding: 6px 8px;
+      margin-bottom: 6px;
+      font-size: 14px;
+      background: linear-gradient(135deg, #2c1f40, #1c1429);
+      border-radius: 8px;
+      box-shadow: 0 0 12px rgba(0,0,0,0.7), 0 0 18px rgba(123, 44, 191, 0.5);
+    }
+    #statusBar span {
+      font-weight: 600;
+    }
+    #hp, #hpMax   { color:#ff6b81; }
+    #mp, #mpMax   { color:#4da6ff; }
+    #sp, #spMax   { color:#ffd166; }
+    #money        { color:#ffe066; text-shadow:0 0 4px rgba(255,255,0,0.5); }
+
+    #toggleDetailBtn {
+      float: right;
+    }
+
+    /* ===== タブ ===== */
+    #tabs {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 4px;
+      margin-bottom: 6px;
+    }
+    .tab-button {
+      flex: 1 1 auto;
+      min-width: 0;
+      padding: 6px 4px;
+      border-radius: 6px 6px 0 0;
+      border: 1px solid #5c3b80;
+      border-bottom: none;
+      background: linear-gradient(180deg, #3f295e, #2a1c3f);
+      cursor: pointer;
+      font-size: 12px;
+      white-space: nowrap;
+      color: #eee0ff;
+      box-shadow: 0 -1px 0 rgba(0,0,0,0.5) inset;
+      transition: background 0.15s, transform 0.05s, box-shadow 0.05s, color 0.15s;
+    }
+    .tab-button:hover {
+      background: linear-gradient(180deg, #4a3170, #34204f);
+      color:#ffffff;
+    }
+    .tab-button.active {
+      background: radial-gradient(circle at top, #6e44aa, #3a255a);
+      font-weight: bold;
+      color:#fffaf5;
+      box-shadow: 0 -1px 0 rgba(255,255,255,0.15) inset, 0 0 10px rgba(155, 89, 182, 0.6);
+    }
+
+    /* ===== タブページ ===== */
+    .tab-page {
+      display: none;
+      border: 1px solid #5c3b80;
+      border-radius: 0 8px 8px 8px;
+      padding: 8px;
+      background: radial-gradient(circle at top, #251739, #120c1e);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.7);
+    }
+    .tab-page.active {
+      display: block;
+    }
+
+    /* ===== ペット・職業まわり ===== */
+    .pet-only {
+      display: none;
+    }
+    #detailPanel {
+      font-size: 13px;
+      margin-bottom: 6px;
+      background: rgba(24, 18, 40, 0.88);
+      border-radius: 8px;
+      padding: 6px 8px;
+      border: 1px solid #4c3570;
+      box-shadow: 0 0 10px rgba(0,0,0,0.6);
+    }
+    #petInfo {
+      font-size: 13px;
+      background: rgba(25, 18, 45, 0.9);
+      border-radius: 8px;
+      padding: 6px 8px;
+      border: 1px solid #4b3f72;
+      box-shadow: 0 0 10px rgba(0,0,0,0.6);
+    }
+
+    /* ===== ステータスアニメ ===== */
+    .stat-anim {
+      animation: statFlash 0.25s ease-out;
+    }
+    @keyframes statFlash {
+      0%   { transform: scale(1);   color: inherit; }
+      30%  { transform: scale(1.1); color: #f9e79f; text-shadow:0 0 4px rgba(249,231,159,0.7); }
+      100% { transform: scale(1);   color: inherit; text-shadow:none; }
+    }
+
+    .stat-hit {
+      animation: statHit 0.25s ease-out;
+    }
+    .stat-heal {
+      animation: statHeal 0.25s ease-out;
+    }
+    @keyframes statHit {
+      0%   { transform: scale(1);   color: inherit; }
+      30%  { transform: scale(0.9); color: #ff5555; text-shadow:0 0 4px rgba(231,76,60,0.8); }
+      100% { transform: scale(1);   color: inherit; text-shadow:none; }
+    }
+    @keyframes statHeal {
+      0%   { transform: scale(1);   color: inherit; }
+      30%  { transform: scale(1.1); color: #55ff99; text-shadow:0 0 4px rgba(46, 204, 113,0.8); }
+      100% { transform: scale(1);   color: inherit; text-shadow:none; }
+    }
+
+    /* ===== ボタン・フォーム共通 ===== */
+    button, select, input {
+      margin: 2px;
+      padding: 6px 10px;
+      font-size: 13px;
+      border-radius: 6px;
+      border: 1px solid #5c3b80;
+      background: radial-gradient(circle at top, #3c285b, #241537);
+      color: #f7f1ff;
+      cursor: pointer;
+      box-shadow: 0 1px 0 rgba(0,0,0,0.7), 0 0 6px rgba(52, 31, 151, 0.5);
+      transition: background 0.1s, transform 0.05s, box-shadow 0.05s, border-color 0.1s;
+    }
+    button:hover {
+      background: radial-gradient(circle at top, #4b3373, #2e1847);
+      border-color:#b08cf2;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.8), 0 0 8px rgba(155, 89, 182, 0.8);
+    }
+    button:active {
+      transform: translateY(1px);
+      box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
+    }
+    select, input {
+      background: #1a1228;
+      color:#f7f1ff;
+      box-shadow: inset 0 0 4px rgba(0,0,0,0.8);
+      cursor: default;
+    }
+
+    /* ===== 戦闘ボタン（色分け） ===== */
+    #battleButtons {
+      display: flex;
+      gap: 4px;
+    }
+    #battleMainCol, #battlePetCol {
+      display: flex;
+      flex-direction: column;
+    }
+    #battleMainCol button,
+    #battlePetCol button {
+      min-width: 100px;
+    }
+
+    .btn-attack {
+      background: radial-gradient(circle at top, #a93b3b, #6f2323);
+      border-color:#ff7676;
+    }
+    .btn-attack:hover {
+      background: radial-gradient(circle at top, #c04646, #7e2929);
+    }
+    .btn-magic  {
+      background: radial-gradient(circle at top, #3b5bb9, #24356f);
+      border-color:#7fb2ff;
+    }
+    .btn-magic:hover  {
+      background: radial-gradient(circle at top, #4a6ad1, #2d3f80);
+    }
+    .btn-skill  {
+      background: radial-gradient(circle at top, #b98a3b, #7f5a23);
+      border-color:#f1c40f;
+    }
+    .btn-skill:hover  {
+      background: radial-gradient(circle at top, #cca047, #8e6429);
+    }
+    .btn-item   {
+      background: radial-gradient(circle at top, #3bb971, #237f49);
+      border-color:#7dffb1;
+    }
+    .btn-item:hover   {
+      background: radial-gradient(circle at top, #47c77e, #2a8e54);
+    }
+
+    /* ===== ログ ===== */
+    #log {
+      margin-top: 10px;
+      font-size: 0.9em;
+      color: #ddd4ff;
+      white-space: pre-line;
+      max-height: 160px;
+      overflow-y: auto;
+      border-top: 1px solid #4c3570;
+      padding-top: 4px;
+      background: rgba(10, 6, 20, 0.8);
+      box-shadow: 0 -2px 6px rgba(0,0,0,0.7) inset;
+    }
+
+    /* ===== ショップ ===== */
+    #shopContainer {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 380px;
+    }
+    .shop-section {
+      border: 1px solid #7e57c2;
+      border-radius: 8px;
+      padding: 6px 8px;
+      background: radial-gradient(circle at top left, #3a2755, #190f28);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.8), 0 0 12px rgba(123, 44, 191, 0.6);
+    }
+    .shop-section h3 {
+      margin: 2px 0 4px;
+      font-size: 13px;
+      border-left: 3px solid #f1c40f;
+      padding-left: 4px;
+    }
+    .shop-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 0;
+      border-top: 1px dashed #6d4c90;
+      font-size: 12px;
+    }
+    .shop-item:first-of-type {
+      border-top: none;
+    }
+    .shop-item:hover {
+      background: rgba(255,255,255,0.04);
+    }
+    .shop-item-main {
+      display: flex;
+      flex-direction: column;
+    }
+    .shop-item-name {
+      font-weight: bold;
+      font-size: 13px;
+      color:#ffecb3;
+    }
+    .shop-item-desc {
+      color: #ccc2ff;
+      font-size: 11px;
+    }
+    .shop-item-sub {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .shop-item-price {
+      font-weight: bold;
+      color: #f1c40f;
+      min-width: 48px;
+      text-align: right;
+      font-size: 12px;
+      text-shadow: 0 0 4px rgba(241,196,15,0.7);
+    }
+
+    /* ===== 市場 ===== */
+    #marketContainer {
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      max-width:480px;
+    }
+    .market-section {
+      border:1px solid #7e57c2;
+      border-radius:8px;
+      padding:6px 8px;
+      background: radial-gradient(circle at top left, #33224d, #170f24);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.8), 0 0 10px rgba(142, 68, 173,0.7);
+    }
+    .market-section h3 {
+      margin:2px 0 4px;
+      font-size:13px;
+      border-left:3px solid #9b59b6;
+      padding-left:4px;
+    }
+    .market-inline {
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      gap:4px;
+      margin:2px 0;
+    }
+    .market-inline label {
+      font-size:12px;
+    }
+
+    .market-cat-tab {
+      flex:1;
+      font-size:11px;
+    }
+
+    #marketBuyListContainer {
+      max-height:240px;
+      overflow-y:auto;
+      border:1px solid #5c3b80;
+      padding:4px;
+      font-size:12px;
+      background: rgba(12, 8, 24, 0.9);
+    }
+    .market-buy-row {
+      padding:3px 2px;
+      border-bottom:1px dashed #4b3f72;
+    }
+    .market-buy-row:hover {
+      background: rgba(255,255,255,0.03);
+    }
+    .market-buy-row .row-main {
+      font-weight: bold;
+      color:#f5eafc;
+    }
+    .market-buy-row .row-controls button {
+      padding: 2px 6px;
+      font-size: 11px;
+    }
+    .row-preview {
+      color:#c9c2ff;
+    }
+
+    #marketOrderList {
+      font-size:11px;
+      border-top:1px dashed #4b3f72;
+      padding-top:4px;
+      max-height:120px;
+      overflow-y:auto;
+    }
+
+    /* 市場内 子タブ（購入 / 注文） */
+    .market-subtabs {
+      display:flex;
+      gap:4px;
+      margin-bottom:4px;
+    }
+    .market-subtab-btn {
+      flex:1;
+      font-size:11px;
+      padding:4px 4px;
+    }
+    .market-subtab-btn.active {
+      background: radial-gradient(circle at top, #6e44aa, #3a255a);
+      font-weight:bold;
+      color:#fffaf5;
+    }
+    .market-subtab-page {
+      display:none;
+      margin-top:4px;
+    }
+    .market-subtab-page.active {
+      display:block;
+    }
+
+    /* ===== ステータスタブ ===== */
+    #pageStatus {
+      font-size:13px;
+    }
+    #pageStatus h3 {
+      border-left:3px solid #9b59b6;
+      padding-left:4px;
+      margin-top:6px;
+      margin-bottom:4px;
+    }
+
+    /* ===== ジョブモーダル ===== */
+    #jobModal {
+      display:none;
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.6);
+      z-index:999;
+    }
+    #jobModalInner {
+      background: radial-gradient(circle at top, #3a2755, #140b21);
+      border-radius:10px;
+      padding:16px;
+      max-width:320px;
+      margin:80px auto;
+      box-shadow:0 0 18px rgba(0,0,0,0.8), 0 0 24px rgba(142,68,173,0.8);
+      border:1px solid #9b59b6;
+      color:#f9f2ff;
+      text-align:center;
+    }
+  </style>
+</head>
+<body>
+  <h1>しんぷるRPG</h1>
+
+  <div id="tabs">
+    <button id="tabGather"  class="tab-button active">採取</button>
+    <button id="tabCraft"   class="tab-button">クラフト</button>
+    <button id="tabEquip"   class="tab-button">装備</button>
+    <button id="tabExplore" class="tab-button">探索</button>
+    <button id="tabShop"    class="tab-button">ショップ</button>
+    <button id="tabMarket"  class="tab-button">市場</button>
+    <button id="tabStatus"  class="tab-button">ステータス</button>
+  </div>
+
+  <div id="statusBar">
+    HP: <span id="hp">30</span>/<span id="hpMax">30</span>
+    MP: <span id="mp">10</span>/<span id="mpMax">10</span>
+    SP: <span id="sp">10</span>/<span id="spMax">10</span>
+    所持金: <span id="money">0</span>
+    <button id="toggleDetailBtn">▼詳細</button>
+  </div>
+
+  <div id="detailPanel" style="display:none;">
+    職業: <span id="jobName">未設定</span>
+    <button id="changeJobBtn">職業変更</button><br>
+
+    レベル: <span id="level">1</span>
+    （EXP: <span id="exp">0</span>）<br>
+    転生回数: <span id="rebirthCount">0</span>,
+    成長タイプ: <span id="growthType">STR型</span><br><br>
+
+    STR: <span id="str">1</span>,
+    VIT: <span id="vit">1</span>,
+    INT: <span id="int">1</span>,
+    DEX: <span id="dex">1</span>,
+    LUK: <span id="luk">1</span><br><br>
+
+    装備中武器: <span id="equippedWeaponName">なし</span>,
+    装備中防具: <span id="equippedArmorName">なし</span><br>
+    攻撃力: <span id="atkTotal">0</span>,
+    防御力: <span id="defTotal">0</span><br>
+  </div>
+
+  <div id="petInfo" class="pet-only">
+    <hr>
+    <p>
+      ペットLv: <span id="petLevel">1</span>
+      （EXP: <span id="petExp">0</span> / <span id="petExpToNext">5</span>）
+      ペット転生回数: <span id="petRebirthCount">0</span><br>
+      ペット成長タイプ: <span id="petGrowthTypeLabel">バランス型</span>
+      <button id="changePetGrowthBtn">ペット成長タイプ変更</button><br>
+      ペットHP: <span id="petHp">10</span> / <span id="petHpMax">10</span><br>
+    </p>
+  </div>
+
+  <p>
+    <button id="rebirthBtn">転生する（Lv10以上・※最後に100へ変更予定）</button>
+  </p>
+
+  <div id="pageGather" class="tab-page active">
+    <h2>採取</h2>
+    <p>採取対象を選んで採取（待ち時間なし）。</p>
+    <select id="gatherTarget">
+      <option value="wood">木</option>
+      <option value="ore">鉱石</option>
+      <option value="herb">草</option>
+      <option value="cloth">布</option>
+      <option value="leather">皮</option>
+      <option value="water">水</option>
+    </select>
+    <button id="gather">採取</button>
+    <p id="gatherMaterials">所持素材：木0 / 鉱石0 / 草0 / 布0 / 皮0 / 水0</p>
+  </div>
+
+  <div id="pageCraft" class="tab-page">
+    <h2>クラフト</h2>
+    <p id="craftMaterials">所持素材：木0 / 鉱石0 / 草0 / 布0 / 皮0 / 水0</p>
+
+    <h3>武器クラフト</h3>
+    <select id="weaponSelect"></select>
+    <button id="craftWeaponBtn">武器を作る</button>
+
+    <h3>防具クラフト</h3>
+    <select id="armorSelect"></select>
+    <button id="craftArmorBtn">防具を作る</button>
+
+    <h3>ポーションクラフト</h3>
+    <select id="potionSelect"></select>
+    <button id="craftPotionBtn">ポーションを作る</button>
+  </div>
+
+  <div id="pageEquip" class="tab-page">
+    <h2>装備</h2>
+
+    <h3>武器を装備</h3>
+    <select id="weaponEquipSelect"></select>
+    <button id="equipWeaponBtn">装備</button>
+
+    <h3>防具を装備</h3>
+    <select id="armorEquipSelect"></select>
+    <button id="equipArmorBtn">装備</button>
+
+    <h3>装備強化</h3>
+    <p id="enhanceInfo">装備中の武器・防具を強化します。</p>
+    <button id="enhanceWeaponBtn">武器を強化</button>
+    <button id="enhanceArmorBtn">防具を強化</button>
+  </div>
+
+  <!-- 探索 / 戦闘タブ -->
+  <div id="pageExplore" class="tab-page">
+    <h2>探索 / 戦闘</h2>
+
+    <div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+      <span style="font-size:13px;">行き先:</span>
+      <select id="exploreTarget">
+        <option value="field">草原（敵弱い・素材ほぼ出ない）</option>
+        <option value="forest">森（敵やや強い・草/木が少し出る）</option>
+        <option value="cave">洞窟（敵強い・素材少し）</option>
+        <option value="mine">廃鉱山（敵かなり強い・鉱石/皮レア）</option>
+      </select>
+
+      <button id="exploreStartBtn" class="btn-attack" style="min-width:120px;">
+        探索する
+      </button>
+
+      <span id="exploreInfo" style="font-size:11px; color:#ddd4ff; margin-left:auto;">
+        行き先を選んで「探索する」を押すとイベントが発生します
+      </span>
+    </div>
+
+    <div id="battleCommandArea" style="display:none; margin-top:4px;">
+      <div id="battleButtons">
+        <div id="battleMainCol">
+          <button id="exploreBtn" class="btn-attack">攻撃</button>
+
+          <div>
+            <label style="font-size:11px;">魔法:</label><br>
+            <select id="magicSelect"></select>
+            <button id="castMagicBtn" class="btn-magic">魔法を使う</button>
+          </div>
+
+          <div>
+            <label style="font-size:11px;">武技:</label><br>
+            <select id="skillSelect"></select>
+            <button id="useSkillBtn" class="btn-skill">武技を使う</button>
+          </div>
+
+          <div>
+            <label style="font-size:11px;">戦闘アイテム:</label><br>
+            <select id="battleItemSelect"></select>
+            <button id="useBattleItemBtn" class="btn-item">戦闘で使う</button>
+          </div>
+
+          <button onclick="tryEscape()" style="margin-top:4px;">逃走する</button>
+        </div>
+
+        <div id="battlePetCol"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:6px;">
+      <span style="font-size:11px;">フィールドで使うアイテム:</span>
+      <select id="useItemSelect"></select>
+      <button id="useItemBtn">使う</button>
+    </div>
+  </div>
+
+  <div id="pageShop" class="tab-page">
+    <h2>ショップ</h2>
+    <p>完成品のみ販売（かなり割高）。クラフトが面倒な時やボス前の緊急用。</p>
+
+    <div id="shopContainer">
+      <div class="shop-section">
+        <h3>回復アイテム</h3>
+
+        <div class="shop-item">
+          <div class="shop-item-main">
+            <span class="shop-item-name">ポーション</span>
+            <span class="shop-item-desc">HP小回復</span>
+          </div>
+          <div class="shop-item-sub">
+            <span class="shop-item-price">60G</span>
+            <button id="shopBuyPotion">購入</button>
+          </div>
+        </div>
+
+        <div class="shop-item">
+          <div class="shop-item-main">
+            <span class="shop-item-name">ハイポーション</span>
+            <span class="shop-item-desc">HP大回復</span>
+          </div>
+          <div class="shop-item-sub">
+            <span class="shop-item-price">100G</span>
+            <button id="shopBuyHiPotion">購入</button>
+          </div>
+        </div>
+
+        <div class="shop-item">
+          <div class="shop-item-main">
+            <span class="shop-item-name">マナポーション</span>
+            <span class="shop-item-desc">MP小回復</span>
+          </div>
+          <div class="shop-item-sub">
+            <span class="shop-item-price">80G</span>
+            <button id="shopBuyMana">購入</button>
+          </div>
+        </div>
+
+        <div class="shop-item">
+          <div class="shop-item-main">
+            <span class="shop-item-name">ハイマナポーション</span>
+            <span class="shop-item-desc">MP大回復</span>
+          </div>
+          <div class="shop-item-sub">
+            <span class="shop-item-price">120G</span>
+            <button id="shopBuyHiMana">購入</button>
+          </div>
+        </div>
+
+        <div class="shop-item">
+          <div class="shop-item-main">
+            <span class="shop-item-name">宿屋サービス</span>
+            <span class="shop-item-desc">HP全回復</span>
+          </div>
+          <div class="shop-item-sub">
+            <span class="shop-item-price">80G</span>
+            <button id="shopHealHP">泊まる</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="shop-section">
+        <h3>攻撃アイテム</h3>
+        <div class="shop-item">
+          <div class="shop-item-main">
+            <span class="shop-item-name">爆弾</span>
+            <span class="shop-item-desc">敵単体に大ダメージ</span>
+          </div>
+          <div class="shop-item-sub">
+            <span class="shop-item-price">100G</span>
+            <button id="shopBuyBomb">購入</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="pageMarket" class="tab-page">
+    <h2>市場</h2>
+    <p>プレイヤー同士がアイテムを売買する共通市場（ソロ用なんちゃって版）。</p>
+
+    <div style="display:flex; gap:4px; margin-bottom:4px;">
+      <button id="marketTabSell" class="tab-button active" style="font-size:11px;">売却</button>
+      <button id="marketTabBuy"  class="tab-button"        style="font-size:11px;">購入・注文</button>
+    </div>
+
+    <div id="marketContainer">
+      <div id="marketSellPanel" class="market-section">
+        <button id="marketSellRefreshBtn" style="font-size:11px; margin-bottom:4px;">
+          売却候補を更新
+        </button>
+
+        <h3>アイテムを出品する（売り注文）</h3>
+        <p style="font-size:11px;color:#ddd4ff;">
+          手持ちアイテムを市場に出してお金に換える。出品したアイテムは手元からなくなります。
+        </p>
+        <div class="market-inline">
+          <label>カテゴリー:</label>
+          <select id="marketSellCategory">
+            <option value="weapon">武器</option>
+            <option value="armor">防具</option>
+            <option value="potion">ポーション/道具</option>
+            <option value="material">素材</option>
+          </select>
+        </div>
+        <div class="market-inline">
+          <label>アイテム:</label>
+          <select id="marketSellItem" style="min-width:180px;"></select>
+        </div>
+        <div class="market-inline">
+          <label>個数:</label>
+          <input id="marketSellAmount" type="number" min="1" value="1" style="width:60px;">
+        </div>
+        <div class="market-inline">
+          <label>出品価格(1個あたりG):</label>
+          <input id="marketSellPrice" type="number" min="1" value="25" style="width:80px;">
+        </div>
+        <button id="marketSellBtn">出品する</button>
+        <p id="marketSellHint" style="font-size:11px;color:#ddd4ff;margin-top:4px;">
+          ※素材は1個あたり5G前後が目安。店売りポーションより少し安くすると売れやすい。
+        </p>
+      </div>
+
+      <div id="marketBuyPanel" class="market-section" style="display:none;">
+
+        <div class="market-subtabs">
+          <button id="marketSubTabPurchase" class="market-subtab-btn active">市場から購入</button>
+          <button id="marketSubTabOrders"   class="market-subtab-btn">注文</button>
+        </div>
+
+        <div id="marketSubPagePurchase" class="market-subtab-page active">
+          <div style="display:flex; gap:4px; margin-bottom:4px;">
+            <button class="market-cat-tab" data-cat="all">全部</button>
+            <button class="market-cat-tab" data-cat="weapon">武器</button>
+            <button class="market-cat-tab" data-cat="armor">防具</button>
+            <button class="market-cat-tab" data-cat="potion">ポーション</button>
+            <button class="market-cat-tab" data-cat="material">素材</button>
+          </div>
+
+          <button id="marketBuyRefreshBtn" style="font-size:11px; margin-bottom:4px;">
+            市場一覧を更新
+          </button>
+
+          <div id="marketBuyListContainer"></div>
+        </div>
+
+        <div id="marketSubPageOrders" class="market-subtab-page">
+          <h3 style="margin-top:4px;">注文</h3>
+          <p style="font-size:11px;color:#ddd4ff;">
+            「○Gなら○個まで買いたい」と予約しておく機能。売りが出た時点で自動でマッチします。
+          </p>
+
+          <div class="market-inline">
+            <label>アイテム:</label>
+            <select id="marketOrderItem" style="min-width:180px;"></select>
+          </div>
+          <div class="market-inline">
+            <label>希望価格(1個G):</label>
+            <input id="marketOrderPrice" type="number" min="1" value="5" style="width:80px;">
+            <label>最大個数:</label>
+            <input id="marketOrderAmount" type="number" min="1" value="10" style="width:60px;">
+            <button id="marketOrderBtn">注文を出す</button>
+          </div>
+
+          <div id="marketOrderList"></div>
+
+          <p id="marketInfo" style="font-size:11px; color:#ddd4ff; margin-top:4px;">
+            ※テスト用なので在庫・注文はローカルのみ。再読み込みで市場と注文はリセットされます。
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="pageStatus" class="tab-page">
+    <h2>ステータス</h2>
+
+    <h3>基本ステータス</h3>
+    <p>
+      レベル: <span id="stLevel">1</span>
+      （EXP: <span id="stExp">0</span>/<span id="stExpToNext">100</span>）<br>
+      転生回数: <span id="stRebirthCount">0</span><br>
+      成長タイプ: <span id="stGrowthType">STR型</span><br><br>
+
+      職業: <span id="stJobName">未設定</span><br>
+      STR: <span id="stSTR">1</span>,
+      VIT: <span id="stVIT">1</span>,
+      INT: <span id="stINT">1</span>,
+      DEX: <span id="stDEX">1</span>,
+      LUK: <span id="stLUK">1</span><br><br>
+
+      攻撃力: <span id="stAtkTotal">0</span>,
+      防御力: <span id="stDefTotal">0</span><br>
+      最大HP: <span id="stHpMax">30</span>,
+      最大MP: <span id="stMpMax">10</span>,
+      最大SP: <span id="stSpMax">10</span><br>
+    </p>
+
+    <h3>採取スキル</h3>
+    <p>
+      木: Lv<span id="skGatherWoodLv">0</span><br>
+      鉱石: Lv<span id="skGatherOreLv">0</span><br>
+      草: Lv<span id="skGatherHerbLv">0</span><br>
+      布: Lv<span id="skGatherClothLv">0</span><br>
+      皮: Lv<span id="skGatherLeatherLv">0</span><br>
+      水: Lv<span id="skGatherWaterLv">0</span><br>
+    </p>
+
+    <h3>クラフトスキル</h3>
+    <p>
+      武器クラフト: Lv<span id="skCraftWeaponLv">0</span><br>
+      防具クラフト: Lv<span id="skCraftArmorLv">0</span><br>
+      ポーションクラフト: Lv<span id="skCraftPotionLv">0</span><br>
+      道具クラフト: Lv<span id="skCraftToolLv">0</span><br>
+    </p>
+
+    <h3 class="pet-only">ペット関連（動物使い時）</h3>
+    <p class="pet-only">
+      ペットLv: <span id="stPetLevel">1</span>
+      （EXP: <span id="stPetExp">0</span>/<span id="stPetExpToNext">5</span>）<br>
+      ペット転生回数: <span id="stPetRebirthCount">0</span><br>
+      ペット成長タイプ: <span id="stPetGrowthType">バランス型</span><br>
+      ペットHP: <span id="stPetHp">10</span>/<span id="stPetHpMax">10</span><br>
+    </p>
+  </div>
+
+  <div id="log"></div>
+
+  <!-- 職業選択モーダル（初回強制） -->
+  <div id="jobModal">
+    <div id="jobModalInner">
+      <h3 id="jobModalTitle">最初の職業を選択</h3>
+      <p id="jobModalMessage" style="font-size:0.9em;">
+        最初に職業を1つ選んでください（変更は後から100Gで可能）。<br>
+        ※選ぶまでゲームは開始されません。
+      </p>
+      <div style="margin-top:8px;">
+        <button id="jobWarriorBtn">戦士</button>
+        <button id="jobMageBtn">魔法使い</button>
+        <button id="jobTamerBtn">動物使い</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- データファイル群 -->
+  <script src="enemy-data.js"></script>
+  <script src="gather-data.js"></script>
+  <script src="equip-data.js"></script>
+  <script src="craft-data.js"></script>
+
+  <!-- ロジック -->
+  <script src="game-core.js"></script>
+  <script src="market-core.js"></script>
+  <script src="skill-core.js"></script>
+  <script src="game-ui.js"></script>
+</body>
+</html>
