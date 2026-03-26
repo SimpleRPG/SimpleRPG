@@ -1,4 +1,8 @@
 /* ===== 全体レイアウト・テーマ（ファンタジー寄せ） ===== */
+html, body {
+  height: 100%;
+}
+
 body {
   font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   padding: 10px;
@@ -6,11 +10,13 @@ body {
   color: #f4f0ff;
   margin: 0;
   min-height: 100vh;
-  font-size: 18px;          /* ベースフォント少し大きく */
+  font-size: 18px;
   line-height: 1.6;
+  display: flex;
+  flex-direction: column;
 }
 
-/* ★ 画面全体の横幅を制限して中央に寄せる（スマホでも「ゲーム画面」感を出す） */
+/* ゲーム画面を中央寄せ＆横幅制限 */
 body > h1,
 #tabs,
 #statusBar,
@@ -73,18 +79,18 @@ p {
   flex-wrap: nowrap;
   gap: 4px;
   margin-bottom: 6px;
-  overflow-x: auto;           /* ★ 横スクロール可能にして狭い画面で詰まらないように */
+  overflow-x: auto;
 }
 .tab-button {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 8px 6px;
+  padding: 10px 6px;
   border-radius: 6px 6px 0 0;
   border: 1px solid #5c3b80;
   border-bottom: none;
   background: linear-gradient(180deg, #3f295e, #2a1c3f);
   cursor: pointer;
-  font-size: 14px;
+  font-size: 15px;
   white-space: nowrap;
   color: #eee0ff;
   box-shadow: 0 -1px 0 rgba(0,0,0,0.5) inset;
@@ -112,6 +118,17 @@ p {
 }
 .tab-page.active {
   display: block;
+}
+
+/* ゲーム本体エリアを縦方向に広げる */
+#pageGather,
+#pageCraft,
+#pageEquip,
+#pageExplore,
+#pageShop,
+#pageMarket,
+#pageStatus {
+  min-height: calc(100vh - 160px);
 }
 
 /* ===== ペット・職業まわり ===== */
@@ -163,11 +180,11 @@ p {
   100% { transform: scale(1);   color: inherit; text-shadow:none; }
 }
 
-/* ===== ボタン・フォーム共通 ===== */
+/* ===== ボタン・フォーム共通（スマホ寄せ） ===== */
 button, select, input {
   margin: 2px;
-  padding: 10px 14px;
-  font-size: 16px;
+  padding: 12px 16px;
+  font-size: 18px;
   border-radius: 6px;
   border: 1px solid #5c3b80;
   background: radial-gradient(circle at top, #3c285b, #241537);
@@ -175,7 +192,7 @@ button, select, input {
   cursor: pointer;
   box-shadow: 0 1px 0 rgba(0,0,0,0.7), 0 0 6px rgba(52, 31, 151, 0.5);
   transition: background 0.1s, transform 0.05s, box-shadow 0.05s, border-color 0.1s;
-  min-height: 44px;           /* 指で押しやすい高さ */
+  min-height: 50px;
   box-sizing: border-box;
 }
 button:hover {
@@ -192,7 +209,7 @@ select, input {
   color:#f7f1ff;
   box-shadow: inset 0 0 4px rgba(0,0,0,0.8);
   cursor: default;
-  min-height: 40px;
+  min-height: 44px;
 }
 
 /* ===== 戦闘ボタン（色分け） ===== */
@@ -458,15 +475,16 @@ select, input {
     margin-bottom: 3px;
   }
   .tab-button {
-    font-size: 13px;
-    padding: 6px 4px;
+    font-size: 14px;
+    padding: 9px 4px;
   }
   .tab-page {
     padding: 8px;
   }
   button, select, input {
-    font-size: 15px;
-    padding: 8px 10px;
+    font-size: 17px;
+    padding: 10px 14px;
+    min-height: 50px;
   }
   #shopContainer,
   #marketContainer {
@@ -497,15 +515,16 @@ select, input {
     margin-bottom: 4px;
   }
   .tab-button {
-    font-size: 14px;
-    padding: 7px 5px;
+    font-size: 15px;
+    padding: 10px 5px;
   }
   .tab-page {
     padding: 9px;
   }
   button, select, input {
-    font-size: 16px;
-    padding: 9px 12px;
+    font-size: 18px;
+    padding: 11px 15px;
+    min-height: 50px;
   }
   #shopContainer,
   #marketContainer {
@@ -520,8 +539,6 @@ select, input {
 /* タブレット横〜PC（801px〜） */
 @media (min-width: 801px) {
   body {
-    display: flex;
-    justify-content: center;
     padding: 10px;
     font-size: 18px;
   }
@@ -540,46 +557,15 @@ select, input {
     padding: 10px;
   }
   button, select, input {
-    font-size: 16px;
-    padding: 10px 14px;
+    font-size: 18px;
+    padding: 12px 16px;
   }
   #shopContainer,
   #marketContainer {
     max-width: 640px;
   }
   #jobModalInner {
-    manset, 0 0 10px ;
+    margin: 80px auto;
     max-width: 360px;
   }
-}
-/* ゲームエリアを縦方向にも広げて“画面いっぱい”感を出す */
-html, body {
-  height: 100%;
-}
-
-body {
-  display: flex;
-  flex-direction: column;
-}
-
-/* ゲーム本体部分を伸ばす */
-#tabs,
-#statusBar,
-#detailPanel,
-#petInfo,
-.tab-page,
-#log {
-  width: 100%;
-}
-
-/* 採取〜ステータスのタブ部分を「メインコンテンツ」として伸ばす */
-main,
-#pageGather,
-#pageCraft,
-#pageEquip,
-#pageExplore,
-#pageShop,
-#pageMarket,
-#pageStatus {
-  min-height: calc(100vh - 140px); /* 上のステータスバーやタイトル分を引いた高さ */
 }
