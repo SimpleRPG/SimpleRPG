@@ -10,6 +10,22 @@ body {
   line-height: 1.6;
 }
 
+/* ★ 画面全体の横幅を制限して中央に寄せる（スマホでも「ゲーム画面」感を出す） */
+body > h1,
+#tabs,
+#statusBar,
+#detailPanel,
+#petInfo,
+.tab-page,
+#log,
+#jobModalInner,
+#shopContainer,
+#marketContainer {
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
 h1 {
   font-family: "Georgia", "Times New Roman", serif;
   letter-spacing: 1px;
@@ -57,6 +73,7 @@ p {
   flex-wrap: nowrap;
   gap: 4px;
   margin-bottom: 6px;
+  overflow-x: auto;           /* ★ 横スクロール可能にして狭い画面で詰まらないように */
 }
 .tab-button {
   flex: 1 1 auto;
@@ -531,7 +548,7 @@ select, input {
     max-width: 640px;
   }
   #jobModalInner {
-    margin: 80px auto;
+    manset, 0 0 10px ;
     max-width: 360px;
   }
 }
