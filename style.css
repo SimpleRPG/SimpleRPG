@@ -206,46 +206,50 @@ button:hover {
 }
 button:active {
   transform: translateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px );
-}
-button:active {
-  transform: translateY(1px);
   box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
 }
-select, inp.7);
+select, input {
+  background: #1a1228;
+  color:#f7f1ff;
+  box-shadow: inset 0 0 4px rgba(0,0,0,0.8);
+  cursor: default;
+  min-height: 40px;
 }
-select, inpselect, inplect, inp}
-select, inp色分け） =);
+
+/* ===== 戦闘ボタン（色分け） ===== */
+#battleButtons {
+  display: flex;
+  gap: 4px;
 }
-button:active {
-  transform: translateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
+#battleMainCol, #battlePetCol {
+  display: flex;
+  flex-direction: column;
 }
-select, inpselect, inplect, inpelect, inp.8), 0 0 4px rgba(155, 89, 182, 0.7);
+#battleMainCol button,
+#battlePetCol button {
+  min-width: 120px;
 }
-select, inpw: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
+
+.btn-attack {
+  background: radial-gradient(circle at top, #a93b3b, #6f2323);
+  border-color:#ff7676;
 }
-select, inp0.7);
+.btn-attack:hover {
+  background: radial-gradient(circle at top, #c04646, #7e2929);
 }
-select, inp
+.btn-magic  {
+  background: radial-gradient(circle at top, #3b5bb9, #24356f);
+  border-color:#7fb2ff;
 }
-select, inprgba(155, 89, 182, 0.7);
+.btn-magic:hover  {
+  background: radial-gradient(circle at top, #4a6ad1, #2d3f80);
 }
-select, inp, 0 0 4px rgba(155, 89, 182, 0.7);
+.btn-skill  {
+  background: radial-gradient(circle at top, #b98a3b, #7f5a23);
+  border-color:#f1c40f;
 }
-select, inp
-select, inpanslateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inpeY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inp);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inplect, inpect, inp9, 182, 0.7);
-}
-select, inprcle at top, #cca047, #8e6429);
+.btn-skill:hover  {
+  background: radial-gradient(circle at top, #cca047, #8e6429);
 }
 .btn-item   {
   background: radial-gradient(circle at top, #3bb971, #237f49);
@@ -271,24 +275,26 @@ select, inprcle at top, #cca047, #8e6429);
 
 /* ===== ショップ ===== */
 #shopContainer {
-  dis);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 380px;
 }
-button:active {
-  transform: translateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inp8px;
+.shop-section {
+  border: 1px solid #7e57c2;
+  border-radius: 8px;
   padding: 8px 10px;
   background: radial-gradient(circle at top left, #3a2755, #190f28);
-  box-sh);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.8), 0 0 12px rgba(123, 44, 191, 0.6);
 }
-button:active {
-  transform: translateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
+.shop-section h3 {
+  margin: 2px 0 4px;
+  font-size: 15px;
+  border-left: 3px solid #f1c40f;
+  padding-left: 4px;
 }
-select, inpox-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inp
+.shop-item {
+  display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 4px 0;
@@ -306,13 +312,16 @@ select, inp
   flex-direction: column;
 }
 .shop-item-name {
-  );
+  font-weight: bold;
+  font-size: 15px;
+  color:#ffecb3;
 }
-button:active {
-  transform: translateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
+.shop-item-desc {
+  color: #ccc2ff;
+  font-size: 13px;
 }
-select, inpisplay: flex;
+.shop-item-sub {
+  display: flex;
   align-items: center;
   gap: 4px;
 }
@@ -325,24 +334,27 @@ select, inpisplay: flex;
   text-shadow: 0 0 4px rgba(241,196,15,0.7);
 }
 
-/* ===);
+/* ===== 市場 ===== */
+#marketContainer {
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  max-width:480px;
 }
-button:active {
-  transform: translateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inp1px solid #7e57c2;
+.market-section {
+  border:1px solid #7e57c2;
   border-radius:8px;
   padding:8px 10px;
-  background: radial-gradient(circle at top );
+  background: radial-gradient(circle at top left, #33224d, #170f24);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.8), 0 0 10px rgba(142, 68, 173,0.7);
 }
-button:active {
-  transform: translateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
+.market-section h3 {
+  margin:2px 0 4px;
+  font-size:15px;
+  border-left:3px solid #9b59b6;
+  padding-left:4px;
 }
-select, inpx-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inplect, inp-inline {
+.market-inline {
   display:flex;
   flex-wrap:wrap;
   align-items:center;
@@ -358,13 +370,13 @@ select, inplect, inp-inline {
   font-size:13px;
 }
 
-#marketBuyListContain);
-}
-button:active {
-  transform: translateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inp 0.9);
+#marketBuyListContainer {
+  max-height:240px;
+  overflow-y:auto;
+  border:1px solid #5c3b80;
+  padding:4px;
+  font-size:14px;
+  background: rgba(12, 8, 24, 0.9);
 }
 .market-buy-row {
   padding:3px 2px;
@@ -373,16 +385,21 @@ select, inp 0.9);
 .market-buy-row:hover {
   background: rgba(255,255,255,0.03);
 }
-.market);
+.market-buy-row .row-main {
+  font-weight: bold;
+  color:#f5eafc;
 }
-button:active {
-  transform: translateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
+.market-buy-row .row-controls button {
+  padding: 4px 6px;
+  font-size: 13px;
 }
-select, inplateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
+.row-preview {
+  color:#c9c2ff;
 }
-select, inp dashed #4b3f72;
+
+#marketOrderList {
+  font-size:13px;
+  border-top:1px dashed #4b3f72;
   padding-top:4px;
   max-height:120px;
   overflow-y:auto;
@@ -399,119 +416,160 @@ select, inp dashed #4b3f72;
   padding:6px 6px;
 }
 .market-subtab-btn.active {
-  backgr);
+  background: radial-gradient(circle at top, #6e44aa, #3a255a);
+  font-weight:bold;
+  color:#fffaf5;
 }
-button:active {
-  transform: translateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
+.market-subtab-page {
+  display:none;
+  margin-top:4px;
 }
-select, inp margin-top:4px;
+.market-subtab-page.active {
+  display:block;
 }
-.market-subtab-page.acti);
+
+/* ===== ステータスタブ ===== */
+#pageStatus {
+  font-size:15px;
 }
-button:active {
-  transform: translateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
+#pageStatus h3 {
+  border-left:3px solid #9b59b6;
+  padding-left:4px;
+  margin-top:6px;
+  margin-bottom:4px;
 }
-select, inptransform: translateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inpnone;
+
+/* ===== ジョブモーダル ===== */
+#jobModal {
+  display:none;
   position:fixed;
   inset:0;
   background:rgba(0,0,0,0.6);
   z-index:999;
 }
 #jobModalInner {
-  background: radial-gradient(circle at top,);
-}
-button:active {
-  transform: translateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inp, 0 0 24px rgba(142,68,173,0.8);
+  background: radial-gradient(circle at top, #3a2755, #140b21);
+  border-radius:10px;
+  padding:16px;
+  max-width:320px;
+  margin:80px auto;
+  box-shadow:0 0 18px rgba(0,0,0,0.8), 0 0 24px rgba(142,68,173,0.8);
   border:1px solid #9b59b6;
   color:#f9f2ff;
   text-align:center;
 }
 
-/* ===== レスポンシブ調整 ===== );
-}
-button:active {
-  transform: translateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inp   margin-bottom: 4px;
+/* ===== レスポンシブ調整 ===== */
+
+/* 小さいスマホ（〜480px） */
+@media (max-width: 480px) {
+  body {
+    padding: 6px;
+    font-size: 16px;
+  }
+  h1 {
+    font-size: 20px;
+    margin-bottom: 4px;
   }
   #statusBar {
-    pad);
+    padding: 6px 6px;
+    font-size: 13px;
+  }
+  #tabs {
+    margin-bottom: 3px;
+  }
+  .tab-button {
+    font-size: 13px;
+    padding: 6px 4px;
+  }
+  .tab-page {
+    padding: 8px;
+  }
+  button, select, input {
+    font-size: 15px;
+    padding: 8px 10px;
+  }
+  #shopContainer,
+  #marketContainer {
+    max-width: 100%;
+  }
+  #jobModalInner {
+    margin: 40px auto;
+    padding: 12px;
+    max-width: 280px;
+  }
 }
-button:active {
-  transform: translateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inprgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inpx rgba(155, 89, 182, 0.7);
-}
-select, inp(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inpba(155, 89, 182, 0.7);
-}
-select, inplateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inp 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inpransform: translateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inpm: 6px;
+
+/* 普通スマホ〜小さめタブレット（481〜800px） */
+@media (min-width: 481px) and (max-width: 800px) {
+  body {
+    padding: 8px;
+    font-size: 17px;
+  }
+  h1 {
+    font-size: 24px;
+    margin-bottom: 6px;
   }
   #statusBar {
-    pad);
+    padding: 7px 8px;
+    font-size: 14px;
+  }
+  #tabs {
+    margin-bottom: 4px;
+  }
+  .tab-button {
+    font-size: 14px;
+    padding: 7px 5px;
+  }
+  .tab-page {
+    padding: 9px;
+  }
+  button, select, input {
+    font-size: 16px;
+    padding: 9px 12px;
+  }
+  #shopContainer,
+  #marketContainer {
+    max-width: 100%;
+  }
+  #jobModalInner {
+    margin: 60px auto;
+    max-width: 320px;
+  }
 }
-button:active {
-  transform: translateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
+
+/* タブレット横〜PC（801px〜） */
+@media (min-width: 801px) {
+  body {
+    display: flex;
+    justify-content: center;
+    padding: 10px;
+    font-size: 18px;
+  }
+  body > * {
+    max-width: 900px;
+    width: 100%;
+  }
+  h1 {
+    font-size: 26px;
+  }
+  #statusBar {
+    padding: 8px 10px;
+    font-size: 15px;
+  }
+  .tab-page {
+    padding: 10px;
+  }
+  button, select, input {
+    font-size: 16px;
+    padding: 10px 14px;
+  }
+  #shopContainer,
+  #marketContainer {
+    max-width: 640px;
+  }
+  #jobModalInner {
+    margin: 80px auto;
+    max-width: 360px;
+  }
 }
-select, inpm: translateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inplateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inp 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inp01px〜） */
-@m);
-}
-button:active {
-  transform: translateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inp> * {
-    max-w);
-}
-button:active {
-  transform: translateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inppx);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inpranslateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inp0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inp, 0.7);
-}
-select, inp0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inp translateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inpow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, inp, inp
