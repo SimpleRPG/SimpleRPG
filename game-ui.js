@@ -9,32 +9,32 @@ function showTab(tabId) {
 
   const tabButtons = document.querySelectorAll("#tabs .tab-button");
   tabButtons.forEach(b => b.classList.remove("active"));
-  if (tabId === "pageGather")  document.getElementById("tabGather").classList.add("active");
-  if (tabId === "pageCraft")   document.getElementById("tabCraft").classList.add("active");
-  if (tabId === "pageEquip")   document.getElementById("tabEquip").classList.add("active");
-  if (tabId === "pageExplore") document.getElementById("tabExplore").classList.add("active");
-  if (tabId === "pageShop")    document.getElementById("tabShop").classList.add("active");
-  if (tabId === "pageMarket")  document.getElementById("tabMarket").classList.add("active");
-  if (tabId === "pageStatus")  document.getElementById("tabStatus").classList.add("active");
+  if (tabId === "pageGather")  document.getElementById("tabGather") ?.classList.add("active");
+  if (tabId === "pageCraft")   document.getElementById("tabCraft")  ?.classList.add("active");
+  if (tabId === "pageEquip")   document.getElementById("tabEquip")  ?.classList.add("active");
+  if (tabId === "pageExplore") document.getElementById("tabExplore")?.classList.add("active");
+  if (tabId === "pageShop")    document.getElementById("tabShop")   ?.classList.add("active");
+  if (tabId === "pageMarket")  document.getElementById("tabMarket") ?.classList.add("active");
+  if (tabId === "pageStatus")  document.getElementById("tabStatus") ?.classList.add("active");
 }
 
-// 職業選択モーダルは game-core.js 側の openJobModal/closeJobModal/applyJobChange を使う
-
+// タブボタン
 function initTabs() {
-  document.getElementById("tabGather").onclick  = function(){ showTab("pageGather"); };
-  document.getElementById("tabCraft").onclick   = function(){ showTab("pageCraft"); };
-  document.getElementById("tabEquip").onclick   = function(){ showTab("pageEquip"); };
-  document.getElementById("tabExplore").onclick = function(){ showTab("pageExplore"); };
-  document.getElementById("tabShop").onclick    = function(){ showTab("pageShop"); };
-  document.getElementById("tabMarket").onclick  = function(){ showTab("pageMarket"); };
-  document.getElementById("tabStatus").onclick  = function(){ showTab("pageStatus"); };
+  document.getElementById("tabGather") ?.addEventListener("click", () => showTab("pageGather"));
+  document.getElementById("tabCraft")  ?.addEventListener("click", () => showTab("pageCraft"));
+  document.getElementById("tabEquip")  ?.addEventListener("click", () => showTab("pageEquip"));
+  document.getElementById("tabExplore")?.addEventListener("click", () => showTab("pageExplore"));
+  document.getElementById("tabShop")   ?.addEventListener("click", () => showTab("pageShop"));
+  document.getElementById("tabMarket") ?.addEventListener("click", () => showTab("pageMarket"));
+  document.getElementById("tabStatus") ?.addEventListener("click", () => showTab("pageStatus"));
 }
 
+// 詳細パネル
 function initDetailPanel() {
   const btn = document.getElementById("toggleDetailBtn");
   const panel = document.getElementById("detailPanel");
-  btn.onclick = function() {
-    if (!panel) return;
+  if (!btn || !panel) return;
+  btn.addEventListener("click", () => {
     if (panel.style.display === "none" || panel.style.display === "") {
       panel.style.display = "block";
       btn.textContent = "▲詳細";
@@ -42,181 +42,201 @@ function initDetailPanel() {
       panel.style.display = "none";
       btn.textContent = "▼詳細";
     }
-  };
+  });
 }
 
+// 採取
 function initGather() {
-  document.getElementById("gather").onclick = function(){ gather(); };
+  document.getElementById("gather")?.addEventListener("click", () => gather());
 }
 
+// クラフト
 function initCraft() {
-  document.getElementById("craftWeaponBtn").onclick = function(){ craftWeapon(); };
-  document.getElementById("craftArmorBtn").onclick  = function(){ craftArmor(); };
-  document.getElementById("craftPotionBtn").onclick = function(){ craftPotion(); };
+  document.getElementById("craftWeaponBtn")?.addEventListener("click", () => craftWeapon());
+  document.getElementById("craftArmorBtn") ?.addEventListener("click", () => craftArmor());
+  document.getElementById("craftPotionBtn")?.addEventListener("click", () => craftPotion());
 }
 
+// 装備
 function initEquip() {
-  document.getElementById("equipWeaponBtn").onclick   = function(){ equipWeapon(); };
-  document.getElementById("equipArmorBtn").onclick    = function(){ equipArmor(); };
-  document.getElementById("enhanceWeaponBtn").onclick = function(){ enhanceWeapon(); };
-  document.getElementById("enhanceArmorBtn").onclick  = function(){ enhanceArmor(); };
+  document.getElementById("equipWeaponBtn")  ?.addEventListener("click", () => equipWeapon());
+  document.getElementById("equipArmorBtn")   ?.addEventListener("click", () => equipArmor());
+  document.getElementById("enhanceWeaponBtn")?.addEventListener("click", () => enhanceWeapon());
+  document.getElementById("enhanceArmorBtn") ?.addEventListener("click", () => enhanceArmor());
 }
 
+// 転生
 function initRebirth() {
-  document.getElementById("rebirthBtn").onclick = function(){ doRebirth(); };
+  document.getElementById("rebirthBtn")?.addEventListener("click", () => doRebirth());
 }
 
-// 職業・ペット関連
+// 職業・ペット
 function initJobAndPet() {
-  // 「職業変更」ボタン → モーダルを開く
-  document.getElementById("changeJobBtn").onclick  = function(){ openJobModal(); };
-  // モーダル内の3ボタン
-  document.getElementById("jobWarriorBtn").onclick = function(){ applyJobChange(0); };
-  document.getElementById("jobMageBtn").onclick    = function(){ applyJobChange(1); };
-  document.getElementById("jobTamerBtn").onclick   = function(){ applyJobChange(2); };
-
-  // ペット成長タイプ変更
-  document.getElementById("changePetGrowthBtn").onclick = function(){ changePetGrowthType(); };
+  document.getElementById("changeJobBtn")      ?.addEventListener("click", () => openJobModal());
+  document.getElementById("jobWarriorBtn")     ?.addEventListener("click", () => applyJobChange(0));
+  document.getElementById("jobMageBtn")        ?.addEventListener("click", () => applyJobChange(1));
+  document.getElementById("jobTamerBtn")       ?.addEventListener("click", () => applyJobChange(2));
+  document.getElementById("changePetGrowthBtn")?.addEventListener("click", () => changePetGrowthType());
 }
 
-// 探索・戦闘系
+// 探索・戦闘
 function initExploreAndBattle() {
-  // 「探索する」ボタン → 戦闘 or イベント
-  document.getElementById("exploreStartBtn").onclick = function(){ doExploreEvent(); };
+  document.getElementById("exploreStartBtn")?.addEventListener("click", () => doExploreEvent());
+  document.getElementById("exploreBtn")     ?.addEventListener("click", () => playerAttack());
 
-  // 戦闘中の「攻撃」ボタン
-  document.getElementById("exploreBtn").onclick = function(){ playerAttack(); };
-
-  // 魔法／スキルは skill-core 側の関数がある前提
   const castMagicBtn = document.getElementById("castMagicBtn");
   const useSkillBtn  = document.getElementById("useSkillBtn");
   if (castMagicBtn) {
-    castMagicBtn.onclick = function() {
+    castMagicBtn.addEventListener("click", () => {
       if (typeof castSelectedMagic === "function") {
         castSelectedMagic();
       } else {
         setLog("魔法機能は未実装です");
       }
-    };
+    });
   }
   if (useSkillBtn) {
-    useSkillBtn.onclick = function() {
+    useSkillBtn.addEventListener("click", () => {
       if (typeof useSelectedSkill === "function") {
         useSelectedSkill();
       } else {
         setLog("武技機能は未実装です");
       }
-    };
+    });
   }
 
-  // 戦闘アイテム
-  document.getElementById("useBattleItemBtn").onclick = function(){ useBattleItem(); };
+  document.getElementById("useBattleItemBtn")?.addEventListener("click", () => useBattleItem());
+  document.getElementById("useItemBtn")      ?.addEventListener("click", () => usePotionOutsideBattle());
 
-  // フィールド使用アイテム
-  document.getElementById("useItemBtn").onclick = function(){ usePotionOutsideBattle(); };
+  // 逃走ボタン（HTML側で id="escapeBtn" に変更して使う）
+  const escapeBtn = document.getElementById("escapeBtn");
+  if (escapeBtn) {
+    escapeBtn.addEventListener("click", () => {
+      if (typeof tryEscape === "function") {
+        tryEscape();
+      }
+    });
+  }
 }
 
 // ショップ
 function initShop() {
-  document.getElementById("shopBuyPotion").onclick   = function(){ buyPotion("potion", 60); };
-  document.getElementById("shopBuyHiPotion").onclick = function(){ buyPotion("hiPotion", 100); };
-  document.getElementById("shopBuyMana").onclick     = function(){ buyPotion("manaPotion", 80); };
-  document.getElementById("shopBuyHiMana").onclick   = function(){ buyPotion("hiManaPotion", 120); };
-  document.getElementById("shopBuyBomb").onclick     = function(){ buyPotion("bomb", 100); };
+  document.getElementById("shopBuyPotion")  ?.addEventListener("click", () => buyPotion("potion", 60));
+  document.getElementById("shopBuyHiPotion")?.addEventListener("click", () => buyPotion("hiPotion", 100));
+  document.getElementById("shopBuyMana")    ?.addEventListener("click", () => buyPotion("manaPotion", 80));
+  document.getElementById("shopBuyHiMana")  ?.addEventListener("click", () => buyPotion("hiManaPotion", 120));
+  document.getElementById("shopBuyBomb")    ?.addEventListener("click", () => buyPotion("bomb", 100));
 
-  document.getElementById("shopHealHP").onclick = function() {
-    const price = 80;
-    if (money < price) {
-      setLog("お金が足りない（宿屋 80G）");
-      return;
-    }
-    money -= price;
-    hp = hpMax;
-    setLog("宿屋で休んだ。HPが全回復した。");
-    updateDisplay();
-  };
+  const healBtn = document.getElementById("shopHealHP");
+  if (healBtn) {
+    healBtn.addEventListener("click", () => {
+      const price = 80;
+      if (money < price) {
+        setLog("お金が足りない（宿屋 80G）");
+        return;
+      }
+      money -= price;
+      hp = hpMax;
+      setLog("宿屋で休んだ。HPが全回復した。");
+      updateDisplay();
+    });
+  }
 }
 
-// 市場UI（market-core.js の関数を呼ぶ想定）
+// 市場
 function initMarket() {
   const tabSell = document.getElementById("marketTabSell");
   const tabBuy  = document.getElementById("marketTabBuy");
   const sellPanel = document.getElementById("marketSellPanel");
   const buyPanel  = document.getElementById("marketBuyPanel");
 
-  tabSell.onclick = function() {
-    tabSell.classList.add("active");
-    tabBuy.classList.remove("active");
-    sellPanel.style.display = "";
-    buyPanel.style.display  = "none";
-  };
-  tabBuy.onclick = function() {
-    tabBuy.classList.add("active");
-    tabSell.classList.remove("active");
-    buyPanel.style.display  = "";
-    sellPanel.style.display = "none";
-  };
+  if (tabSell && tabBuy && sellPanel && buyPanel) {
+    tabSell.addEventListener("click", () => {
+      tabSell.classList.add("active");
+      tabBuy.classList.remove("active");
+      sellPanel.style.display = "";
+      buyPanel.style.display  = "none";
+    });
+    tabBuy.addEventListener("click", () => {
+      tabBuy.classList.add("active");
+      tabSell.classList.remove("active");
+      buyPanel.style.display  = "";
+      sellPanel.style.display = "none";
+    });
+  }
 
-  // サブタブ（購入 / 注文）
   const subPurchaseBtn = document.getElementById("marketSubTabPurchase");
   const subOrdersBtn   = document.getElementById("marketSubTabOrders");
   const subPurchase    = document.getElementById("marketSubPagePurchase");
   const subOrders      = document.getElementById("marketSubPageOrders");
 
-  subPurchaseBtn.onclick = function() {
-    subPurchaseBtn.classList.add("active");
-    subOrdersBtn.classList.remove("active");
-    subPurchase.classList.add("active");
-    subOrders.classList.remove("active");
-  };
-  subOrdersBtn.onclick = function() {
-    subOrdersBtn.classList.add("active");
-    subPurchaseBtn.classList.remove("active");
-    subOrders.classList.add("active");
-    subPurchase.classList.remove("active");
-  };
+  if (subPurchaseBtn && subOrdersBtn && subPurchase && subOrders) {
+    subPurchaseBtn.addEventListener("click", () => {
+      subPurchaseBtn.classList.add("active");
+      subOrdersBtn.classList.remove("active");
+      subPurchase.classList.add("active");
+      subOrders.classList.remove("active");
+    });
+    subOrdersBtn.addEventListener("click", () => {
+      subOrdersBtn.classList.add("active");
+      subPurchaseBtn.classList.remove("active");
+      subOrders.classList.add("active");
+      subPurchase.classList.remove("active");
+    });
+  }
 
-  // 売却側
-  document.getElementById("marketSellRefreshBtn").onclick = function() {
-    if (typeof refreshMarketSellCandidates === "function") {
-      refreshMarketSellCandidates();
-    }
-  };
-  document.getElementById("marketSellCategory").onchange = function() {
-    if (typeof refreshMarketSellItems === "function") {
-      refreshMarketSellItems();
-    }
-  };
-  document.getElementById("marketSellBtn").onclick = function() {
-    if (typeof doMarketSell === "function") {
-      doMarketSell();
-    }
-  };
+  const sellRefresh = document.getElementById("marketSellRefreshBtn");
+  if (sellRefresh) {
+    sellRefresh.addEventListener("click", () => {
+      if (typeof refreshMarketSellCandidates === "function") {
+        refreshMarketSellCandidates();
+      }
+    });
+  }
+  const sellCat = document.getElementById("marketSellCategory");
+  if (sellCat) {
+    sellCat.addEventListener("change", () => {
+      if (typeof refreshMarketSellItems === "function") {
+        refreshMarketSellItems();
+      }
+    });
+  }
+  const sellBtn = document.getElementById("marketSellBtn");
+  if (sellBtn) {
+    sellBtn.addEventListener("click", () => {
+      if (typeof doMarketSell === "function") {
+        doMarketSell();
+      }
+    });
+  }
 
-  // 購入側
-  document.getElementById("marketBuyRefreshBtn").onclick = function() {
-    if (typeof refreshMarketBuyList === "function") {
-      refreshMarketBuyList();
-    }
-  };
+  const buyRefresh = document.getElementById("marketBuyRefreshBtn");
+  if (buyRefresh) {
+    buyRefresh.addEventListener("click", () => {
+      if (typeof refreshMarketBuyList === "function") {
+        refreshMarketBuyList();
+      }
+    });
+  }
   const catButtons = document.querySelectorAll(".market-cat-tab");
-  catButtons.forEach(function(btn) {
-    btn.onclick = function() {
+  catButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
       const cat = btn.dataset.cat || "all";
       if (typeof filterMarketBuyListByCategory === "function") {
         filterMarketBuyListByCategory(cat);
       }
-    };
+    });
   });
 
-  // 注文側
-  document.getElementById("marketOrderBtn").onclick = function() {
-    if (typeof doMarketOrder === "function") {
-      doMarketOrder();
-    }
-  };
+  const orderBtn = document.getElementById("marketOrderBtn");
+  if (orderBtn) {
+    orderBtn.addEventListener("click", () => {
+      if (typeof doMarketOrder === "function") {
+        doMarketOrder();
+      }
+    });
+  }
 
-  // 初期表示更新
   if (typeof refreshMarketSellCandidates === "function") {
     refreshMarketSellCandidates();
   }
@@ -225,16 +245,6 @@ function initMarket() {
   }
   if (typeof refreshMarketOrderList === "function") {
     refreshMarketOrderList();
-  }
-}
-
-// スキルUI（skill-core.js 側で定義された更新関数）
-function refreshSkillUIs() {
-  if (typeof refreshMagicSelect === "function") {
-    refreshMagicSelect();
-  }
-  if (typeof refreshSkillSelect === "function") {
-    refreshSkillSelect();
   }
 }
 
@@ -251,9 +261,8 @@ function initUI() {
   initShop();
   initMarket();
 
-  // 最後にゲーム側初期化
   initGame();
 }
 
-// ページ読み込み完了時に initUI を呼ぶ
-window.addEventListener("load", initUI);
+// DOM構築完了後に初期化
+window.addEventListener("DOMContentLoaded", initUI);

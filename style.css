@@ -1,575 +1,488 @@
-/* ===== 全体レイアウト・テーマ（ファンタジー寄せ） ===== */
-html, body {
-  height: 100%;
+/* ======================
+   ベース
+   ====================== */
+
+:root {
+  --bg-dark: #050509;
+  --bg-panel: #14141f;
+  --bg-panel-alt: #1b1b28;
+  --border-color: #4a4a70;
+  --accent: #9f7bff;
+  --accent-soft: #30284f;
+  --text-main: #f5f4ff;
+  --text-sub: #c0bedf;
+  --danger: #ff5c5c;
+  --success: #70e070;
+  --gold: #f5d46a;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 body {
-  font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  padding: 10px;
-  background: radial-gradient(circle at top, #302047 0%, #130d1f 45%, #08050d 100%);
-  color: #f4f0ff;
   margin: 0;
-  min-height: 100vh;
-  font-size: 18px;          /* ベースフォント少し大きく */
-  line-height: 1.6;
+  padding: 0;
+  background: radial-gradient(circle at top, #202040 0, #050509 55%);
+  color: var(--text-main);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: clamp(15px, 2.2vw, 18px);
 }
 
-/* 縦いっぱい使うラッパー＋メインエリア */
+/* ======================
+   ルートコンテナ
+   ====================== */
+
 #appRoot {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-
-#mainArea {
-  flex: 1;                          /* タブページ部分が余った縦を全部もらう */
-  display: flex;
-  flex-direction: column;
-}
-
-/* ★ 画面全体の横幅を制限して中央に寄せる（スマホでも「ゲーム画面」感を出す） */
-body > h1,
-#tabs,
-#statusBar,
-#detailPanel,
-#petInfo,
-.tab-page,
-#log,
-#jobModalInner,
-#shopContainer,
-#marketContainer {
-  max-width: 720px;
-  margin-left: auto;
-  margin-right: auto;
+  max-width: 560px;
+  margin: 10px auto 16px;
+  padding: 10px 12px 16px;
+  background: linear-gradient(145deg, #131320, #090912);
+  border-radius: 10px;
+  border: 1px solid rgba(180,180,255,0.25);
+  box-shadow:
+    0 10px 25px rgba(0,0,0,0.8),
+    0 0 0 1px rgba(60,60,120,0.5) inset;
 }
 
 h1 {
-  font-family: "Georgia", "Times New Roman", serif;
-  letter-spacing: 1px;
-  text-shadow: 0 0 6px rgba(255,255,255,0.15), 0 0 18px rgba(142, 68, 173, 0.6);
-  color: #fdf5ff;
-  margin-top: 0;
-  margin-bottom: 6px;
+  margin: 0 0 10px;
+  font-size: 20px;
+  text-align: center;
+  letter-spacing: 0.08em;
+  color: #ffffff;
+  text-shadow: 0 0 8px rgba(130,110,255,0.8);
 }
 
-h2, h3 {
-  font-family: "Georgia", "Times New Roman", serif;
-  color: #f8ecff;
-  text-shadow: 0 0 4px rgba(0,0,0,0.8);
+/* ======================
+   タブバー
+   ====================== */
+
+#tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
 }
 
-p {
-  margin: 4px 0;
+#tabs .tab-button {
+  flex: 1 1 calc(33.3% - 4px);
+  padding: 5px 4px;
+  font-size: 0.75rem;
+  background: radial-gradient(circle at top, #26263a 0, #151525 70%);
+  color: var(--text-sub);
+  border-radius: 6px 6px 0 0;
+  border: 1px solid rgba(130,120,200,0.5);
+  border-bottom-color: transparent;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
 }
 
-/* ===== ステータスバー ===== */
+#tabs .tab-button.active {
+  background: radial-gradient(circle at top, #3a335c 0, #272247 70%);
+  color: #ffffff;
+  border-color: rgba(210,200,255,0.9);
+  box-shadow: 0 0 6px rgba(159,123,255,0.9);
+}
+
+/* ======================
+   ステータスバー
+   ====================== */
+
 #statusBar {
-  border-bottom: 1px solid #5c3b80;
-  padding: 8px 10px;
+  padding: 5px 8px;
   margin-bottom: 6px;
-  font-size: 15px;
-  background: linear-gradient(135deg, #2c1f40, #1c1429);
-  border-radius: 8px;
-  box-shadow: 0 0 12px rgba(0,0,0,0.7), 0 0 18px rgba(123, 44, 191, 0.5);
+  background: linear-gradient(135deg, #181824, #10101a);
+  border-radius: 6px;
+  border: 1px solid rgba(140,130,210,0.6);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: center;
+  font-size: 0.8rem;
 }
+
 #statusBar span {
   font-weight: 600;
 }
-#hp, #hpMax   { color:#ff6b81; }
-#mp, #mpMax   { color:#4da6ff; }
-#sp, #spMax   { color:#ffd166; }
-#money        { color:#ffe066; text-shadow:0 0 4px rgba(255,255,0,0.5); }
+
+#statusBar #money {
+  color: var(--gold);
+}
 
 #toggleDetailBtn {
-  float: right;
+  margin-left: auto;
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: 999px;
+  background: #262639;
+  border: 1px solid rgba(160,150,230,0.7);
 }
 
-/* ===== タブ ===== */
-#tabs {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 4px;
+/* ======================
+   詳細パネル & ペット
+   ====================== */
+
+#detailPanel,
+#petInfo {
   margin-bottom: 6px;
-  overflow-x: auto;           /* ★ 横スクロール可能にして狭い画面で詰まらないように */
-}
-.tab-button {
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: 8px 6px;
-  border-radius: 6px 6px 0 0;
-  border: 1px solid #5c3b80;
-  border-bottom: none;
-  background: linear-gradient(180deg, #3f295e, #2a1c3f);
-  cursor: pointer;
-  font-size: 14px;
-  white-space: nowrap;
-  color: #eee0ff;
-  box-shadow: 0 -1px 0 rgba(0,0,0,0.5) inset;
-  transition: background 0.15s, transform 0.05s, box-shadow 0.05s, color 0.15s;
-}
-.tab-button:hover {
-  background: linear-gradient(180deg, #4a3170, #34204f);
-  color:#ffffff;
-}
-.tab-button.active {
-  background: radial-gradient(circle at top, #6e44aa, #3a255a);
-  font-weight: bold;
-  color:#fffaf5;
-  box-shadow: 0 -1px 0 rgba(255,255,255,0.15) inset, 0 0 10px rgba(155, 89, 182, 0.6);
+  padding: 6px 8px;
+  background: #101018;
+  border-radius: 6px;
+  border: 1px solid rgba(90,90,150,0.7);
+  font-size: 12px;
+  line-height: 1.6;
 }
 
-/* ===== タブページ ===== */
+#detailPanel {
+  color: var(--text-sub);
+}
+
+#detailPanel span {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+#petInfo {
+  border-style: dashed;
+  border-color: rgba(120,170,255,0.9);
+}
+
+/* ======================
+   メインエリア / ページ
+   ====================== */
+
+#mainArea {
+  margin-top: 4px;
+}
+
 .tab-page {
   display: none;
-  border: 1px solid #5c3b80;
+  padding: 10px 10px 12px;
+  background: #12121c;
   border-radius: 0 8px 8px 8px;
-  padding: 10px;
-  background: radial-gradient(circle at top, #251739, #120c1e);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.7);
-
-  /* 縦レイアウト用 */
-  flex: 1;               /* mainArea 内で縦に伸びる */
-  overflow-y: auto;      /* 中身がはみ出たらこの中だけスクロール */
+  border: 1px solid rgba(120,110,190,0.8);
+  min-height: 180px;
 }
+
 .tab-page.active {
   display: block;
 }
 
-/* ===== ペット・職業まわり ===== */
-.pet-only {
-  display: none;
-}
-#detailPanel {
-  font-size: 15px;
-  margin-bottom: 6px;
-  background: rgba(24, 18, 40, 0.88);
-  border-radius: 8px;
-  padding: 8px 10px;
-  border: 1px solid #4c3570;
-  box-shadow: 0 0 10px rgba(0,0,0,0.6);
-}
-#petInfo {
-  font-size: 15px;
-  background: rgba(25, 18, 45, 0.9);
-  border-radius: 8px;
-  padding: 8px 10px;
-  border: 1px solid #4b3f72;
-  box-shadow: 0 0 10px rgba(0,0,0,0.6);
-}
-
-/* ===== ステータスアニメ ===== */
-.stat-anim {
-  animation: statFlash 0.25s ease-out;
-}
-@keyframes statFlash {
-  0%   { transform: scale(1);   color: inherit; }
-  30%  { transform: scale(1.1); color: #f9e79f; text-shadow:0 0 4px rgba(249,231,159,0.7); }
-  100% { transform: scale(1);   color: inherit; text-shadow:none; }
-}
-
-.stat-hit {
-  animation: statHit 0.25s ease-out;
-}
-.stat-heal {
-  animation: statHeal 0.25s ease-out;
-}
-@keyframes statHit {
-  0%   { transform: scale(1);   color: inherit; }
-  30%  { transform: scale(0.9); color: #ff5555; text-shadow:0 0 4px rgba(231,76,60,0.8); }
-  100% { transform: scale(1);   color: inherit; text-shadow:none; }
-}
-@keyframes statHeal {
-  0%   { transform: scale(1);   color: inherit; }
-  30%  { transform: scale(1.1); color: #55ff99; text-shadow:0 0 4px rgba(46, 204, 113,0.8); }
-  100% { transform: scale(1);   color: inherit; text-shadow:none; }
-}
-
-/* ===== ボタン・フォーム共通 ===== */
-button, select, input {
-  margin: 2px;
-  padding: 10px 14px;
+.tab-page h2 {
+  margin: 0 0 6px;
   font-size: 16px;
-  border-radius: 6px;
-  border: 1px solid #5c3b80;
-  background: radial-gradient(circle at top, #3c285b, #241537);
-  color: #f7f1ff;
-  cursor: pointer;
-  box-shadow: 0 1px 0 rgba(0,0,0,0.7), 0 0 6px rgba(52, 31, 151, 0.5);
-  transition: background 0.1s, transform 0.05s, box-shadow 0.05s, border-color 0.1s;
-  min-height: 44px;           /* 指で押しやすい高さ */
-  box-sizing: border-box;
-}
-button:hover {
-  background: radial-gradient(circle at top, #4b3373, #2e1847);
-  border-color:#b08cf2;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.8), 0 0 8px rgba(155, 89, 182, 0.8);
-}
-button:active {
-  transform: translateY(1px);
-  box-shadow: 0 0 0 rgba(0,0,0,0.8), 0 0 4px rgba(155, 89, 182, 0.7);
-}
-select, input {
-  background: #1a1228;
-  color:#f7f1ff;
-  box-shadow: inset 0 0 4px rgba(0,0,0,0.8);
-  cursor: default;
-  min-height: 40px;
+  border-left: 3px solid var(--accent);
+  padding-left: 6px;
 }
 
-/* ===== 戦闘ボタン（色分け） ===== */
+.tab-page h3 {
+  margin: 10px 0 4px;
+  font-size: 13px;
+  color: var(--accent);
+}
+
+/* ======================
+   共通フォーム系
+   ====================== */
+
+button {
+  background: linear-gradient(135deg, #2c2c40, #1b1b30);
+  color: var(--text-main);
+  border: 1px solid rgba(150,150,220,0.8);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+button:hover {
+  background: linear-gradient(135deg, #3a3a55, #25253a);
+}
+
+select,
+input[type="number"],
+input[type="text"] {
+  background: #090912;
+  color: var(--text-main);
+  border: 1px solid rgba(120,120,190,0.8);
+  border-radius: 4px;
+  padding: 3px 4px;
+  font-size: 12px;
+}
+
+/* メイン操作ボタン（攻撃・魔法・スキルなど） */
+.btn-main {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* ======================
+   説明・注釈テキスト
+   ====================== */
+
+.text-note {
+  font-size: 0.85rem;
+  color: var(--text-sub);
+  line-height: 1.5;
+}
+
+.text-caption {
+  font-size: 0.8rem;
+  color: var(--text-sub);
+}
+
+/* ======================
+   採取 / クラフト
+   ====================== */
+
+#pageGather p,
+#pageCraft p {
+  margin: 4px 0;
+  font-size: 12px;
+  color: var(--text-sub);
+}
+
+#gatherMaterials,
+#craftMaterials {
+  padding: 4px 6px;
+  background: #171726;
+  border-radius: 4px;
+  border: 1px solid rgba(90,90,150,0.7);
+}
+
+/* ======================
+   探索 / 戦闘
+   ====================== */
+
+/* 敵情報ボックス */
+#enemyStatusBox {
+  padding: 6px 8px;
+  margin-bottom: 8px;
+  background: #1a1725;
+  border-radius: 4px;
+  border: 1px solid rgba(140,120,210,0.8);
+  font-size: 12px;
+}
+
+/* 行き先＋探索ボタン＋説明行 */
+.explore-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+/* 「行き先:」ラベル */
+.explore-header-row .label {
+  font-size: 13px;
+}
+
+/* 右端の説明テキスト */
+.explore-help-text {
+  font-size: 11px;
+  color: #ddd4ff;
+  margin-left: auto;
+  min-width: 100%;
+  margin-top: 2px;
+}
+
+/* 戦闘コマンド全体 */
+#battleCommandArea {
+  margin-top: 4px;
+}
+
+/* ボタン2カラムレイアウト */
 #battleButtons {
   display: flex;
-  gap: 4px;
+  flex-wrap: nowrap;
+  gap: 8px;
 }
-#battleMainCol, #battlePetCol {
+
+/* 左：メインコマンド列 */
+#battleMainCol {
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
+  gap: 4px;
 }
-#battleMainCol button,
-#battlePetCol button {
+
+/* 右：ペット列 */
+#battlePetCol {
+  flex: 0 0 120px;
+  font-size: 12px;
+}
+
+/* フィールドアイテム行 */
+.field-item-row {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+
+/* ラベル部分 */
+.field-item-row .label {
+  font-size: 11px;
+}
+
+/* セレクトは少し広め */
+.field-item-row select {
   min-width: 120px;
 }
 
+/* ボタン色系 */
 .btn-attack {
-  background: radial-gradient(circle at top, #a93b3b, #6f2323);
-  border-color:#ff7676;
+  background: linear-gradient(135deg, #7c2f2f, #531818);
+  border-color: rgba(250,180,180,0.9);
 }
-.btn-attack:hover {
-  background: radial-gradient(circle at top, #c04646, #7e2929);
+.btn-magic {
+  background: linear-gradient(135deg, #2f4d7c, #182a53);
+  border-color: rgba(180,200,250,0.9);
 }
-.btn-magic  {
-  background: radial-gradient(circle at top, #3b5bb9, #24356f);
-  border-color:#7fb2ff;
+.btn-skill {
+  background: linear-gradient(135deg, #3d6b3a, #1f3f1d);
+  border-color: rgba(190,250,190,0.9);
 }
-.btn-magic:hover  {
-  background: radial-gradient(circle at top, #4a6ad1, #2d3f80);
-}
-.btn-skill  {
-  background: radial-gradient(circle at top, #b98a3b, #7f5a23);
-  border-color:#f1c40f;
-}
-.btn-skill:hover  {
-  background: radial-gradient(circle at top, #cca047, #8e6429);
-}
-.btn-item   {
-  background: radial-gradient(circle at top, #3bb971, #237f49);
-  border-color:#7dffb1;
-}
-.btn-item:hover   {
-  background: radial-gradient(circle at top, #47c77e, #2a8e54);
+.btn-item {
+  background: linear-gradient(135deg, #555555, #333333);
+  border-color: rgba(210,210,210,0.9);
 }
 
-/* ===== ログ ===== */
+/* ======================
+   ログ
+   ====================== */
+
 #log {
   margin-top: 10px;
-  font-size: 15px;
-  color: #ddd4ff;
+  padding: 6px 8px;
+  min-height: 70px;
+  background: #050509;
+  border-radius: 6px;
+  border: 1px solid rgba(120,110,190,0.8);
+  font-size: 0.9rem;
   white-space: pre-line;
-  max-height: 200px;
-  overflow-y: auto;
-  border-top: 1px solid #4c3570;
-  padding-top: 4px;
-  background: rgba(10, 6, 20, 0.8);
-  box-shadow: 0 -2px 6px rgba(0,0,0,0.7) inset;
+  color: var(--text-sub);
 }
 
-/* ===== ショップ ===== */
-#shopContainer {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-width: 380px;
-}
-.shop-section {
-  border: 1px solid #7e57c2;
-  border-radius: 8px;
-  padding: 8px 10px;
-  background: radial-gradient(circle at top left, #3a2755, #190f28);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.8), 0 0 12px rgba(123, 44, 191, 0.6);
-}
-.shop-section h3 {
-  margin: 2px 0 4px;
-  font-size: 15px;
-  border-left: 3px solid #f1c40f;
-  padding-left: 4px;
-}
-.shop-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 4px 0;
-  border-top: 1px dashed #6d4c90;
-  font-size: 14px;
-}
-.shop-item:first-of-type {
-  border-top: none;
-}
-.shop-item:hover {
-  background: rgba(255,255,255,0.04);
-}
-.shop-item-main {
-  display: flex;
-  flex-direction: column;
-}
-.shop-item-name {
-  font-weight: bold;
-  font-size: 15px;
-  color:#ffecb3;
-}
-.shop-item-desc {
-  color: #ccc2ff;
-  font-size: 13px;
-}
-.shop-item-sub {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.shop-item-price {
-  font-weight: bold;
-  color: #f1c40f;
-  min-width: 48px;
-  text-align: right;
-  font-size: 14px;
-  text-shadow: 0 0 4px rgba(241,196,15,0.7);
-}
+/* ======================
+   職業モーダル
+   ====================== */
 
-/* ===== 市場 ===== */
-#marketContainer {
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-  max-width:480px;
-}
-.market-section {
-  border:1px solid #7e57c2;
-  border-radius:8px;
-  padding:8px 10px;
-  background: radial-gradient(circle at top left, #33224d, #170f24);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.8), 0 0 10px rgba(142, 68, 173,0.7);
-}
-.market-section h3 {
-  margin:2px 0 4px;
-  font-size:15px;
-  border-left:3px solid #9b59b6;
-  padding-left:4px;
-}
-.market-inline {
-  display:flex;
-  flex-wrap:wrap;
-  align-items:center;
-  gap:4px;
-  margin:2px 0;
-}
-.market-inline label {
-  font-size:14px;
-}
-
-.market-cat-tab {
-  flex:1;
-  font-size:13px;
-}
-
-#marketBuyListContainer {
-  max-height:240px;
-  overflow-y:auto;
-  border:1px solid #5c3b80;
-  padding:4px;
-  font-size:14px;
-  background: rgba(12, 8, 24, 0.9);
-}
-.market-buy-row {
-  padding:3px 2px;
-  border-bottom:1px dashed #4b3f72;
-}
-.market-buy-row:hover {
-  background: rgba(255,255,255,0.03);
-}
-.market-buy-row .row-main {
-  font-weight: bold;
-  color:#f5eafc;
-}
-.market-buy-row .row-controls button {
-  padding: 4px 6px;
-  font-size: 13px;
-}
-.row-preview {
-  color:#c9c2ff;
-}
-
-#marketOrderList {
-  font-size:13px;
-  border-top:1px dashed #4b3f72;
-  padding-top:4px;
-  max-height:120px;
-  overflow-y:auto;
-}
-
-.market-subtabs {
-  display:flex;
-  gap:4px;
-  margin-bottom:4px;
-}
-.market-subtab-btn {
-  flex:1;
-  font-size:13px;
-  padding:6px 6px;
-}
-.market-subtab-btn.active {
-  background: radial-gradient(circle at top, #6e44aa, #3a255a);
-  font-weight:bold;
-  color:#fffaf5;
-}
-.market-subtab-page {
-  display:none;
-  margin-top:4px;
-}
-.market-subtab-page.active {
-  display:block;
-}
-
-/* ===== ステータスタブ ===== */
-#pageStatus {
-  font-size:15px;
-}
-#pageStatus h3 {
-  border-left:3px solid #9b59b6;
-  padding-left:4px;
-  margin-top:6px;
-  margin-bottom:4px;
-}
-
-/* ===== ジョブモーダル ===== */
 #jobModal {
-  display:none;
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.6);
-  z-index:999;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
 }
+
 #jobModalInner {
-  background: radial-gradient(circle at top, #3a2755, #140b21);
-  border-radius:10px;
-  padding:16px;
-  max-width:320px;
-  margin:80px auto;
-  box-shadow:0 0 18px rgba(0,0,0,0.8), 0 0 24px rgba(142,68,173,0.8);
-  border:1px solid #9b59b6;
-  color:#f9f2ff;
-  text-align:center;
+  background: #11111c;
+  border-radius: 10px;
+  border: 1px solid rgba(200,190,255,0.95);
+  padding: 14px 18px 16px;
+  max-width: 360px;
+  width: 92%;
+  box-shadow:
+    0 14px 32px rgba(0,0,0,0.9),
+    0 0 12px rgba(159,123,255,0.8);
 }
 
-/* ===== レスポンシブ調整 ===== */
-
-/* 小さいスマホ（〜480px） */
-@media (max-width: 480px) {
-  body {
-    padding: 6px;
-    font-size: 16px;
-  }
-  h1 {
-    font-size: 20px;
-    margin-bottom: 4px;
-  }
-  #statusBar {
-    padding: 6px 6px;
-    font-size: 13px;
-  }
-  #tabs {
-    margin-bottom: 3px;
-  }
-  .tab-button {
-    font-size: 13px;
-    padding: 6px 4px;
-  }
-  .tab-page {
-    padding: 8px;
-  }
-  button, select, input {
-    font-size: 15px;
-    padding: 8px 10px;
-  }
-  #shopContainer,
-  #marketContainer {
-    max-width: 100%;
-  }
-  #jobModalInner {
-    margin: 40px auto;
-    padding: 12px;
-    max-width: 280px;
-  }
+#jobModalInner h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
 }
 
-/* 普通スマホ〜小さめタブレット（481〜800px） */
-@media (min-width: 481px) and (max-width: 800px) {
-  body {
-    padding: 8px;
-    font-size: 17px;
-  }
-  h1 {
-    font-size: 24px;
-    margin-bottom: 6px;
-  }
-  #statusBar {
-    padding: 7px 8px;
-    font-size: 14px;
-  }
-  #tabs {
-    margin-bottom: 4px;
-  }
-  .tab-button {
-    font-size: 14px;
-    padding: 7px 5px;
-  }
-  .tab-page {
-    padding: 9px;
-  }
-  button, select, input {
-    font-size: 16px;
-    padding: 9px 12px;
-  }
-  #shopContainer,
-  #marketContainer {
-    max-width: 100%;
-  }
-  #jobModalInner {
-    margin: 60px auto;
-    max-width: 320px;
-  }
+#jobModalInner p {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
 }
 
-/* タブレット横〜PC（801px〜） */
-@media (min-width: 801px) {
-  body {
-    display: flex;
-    justify-content: center;
-    padding: 10px;
-    font-size: 18px;
-  }
-  body > * {
-    max-width: 900px;
-    width: 100%;
-  }
-  h1 {
-    font-size: 26px;
-  }
-  #statusBar {
-    padding: 8px 10px;
-    font-size: 15px;
-  }
-  .tab-page {
-    padding: 10px;
-  }
-  button, select, input {
-    font-size: 16px;
-    padding: 10px 14px;
-  }
-  #shopContainer,
-  #marketContainer {
-    max-width: 640px;
-  }
-  #jobModalInner {
-    margin: 80px auto;
-    max-width: 360px;
-  }
+/* ======================
+   市場
+   ====================== */
+
+.market-main-tab,
+.market-sub-tab,
+.market-cat-tab {
+  font-size: 11px;
+  padding: 3px 6px;
+  margin-right: 4px;
+  border-radius: 999px;
+  background: #25253a;
+  border: 1px solid rgba(130,120,200,0.7);
 }
+
+.market-main-tab.active,
+.market-sub-tab.active,
+.market-cat-tab.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: rgba(230,220,255,0.95);
+  box-shadow: 0 0 6px rgba(159,123,255,0.9);
+}
+
+.market-sub-page {
+  padding: 4px 0;
+}
+
+.market-sub-page.active {
+  display: block;
+}
+
+#marketBuyListContainer,
+#marketOrderList {
+  margin-top: 4px;
+  padding: 4px 6px;
+  background: #10101a;
+  border-radius: 4px;
+  border: 1px dashed rgba(110,100,180,0.7);
+  font-size: 12px;
+}
+
+#marketInfo {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-sub);
+}
+
+/* ======================
+   ステータスページ
+   ====================== */
+
+#pageStatus p {
+  margin: 4px 0;
+  font-size: 0.85rem;
+  color: var(--text-sub);
+}
+
+#pageStatus span {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+/* ======================
+   数値変化アニメ
+   ====================== */
+
+.stat-anim {
+  animation: stat-flash 0.3s ease;
+}
+
+@keyframes stat-flash {
+  0%   { color: #ffffff; }
+  50%  { color: #ffe066; }
+  100% { color: #ffffff; }
+}
+
+/* ペット専用要素は JS 側で display 切替 */
+.pet-only {}

@@ -23,7 +23,7 @@ const WEAPONS_INIT = [
     atk: 1,
     scaleStr: 0.05,
     scaleInt: 0.00,
-    cost: { wood: 1, ore: 1 }, // クラフト用: 実際には craft-data 側のレシピを優先しても良い
+    cost: { wood: 1, ore: 1 },
     rate: 0.7,
     enhance: 0,
     enhanceStep: 1,

@@ -1,5 +1,5 @@
 // market-core.js
-// game-core.js と同じグローバル（money / weaponCounts / armors / potions / wood...）を前提にした市場ロジック
+// game-core-* と同じグローバル（money / weaponCounts / armors / potions / wood...）を前提にした市場ロジック
 
 // =======================
 // 市場（売り注文＋買い注文）
@@ -145,8 +145,9 @@ function doMarketSell(){
   addMarketLog(`出品: ${label} x${amount} @${price}G`);
 
   updateDisplay();
-  refreshMarketSellItemList();
-  renderMarketBuyList();
+  refreshMarketSellCandidates();
+  refreshMarketSellItems();
+  refreshMarketBuyList();
 }
 
 // -----------------------
@@ -300,6 +301,9 @@ function doMarketBuy(stackKey, mode, amount){
   addMarketLog(`購入: ${label} x${sim.buyableCount} @合計${sim.totalPrice}G`);
 
   updateDisplay();
+  refreshMarketBuyList();
+  refreshMarketSellCandidates();
+  refreshMarketSellItems();
 }
 
 // -----------------------
@@ -351,7 +355,10 @@ function doMarketBuyOrder(){
   refreshMarketOrderList();
 }
 
-// 出品時に注文と自動マッチ、などをやるならここに処理追加も可
+// game-ui.js から呼ばれている名前に合わせるラッパー
+function doMarketOrder() {
+  doMarketBuyOrder();
+}
 
 function refreshMarketOrderList(){
   const el = document.getElementById("marketOrderList");
@@ -380,4 +387,164 @@ function refreshMarketOrderList(){
 
     el.appendChild(row);
   });
+}
+
+// =======================
+// UI連動用 追加実装
+// =======================
+
+// 売り候補カテゴリとアイテムセレクト
+function refreshMarketSellCandidates(){
+  const catSel  = document.getElementById("marketSellCategory");
+  if (!catSel) return;
+
+  catSel.innerHTML = "";
+  const cats = [
+    { value: "weapon",   label: "武器" },
+    { value: "armor",    label: "防具" },
+    { value: "potion",   label: "ポーション" },
+    { value: "material", label: "素材" }
+  ];
+  cats.forEach(c=>{
+    const opt = document.createElement("option");
+    opt.value = c.value;
+    opt.textContent = c.label;
+    catSel.appendChild(opt);
+  });
+
+  refreshMarketSellItems();
+}
+
+function refreshMarketSellItems(){
+  const catSel  = document.getElementById("marketSellCategory");
+  const itemSel = document.getElementById("marketSellItem");
+  if (!catSel || !itemSel) return;
+
+  // 起動直後に core がまだなら、安全に抜ける（ログだけ出しておく）
+  if (typeof weapons === "undefined" ||
+      typeof armors  === "undefined" ||
+      typeof potions === "undefined") {
+    console.warn("market-core: weapons/armors/potions が未初期化のため、refreshMarketSellItems をスキップ");
+    return;
+  }
+
+  const category = catSel.value;
+  itemSel.innerHTML = "";
+
+  const appendOption = (id, label) => {
+    const opt = document.createElement("option");
+    opt.value = id;
+    opt.textContent = label;
+    itemSel.appendChild(opt);
+  };
+
+  if (category === "weapon") {
+    weapons.forEach(w=>{
+      const cnt = weaponCounts[w.id] || 0;
+      if (cnt > 0) {
+        appendOption(w.id, `${w.name}（所持${cnt}）`);
+      }
+    });
+  } else if (category === "armor") {
+    armors.forEach(a=>{
+      const cnt = armorCounts[a.id] || 0;
+      if (cnt > 0) {
+        appendOption(a.id, `${a.name}（所持${cnt}）`);
+      }
+    });
+  } else if (category === "potion") {
+    potions.forEach(p=>{
+      const cnt = potionCounts[p.id] || 0;
+      if (cnt > 0) {
+        appendOption(p.id, `${p.name}（所持${cnt}）`);
+      }
+    });
+  } else if (category === "material") {
+    const mats = [
+      { id:"wood",    name:"木",    count: wood },
+      { id:"ore",     name:"鉱石",  count: ore },
+      { id:"herb",    name:"草",    count: herb },
+      { id:"cloth",   name:"布",    count: cloth },
+      { id:"leather", name:"皮",    count: leather },
+      { id:"water",   name:"水",    count: water }
+    ];
+    mats.forEach(m=>{
+      if (m.count > 0) {
+        appendOption(m.id, `${m.name}（所持${m.count}）`);
+      }
+    });
+  }
+
+  if (!itemSel.options.length) {
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "出品できるアイテムがありません";
+    itemSel.appendChild(opt);
+  }
+}
+
+// 買いリスト表示＋カテゴリフィルタ
+let marketBuyStacksCache = [];
+
+function renderMarketBuyList(stacks){
+  const container = document.getElementById("marketBuyListContainer");
+  if (!container) return;
+  container.innerHTML = "";
+
+  if (!stacks || stacks.length === 0) {
+    container.textContent = "現在、出品はありません。";
+    return;
+  }
+
+  stacks.forEach(st=>{
+    const row = document.createElement("div");
+    row.className = "market-buy-row";
+
+    const main = document.createElement("div");
+    main.className = "row-main";
+    main.textContent = `${getStackLabel(st)} / 在庫:${st.totalAmount}個`;
+    row.appendChild(main);
+
+    const preview = document.createElement("div");
+    preview.className = "row-preview";
+    preview.textContent = `最安${st.minPrice}G / 最高${st.maxPrice}G`;
+    row.appendChild(preview);
+
+    const controls = document.createElement("div");
+    controls.className = "row-controls";
+
+    const btnOne = document.createElement("button");
+    btnOne.textContent = "1個買う";
+    btnOne.addEventListener("click", () => doMarketBuy(st.key, "one"));
+
+    const btnAll = document.createElement("button");
+    btnAll.textContent = "全部買う";
+    btnAll.addEventListener("click", () => doMarketBuy(st.key, "all"));
+
+    controls.appendChild(btnOne);
+    controls.appendChild(btnAll);
+
+    row.appendChild(controls);
+
+    container.appendChild(row);
+  });
+}
+
+function refreshMarketBuyList(){
+  const stacks = buildMarketStacks();
+  marketBuyStacksCache = stacks;
+  renderMarketBuyList(stacks);
+}
+
+function filterMarketBuyListByCategory(cat){
+  if (!marketBuyStacksCache || !marketBuyStacksCache.length) {
+    refreshMarketBuyList();
+    return;
+  }
+  if (cat === "all") {
+    renderMarketBuyList(marketBuyStacksCache);
+    return;
+  }
+  const filtered = marketBuyStacksCache.filter(st => st.category === cat);
+  renderMarketBuyList(filtered);
 }
