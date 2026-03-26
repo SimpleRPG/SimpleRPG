@@ -1,0 +1,383 @@
+// market-core.js
+// game-core.js と同じグローバル（money / weaponCounts / armors / potions / wood...）を前提にした市場ロジック
+
+// =======================
+// 市場（売り注文＋買い注文）
+// =======================
+
+// 売り注文
+let marketListings = [];
+// 買い注文
+let marketBuyOrders = [];
+// 取引ログ
+let marketTradeLogs = [];
+
+let marketOrderIdSeq = 1;
+let marketListingIdSeq = 1;
+
+function addMarketLog(msg){
+  marketTradeLogs.unshift(msg);
+  if(marketTradeLogs.length > 50){
+    marketTradeLogs.pop();
+  }
+  const el = document.getElementById("marketInfo");
+  if(el){
+    el.textContent = marketTradeLogs.slice(0,3).join(" / ");
+  }
+}
+
+// -----------------------
+// 在庫減少（出品時）
+// -----------------------
+function removeItemForSell(category, itemId, amount){
+  if(category === "weapon"){
+    const have = weaponCounts[itemId] || 0;
+    if(have < amount) return false;
+    weaponCounts[itemId] = have - amount;
+    if(equippedWeaponId === itemId && weaponCounts[itemId] <= 0){
+      equippedWeaponId = null;
+    }
+  } else if(category === "armor"){
+    const have = armorCounts[itemId] || 0;
+    if(have < amount) return false;
+    armorCounts[itemId] = have - amount;
+    if(equippedArmorId === itemId && armorCounts[itemId] <= 0){
+      equippedArmorId = null;
+    }
+  } else if(category === "potion"){
+    const have = potionCounts[itemId] || 0;
+    if(have < amount) return false;
+    potionCounts[itemId] = have - amount;
+  } else if(category === "material"){
+    if(itemId === "wood"){
+      if(wood < amount) return false;
+      wood -= amount;
+    } else if(itemId === "ore"){
+      if(ore < amount) return false;
+      ore -= amount;
+    } else if(itemId === "herb"){
+      if(herb < amount) return false;
+      herb -= amount;
+    } else if(itemId === "cloth"){
+      if(cloth < amount) return false;
+      cloth -= amount;
+    } else if(itemId === "leather"){
+      if(leather < amount) return false;
+      leather -= amount;
+    } else if(itemId === "water"){
+      if(water < amount) return false;
+      water -= amount;
+    } else {
+      return false;
+    }
+  } else {
+    return false;
+  }
+  return true;
+}
+
+function getItemLabel(category, itemId){
+  if(category === "weapon"){
+    const w = weapons.find(x => x.id === itemId);
+    return w ? w.name : itemId;
+  } else if(category === "armor"){
+    const a = armors.find(x => x.id === itemId);
+    return a ? a.name : itemId;
+  } else if(category === "potion"){
+    const p = potions.find(x => x.id === itemId);
+    return p ? p.name : itemId;
+  } else if(category === "material"){
+    const names = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
+    return names[itemId] || itemId;
+  }
+  return itemId;
+}
+
+function buildStackKey(category, itemId){
+  return `${category}:${itemId}`;
+}
+
+// -----------------------
+// 売却（出品）
+// -----------------------
+function doMarketSell(){
+  const catSel = document.getElementById("marketSellCategory");
+  const itemSel= document.getElementById("marketSellItem");
+  const amtEl  = document.getElementById("marketSellAmount");
+  const priceEl= document.getElementById("marketSellPrice");
+  if(!catSel || !itemSel || !amtEl || !priceEl) return;
+
+  const category = catSel.value;
+  const itemId   = itemSel.value;
+  const amount   = parseInt(amtEl.value,10) || 0;
+  const price    = parseInt(priceEl.value,10) || 0;
+
+  if(!itemId){
+    setLog("出品するアイテムを選んでください");
+    return;
+  }
+  if(amount <= 0){
+    setLog("出品個数は1以上にしてください");
+    return;
+  }
+  if(price <= 0){
+    setLog("価格は1G以上にしてください");
+    return;
+  }
+
+  if(!removeItemForSell(category, itemId, amount)){
+    setLog("手持ちの個数が足りません");
+    return;
+  }
+
+  const listing = {
+    id: marketListingIdSeq++,
+    category,
+    itemId,
+    price,       // 1個単価
+    amount,      // 残り個数
+    owner: "player" // 一人用なので固定
+  };
+  marketListings.push(listing);
+
+  const label = getItemLabel(category, itemId);
+  setLog(`${label} を ${amount}個、1個${price}Gで出品した`);
+  addMarketLog(`出品: ${label} x${amount} @${price}G`);
+
+  updateDisplay();
+  refreshMarketSellItemList();
+  renderMarketBuyList();
+}
+
+// -----------------------
+// 出品リストをまとめる（購入側表示用）
+// -----------------------
+function buildMarketStacks(){
+  const map = new Map();
+  marketListings.forEach(l => {
+    const key = buildStackKey(l.category, l.itemId);
+    let st = map.get(key);
+    if(!st){
+      st = {
+        key,
+        category: l.category,
+        itemId: l.itemId,
+        totalAmount: 0,
+        minPrice: Infinity,
+        maxPrice: 0,
+        listings: []
+      };
+      map.set(key, st);
+    }
+    st.totalAmount += l.amount;
+    st.minPrice = Math.min(st.minPrice, l.price);
+    st.maxPrice = Math.max(st.maxPrice, l.price);
+    st.listings.push(l);
+  });
+
+  const arr = Array.from(map.values());
+  arr.sort((a,b)=>{
+    if(a.category !== b.category){
+      return a.category.localeCompare(b.category);
+    }
+    const la = getItemLabel(a.category, a.itemId);
+    const lb = getItemLabel(b.category, b.itemId);
+    return la.localeCompare(lb);
+  });
+  return arr;
+}
+
+function getStackLabel(st){
+  const label = getItemLabel(st.category, st.itemId);
+  if(st.minPrice === st.maxPrice){
+    return `${label} @${st.minPrice}G`;
+  } else {
+    return `${label} @${st.minPrice}〜${st.maxPrice}G`;
+  }
+}
+
+// -----------------------
+// 購入シミュレーション＆実行
+// -----------------------
+function simulateMarketBuy(stackKey, mode, amount){
+  const [category, itemId] = stackKey.split(":");
+  const listings = marketListings
+    .filter(l => l.category === category && l.itemId === itemId && l.amount > 0)
+    .sort((a,b)=>a.price - b.price);
+
+  if(listings.length === 0) return null;
+
+  let remain = 0;
+  if(mode === "one") remain = 1;
+  else if(mode === "all") listings.forEach(l => remain += l.amount);
+  else if(mode === "amount") remain = amount;
+
+  if(remain <= 0) return null;
+
+  let buyCount = 0;
+  let totalPrice = 0;
+  let tmpMoney = money;
+
+  for(const l of listings){
+    if(remain <= 0) break;
+    const canBuyFromThis = Math.min(l.amount, remain);
+    const cost = canBuyFromThis * l.price;
+    if(tmpMoney < cost){
+      const affordable = Math.floor(tmpMoney / l.price);
+      if(affordable <= 0) break;
+      buyCount += affordable;
+      totalPrice += affordable * l.price;
+      tmpMoney -= affordable * l.price;
+      remain -= affordable;
+      break;
+    } else {
+      buyCount += canBuyFromThis;
+      totalPrice += cost;
+      tmpMoney -= cost;
+      remain -= canBuyFromThis;
+    }
+  }
+  if(buyCount <= 0) return null;
+
+  const avgPrice = totalPrice / buyCount;
+  return {
+    label: getItemLabel(category, itemId),
+    category,
+    itemId,
+    buyableCount: buyCount,
+    totalPrice,
+    avgPrice
+  };
+}
+
+function addItemForBuy(category, itemId, amount){
+  if(category === "weapon"){
+    weaponCounts[itemId] = (weaponCounts[itemId] || 0) + amount;
+  } else if(category === "armor"){
+    armorCounts[itemId] = (armorCounts[itemId] || 0) + amount;
+  } else if(category === "potion"){
+    potionCounts[itemId] = (potionCounts[itemId] || 0) + amount;
+  } else if(category === "material"){
+    if(itemId === "wood") wood += amount;
+    else if(itemId === "ore") ore += amount;
+    else if(itemId === "herb") herb += amount;
+    else if(itemId === "cloth") cloth += amount;
+    else if(itemId === "leather") leather += amount;
+    else if(itemId === "water") water += amount;
+  }
+}
+
+function doMarketBuy(stackKey, mode, amount){
+  const sim = simulateMarketBuy(stackKey, mode, amount);
+  if(!sim || sim.buyableCount <= 0) return;
+
+  const [category, itemId] = stackKey.split(":");
+  let remain = sim.buyableCount;
+  let costLeft = sim.totalPrice;
+
+  const listings = marketListings
+    .filter(l => l.category === category && l.itemId === itemId && l.amount > 0)
+    .sort((a,b)=>a.price - b.price);
+
+  for(const l of listings){
+    if(remain <= 0) break;
+    const canBuyFromThis = Math.min(l.amount, remain);
+    const cost = canBuyFromThis * l.price;
+    if(cost > costLeft) break;
+
+    l.amount -= canBuyFromThis;
+    remain -= canBuyFromThis;
+    costLeft -= cost;
+  }
+
+  marketListings = marketListings.filter(l => l.amount > 0);
+
+  money -= sim.totalPrice;
+  addItemForBuy(category, itemId, sim.buyableCount);
+
+  const label = getItemLabel(category, itemId);
+  setLog(`${label} を ${sim.buyableCount}個購入した（合計${sim.totalPrice}G）`);
+  addMarketLog(`購入: ${label} x${sim.buyableCount} @合計${sim.totalPrice}G`);
+
+  updateDisplay();
+}
+
+// -----------------------
+// 買い注文（予約）
+// -----------------------
+function doMarketBuyOrder(){
+  const sel = document.getElementById("marketOrderItem");
+  const priceEl = document.getElementById("marketOrderPrice");
+  const amtEl   = document.getElementById("marketOrderAmount");
+  if(!sel || !priceEl || !amtEl) return;
+
+  const val = sel.value; // "weapon:dagger" など
+  const [category, itemId] = val.split(":");
+  const price = parseInt(priceEl.value,10) || 0;
+  const amount= parseInt(amtEl.value,10) || 0;
+
+  if(!category || !itemId){
+    setLog("注文するアイテムを選んでください");
+    return;
+  }
+  if(price <= 0 || amount <= 0){
+    setLog("価格と最大個数は1以上にしてください");
+    return;
+  }
+
+  const reservedMoney = price * amount;
+  if(money < reservedMoney){
+    setLog("注文用のお金が足りない");
+    return;
+  }
+  money -= reservedMoney;
+
+  const order = {
+    id: marketOrderIdSeq++,
+    category,
+    itemId,
+    price,
+    maxAmount: amount,
+    remainAmount: amount,
+    reservedMoney
+  };
+  marketBuyOrders.push(order);
+
+  const label = getItemLabel(category, itemId);
+  setLog(`${label} を「1個${price}Gで${amount}個まで」注文として出した（${reservedMoney}G拘束）`);
+  addMarketLog(`買い注文: ${label} x${amount} @${price}G`);
+
+  updateDisplay();
+  refreshMarketOrderList();
+}
+
+// 出品時に注文と自動マッチ、などをやるならここに処理追加も可
+
+function refreshMarketOrderList(){
+  const el = document.getElementById("marketOrderList");
+  if(!el) return;
+  el.innerHTML = "";
+
+  if(marketBuyOrders.length === 0){
+    el.textContent = "現在、あなたの注文はありません。";
+    return;
+  }
+
+  marketBuyOrders.forEach(order=>{
+    const row = document.createElement("div");
+    row.style.borderBottom = "1px dashed #4b3f72";
+    row.style.padding = "2px 0";
+
+    const label = getItemLabel(order.category, order.itemId);
+    const usedAmount = order.maxAmount - order.remainAmount;
+    const usedMoney  = usedAmount * order.price;
+    const remainMoney= order.reservedMoney - usedMoney;
+
+    row.textContent =
+      `#${order.id} ${label} / 価格:${order.price}G / `+
+      `最大${order.maxAmount}個（残り${order.remainAmount}個）/ `+
+      `予約G:${order.reservedMoney}（未使用${remainMoney}G）`;
+
+    el.appendChild(row);
+  });
+}
