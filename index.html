@@ -334,7 +334,6 @@
         </div>
 
         <div style="margin-top:8px;">
-          <button id="changeJobBtn">職業を変更する</button>
           <button id="changePetGrowthBtn" class="pet-only">ペット成長タイプを変更</button>
         </div>
       </div>
@@ -342,17 +341,36 @@
 
     <div id="log"></div>
 
-    <div id="jobModal">
-      <div id="jobModalInner">
-        <h3 id="jobModalTitle">最初の職業を選択</h3>
-        <p id="jobModalMessage" style="font-size:0.9em;">
-          最初に職業を1つ選んでください（変更は後から100Gで可能）。<br>
-          ※選ぶまでゲームは開始されません。
+   <div id="jobModal">
+  <div id="jobModalInner">
+    <h3 id="jobModalTitle">最初の職業を選択</h3>
+    <p id="jobModalMessage" style="font-size:0.9em;">
+      最初に職業を1つ選んでください（変更は後から100Gで可能）。<br>
+      ※選ぶまでゲームは開始されません。
+    </p>
+    <!-- ここを書き換え -->
+    <div id="jobButtons">
+      <button id="jobWarriorBtn">戦士</button>
+      <button id="jobMageBtn">魔法使い</button>
+      <button id="jobTamerBtn">動物使い</button>
+    </div>
+  </div>
+</div>
+    <!-- ペット成長タイプ変更モーダル -->
+    <div id="petGrowthModal" style="display:none;">
+      <div id="petGrowthModalInner">
+        <h3>ペット成長タイプを変更</h3>
+        <p style="font-size:0.9em;">
+          ペットの成長タイプを選んでください。<br>
+          転生やレベルアップ時の伸び方が変わります。
         </p>
-        <div style="margin-top:8px;">
-          <button id="jobWarriorBtn">戦士</button>
-          <button id="jobMageBtn">魔法使い</button>
-          <button id="jobTamerBtn">動物使い</button>
+        <div id="petGrowthButtons">
+          <button data-growth="0">バランス型</button>
+          <button data-growth="1">タンク型</button>
+          <button data-growth="2">アタッカー型</button>
+        </div>
+        <div style="margin-top:10px; text-align:right;">
+          <button id="petGrowthCloseBtn">閉じる</button>
         </div>
       </div>
     </div>

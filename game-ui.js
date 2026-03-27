@@ -78,6 +78,41 @@ function initJobAndPet() {
   document.getElementById("jobTamerBtn")       ?.addEventListener("click", () => applyJobChange(2));
   document.getElementById("changePetGrowthBtn")?.addEventListener("click", () => changePetGrowthType());
 }
+function initPetGrowthModal() {
+  const modal   = document.getElementById("petGrowthModal");
+  const buttons = document.querySelectorAll("#petGrowthButtons button");
+  const closeBtn= document.getElementById("petGrowthCloseBtn");
+  if (!modal) return;
+
+  // 成長タイプボタン
+  buttons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const val = parseInt(btn.dataset.growth, 10);
+      if (jobId !== 2) {
+        appendLog("動物使いのみ変更できます");
+        return;
+      }
+      petGrowthType = val;
+      appendLog(`ペット成長タイプを「${getPetGrowthTypeName()}」に変更した`);
+      updateDisplay();
+      modal.style.display = "none";
+    });
+  });
+
+  // 閉じるボタン
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => {
+      modal.style.display = "none";
+    });
+  }
+
+  // モーダルの外側クリックで閉じる
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) {
+      modal.style.display = "none";
+    }
+  });
+}
 
 // 探索・戦闘
 function initExploreAndBattle() {
@@ -260,6 +295,7 @@ function initUI() {
   initExploreAndBattle();
   initShop();
   initMarket();
+  initPetGrowthModal();
 
   initGame();
 }

@@ -165,6 +165,20 @@ function applyJobChange(newJobId){
   jobId=newJobId;
   if(newJobId === 2) everBeastTamer = true;
 
+  // ★ 初回プレイ中は職業に合わせて成長タイプも設定
+  if (!rebirthCount) {
+    if (newJobId === 0) {
+      // 戦士 → STR型
+      growthType = 0;
+    } else if (newJobId === 1) {
+      // 魔法使い → INT型
+      growthType = 2;
+    } else if (newJobId === 2) {
+      // 動物使い → バランス型
+      growthType = 4;
+    }
+  }
+
   appendLog(`職業を「${getJobName()}」に変更した`);
   closeJobModal();
   updateDisplay();
@@ -180,16 +194,15 @@ function applyJobChange(newJobId){
 }
 
 function changePetGrowthType(){
-  if(jobId!==2){ appendLog("動物使いのみ変更できます"); return; }
-  const choice=prompt("ペット成長タイプ: 0=バランス, 1=タンク, 2=アタッカー");
-  if(choice===null)return;
-  const n=parseInt(choice,10);
-  if(![0,1,2].includes(n)){
-    appendLog("0〜2の番号で選んでください"); return;
+  if(jobId!==2){
+    appendLog("動物使いのみ変更できます");
+    return;
   }
-  petGrowthType=n;
-  appendLog(`ペット成長タイプを「${getPetGrowthTypeName()}」に変更した`);
-  updateDisplay();
+  // ここではモーダルを開くだけ。実際の変更は UI 側で行う
+  const modal = document.getElementById("petGrowthModal");
+  if (modal) {
+    modal.style.display = "flex";
+  }
 }
 
 // =======================

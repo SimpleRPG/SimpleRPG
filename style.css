@@ -407,6 +407,63 @@ input[type="text"] {
   font-size: 0.85rem;
 }
 
+/* 職業ボタンの横並び＆中央寄せ */
+#jobButtons {
+  margin-top: 8px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+#jobButtons button {
+  min-width: 80px;
+  text-align: center;
+}
+/* ペット成長タイプモーダル */
+
+#petGrowthModal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  display: none;              /* 初期は非表示 */
+  align-items: center;
+  justify-content: center;
+  z-index: 101;
+}
+
+#petGrowthModalInner {
+  background: #11111c;
+  border-radius: 10px;
+  border: 1px solid rgba(200,190,255,0.95);
+  padding: 14px 18px 16px;
+  max-width: 360px;
+  width: 92%;
+  box-shadow:
+    0 14px 32px rgba(0,0,0,0.9),
+    0 0 12px rgba(159,123,255,0.8);
+}
+
+#petGrowthModalInner h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+#petGrowthModalInner p {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+}
+
+#petGrowthButtons {
+  margin-top: 8px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+#petGrowthButtons button {
+  min-width: 90px;
+  text-align: center;
+}
 /* ======================
    市場
    ====================== */
