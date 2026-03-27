@@ -214,7 +214,13 @@ function getCurrentArea() {
   const sel = document.getElementById("exploreTarget");
   return sel ? sel.value : "field";
 }
-
+// エリアごとの「ボスを倒したことがあるか」
+const areaBossCleared = {
+  field:  false,
+  forest: false,
+  cave:   false,
+  mine:   false
+};
 // ★ ボタン表示は「今ボスに挑めるか」を見る（実体は game-core-3.js の areaBossAvailable）
 function updateBossButtonUI() {
   const bossBtn = document.getElementById("bossStartBtn");
@@ -560,17 +566,22 @@ function updateDisplay() {
     setText("stPetHpMax",         petHpMax);
   }
 
+  // 敵表示（戦闘中だけ枠を出す）
   const enemyNameSpan  = document.getElementById("enemyNameText");
   const enemyHpSpan    = document.getElementById("enemyHpText");
   const enemyHpMaxSpan = document.getElementById("enemyHpMaxText");
+  const enemyArea      = document.getElementById("enemyStatusArea");
+
   if (currentEnemy && enemyHpMax > 0) {
     if (enemyNameSpan)  enemyNameSpan.textContent  = currentEnemy.name;
     if (enemyHpSpan)    enemyHpSpan.textContent    = enemyHp;
     if (enemyHpMaxSpan) enemyHpMaxSpan.textContent = enemyHpMax;
+    if (enemyArea)      enemyArea.style.display    = "block";
   } else {
     if (enemyNameSpan)  enemyNameSpan.textContent  = "-";
     if (enemyHpSpan)    enemyHpSpan.textContent    = "0";
     if (enemyHpMaxSpan) enemyHpMaxSpan.textContent = "0";
+    if (enemyArea)      enemyArea.style.display    = "none";
   }
 
   togglePetUI();

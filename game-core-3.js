@@ -18,19 +18,42 @@ const areaBossAvailable = {
 // 敵・エリア関連ヘルパ
 // =======================
 
+// AREA_ENEMY_TABLE の旧形式 / 新形式 両対応
+// 旧:  AREA_ENEMY_TABLE.field = ["slime", "wolf", ...]
+// 新:  AREA_ENEMY_TABLE.field = { enemyIds: [...], weights: [...] }
 function getRandomEnemyForArea(area) {
+  // テーブルが未定義なら草原を使う
   const table = AREA_ENEMY_TABLE[area] || AREA_ENEMY_TABLE.field;
+
+  // 1) 旧形式: 単純な id 配列
+  if (Array.isArray(table)) {
+    if (table.length === 0) return null;
+    const id = table[Math.floor(Math.random() * table.length)];
+    return ENEMIES[id] || null;
+  }
+
+  // 2) 新形式: { enemyIds: [...], weights: [...] }
+  if (!table || !Array.isArray(table.enemyIds) || !Array.isArray(table.weights)) {
+    return null;
+  }
+
   const ids = table.enemyIds;
   const weights = table.weights;
-  const total = weights.reduce((a,b)=>a+b, 0);
+  if (ids.length === 0 || ids.length !== weights.length) {
+    return null;
+  }
+
+  const total = weights.reduce((a, b) => a + b, 0);
   let r = Math.random() * total;
-  for (let i=0;i<ids.length;i++){
+  for (let i = 0; i < ids.length; i++) {
     r -= weights[i];
     if (r <= 0) {
-      return ENEMIES.find(e => e.id === ids[i]);
+      const id = ids[i];
+      return ENEMIES[id] || null;
     }
   }
-  return ENEMIES.find(e => e.id === ids[ids.length-1]);
+  const lastId = ids[ids.length - 1];
+  return ENEMIES[lastId] || null;
 }
 
 function getCurrentArea() {
@@ -42,6 +65,66 @@ function getCurrentArea() {
 function setExploreUIVisible(visible) {
   const row = document.querySelector(".explore-header-row");
   if (row) row.style.display = visible ? "flex" : "none";
+}
+
+// =======================
+// 探索エリアセレクト更新
+// =======================
+//
+// areaBossCleared の状態に応じて、探索先セレクト(exploreTarget)に
+// 草原 / 森 / 洞窟 / 廃鉱山 を出し分ける。
+// - 草原: いつでも
+// - 森:    草原ボスクリア後
+// - 洞窟:  森ボスクリア後
+// - 廃鉱山:洞窟ボスクリア後
+//
+function refreshExploreAreaSelect() {
+  const sel = document.getElementById("exploreTarget");
+  if (!sel) return;
+
+  const prev = sel.value;
+  sel.innerHTML = "";
+
+  // 草原（常に解放）
+  {
+    const opt = document.createElement("option");
+    opt.value = "field";
+    opt.textContent = "草原（敵弱い・素材ほぼ出ない）";
+    sel.appendChild(opt);
+  }
+
+  // 森：草原ボスクリア済みなら解放
+  if (typeof areaBossCleared === "undefined" || areaBossCleared.field) {
+    const opt = document.createElement("option");
+    opt.value = "forest";
+    opt.textContent = "森（敵やや強い・草/木が少し出る）";
+    sel.appendChild(opt);
+  }
+
+  // 洞窟：森ボスクリア済みなら解放
+  if (typeof areaBossCleared === "undefined" || areaBossCleared.forest) {
+    const opt = document.createElement("option");
+    opt.value = "cave";
+    opt.textContent = "洞窟（敵強い・素材少し）";
+    sel.appendChild(opt);
+  }
+
+  // 廃鉱山：洞窟ボスクリア済みなら解放
+  if (typeof areaBossCleared === "undefined" || areaBossCleared.cave) {
+    const opt = document.createElement("option");
+    opt.value = "mine";
+    opt.textContent = "廃鉱山（敵かなり強い・鉱石/皮レア）";
+    sel.appendChild(opt);
+  }
+
+  // 以前選んでいたエリアがまだ存在するなら維持、なければ先頭
+  const exists = Array.from(sel.options).some(o => o.value === prev);
+  sel.value = exists ? prev : (sel.options[0]?.value || "field");
+
+  // ボスボタンの表示も更新
+  if (typeof updateBossButtonUI === "function") {
+    updateBossButtonUI();
+  }
 }
 
 // =======================
@@ -121,6 +204,7 @@ function playerAttack(){
   const damage = Math.max(1, atkTotal - (currentEnemy.def || 0));
   enemyHp -= damage;
   appendLog(`あなたの攻撃！ ${currentEnemy.name}に${damage}ダメージ！`);
+
   if(enemyHp <= 0){
     enemyHp = 0;
     const expGain = currentEnemy.exp || BASE_EXP_PER_BATTLE;
@@ -129,9 +213,16 @@ function playerAttack(){
     addExp(expGain);
     money += moneyGain;
     addPetExp(Math.floor(expGain/2));
-    endBattleCommon();
+
+    // ボスだった場合はボス撃破処理、それ以外は通常終了
+    if (isBossBattle) {
+      onBossDefeated();
+    } else {
+      endBattleCommon();
+    }
     return;
   }
+
   enemyTurn();
 }
 
@@ -160,7 +251,7 @@ function startBossBattle() {
     appendLog("このエリアにはボスがいないようだ");
     return;
   }
-  const boss = ENEMIES.find(e => e.id === bossId);
+  const boss = ENEMIES[bossId];
   if (!boss) {
     appendLog("ボスデータが見つからない");
     return;
@@ -176,8 +267,36 @@ function startBossBattle() {
 
 function onBossDefeated() {
   const area = getCurrentArea();
-  appendLog("ボスを撃破した！ しかし、しばらくするとまたどこかに現れるかもしれない…");
-  // 勝っても負けても「またボス探し」なので、ここでは areaBossAvailable はいじらない
+
+  // このエリアのボスを「倒したことがある」フラグを立てる
+  if (typeof areaBossCleared !== "undefined") {
+    areaBossCleared[area] = true;
+  }
+
+  // 次のエリアを解放
+  if (typeof areaBossCleared !== "undefined") {
+    if (area === "field") {
+      areaBossCleared.forest = true;
+      appendLog("草原のボスを倒した！ 森エリアが解放された！");
+    } else if (area === "forest") {
+      areaBossCleared.cave = true;
+      appendLog("森のボスを倒した！ 洞窟エリアが解放された！");
+    } else if (area === "cave") {
+      areaBossCleared.mine = true;
+      appendLog("洞窟のボスを倒した！ 廃鉱山エリアが解放された！");
+    } else {
+      appendLog("ボスを撃破した！");
+    }
+  } else {
+    appendLog("ボスを撃破した！");
+  }
+
+  // エリアセレクトを更新（新エリアをリストに出す）
+  if (typeof refreshExploreAreaSelect === "function") {
+    refreshExploreAreaSelect();
+  }
+
+  // 戦闘終了
   endBattleCommon();
 }
 
@@ -314,7 +433,67 @@ function applyPotionEffect(p, inBattle){
       addExp(expGain);
       money += moneyGain;
       addPetExp(Math.floor(expGain/2));
-      endBattleCommon();
+
+      if (isBossBattle) {
+        onBossDefeated();
+      } else {
+        endBattleCommon();
+      }
     }
+  }
+}
+
+// =======================
+// 初期化
+// =======================
+
+let firstJobMessageShown = false;
+
+function initGame() {
+  // 装備プルダウンなどの初期化
+  if (typeof refreshEquipSelects === "function") {
+    refreshEquipSelects();
+  }
+
+  // 探索エリアセレクト整形（ボス解放状況に応じて）
+  if (typeof refreshExploreAreaSelect === "function") {
+    refreshExploreAreaSelect();
+  }
+
+  // 表示更新
+  updateDisplay();
+
+  // 戦闘コマンドは最初は非表示
+  if (typeof setBattleCommandVisible === "function") {
+    setBattleCommandVisible(false);
+  }
+
+  // スキル系UI初期化（あれば）
+  if (typeof refreshSkillUIs === "function") {
+    refreshSkillUIs();
+  }
+
+  // 職業未設定ならモーダルを開く
+  if (typeof jobId === "undefined" || jobId === null) {
+    if (typeof openJobModal === "function") {
+      openJobModal();
+    }
+    if (!firstJobMessageShown && typeof setLog === "function") {
+      setLog("最初の職業を選んでください。");
+      firstJobMessageShown = true;
+    }
+  }
+
+  // 職業に応じたスキルボタン表示
+  if (typeof updateSkillButtonsByJob === "function") {
+    updateSkillButtonsByJob();
+  }
+  if (typeof updateBattleSkillUIByJob === "function") {
+    updateBattleSkillUIByJob();
+  }
+
+  // ボスボタン初期表示
+  if (typeof updateBossButtonUI === "function") {
+    updateBossButtonUI();
   }
 }
