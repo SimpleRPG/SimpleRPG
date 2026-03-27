@@ -29,7 +29,7 @@ function initTabs() {
   document.getElementById("tabStatus") ?.addEventListener("click", () => showTab("pageStatus"));
 }
 
-// 詳細パネル
+// 詳細パネル（ステータスバー）
 function initDetailPanel() {
   const btn = document.getElementById("toggleDetailBtn");
   const panel = document.getElementById("detailPanel");
@@ -48,6 +48,28 @@ function initDetailPanel() {
 // 採取
 function initGather() {
   document.getElementById("gather")?.addEventListener("click", () => gather());
+
+  // 素材詳細トグル（採取タブ）
+  const btn1 = document.getElementById("toggleMatDetailBtn");
+  const detail1 = document.getElementById("gatherMatDetail");
+  if (btn1 && detail1) {
+    btn1.addEventListener("click", () => {
+      const shown = detail1.style.display === "block";
+      detail1.style.display = shown ? "none" : "block";
+      btn1.textContent = shown ? "詳細▼" : "詳細▲";
+    });
+  }
+
+  // 素材詳細トグル（クラフトタブ側のボタンもここで）
+  const btn2 = document.getElementById("toggleMatDetailBtn2");
+  const detail2 = document.getElementById("craftMatDetail");
+  if (btn2 && detail2) {
+    btn2.addEventListener("click", () => {
+      const shown = detail2.style.display === "block";
+      detail2.style.display = shown ? "none" : "block";
+      btn2.textContent = shown ? "詳細▼" : "詳細▲";
+    });
+  }
 }
 
 // クラフト
@@ -78,6 +100,7 @@ function initJobAndPet() {
   document.getElementById("jobTamerBtn")       ?.addEventListener("click", () => applyJobChange(2));
   document.getElementById("changePetGrowthBtn")?.addEventListener("click", () => changePetGrowthType());
 }
+
 function initPetGrowthModal() {
   const modal   = document.getElementById("petGrowthModal");
   const buttons = document.querySelectorAll("#petGrowthButtons button");
@@ -119,6 +142,16 @@ function initExploreAndBattle() {
   document.getElementById("exploreStartBtn")?.addEventListener("click", () => doExploreEvent());
   document.getElementById("exploreBtn")     ?.addEventListener("click", () => playerAttack());
 
+  // ボス挑戦ボタン
+  const bossBtn = document.getElementById("bossStartBtn");
+  if (bossBtn) {
+    bossBtn.addEventListener("click", () => {
+      if (typeof startBossBattle === "function") {
+        startBossBattle();
+      }
+    });
+  }
+
   const castMagicBtn = document.getElementById("castMagicBtn");
   const useSkillBtn  = document.getElementById("useSkillBtn");
   if (castMagicBtn) {
@@ -143,7 +176,7 @@ function initExploreAndBattle() {
   document.getElementById("useBattleItemBtn")?.addEventListener("click", () => useBattleItem());
   document.getElementById("useItemBtn")      ?.addEventListener("click", () => usePotionOutsideBattle());
 
-  // 逃走ボタン（HTML側で id="escapeBtn" に変更して使う）
+  // 逃走ボタン
   const escapeBtn = document.getElementById("escapeBtn");
   if (escapeBtn) {
     escapeBtn.addEventListener("click", () => {

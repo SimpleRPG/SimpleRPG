@@ -258,7 +258,6 @@ input[type="text"] {
    探索 / 戦闘
    ====================== */
 
-/* 敵情報ボックス */
 #enemyStatusBox {
   padding: 6px 8px;
   margin-bottom: 8px;
@@ -268,7 +267,6 @@ input[type="text"] {
   font-size: 12px;
 }
 
-/* 行き先＋探索ボタン＋説明行 */
 .explore-header-row {
   display: flex;
   flex-wrap: wrap;
@@ -277,12 +275,10 @@ input[type="text"] {
   margin-bottom: 8px;
 }
 
-/* 「行き先:」ラベル */
 .explore-header-row .label {
   font-size: 13px;
 }
 
-/* 右端の説明テキスト */
 .explore-help-text {
   font-size: 11px;
   color: #ddd4ff;
@@ -291,19 +287,16 @@ input[type="text"] {
   margin-top: 2px;
 }
 
-/* 戦闘コマンド全体 */
 #battleCommandArea {
   margin-top: 4px;
 }
 
-/* ボタン2カラムレイアウト */
 #battleButtons {
   display: flex;
   flex-wrap: nowrap;
   gap: 8px;
 }
 
-/* 左：メインコマンド列 */
 #battleMainCol {
   flex: 1 1 auto;
   display: flex;
@@ -311,13 +304,11 @@ input[type="text"] {
   gap: 4px;
 }
 
-/* 右：ペット列 */
 #battlePetCol {
   flex: 0 0 120px;
   font-size: 12px;
 }
 
-/* フィールドアイテム行 */
 .field-item-row {
   margin-top: 6px;
   display: flex;
@@ -327,17 +318,14 @@ input[type="text"] {
   font-size: 11px;
 }
 
-/* ラベル部分 */
 .field-item-row .label {
   font-size: 11px;
 }
 
-/* セレクトは少し広め */
 .field-item-row select {
   min-width: 120px;
 }
 
-/* ボタン色系 */
 .btn-attack {
   background: linear-gradient(135deg, #7c2f2f, #531818);
   border-color: rgba(250,180,180,0.9);
@@ -407,7 +395,6 @@ input[type="text"] {
   font-size: 0.85rem;
 }
 
-/* 職業ボタンの横並び＆中央寄せ */
 #jobButtons {
   margin-top: 8px;
   display: flex;
@@ -419,13 +406,14 @@ input[type="text"] {
   min-width: 80px;
   text-align: center;
 }
+
 /* ペット成長タイプモーダル */
 
 #petGrowthModal {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.65);
-  display: none;              /* 初期は非表示 */
+  display: none;
   align-items: center;
   justify-content: center;
   z-index: 101;
@@ -464,6 +452,7 @@ input[type="text"] {
   min-width: 90px;
   text-align: center;
 }
+
 /* ======================
    市場
    ====================== */
@@ -516,15 +505,26 @@ input[type="text"] {
    ステータスページ
    ====================== */
 
-#pageStatus p {
+#pageStatus .status-block {
   margin: 4px 0;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   color: var(--text-sub);
+  line-height: 1.5;
 }
 
-#pageStatus span {
+#pageStatus .status-block span {
   color: var(--text-main);
   font-weight: 600;
+}
+
+/* 見出し（カテゴリ文）は本文より少し大きく、色は .tab-page h3 の var(--accent) をそのまま使う */
+#pageStatus h3 {
+  margin: 8px 0 4px;
+  font-size: 1.05rem; /* サイズだけアップ */
+}
+
+#pageStatus p {
+  margin: 4px 0;
 }
 
 /* ======================

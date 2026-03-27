@@ -49,6 +49,14 @@
       <div id="pageGather" class="tab-page active">
         <h2>採取</h2>
         <p>採取対象を選んで採取（待ち時間なし）。</p>
+
+        <label class="text-caption">フィールド:</label>
+        <select id="gatherField">
+          <option value="field1">近郊の原っぱ(T1のみ)</option>
+          <option value="field2">星降りの丘(T1多/T2少)</option>
+          <option value="field3">翠風の谷(T1/T2/T3)</option>
+        </select>
+
         <select id="gatherTarget">
           <option value="wood">木</option>
           <option value="ore">鉱石</option>
@@ -58,13 +66,31 @@
           <option value="water">水</option>
         </select>
         <button id="gather">採取</button>
-        <p id="gatherMaterials">所持素材：木0 / 鉱石0 / 草0 / 布0 / 皮0 / 水0</p>
+
+        <div style="display:flex; align-items:center; gap:4px; margin-top:4px;">
+          <p id="gatherMaterials" style="flex:1;">
+            所持素材：木0 / 鉱石0 / 草0 / 布0 / 皮0 / 水0
+          </p>
+          <button id="toggleMatDetailBtn" style="font-size:11px; padding:2px 6px;">
+            詳細▼
+          </button>
+        </div>
+        <pre id="gatherMatDetail" style="display:none; font-size:11px; margin:2px 0 0;"></pre>
       </div>
 
       <!-- クラフト -->
       <div id="pageCraft" class="tab-page">
         <h2>クラフト</h2>
-        <p id="craftMaterials">所持素材：木0 / 鉱石0 / 草0 / 布0 / 皮0 / 水0</p>
+
+        <div style="display:flex; align-items:center; gap:4px;">
+          <p id="craftMaterials" style="flex:1;">
+            所持素材：木0 / 鉱石0 / 草0 / 布0 / 皮0 / 水0
+          </p>
+          <button id="toggleMatDetailBtn2" style="font-size:11px; padding:2px 6px;">
+            詳細▼
+          </button>
+        </div>
+        <pre id="craftMatDetail" style="display:none; font-size:11px; margin:2px 0 0;"></pre>
 
         <h3>武器クラフト</h3>
         <select id="weaponSelect"></select>
@@ -101,13 +127,15 @@
       <div id="pageExplore" class="tab-page">
         <h2>探索 / 戦闘</h2>
 
-        <!-- 敵情報 -->
+        <button id="bossStartBtn" class="btn-attack" style="display:none;">
+          ボスに挑む
+        </button>
+
         <div id="enemyStatusBox">
           敵：<span id="enemyNameText">-</span>
           HP：<span id="enemyHpText">0</span> / <span id="enemyHpMaxText">0</span>
         </div>
 
-        <!-- 行き先＋探索ボタン -->
         <div class="explore-header-row">
           <span class="label">行き先:</span>
           <select id="exploreTarget">
@@ -126,10 +154,8 @@
           </span>
         </div>
 
-        <!-- 戦闘コマンド -->
         <div id="battleCommandArea" style="display:none;">
           <div id="battleButtons">
-            <!-- 左：自分の行動 -->
             <div id="battleMainCol">
               <button id="exploreBtn" class="btn-attack btn-main">攻撃</button>
 
@@ -154,14 +180,11 @@
               <button id="escapeBtn" style="margin-top:4px;">逃走する</button>
             </div>
 
-            <!-- 右：ペット -->
             <div id="battlePetCol">
-              <!-- JS側でペット行動ボタンなどを差し込む想定 -->
             </div>
           </div>
         </div>
 
-        <!-- フィールド用アイテム -->
         <div class="field-item-row">
           <span class="label">フィールドで使うアイテム:</span>
           <select id="useItemSelect"></select>
@@ -281,17 +304,15 @@
         <p id="marketInfo" style="margin-top:8px; font-size:12px; color:#ccc;"></p>
       </div>
 
-      <!-- ステータス -->
+            <!-- ステータス -->
       <div id="pageStatus" class="tab-page">
         <h2>ステータス</h2>
 
-        <div>
+        <div class="status-block">
           レベル: <span id="stLevel">1</span><br>
           経験値: <span id="stExp">0</span> / <span id="stExpToNext">100</span><br>
           転生回数: <span id="stRebirthCount">0</span><br>
-
           成長タイプ: <span id="stGrowthType">バランス型</span><br>
-
           職業:
           <span id="stJobName">未設定</span>
           <button id="changeJobBtn" style="margin-left:4px; font-size:11px; padding:1px 6px;">
@@ -299,9 +320,7 @@
           </button>
         </div>
 
-        <hr>
-
-        <div>
+        <div class="status-block">
           STR: <span id="stSTR">1</span>,
           VIT: <span id="stVIT">1</span>,
           INT: <span id="stINT">1</span>,
@@ -313,19 +332,34 @@
           最大MP: <span id="stMpMax">10</span>,
           最大SP: <span id="stSpMax">10</span>
         </div>
+       <h3>転生</h3>
+        <div class="status-block">
+          Lv10以上で転生できます。転生するとLv1に戻りますが、ステータスにボーナスが付きます。<br>
+          <button id="rebirthBtn">転生する</button>
+        </div>
+        <!-- 採取 / クラフトスキルをここに移動 -->
+        <h3>採取スキル</h3>
+        <div id="gatherSkillBox" class="status-block">
+          木: Lv<span id="skGatherWoodLv">0</span>,
+          鉱石: Lv<span id="skGatherOreLv">0</span>,
+          草: Lv<span id="skGatherHerbLv">0</span><br>
+          布: Lv<span id="skGatherClothLv">0</span>,
+          皮: Lv<span id="skGatherLeatherLv">0</span>,
+          水: Lv<span id="skGatherWaterLv">0</span>
+        </div>
 
-        <hr>
+        <h3>クラフトスキル</h3>
+        <div id="craftSkillBox" class="status-block">
+          武器: Lv<span id="skCraftWeaponLv">0</span>,
+          防具: Lv<span id="skCraftArmorLv">0</span>,
+          ポーション: Lv<span id="skCraftPotionLv">0</span>
+        </div>
 
-        <h3>転生</h3>
-        <p style="font-size:12px;">
-          Lv10以上で転生できます。転生するとLv1に戻りますが、ステータスにボーナスが付きます。
-        </p>
-        <button id="rebirthBtn">転生する</button>
+       
 
-        <hr>
-
+        <!-- ペットはその下に移動 -->
         <h3>ペットステータス（動物使いのみ）</h3>
-        <div>
+        <div class="status-block">
           ペットLv: <span id="stPetLevel">1</span><br>
           ペット経験値: <span id="stPetExp">0</span> / <span id="stPetExpToNext">5</span><br>
           ペット転生回数: <span id="stPetRebirthCount">0</span><br>
@@ -333,7 +367,7 @@
           ペットHP: <span id="stPetHp">10</span> / <span id="stPetHpMax">10</span>
         </div>
 
-        <div style="margin-top:8px;">
+        <div class="status-block">
           <button id="changePetGrowthBtn" class="pet-only">ペット成長タイプを変更</button>
         </div>
       </div>
@@ -341,22 +375,21 @@
 
     <div id="log"></div>
 
-   <div id="jobModal">
-  <div id="jobModalInner">
-    <h3 id="jobModalTitle">最初の職業を選択</h3>
-    <p id="jobModalMessage" style="font-size:0.9em;">
-      最初に職業を1つ選んでください（変更は後から100Gで可能）。<br>
-      ※選ぶまでゲームは開始されません。
-    </p>
-    <!-- ここを書き換え -->
-    <div id="jobButtons">
-      <button id="jobWarriorBtn">戦士</button>
-      <button id="jobMageBtn">魔法使い</button>
-      <button id="jobTamerBtn">動物使い</button>
+    <div id="jobModal">
+      <div id="jobModalInner">
+        <h3 id="jobModalTitle">最初の職業を選択</h3>
+        <p id="jobModalMessage" style="font-size:0.9em;">
+          最初に職業を1つ選んでください（変更は後から100Gで可能）。<br>
+          ※選ぶまでゲームは開始されません。
+        </p>
+        <div id="jobButtons">
+          <button id="jobWarriorBtn">戦士</button>
+          <button id="jobMageBtn">魔法使い</button>
+          <button id="jobTamerBtn">動物使い</button>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
-    <!-- ペット成長タイプ変更モーダル -->
+
     <div id="petGrowthModal" style="display:none;">
       <div id="petGrowthModalInner">
         <h3>ペット成長タイプを変更</h3>

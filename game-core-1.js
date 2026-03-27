@@ -30,7 +30,24 @@ const BASE_EXP_PER_BATTLE = 25;
 // グローバル状態
 // =======================
 
-// 素材
+// 素材（tier別カウント）
+const materials = {
+  wood:    { t1: 0, t2: 0, t3: 0 },
+  ore:     { t1: 0, t2: 0, t3: 0 },
+  herb:    { t1: 0, t2: 0, t3: 0 },
+  cloth:   { t1: 0, t2: 0, t3: 0 },
+  leather: { t1: 0, t2: 0, t3: 0 },
+  water:   { t1: 0, t2: 0, t3: 0 }
+};
+
+// 互換用の合計getter
+function getMatTotal(key) {
+  const m = materials[key];
+  if (!m) return 0;
+  return (m.t1 || 0) + (m.t2 || 0) + (m.t3 || 0);
+}
+
+// 既存コードとの互換用「見かけ上の値」
 let wood = 0, ore = 0, herb = 0, cloth = 0, leather = 0, water = 0;
 
 // プレイヤー成長
@@ -64,44 +81,32 @@ let currentEnemy = null;
 // 逃走失敗補正
 let escapeFailBonus = 0;
 
-// ボス管理
-const areaBossUnlocked = {
-  field:  true,
-  forest: false,
-  cave:   false,
-  mine:   false
-};
-const areaBossCleared = {
-  field:  false,
-  forest: false,
-  cave:   false,
-  mine:   false
-};
+// ボス管理（旧仕様用のフラグは削除し、シンプルに「ボスかどうか」だけ持つ）
 let isBossBattle = false;
 
-// 探索ごとのボス解放確率
-const areaBossChance = {
-  field: 0.0,
-  forest: 0.0,
-  cave: 0.0,
-  mine: 0.0
+// ====== 採取エリア解放（スキルLv依存） ======
+
+// 一度でも条件を満たしたら true にして、表示は維持
+const gatherAreaUnlocked = {
+  field1: true,   // T1エリア: 最初から
+  field2: false,  // T2エリア: スキルLv10以上で一度でも達成したら解放
+  field3: false   // T3エリア: スキルLv20以上で一度でも達成したら解放
 };
-const AREA_BOSS_CHANCE_INC = 0.0005;
-const AREA_BOSS_CHANCE_MAX = 0.10;
+
+// 各エリアの必要スキルLv（現在Lvが足りないと採取できない）
+const GATHER_FIELD_REQUIRE_LV = {
+  field1: 0,
+  field2: 10,
+  field3: 20
+};
 
 // ====== データ系（外部ファイルから） ======
-// WEAPONS_INIT / ARMORS_INIT / POTIONS_INIT / MAX_ENHANCE_LEVEL / ENHANCE_SUCCESS_RATES / ENHANCE_COST_MONEY / BASE_DURABILITY
-// POTION_TYPE_HP / POTION_TYPE_MP / POTION_TYPE_BOTH / POTION_TYPE_DAMAGE
-// GATHER_SKILLS_INIT / GATHER_SKILL_MAX_LV / GATHER_AMOUNT_PARAMS
-// CRAFT_SKILLS_INIT / CRAFT_SKILL_MAX_LV / CRAFT_RECIPES
-// ENEMIES / AREA_ENEMY_TABLE / AREA_BOSS_ID
 console.log("game-core-1.js start");
-// 実際に使うインスタンス
+
 const weapons = WEAPONS_INIT.map(w => ({ ...w }));
 const armors  = ARMORS_INIT.map(a => ({ ...a }));
 const potions = POTIONS_INIT.map(p => ({ ...p }));
 
-// 所持数
 const weaponCounts = {}; weapons.forEach(w => weaponCounts[w.id] = 0);
 const armorCounts  = {}; armors.forEach(a => armorCounts[a.id] = 0);
 const potionCounts = {}; potions.forEach(p => potionCounts[p.id] = 0);
@@ -123,7 +128,6 @@ Object.keys(CRAFT_SKILLS_INIT).forEach(cat=>{
   craftSkills[cat] = { lv:v.lv, exp:v.exp, expToNext:v.expToNext };
 });
 
-// 表示更新用前回値
 let prevStats = { hp:null, mp:null, sp:null, money:null };
 
 // =======================
@@ -134,20 +138,15 @@ function setLog(msg) {
   const el = document.getElementById("log");
   if (el) el.textContent = msg;
 }
-
-// 追記型ログ（最大10行）
 function appendLog(msg) {
   const el = document.getElementById("log");
   if (!el) return;
   const old = el.textContent || "";
   let lines = old ? old.split("\n") : [];
   lines.push(msg);
-  if (lines.length > 10) {
-    lines = lines.slice(lines.length - 10);
-  }
+  if (lines.length > 10) lines = lines.slice(lines.length - 10);
   el.textContent = lines.join("\n");
 }
-
 function flashStat(id, className) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -205,7 +204,6 @@ function togglePetUI() {
   });
 }
 
-// 戦闘コマンド表示/非表示
 function setBattleCommandVisible(visible) {
   const area = document.getElementById("battleCommandArea");
   if (!area) return;
@@ -217,15 +215,71 @@ function getCurrentArea() {
   return sel ? sel.value : "field";
 }
 
+// ★ ボタン表示は「今ボスに挑めるか」を見る（実体は game-core-3.js の areaBossAvailable）
 function updateBossButtonUI() {
   const bossBtn = document.getElementById("bossStartBtn");
   if (!bossBtn) return;
+  if (typeof areaBossAvailable === "undefined") {
+    bossBtn.style.display = "none";
+    return;
+  }
   const area = getCurrentArea();
-  if (areaBossUnlocked[area] && !areaBossCleared[area]) {
+  if (areaBossAvailable[area]) {
     bossBtn.style.display = "inline-block";
   } else {
     bossBtn.style.display = "none";
   }
+}
+
+// =======================
+// 採取エリアセレクト更新＆解放チェック
+// =======================
+
+function checkGatherAreaUnlockBySkill(resourceKey) {
+  const s = gatherSkills[resourceKey];
+  if (!s) return;
+  const lv = s.lv;
+
+  if (!gatherAreaUnlocked.field2 && lv >= GATHER_FIELD_REQUIRE_LV.field2) {
+    gatherAreaUnlocked.field2 = true;
+    appendLog("採取エリア：星降りの丘(T1/T2)が解放された！");
+  }
+  if (!gatherAreaUnlocked.field3 && lv >= GATHER_FIELD_REQUIRE_LV.field3) {
+    gatherAreaUnlocked.field3 = true;
+    appendLog("採取エリア：翠風の谷(T1/T2/T3)が解放された！");
+  }
+
+  refreshGatherFieldSelect();
+}
+
+function refreshGatherFieldSelect() {
+  const sel = document.getElementById("gatherField");
+  if (!sel) return;
+  const current = sel.value;
+
+  sel.innerHTML = "";
+
+  const f1 = document.createElement("option");
+  f1.value = "field1";
+  f1.textContent = "近郊の原っぱ(T1のみ)";
+  sel.appendChild(f1);
+
+  if (gatherAreaUnlocked.field2) {
+    const f2 = document.createElement("option");
+    f2.value = "field2";
+    f2.textContent = "星降りの丘(T1多/T2少)";
+    sel.appendChild(f2);
+  }
+
+  if (gatherAreaUnlocked.field3) {
+    const f3 = document.createElement("option");
+    f3.value = "field3";
+    f3.textContent = "翠風の谷(T1/T2/T3)";
+    sel.appendChild(f3);
+  }
+
+  const hasCurrent = Array.from(sel.options).some(o => o.value === current);
+  sel.value = hasCurrent ? current : sel.options[0].value;
 }
 
 // =======================
@@ -292,11 +346,36 @@ function recalcStats() {
 }
 
 function updateMaterialTexts() {
-  const text = `所持素材：木${wood} / 鉱石${ore} / 草${herb} / 布${cloth} / 皮${leather} / 水${water}`;
+  wood    = getMatTotal("wood");
+  ore     = getMatTotal("ore");
+  herb    = getMatTotal("herb");
+  cloth   = getMatTotal("cloth");
+  leather = getMatTotal("leather");
+  water   = getMatTotal("water");
+
+  const simpleText = `所持素材：木${wood} / 鉱石${ore} / 草${herb} / 布${cloth} / 皮${leather} / 水${water}`;
   const g = document.getElementById("gatherMaterials");
   const c = document.getElementById("craftMaterials");
-  if (g) g.textContent = text;
-  if (c) c.textContent = text;
+  if (g) g.textContent = simpleText;
+  if (c) c.textContent = simpleText;
+
+  const names = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
+  const keys  = ["wood","ore","herb","cloth","leather","water"];
+
+  const detailLines = keys.map(k => {
+    const m = materials[k];
+    const t1 = m.t1 || 0;
+    const t2 = m.t2 || 0;
+    const t3 = m.t3 || 0;
+    const total = t1 + t2 + t3;
+    return `${names[k]}: 合計${total} (T1:${t1}/T2:${t2}/T3:${t3})`;
+  });
+
+  const detailText = detailLines.join("\n");
+  const gDetail = document.getElementById("gatherMatDetail");
+  const cDetail = document.getElementById("craftMatDetail");
+  if (gDetail) gDetail.textContent = detailText;
+  if (cDetail) cDetail.textContent = detailText;
 }
 
 function refreshUseItemSelect() {
@@ -353,7 +432,7 @@ function updateEnhanceInfo() {
         const wStep = w.enhanceStep || 1;
         const wRate = ENHANCE_SUCCESS_RATES[wLvl];
         const wCost = ENHANCE_COST_MONEY[wLvl];
-        wText = `${w.name}+${wLvl}（耐久:${dur}） →+${wNext} 成功${Math.round(wRate*100)}% / +ATK${wStep} / ${wCost}G（同名武器1個消費）`;
+        wText = `${w.name}+${wLvl}（耐久:${dur}） →+${wNext} 成功${Math.round(wRate*100)}% / +ATK${wStep} / ${wCost}G（同名武器1本消費）`;
       }
     }
   }
@@ -372,7 +451,7 @@ function updateEnhanceInfo() {
         const aStep = a.enhanceStep || 1;
         const aRate = ENHANCE_SUCCESS_RATES[aLvl];
         const aCost = ENHANCE_COST_MONEY[aLvl];
-        aText = `${a.name}+${aLvl}（耐久:${dur}） →+${aNext} 成功${Math.round(aRate*100)}% / +DEF${aStep} / ${aCost}G（同名防具1個消費）`;
+        aText = `${a.name}+${aLvl}（耐久:${dur}） →+${aNext} 成功${Math.round(aRate*100)}% / +DEF${aStep} / ${aCost}G（同名防具1つ消費）`;
       }
     }
   }
@@ -428,9 +507,7 @@ function updateDisplay() {
     setText("petGrowthTypeLabel", getPetGrowthTypeName());
 
     const petInfoBox = document.getElementById("petInfo");
-    if (petInfoBox) {
-      petInfoBox.dataset.status = (petHp <= 0) ? "down" : "alive";
-    }
+    if (petInfoBox) petInfoBox.dataset.status = (petHp <= 0) ? "down" : "alive";
   }
 
   const weaponNameSpan = document.getElementById("equippedWeaponName");
@@ -454,7 +531,6 @@ function updateDisplay() {
     } else armorNameSpan.textContent = "なし";
   }
 
-  // ステータスタブ
   setText("stLevel", level);
   setText("stExp", exp);
   setText("stExpToNext", expToNext);
@@ -474,18 +550,6 @@ function updateDisplay() {
   setText("stMpMax", mpMax);
   setText("stSpMax", spMax);
 
-  setText("skGatherWoodLv",    gatherSkills.wood.lv);
-  setText("skGatherOreLv",     gatherSkills.ore.lv);
-  setText("skGatherHerbLv",    gatherSkills.herb.lv);
-  setText("skGatherClothLv",   gatherSkills.cloth.lv);
-  setText("skGatherLeatherLv", gatherSkills.leather.lv);
-  setText("skGatherWaterLv",   gatherSkills.water.lv);
-
-  setText("skCraftWeaponLv", craftSkills.weapon.lv);
-  setText("skCraftArmorLv",  craftSkills.armor.lv);
-  setText("skCraftPotionLv", craftSkills.potion.lv);
-  setText("skCraftToolLv",   craftSkills.tool.lv);
-
   if(jobId === 2){
     setText("stPetLevel",         petLevel);
     setText("stPetExp",           petExp);
@@ -496,7 +560,6 @@ function updateDisplay() {
     setText("stPetHpMax",         petHpMax);
   }
 
-  // 敵HPテキスト更新
   const enemyNameSpan  = document.getElementById("enemyNameText");
   const enemyHpSpan    = document.getElementById("enemyHpText");
   const enemyHpMaxSpan = document.getElementById("enemyHpMaxText");
@@ -517,8 +580,24 @@ function updateDisplay() {
   updateEnhanceInfo();
   updateSkillButtonsByJob();
 
+  // スキルレベル表示
+  if (gatherSkills) {
+    setText("skGatherWoodLv",    gatherSkills.wood.lv);
+    setText("skGatherOreLv",     gatherSkills.ore.lv);
+    setText("skGatherHerbLv",    gatherSkills.herb.lv);
+    setText("skGatherClothLv",   gatherSkills.cloth.lv);
+    setText("skGatherLeatherLv", gatherSkills.leather.lv);
+    setText("skGatherWaterLv",   gatherSkills.water.lv);
+  }
+  if (craftSkills) {
+    setText("skCraftWeaponLv",  craftSkills.weapon.lv);
+    setText("skCraftArmorLv",   craftSkills.armor.lv);
+    setText("skCraftPotionLv",  craftSkills.potion.lv);
+  }
+
   if (typeof updateBattleSkillUIByJob === "function") {
     updateBattleSkillUIByJob();
   }
   updateBossButtonUI();
+  refreshGatherFieldSelect();
 }

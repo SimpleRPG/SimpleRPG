@@ -94,7 +94,15 @@ function doRebirth(){
   spMax=spMaxBase;
   sp=spMax;
 
+  if (typeof materials !== "undefined") {
+    Object.keys(materials).forEach(k => {
+      materials[k].t1 = 0;
+      materials[k].t2 = 0;
+      materials[k].t3 = 0;
+    });
+  }
   wood=ore=herb=cloth=leather=water=0;
+
   money=0;
   Object.keys(weaponCounts).forEach(k=>weaponCounts[k]=0);
   Object.keys(armorCounts).forEach(k=>armorCounts[k]=0);
@@ -140,11 +148,9 @@ function openJobModal(){
 
   modal.style.display = "flex";
 }
-
 function closeJobModal() {
   document.getElementById("jobModal").style.display = "none";
 }
-
 function applyJobChange(newJobId){
   if(jobId===newJobId){
     appendLog("すでにその職業です");
@@ -165,18 +171,10 @@ function applyJobChange(newJobId){
   jobId=newJobId;
   if(newJobId === 2) everBeastTamer = true;
 
-  // ★ 初回プレイ中は職業に合わせて成長タイプも設定
   if (!rebirthCount) {
-    if (newJobId === 0) {
-      // 戦士 → STR型
-      growthType = 0;
-    } else if (newJobId === 1) {
-      // 魔法使い → INT型
-      growthType = 2;
-    } else if (newJobId === 2) {
-      // 動物使い → バランス型
-      growthType = 4;
-    }
+    if (newJobId === 0)      growthType = 0;
+    else if (newJobId === 1) growthType = 2;
+    else if (newJobId === 2) growthType = 4;
   }
 
   appendLog(`職業を「${getJobName()}」に変更した`);
@@ -192,17 +190,13 @@ function applyJobChange(newJobId){
   }
   updateBossButtonUI();
 }
-
 function changePetGrowthType(){
   if(jobId!==2){
     appendLog("動物使いのみ変更できます");
     return;
   }
-  // ここではモーダルを開くだけ。実際の変更は UI 側で行う
   const modal = document.getElementById("petGrowthModal");
-  if (modal) {
-    modal.style.display = "flex";
-  }
+  if (modal) modal.style.display = "flex";
 }
 
 // =======================
@@ -223,7 +217,6 @@ function addGatherSkillExp(resourceKey){
 function calcGatherAmount(resourceKey){
   const s = gatherSkills[resourceKey];
   const lv = s ? s.lv : 0;
-
   const p = GATHER_AMOUNT_PARAMS;
   const base = (Math.random() < p.baseOneProb) ? 1 : 0;
   const guaranteed = Math.floor(p.guaranteedCoeff * (lv / 100));
@@ -235,7 +228,27 @@ function calcGatherAmount(resourceKey){
   return total;
 }
 function gather(){
-  const target=document.getElementById("gatherTarget").value;
+  const targetSel = document.getElementById("gatherTarget");
+  if (!targetSel) return;
+  const target = targetSel.value;
+
+  const fieldSel = document.getElementById("gatherField");
+  const field = fieldSel ? fieldSel.value : "field1"; 
+
+  const s = gatherSkills[target];
+  const lv = s ? s.lv : 0;
+
+  // スキルLvに応じて、1度でも条件を満たしたらエリア解放
+  checkGatherAreaUnlockBySkill(target);
+
+  // 現在Lvでこのエリアの採取が可能か
+  const needLv = GATHER_FIELD_REQUIRE_LV[field] || 0;
+  if (lv < needLv) {
+    appendLog(`このエリアで採取するには「${target}」採取スキルLv${needLv}が必要です（現在Lv${lv}）`);
+    updateDisplay();
+    return;
+  }
+
   addGatherSkillExp(target);
   let added = calcGatherAmount(target);
 
@@ -248,14 +261,42 @@ function gather(){
   added+=jobBonus+lukBonus;
   if(added<0)added=0;
 
-  if(target==="wood")wood+=added;
-  else if(target==="ore")ore+=added;
-  else if(target==="herb")herb+=added;
-  else if(target==="cloth")cloth+=added;
-  else if(target==="leather")leather+=added;
-  else if(target==="water")water+=added;
+  if (!materials || !materials[target]) {
+    appendLog("採取素材の定義が見つかりません");
+    return;
+  }
+
+  if (added === 0) {
+    appendLog("何も採取できなかった…");
+    updateDisplay();
+    return;
+  }
+
+  let t1 = 0, t2 = 0, t3 = 0;
+
+  if (field === "field1") {
+    t1 = added;
+  } else if (field === "field2") {
+    t2 = Math.floor(added * 0.2);
+    t1 = added - t2;
+  } else if (field === "field3") {
+    t3 = Math.floor(added * 0.1);
+    let rest = added - t3;
+    t2 = Math.floor(rest * 0.3);
+    t1 = rest - t2;
+  } else {
+    t1 = added;
+  }
+
+  materials[target].t1 += t1;
+  materials[target].t2 += t2;
+  materials[target].t3 += t3;
+
   const names={wood:"木",ore:"鉱石",herb:"草",cloth:"布",leather:"皮",water:"水"};
-  appendLog(`${names[target]} +${added}`);
+  if (t1 > 0) appendLog(`T1${names[target]}を${t1}つ採取した！`);
+  if (t2 > 0) appendLog(`T2${names[target]}を${t2}つ採取した！`);
+  if (t3 > 0) appendLog(`T3${names[target]}を${t3}つ採取した！`);
+
   updateDisplay();
 }
 
@@ -264,23 +305,35 @@ function gather(){
 // =======================
 
 function hasMaterials(cost){
-  if(cost.wood && wood<cost.wood) return false;
-  if(cost.ore && ore<cost.ore) return false;
-  if(cost.herb && herb<cost.herb) return false;
-  if(cost.cloth && cloth<cost.cloth) return false;
-  if(cost.leather && leather<cost.leather) return false;
-  if(cost.water && water<cost.water) return false;
+  if(cost.wood && getMatTotal("wood")<cost.wood) return false;
+  if(cost.ore && getMatTotal("ore")<cost.ore) return false;
+  if(cost.herb && getMatTotal("herb")<cost.herb) return false;
+  if(cost.cloth && getMatTotal("cloth")<cost.cloth) return false;
+  if(cost.leather && getMatTotal("leather")<cost.leather) return false;
+  if(cost.water && getMatTotal("water")<cost.water) return false;
   return true;
 }
-function consumeMaterials(cost){
-  if(cost.wood)wood-=cost.wood;
-  if(cost.ore)ore-=cost.ore;
-  if(cost.herb)herb-=cost.herb;
-  if(cost.cloth)cloth-=cost.cloth;
-  if(cost.leather)leather-=cost.leather;
-  if(cost.water)water-=cost.water;
+function consumeOneMatTier(key, need){
+  let remain = need;
+  const m = materials[key];
+  if (!m) return;
+  const tiers = ["t1","t2","t3"];
+  for (const ti of tiers) {
+    if (remain <= 0) break;
+    const have = m[ti] || 0;
+    const use = Math.min(have, remain);
+    m[ti] = have - use;
+    remain -= use;
+  }
 }
-
+function consumeMaterials(cost){
+  if(cost.wood)   consumeOneMatTier("wood",   cost.wood);
+  if(cost.ore)    consumeOneMatTier("ore",    cost.ore);
+  if(cost.herb)   consumeOneMatTier("herb",   cost.herb);
+  if(cost.cloth)  consumeOneMatTier("cloth",  cost.cloth);
+  if(cost.leather)consumeOneMatTier("leather",cost.leather);
+  if(cost.water)  consumeOneMatTier("water",  cost.water);
+}
 function getCraftSkill(category){
   return craftSkills[category];
 }
@@ -295,7 +348,6 @@ function addCraftSkillExp(category){
     appendLog(`${category} クラフトスキルがLv${s.lv}になった！`);
   }
 }
-
 function craftWeapon(){
   const sel = document.getElementById("weaponSelect");
   if(!sel || !sel.value) return;
@@ -345,7 +397,6 @@ function craftPotion(){
 // =======================
 
 function refreshEquipSelects(){
-  // 起動直後で core がまだなら、安全に抜ける
   if (typeof weapons === "undefined" || typeof armors === "undefined") {
     console.warn("game-core-2: weapons/armors が未初期化のため、refreshEquipSelects をスキップ");
     return;
@@ -432,17 +483,13 @@ function equipArmor(){
 
 function consumeOneSameWeaponAsMaterial(weaponId){
   const owned = weaponCounts[weaponId] || 0;
-  if(owned <= 1){
-    return false;
-  }
+  if(owned <= 1) return false;
   weaponCounts[weaponId] = owned - 1;
   return true;
 }
 function consumeOneSameArmorAsMaterial(armorId){
   const owned = armorCounts[armorId] || 0;
-  if(owned <= 1){
-    return false;
-  }
+  if(owned <= 1) return false;
   armorCounts[armorId] = owned - 1;
   return true;
 }
@@ -465,7 +512,8 @@ function enhanceWeapon(){
     return;
   }
 
-  const cost = ENHANCE_COST_MONEY[w.enhance];
+  const cost = ENHANCE_COST_M
+ONEY[w.enhance];
   if(money < cost){
     appendLog("お金が足りない");
     return;
