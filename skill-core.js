@@ -190,26 +190,58 @@ function calcPetDamage() {
 // ペットターン：毎ターン自動で1回攻撃（敵がいれば）
 // ・期待ダメージがプレイヤー通常攻撃の 3〜4倍程度になるよう、petAtkBase 側でバランスを取る想定
 // ・たまに「ペットの一撃！」的なクリティカル演出を入れて手触りを上げる
+// ペットターン：毎ターン自動で行動（動物使い時のみ）
+// ・基本は通常攻撃
+// ・30%でスキル（powerBite / taunt / selfHeal）をランダム発動
+// ・プレイヤー総ダメージの3〜4倍くらいになる想定
 function doPetTurn() {
   if (jobId !== 2) return;        // 動物使い以外は何もしない
   if (!currentEnemy) return;      // 敵がいなければ何もしない
   if (petHp <= 0) return;         // ペットが倒れている場合は行動不能
 
-  // まずは通常攻撃
-  let dmg = calcPetDamage();
-
-  // 20% でクリティカル気味の一撃
-  if (Math.random() < 0.2) {
-    const critBonus = 1.5;
-    dmg = Math.floor(dmg * critBonus);
-    enemyHp = Math.max(0, enemyHp - dmg);
-    appendLog(`ペットの渾身の一撃！ ${currentEnemy.name} に${dmg}ダメージ！`);
-  } else {
-    enemyHp = Math.max(0, enemyHp - dmg);
-    appendLog(`ペットの攻撃！ ${currentEnemy.name} に${dmg}ダメージ`);
+  // --- スキル発動判定 ---
+  // petSkills と PET_SKILL_TRY_RATE は game-core 側で定義済み
+  let usedSkill = false;
+  if (petSkills && Math.random() < PET_SKILL_TRY_RATE) {
+    const s = petSkills[Math.floor(Math.random() * petSkills.length)];
+    if (s && s.id === "powerBite") {
+      // 高倍率の噛みつき
+      let base = calcPetDamage();
+      let dmg = Math.floor(base * (s.powerRate || 1.6));
+      enemyHp = Math.max(0, enemyHp - dmg);
+      appendLog(`ペットの${s.name}！ ${currentEnemy.name}に${dmg}ダメージ！`);
+      usedSkill = true;
+    } else if (s && s.id === "taunt") {
+      // 次のターンはほぼ確実にペットに攻撃を集める（簡易タゲ取り）
+      appendLog(`ペットの${s.name}！ 敵の注意を引きつけた！`);
+      // 次の enemyTurn で 100% ペットを狙うフラグ
+      petBuffTurnRemain = Math.max(petBuffTurnRemain, 1); // 流用 or 専用フラグを別途用意してもOK
+      usedSkill = true;
+    } else if (s && s.id === "selfHeal") {
+      const heal = Math.floor(petHpMax * (s.healRate || 0.3)) + 3;
+      petHp = Math.min(petHp + heal, petHpMax);
+      appendLog(`ペットの${s.name}！ HPが${heal}回復した！`);
+      usedSkill = true;
+    }
   }
 
-  // ここでは勝敗判定だけ行い、敵ターンは呼ばない（プレイヤー行動側で制御）
+  if (!usedSkill) {
+    // --- 通常攻撃 ---
+    let dmg = calcPetDamage();
+
+    // 20% でクリティカル気味の一撃
+    if (Math.random() < 0.2) {
+      const critBonus = 1.5;
+      dmg = Math.floor(dmg * critBonus);
+      enemyHp = Math.max(0, enemyHp - dmg);
+      appendLog(`ペットの渾身の一撃！ ${currentEnemy.name} に${dmg}ダメージ！`);
+    } else {
+      enemyHp = Math.max(0, enemyHp - dmg);
+      appendLog(`ペットの攻撃！ ${currentEnemy.name} に${dmg}ダメージ`);
+    }
+  }
+
+  // 勝敗判定のみ。敵ターンはプレイヤー行動側で呼ぶ。
   if (enemyHp <= 0) {
     winBattle();
   } else {

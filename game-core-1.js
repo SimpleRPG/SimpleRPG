@@ -68,8 +68,9 @@ let everBeastTamer = false;
 // ペット
 let petLevel = 1, petExp = 0, petExpToNext = 5;
 let petRebirthCount = 0;
-let petAtkBase = 3, petHpBase = 10;
-let petHpMax = 10, petHp = 10;
+let petAtkBase = 8, petHpBase = 24;
+let petHpMax = petHpBase;
+let petHp = petHpMax;
 let petBuffRate = 1.0, petGrowthType = PET_GROWTH_BALANCE;
 let petSkills = [PET_SKILL_DEFS.powerBite, PET_SKILL_DEFS.taunt, PET_SKILL_DEFS.selfHeal];
 let petExtraHitRateThisBattle = 0.0;
@@ -288,6 +289,20 @@ function refreshGatherFieldSelect() {
   sel.value = hasCurrent ? current : sel.options[0].value;
 }
 
+let intermediateMats = {
+  woodPlank_T1: 0,
+  woodPlank_T2: 0,
+  woodPlank_T3: 0,
+  ironIngot_T1: 0,
+  ironIngot_T2: 0,
+  ironIngot_T3: 0,
+  clothBolt_T1: 0,
+  clothBolt_T2: 0,
+  clothBolt_T3: 0,
+  toughLeather_T1: 0,
+  toughLeather_T2: 0,
+  toughLeather_T3: 0
+};
 // =======================
 // ステータス計算・表示
 // =======================

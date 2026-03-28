@@ -1,32 +1,30 @@
 // enemy-data.js
 // 敵マスタ＋エリア別テーブル＋ボスID定義
 
-// ===== 敵マスタ =====
-// ENEMIES は「id をキーにしたオブジェクト」として定義する
 const ENEMIES = {
-  // 草原系（初心者向けザコ）
+  // 草原系（初心者向けザコ）: Lv1全職でも勝てるよう大幅に弱める
   slime: {
     id: "slime",
     name: "スライム",
-    hp: 30,
-    atk: 8,
-    def: 1,
-    exp: 10,
+    hp: 10,   // 3発前後で倒せる
+    atk: 3,   // HP30に対して10発耐えるくらい
+    def: 0,
+    exp: 8,
     money: 3,
     isBoss: false
   },
   wolf: {
     id: "wolf",
     name: "オオカミ",
-    hp: 45,
-    atk: 12,
-    def: 2,
-    exp: 18,
-    money: 6,
+    hp: 18,   // 4〜6発くらい
+    atk: 4,   // ちょっとだけ痛い
+    def: 1,
+    exp: 12,
+    money: 5,
     isBoss: false
   },
 
-  // 森系
+  // 森系（ここから先は元のまま）
   forestWolf: {
     id: "forestWolf",
     name: "森のオオカミ",
@@ -122,9 +120,8 @@ const ENEMIES = {
     isBoss: false
   },
 
-  // ===== ボス =====
+  // ===== ボス =====（そのまま） =====
 
-  // 草原ボス（0転生Lv100目安）
   kingSlime: {
     id: "kingSlime",
     name: "キングスライム？",
@@ -135,8 +132,6 @@ const ENEMIES = {
     money: 200,
     isBoss: true
   },
-
-  // 森ボス（5〜10転生目安）
   hundredWolfKing: {
     id: "hundredWolfKing",
     name: "百狼の王",
@@ -147,8 +142,6 @@ const ENEMIES = {
     money: 400,
     isBoss: true
   },
-
-  // 洞窟ボス（20転生目安）
   goblinKing: {
     id: "goblinKing",
     name: "ゴブリンキング",
@@ -159,8 +152,6 @@ const ENEMIES = {
     money: 700,
     isBoss: true
   },
-
-  // 廃鉱山ボス（40転生目安）
   berserkOgre: {
     id: "berserkOgre",
     name: "バーサークオーガー",
@@ -174,30 +165,24 @@ const ENEMIES = {
 };
 
 // ===== エリア別出現テーブル =====
-// 配列内の重複回数で出現しやすさを調整
+
 const AREA_ENEMY_TABLE = {
-  // 草原エリア1（field）：スライム主体、たまにオオカミ
+  // 草原：スライム多め、たまにオオカミ（元の構成を継承）
   field: [
     "slime","slime","slime","slime",
     "wolf"
   ],
 
-  // 森エリア2（forest）：オオカミ主体、たまにゴブリン
   forest: [
     "forestWolf","forestWolf","forestWolf",
     "goblin"
   ],
-
-  // 洞窟エリア3（cave）：
-  // ゴブリン系メイン、たまにオーガ
   cave: [
     "caveGoblin","caveGoblin",
     "goblinMage",
     "goblinTamer",
-    "ogre" // レア枠
+    "ogre"
   ],
-
-  // 廃鉱山エリア4（mine）：オーガ系3種
   mine: [
     "ogreBrute",
     "ogreGuard",
@@ -205,7 +190,6 @@ const AREA_ENEMY_TABLE = {
   ]
 };
 
-// ===== エリアごとのボスID =====
 const AREA_BOSS_ID = {
   field:  "kingSlime",
   forest: "hundredWolfKing",

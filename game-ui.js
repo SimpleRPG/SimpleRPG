@@ -60,7 +60,7 @@ function initGather() {
     });
   }
 
-  // 素材詳細トグル（クラフトタブ側のボタンもここで）
+  // 素材詳細トグル（クラフトタブ）
   const btn2 = document.getElementById("toggleMatDetailBtn2");
   const detail2 = document.getElementById("craftMatDetail");
   if (btn2 && detail2) {
@@ -72,11 +72,175 @@ function initGather() {
   }
 }
 
+// 中間素材クラフト初期化
+// game-ui.js
+function initIntermediateCraft(){
+  const sel = document.getElementById("intermediateSelect");
+  const btn = document.getElementById("craftIntermediateBtn");
+  const info = document.getElementById("intermediateInfo");
+  if (!sel || !btn || !info) return;
+
+  if (Array.isArray(INTERMEDIATE_MATERIALS)) {
+    sel.innerHTML = "";
+    INTERMEDIATE_MATERIALS.forEach(m => {
+      const opt = document.createElement("option");
+      opt.value = m.id;
+      opt.textContent = m.name;
+      sel.appendChild(opt);
+    });
+  }
+
+  // ★ 選択中中間素材の必要素材を表示
+  const baseNames = {
+    wood:   "木",
+    ore:    "鉱石",
+    herb:   "草",
+    cloth:  "布",
+    leather:"皮",
+    water:  "水"
+  };
+
+  function updateIntermediateInfo(){
+    const id = sel.value;
+    const def = INTERMEDIATE_MATERIALS.find(m => m.id === id);
+    if (!def || !def.from) {
+      info.textContent = "素材から板材・インゴットなどを作成します。";
+      return;
+    }
+    const parts = [];
+    Object.keys(def.from).forEach(baseKey => {
+      const tierInfo = def.from[baseKey]; // 例: { t1:3 }
+      Object.keys(tierInfo).forEach(tierKey => {
+        const need = tierInfo[tierKey];
+        const m = materials[baseKey];
+        const have = m ? (m[tierKey] || 0) : 0;
+        const tierLabel = tierKey.toUpperCase(); // "t1" → "T1"
+        const name = baseNames[baseKey] || baseKey;
+        parts.push(`${tierLabel}${name} ${have}/${need}`);
+      });
+    });
+    info.textContent = "必要素材：" + parts.join("、");
+  }
+
+  sel.addEventListener("change", updateIntermediateInfo);
+  updateIntermediateInfo(); // 初期表示
+
+  btn.addEventListener("click", () => {
+    const id = sel.value;
+    if (!id) return;
+    if (typeof craftIntermediate === "function") {
+      craftIntermediate(id);
+      updateIntermediateInfo(); // 作成後に所持数更新
+    }
+  });
+}
+
+// クラフトカテゴリ切り替え
+function setCraftCategory(cat){
+  const tabs   = document.querySelectorAll("#craftCategoryTabs .craft-cat-tab");
+  const panels = {
+    weapon:   document.getElementById("craftPanelWeapon"),
+    armor:    document.getElementById("craftPanelArmor"),
+    potion:   document.getElementById("craftPanelPotion"),
+    tool:     document.getElementById("craftPanelTool"),
+    material: document.getElementById("craftPanelMaterial")
+  };
+
+  tabs.forEach(btn => {
+    if (btn.dataset.cat === cat) btn.classList.add("active");
+    else                         btn.classList.remove("active");
+  });
+
+  Object.keys(panels).forEach(k => {
+    if (!panels[k]) return;
+    panels[k].style.display = (k === cat) ? "" : "none";
+  });
+
+  const infoEl = document.getElementById("craftCostInfo");
+
+  if (cat === "weapon") {
+    const sel = document.getElementById("weaponSelect");
+    if (sel && sel.value) {
+      updateCraftCostInfo("weapon", sel.value);
+      return;
+    }
+  } else if (cat === "armor") {
+    const sel = document.getElementById("armorSelect");
+    if (sel && sel.value) {
+      updateCraftCostInfo("armor", sel.value);
+      return;
+    }
+  } else if (cat === "potion") {
+    const sel = document.getElementById("potionSelect");
+    if (sel && sel.value) {
+      updateCraftCostInfo("potion", sel.value);
+      return;
+    }
+  } else if (cat === "tool") {                         // ★これを追加
+    const sel = document.getElementById("toolSelect");
+    if (sel && sel.value) {
+      updateCraftCostInfo("tool", sel.value);
+      return;
+    }
+  }
+
+  if (infoEl) infoEl.textContent = "必要素材：-";
+}
+
+function initCraftCategoryTabs(){
+  const container = document.getElementById("craftCategoryTabs");
+  if (!container) return;
+  const tabs = container.querySelectorAll(".craft-cat-tab");
+  tabs.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const cat = btn.dataset.cat || "weapon";
+      setCraftCategory(cat);
+    });
+  });
+
+  setCraftCategory("weapon");
+}
+
 // クラフト
 function initCraft() {
-  document.getElementById("craftWeaponBtn")?.addEventListener("click", () => craftWeapon());
-  document.getElementById("craftArmorBtn") ?.addEventListener("click", () => craftArmor());
-  document.getElementById("craftPotionBtn")?.addEventListener("click", () => craftPotion());
+  const wSel = document.getElementById("weaponSelect");
+  const aSel = document.getElementById("armorSelect");
+  const pSel = document.getElementById("potionSelect");
+
+  document.getElementById("craftWeaponBtn")
+    ?.addEventListener("click", () => craftWeapon());
+  document.getElementById("craftArmorBtn")
+    ?.addEventListener("click", () => craftArmor());
+  document.getElementById("craftPotionBtn")
+    ?.addEventListener("click", () => craftPotion());
+
+  if (wSel) {
+    wSel.addEventListener("change", () => {
+      updateCraftCostInfo("weapon", wSel.value);
+    });
+  }
+  if (aSel) {
+    aSel.addEventListener("change", () => {
+      updateCraftCostInfo("armor", aSel.value);
+    });
+  }
+  if (pSel) {
+    pSel.addEventListener("change", () => {
+      updateCraftCostInfo("potion", pSel.value);
+    });
+  }
+
+  const tierSel = document.getElementById("craftTierSelect");
+  if (tierSel) {
+    tierSel.addEventListener("change", () => {
+      if (typeof refreshEquipSelects === "function") {
+        refreshEquipSelects();
+      }
+    });
+  }
+
+  initCraftCategoryTabs();
+  initIntermediateCraft();
 }
 
 // 装備
@@ -107,7 +271,6 @@ function initPetGrowthModal() {
   const closeBtn= document.getElementById("petGrowthCloseBtn");
   if (!modal) return;
 
-  // 成長タイプボタン
   buttons.forEach(btn => {
     btn.addEventListener("click", () => {
       const val = parseInt(btn.dataset.growth, 10);
@@ -122,14 +285,12 @@ function initPetGrowthModal() {
     });
   });
 
-  // 閉じるボタン
   if (closeBtn) {
     closeBtn.addEventListener("click", () => {
       modal.style.display = "none";
     });
   }
 
-  // モーダルの外側クリックで閉じる
   modal.addEventListener("click", (e) => {
     if (e.target === modal) {
       modal.style.display = "none";
@@ -138,11 +299,56 @@ function initPetGrowthModal() {
 }
 
 // 探索・戦闘
+// 探索・戦闘
 function initExploreAndBattle() {
-  document.getElementById("exploreStartBtn")?.addEventListener("click", () => doExploreEvent());
-  document.getElementById("exploreBtn")     ?.addEventListener("click", () => playerAttack());
+  // 探索開始・継続ボタン
+  const exploreStartBtn = document.getElementById("exploreStartBtn");
+  if (exploreStartBtn) {
+    exploreStartBtn.addEventListener("click", () => {
+      // isExploring / exploringArea は game-core-3.js 側で定義しておく想定
+      if (!window.isExploring) {
+        // 初回：このエリアで探索開始
+        if (typeof getCurrentArea === "function") {
+          window.exploringArea = getCurrentArea();
+        } else {
+          window.exploringArea = "field";
+        }
+        window.isExploring = true;
+        if (typeof appendLog === "function") {
+          appendLog(`${window.exploringArea} での探索を開始した`);
+        }
+      }
+      // 探索中：現在の探索エリアでイベント発生
+      if (typeof doExploreEvent === "function") {
+        doExploreEvent(window.exploringArea);
+      }
+    });
+  }
 
-  // ボス挑戦ボタン
+  // 「街へ戻る」ボタン（index.html 側に returnTownBtn を追加しておく）
+  const returnBtn = document.getElementById("returnTownBtn");
+  if (returnBtn) {
+    returnBtn.addEventListener("click", () => {
+      if (window.currentEnemy) {
+        if (typeof appendLog === "function") {
+          appendLog("戦闘中は帰還できない！");
+        }
+        return;
+      }
+      window.isExploring = false;
+      window.exploringArea = null;
+      if (typeof appendLog === "function") {
+        appendLog("街へ戻った。探索を終了した。");
+      }
+      if (typeof updateDisplay === "function") {
+        updateDisplay();
+      }
+    });
+  }
+
+  // 通常攻撃・ボス・スキルなどはそのまま
+  document.getElementById("exploreBtn")?.addEventListener("click", () => playerAttack());
+
   const bossBtn = document.getElementById("bossStartBtn");
   if (bossBtn) {
     bossBtn.addEventListener("click", () => {
@@ -176,7 +382,6 @@ function initExploreAndBattle() {
   document.getElementById("useBattleItemBtn")?.addEventListener("click", () => useBattleItem());
   document.getElementById("useItemBtn")      ?.addEventListener("click", () => usePotionOutsideBattle());
 
-  // 逃走ボタン
   const escapeBtn = document.getElementById("escapeBtn");
   if (escapeBtn) {
     escapeBtn.addEventListener("click", () => {
@@ -333,5 +538,4 @@ function initUI() {
   initGame();
 }
 
-// DOM構築完了後に初期化
 window.addEventListener("DOMContentLoaded", initUI);

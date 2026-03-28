@@ -92,17 +92,67 @@
         </div>
         <pre id="craftMatDetail" style="display:none; font-size:11px; margin:2px 0 0;"></pre>
 
-        <h3>武器クラフト</h3>
-        <select id="weaponSelect"></select>
-        <button id="craftWeaponBtn">武器を作る</button>
+        <!-- クラフトカテゴリタブ -->
+        <div id="craftCategoryTabs" style="margin:4px 0;">
+          <button class="craft-cat-tab active" data-cat="weapon">武器</button>
+          <button class="craft-cat-tab" data-cat="armor">防具</button>
+          <button class="craft-cat-tab" data-cat="potion">ポーション</button>
+          <button class="craft-cat-tab" data-cat="tool">道具</button>
+          <button class="craft-cat-tab" data-cat="material">素材</button>
+        </div>
 
-        <h3>防具クラフト</h3>
-        <select id="armorSelect"></select>
-        <button id="craftArmorBtn">防具を作る</button>
+        <!-- ティア選択 -->
+        <div id="craftTierRow" style="margin:4px 0;">
+          <label style="font-size:12px;">ティア:</label>
+          <select id="craftTierSelect">
+            <option value="all">すべて</option>
+            <option value="T1">T1</option>
+            <option value="T2">T2</option>
+            <option value="T3">T3</option>
+          </select>
+        </div>
 
-        <h3>ポーションクラフト</h3>
-        <select id="potionSelect"></select>
-        <button id="craftPotionBtn">ポーションを作る</button>
+        <!-- カテゴリ別パネル -->
+        <div id="craftPanelWeapon" class="craft-panel">
+          <h3>武器クラフト</h3>
+          <select id="weaponSelect"></select>
+          <button id="craftWeaponBtn">武器を作る</button>
+        </div>
+
+        <div id="craftPanelArmor" class="craft-panel" style="display:none;">
+          <h3>防具クラフト</h3>
+          <select id="armorSelect"></select>
+          <button id="craftArmorBtn">防具を作る</button>
+        </div>
+
+        <div id="craftPanelPotion" class="craft-panel" style="display:none;">
+          <h3>ポーションクラフト</h3>
+          <select id="potionSelect"></select>
+          <button id="craftPotionBtn">ポーションを作る</button>
+        </div>
+
+        <div id="craftPanelTool" class="craft-panel" style="display:none;">
+          <h3>道具クラフト</h3>
+          <select id="toolSelect"></select>
+          <button id="craftToolBtn">道具を作る</button>
+        </div>
+
+        <div id="craftPanelMaterial" class="craft-panel" style="display:none;">
+          <h3>素材（中間素材）クラフト</h3>
+          <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
+            <label style="font-size:12px;">中間素材:</label>
+            <select id="intermediateSelect" style="flex:1;"></select>
+            <button id="craftIntermediateBtn">作る</button>
+          </div>
+          <div id="intermediateInfo" style="font-size:11px; color:#ccc;">
+            素材から板材・インゴットなどを作成します。
+          </div>
+        </div>
+
+        <!-- 選んだレシピの必要素材表示 -->
+        <div id="craftCostInfo" style="font-size:11px; margin-top:4px; color:#ccc;">
+          必要素材：-
+        </div>
       </div>
 
       <!-- 装備 -->
@@ -304,7 +354,7 @@
         <p id="marketInfo" style="margin-top:8px; font-size:12px; color:#ccc;"></p>
       </div>
 
-            <!-- ステータス -->
+      <!-- ステータス -->
       <div id="pageStatus" class="tab-page">
         <h2>ステータス</h2>
 
@@ -332,12 +382,13 @@
           最大MP: <span id="stMpMax">10</span>,
           最大SP: <span id="stSpMax">10</span>
         </div>
-       <h3>転生</h3>
+
+        <h3>転生</h3>
         <div class="status-block">
           Lv10以上で転生できます。転生するとLv1に戻りますが、ステータスにボーナスが付きます。<br>
           <button id="rebirthBtn">転生する</button>
         </div>
-        <!-- 採取 / クラフトスキルをここに移動 -->
+
         <h3>採取スキル</h3>
         <div id="gatherSkillBox" class="status-block">
           木: Lv<span id="skGatherWoodLv">0</span>,
@@ -355,9 +406,6 @@
           ポーション: Lv<span id="skCraftPotionLv">0</span>
         </div>
 
-       
-
-        <!-- ペットはその下に移動 -->
         <h3>ペットステータス（動物使いのみ）</h3>
         <div class="status-block">
           ペットLv: <span id="stPetLevel">1</span><br>
@@ -417,6 +465,7 @@
   <script src="game-core-1.js"></script>
   <script src="game-core-2.js"></script>
   <script src="game-core-3.js"></script>
+  <script src="game-core-4.js"></script>
 
   <script src="skill-core.js"></script>
   <script src="market-core.js"></script>

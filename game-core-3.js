@@ -13,7 +13,9 @@ const areaBossAvailable = {
   cave:   false,
   mine:   false
 };
-
+// 探索滞在状態
+let isExploring = false;        // 街にいる: false / どこか探索中: true
+let exploringArea = "field";    // 現在探索しているエリアID
 // =======================
 // 敵・エリア関連ヘルパ
 // =======================
@@ -134,9 +136,10 @@ function refreshExploreAreaSelect() {
 function updateBossButtonUI() {
   const bossBtn = document.getElementById("bossStartBtn");
   if (!bossBtn) return;
-  const area = getCurrentArea();
 
-  // 「今このエリアでボスに挑める状態か」だけを見る
+  // 探索中なら exploringArea、そうでなければ現在選択中
+  const area = isExploring ? (exploringArea || getCurrentArea()) : getCurrentArea();
+
   if (areaBossAvailable[area]) {
     bossBtn.style.display = "inline-block";
   } else {
@@ -151,8 +154,8 @@ function updateBossButtonUI() {
 // 探索のたびに 0.05% で「このエリアのボスに挑める」ようになる。
 // 一度見つかるとボス戦を1回やるまで保持。
 function tryFindBossOnExplore() {
-  const area = getCurrentArea();
-  if (areaBossAvailable[area]) return; // すでに探索済み
+  const area = isExploring ? (exploringArea || getCurrentArea()) : getCurrentArea();
+  if (areaBossAvailable[area]) return;
 
   const roll = Math.random();          // 0〜1
   if (roll < 0.0005) {                 // 0.05%
@@ -222,20 +225,132 @@ function playerAttack(){
     }
     return;
   }
-
+doPetTurn();
+  if (enemyHp <= 0) {
+    // ペットが倒しきった場合は敵ターンなし
+    return;
+  }
   enemyTurn();
 }
 
 function enemyTurn(){
-  if(!currentEnemy) return;
-  let dmg = Math.max(1, (currentEnemy.atk || 3) - defTotal);
-  hp -= dmg;
-  appendLog(`${currentEnemy.name}の攻撃！ ${dmg}ダメージを受けた`);
-  if(hp <= 0){
-    hp = 0;
-    appendLog("あなたは倒れてしまった…");
-    endBattleCommon();
+  if (!currentEnemy) return;
+
+  // ---- ターゲット決定 ----
+  // デフォルトはプレイヤー、動物使い＋ペット生存なら 70% でペット狙い
+  let target = "player";
+  if (jobId === 2 && petHp > 0) {
+    target = (Math.random() < 0.7) ? "pet" : "player";
+  }
+
+  if (target === "player") {
+    // プレイヤーに攻撃
+    let dmg = Math.max(1, (currentEnemy.atk || 3) - defTotal);
+
+    // シールドブロウ軽減などを入れたいならここで
+    if (shieldBlowGuardTurnRemain > 0) {
+      dmg = Math.floor(dmg * 0.5);
+      shieldBlowGuardTurnRemain = 0;
+      appendLog("シールドブロウの効果でダメージが軽減された！");
+    }
+
+    hp -= dmg;
+    appendLog(`${currentEnemy.name}の攻撃！ あなたに${dmg}ダメージ`);
+
+    if (hp <= 0) {
+  hp = 0;
+  appendLog("あなたは倒れてしまった…");
+
+  // 街に戻る＝探索終了
+  isExploring = false;
+  exploringArea = "field";
+
+  // HP/MP/SP/ペット 全回復
+  hp = hpMax;
+  mp = mpMax;
+  sp = spMax;
+  petHp = petHpMax;
+
+  // 所持ゴールド半減
+  money = Math.floor(money / 2);
+
+  // 装備耐久を減らし、「何か壊れたか」を判定
+  let brokeSomething = false;
+
+  function reduceDurabilityOnEquip() {
+    // 武器
+    if (equippedWeaponId && Array.isArray(weapons)) {
+      const w = weapons.find(x => x.id === equippedWeaponId);
+      if (w && typeof w.durability === "number") {
+        w.durability = Math.max(0, w.durability - 1);
+        if (w.durability <= 0) {
+          const cnt = weaponCounts[w.id] || 0;
+          weaponCounts[w.id] = Math.max(0, cnt - 1);
+          appendLog(`${w.name} は壊れてしまった…`);
+          brokeSomething = true;
+          if (weaponCounts[w.id] <= 0 && equippedWeaponId === w.id) {
+            equippedWeaponId = null;
+          }
+        } else {
+          brokeSomething = true;
+        }
+      }
+    }
+
+    // 防具
+    if (equippedArmorId && Array.isArray(armors)) {
+      const a = armors.find(x => x.id === equippedArmorId);
+      if (a && typeof a.durability === "number") {
+        a.durability = Math.max(0, a.durability - 1);
+        if (a.durability <= 0) {
+          const cnt = armorCounts[a.id] || 0;
+          armorCounts[a.id] = Math.max(0, cnt - 1);
+          appendLog(`${a.name} は壊れてしまった…`);
+          brokeSomething = true;
+          if (armorCounts[a.id] <= 0 && equippedArmorId === a.id) {
+            equippedArmorId = null;
+          }
+        } else {
+          brokeSomething = true;
+        }
+      }
+    }
+
+    if (typeof refreshEquipSelects === "function") {
+      refreshEquipSelects();
+    }
+  }
+  reduceDurabilityOnEquip();
+
+  // メインメッセージ（装備の有無で文言を変える）
+  if (brokeSomething) {
+    appendLog("街に戻った… 休んで回復し、所持ゴールドを半分失い、装備の耐久度が1減少した。");
   } else {
+    appendLog("街に戻った… 休んで回復し、所持ゴールドを半分失った。");
+  }
+
+  endBattleCommon();
+} else {
+  tickSkillBuffTurns();
+  updateDisplay();
+}
+  } else {
+    
+    // ---- ペットに攻撃 ----
+    // ペット用の簡易防御：レベル依存で少しだけ軽減
+    let petDef = Math.floor(petLevel * 0.5);
+    let dmg = Math.max(1, (currentEnemy.atk || 3) - petDef);
+
+    petHp -= dmg;
+    appendLog(`${currentEnemy.name}の攻撃！ ペットに${dmg}ダメージ`);
+
+    if (petHp <= 0) {
+      petHp = 0;
+      appendLog("ペットは倒れてしまった…");
+    }
+
+    // バフ残りターンを進める
+    tickSkillBuffTurns();
     updateDisplay();
   }
 }
@@ -245,7 +360,7 @@ function enemyTurn(){
 // =======================
 
 function startBossBattle() {
-  const area = getCurrentArea();
+  const area = isExploring ? (exploringArea || getCurrentArea()) : getCurrentArea();
   const bossId = AREA_BOSS_ID[area];
   if (!bossId) {
     appendLog("このエリアにはボスがいないようだ");
@@ -266,8 +381,7 @@ function startBossBattle() {
 }
 
 function onBossDefeated() {
-  const area = getCurrentArea();
-
+  const area = isExploring ? (exploringArea || getCurrentArea()) : getCurrentArea();
   // このエリアのボスを「倒したことがある」フラグを立てる
   if (typeof areaBossCleared !== "undefined") {
     areaBossCleared[area] = true;
@@ -304,14 +418,21 @@ function onBossDefeated() {
 // 探索
 // =======================
 
-function doExploreEvent(){
+function doExploreEvent(area){
   // 戦闘中は探索できない
   if (currentEnemy) {
     appendLog("戦闘中は探索できない！");
     return;
   }
 
-  const area = getCurrentArea();
+  // 引数なしなら現在選択 or 探索中エリアを使う
+  if (!area) {
+    area = isExploring ? (exploringArea || getCurrentArea()) : getCurrentArea();
+  }
+
+  // ここで滞在エリアを更新（UI側で初回だけセットしているなら上書きしてもOK）
+  exploringArea = area;
+  isExploring = true;
 
   // まずボス発見判定（0.05%）
   tryFindBossOnExplore();
@@ -319,13 +440,11 @@ function doExploreEvent(){
   // 通常の探索イベント・敵抽選
   const roll = Math.random();
 
-  // 非戦闘イベント例（簡略）
   if (roll < 0.2) {
     appendLog("何も見つからなかった…");
     return;
   }
 
-  // 敵出現
   const enemy = getRandomEnemyForArea(area);
   if (!enemy) {
     appendLog("敵データが見つからない");
@@ -422,7 +541,20 @@ function applyPotionEffect(p, inBattle){
       appendLog("爆弾は戦闘中にしか使えない");
       return;
     }
-    const dmg = p.power;
+
+    // ★ここから：爆弾のダメージをIDで分岐
+    let dmg = 0;
+    if (p.id === "bomb_T1" || p.id === "bomb") {
+      dmg = 10;     // T1相当
+    } else if (p.id === "bomb_T2") {
+      dmg = 50;
+    } else if (p.id === "bomb_T3") {
+      dmg = 100;
+    } else {
+      dmg = p.power || 5; // 念のためフォールバック
+    }
+    // ★ここまで
+
     enemyHp -= dmg;
     appendLog(`爆弾を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！`);
     if(enemyHp <= 0){

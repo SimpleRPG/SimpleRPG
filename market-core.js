@@ -49,6 +49,7 @@ function removeItemForSell(category, itemId, amount){
     if(have < amount) return false;
     potionCounts[itemId] = have - amount;
   } else if(category === "material"){
+    // 基本素材（ティア合算管理のまま）
     if(itemId === "wood"){
       if(wood < amount) return false;
       wood -= amount;
@@ -67,6 +68,12 @@ function removeItemForSell(category, itemId, amount){
     } else if(itemId === "water"){
       if(water < amount) return false;
       water -= amount;
+    }
+    // 中間素材（intermediateMats を game-core 側で持っている前提）
+    else if (typeof intermediateMats === "object" && intermediateMats[itemId] != null) {
+      const have = intermediateMats[itemId] || 0;
+      if (have < amount) return false;
+      intermediateMats[itemId] = have - amount;
     } else {
       return false;
     }
@@ -87,8 +94,15 @@ function getItemLabel(category, itemId){
     const p = potions.find(x => x.id === itemId);
     return p ? p.name : itemId;
   } else if(category === "material"){
-    const names = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
-    return names[itemId] || itemId;
+    const baseNames = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
+    if (baseNames[itemId]) return baseNames[itemId];
+
+    // 中間素材なら INTERMEDIATE_MATERIALS から表示名を拾う
+    if (Array.isArray(INTERMEDIATE_MATERIALS)) {
+      const m = INTERMEDIATE_MATERIALS.find(m => m.id === itemId);
+      if (m) return m.name;
+    }
+    return itemId;
   }
   return itemId;
 }
@@ -265,6 +279,9 @@ function addItemForBuy(category, itemId, amount){
     else if(itemId === "cloth") cloth += amount;
     else if(itemId === "leather") leather += amount;
     else if(itemId === "water") water += amount;
+    else if (typeof intermediateMats === "object" && intermediateMats[itemId] != null) {
+      intermediateMats[itemId] = (intermediateMats[itemId] || 0) + amount;
+    }
   }
 }
 
@@ -468,6 +485,27 @@ function refreshMarketSellItems(){
       { id:"leather", name:"皮",    count: leather },
       { id:"water",   name:"水",    count: water }
     ];
+
+    // 中間素材があれば追加
+    if (typeof intermediateMats === "object") {
+      if (Array.isArray(INTERMEDIATE_MATERIALS)) {
+        INTERMEDIATE_MATERIALS.forEach(m => {
+          const cnt = intermediateMats[m.id] || 0;
+          if (cnt > 0) {
+            mats.push({ id: m.id, name: m.name, count: cnt });
+          }
+        });
+      } else {
+        // 定義だけでループしたい場合
+        Object.keys(intermediateMats).forEach(id => {
+          const cnt = intermediateMats[id] || 0;
+          if (cnt > 0) {
+            mats.push({ id, name: getItemLabel("material", id), count: cnt });
+          }
+        });
+      }
+    }
+
     mats.forEach(m=>{
       if (m.count > 0) {
         appendOption(m.id, `${m.name}（所持${m.count}）`);
