@@ -2,6 +2,17 @@
 // 画面側のイベント紐付けとタブ制御
 
 function showTab(tabId) {
+  // 探索中 or 戦闘中は一部タブだけ許可（探索 / ステータス）
+  if (window.isExploring || currentEnemy) {
+    const allowedWhileExploring = ["pageExplore", "pageStatus"];
+    if (!allowedWhileExploring.includes(tabId)) {
+      if (typeof appendLog === "function") {
+        appendLog("探索中はその行動はできない！");
+      }
+      tabId = "pageExplore";
+    }
+  }
+
   const pages = document.querySelectorAll(".tab-page");
   pages.forEach(p => p.classList.remove("active"));
   const target = document.getElementById(tabId);
@@ -47,7 +58,13 @@ function initDetailPanel() {
 
 // 採取
 function initGather() {
-  document.getElementById("gather")?.addEventListener("click", () => gather());
+  document.getElementById("gather")?.addEventListener("click", () => {
+    if (window.isExploring || currentEnemy) {
+      appendLog("探索中は採取できない！");
+      return;
+    }
+    gather();
+  });
 
   // 素材詳細トグル（採取タブ）
   const btn1 = document.getElementById("toggleMatDetailBtn");
@@ -73,7 +90,6 @@ function initGather() {
 }
 
 // 中間素材クラフト初期化
-// game-ui.js
 function initIntermediateCraft(){
   const sel = document.getElementById("intermediateSelect");
   const btn = document.getElementById("craftIntermediateBtn");
@@ -90,7 +106,6 @@ function initIntermediateCraft(){
     });
   }
 
-  // ★ 選択中中間素材の必要素材を表示
   const baseNames = {
     wood:   "木",
     ore:    "鉱石",
@@ -109,12 +124,12 @@ function initIntermediateCraft(){
     }
     const parts = [];
     Object.keys(def.from).forEach(baseKey => {
-      const tierInfo = def.from[baseKey]; // 例: { t1:3 }
+      const tierInfo = def.from[baseKey];
       Object.keys(tierInfo).forEach(tierKey => {
         const need = tierInfo[tierKey];
         const m = materials[baseKey];
         const have = m ? (m[tierKey] || 0) : 0;
-        const tierLabel = tierKey.toUpperCase(); // "t1" → "T1"
+        const tierLabel = tierKey.toUpperCase();
         const name = baseNames[baseKey] || baseKey;
         parts.push(`${tierLabel}${name} ${have}/${need}`);
       });
@@ -123,14 +138,18 @@ function initIntermediateCraft(){
   }
 
   sel.addEventListener("change", updateIntermediateInfo);
-  updateIntermediateInfo(); // 初期表示
+  updateIntermediateInfo();
 
   btn.addEventListener("click", () => {
+    if (window.isExploring || currentEnemy) {
+      appendLog("探索中はクラフトできない！");
+      return;
+    }
     const id = sel.value;
     if (!id) return;
     if (typeof craftIntermediate === "function") {
       craftIntermediate(id);
-      updateIntermediateInfo(); // 作成後に所持数更新
+      updateIntermediateInfo();
     }
   });
 }
@@ -176,7 +195,7 @@ function setCraftCategory(cat){
       updateCraftCostInfo("potion", sel.value);
       return;
     }
-  } else if (cat === "tool") {                         // ★これを追加
+  } else if (cat === "tool") {
     const sel = document.getElementById("toolSelect");
     if (sel && sel.value) {
       updateCraftCostInfo("tool", sel.value);
@@ -208,11 +227,29 @@ function initCraft() {
   const pSel = document.getElementById("potionSelect");
 
   document.getElementById("craftWeaponBtn")
-    ?.addEventListener("click", () => craftWeapon());
+    ?.addEventListener("click", () => {
+      if (window.isExploring || currentEnemy) {
+        appendLog("探索中はクラフトできない！");
+        return;
+      }
+      craftWeapon();
+    });
   document.getElementById("craftArmorBtn")
-    ?.addEventListener("click", () => craftArmor());
+    ?.addEventListener("click", () => {
+      if (window.isExploring || currentEnemy) {
+        appendLog("探索中はクラフトできない！");
+        return;
+      }
+      craftArmor();
+    });
   document.getElementById("craftPotionBtn")
-    ?.addEventListener("click", () => craftPotion());
+    ?.addEventListener("click", () => {
+      if (window.isExploring || currentEnemy) {
+        appendLog("探索中はクラフトできない！");
+        return;
+      }
+      craftPotion();
+    });
 
   if (wSel) {
     wSel.addEventListener("change", () => {
@@ -245,24 +282,66 @@ function initCraft() {
 
 // 装備
 function initEquip() {
-  document.getElementById("equipWeaponBtn")  ?.addEventListener("click", () => equipWeapon());
-  document.getElementById("equipArmorBtn")   ?.addEventListener("click", () => equipArmor());
-  document.getElementById("enhanceWeaponBtn")?.addEventListener("click", () => enhanceWeapon());
-  document.getElementById("enhanceArmorBtn") ?.addEventListener("click", () => enhanceArmor());
+  document.getElementById("equipWeaponBtn")?.addEventListener("click", () => {
+    if (window.isExploring || currentEnemy) {
+      appendLog("探索中は装備を変更できない！");
+      return;
+    }
+    equipWeapon();
+  });
+  document.getElementById("equipArmorBtn")?.addEventListener("click", () => {
+    if (window.isExploring || currentEnemy) {
+      appendLog("探索中は装備を変更できない！");
+      return;
+    }
+    equipArmor();
+  });
+  document.getElementById("enhanceWeaponBtn")?.addEventListener("click", () => {
+    if (window.isExploring || currentEnemy) {
+      appendLog("探索中は装備を強化できない！");
+      return;
+    }
+    enhanceWeapon();
+  });
+  document.getElementById("enhanceArmorBtn")?.addEventListener("click", () => {
+    if (window.isExploring || currentEnemy) {
+      appendLog("探索中は装備を強化できない！");
+      return;
+    }
+    enhanceArmor();
+  });
 }
 
 // 転生
 function initRebirth() {
-  document.getElementById("rebirthBtn")?.addEventListener("click", () => doRebirth());
+  document.getElementById("rebirthBtn")?.addEventListener("click", () => {
+    if (window.isExploring || currentEnemy) {
+      appendLog("探索中は転生できない！");
+      return;
+    }
+    doRebirth();
+  });
 }
 
 // 職業・ペット
 function initJobAndPet() {
-  document.getElementById("changeJobBtn")      ?.addEventListener("click", () => openJobModal());
-  document.getElementById("jobWarriorBtn")     ?.addEventListener("click", () => applyJobChange(0));
-  document.getElementById("jobMageBtn")        ?.addEventListener("click", () => applyJobChange(1));
-  document.getElementById("jobTamerBtn")       ?.addEventListener("click", () => applyJobChange(2));
-  document.getElementById("changePetGrowthBtn")?.addEventListener("click", () => changePetGrowthType());
+  document.getElementById("changeJobBtn")?.addEventListener("click", () => {
+    if (window.isExploring || currentEnemy) {
+      appendLog("探索中は職業変更できない！");
+      return;
+    }
+    openJobModal();
+  });
+  document.getElementById("jobWarriorBtn")?.addEventListener("click", () => applyJobChange(0));
+  document.getElementById("jobMageBtn")?.addEventListener("click", () => applyJobChange(1));
+  document.getElementById("jobTamerBtn")?.addEventListener("click", () => applyJobChange(2));
+  document.getElementById("changePetGrowthBtn")?.addEventListener("click", () => {
+    if (window.isExploring || currentEnemy) {
+      appendLog("探索中はペット成長タイプを変更できない！");
+      return;
+    }
+    changePetGrowthType();
+  });
 }
 
 function initPetGrowthModal() {
@@ -299,15 +378,12 @@ function initPetGrowthModal() {
 }
 
 // 探索・戦闘
-// 探索・戦闘
 function initExploreAndBattle() {
   // 探索開始・継続ボタン
   const exploreStartBtn = document.getElementById("exploreStartBtn");
   if (exploreStartBtn) {
     exploreStartBtn.addEventListener("click", () => {
-      // isExploring / exploringArea は game-core-3.js 側で定義しておく想定
       if (!window.isExploring) {
-        // 初回：このエリアで探索開始
         if (typeof getCurrentArea === "function") {
           window.exploringArea = getCurrentArea();
         } else {
@@ -318,14 +394,13 @@ function initExploreAndBattle() {
           appendLog(`${window.exploringArea} での探索を開始した`);
         }
       }
-      // 探索中：現在の探索エリアでイベント発生
       if (typeof doExploreEvent === "function") {
         doExploreEvent(window.exploringArea);
       }
     });
   }
 
-  // 「街へ戻る」ボタン（index.html 側に returnTownBtn を追加しておく）
+  // 「街へ戻る」ボタン
   const returnBtn = document.getElementById("returnTownBtn");
   if (returnBtn) {
     returnBtn.addEventListener("click", () => {
@@ -335,18 +410,21 @@ function initExploreAndBattle() {
         }
         return;
       }
-      window.isExploring = false;
+
+      window.isExploring   = false;
       window.exploringArea = null;
+
       if (typeof appendLog === "function") {
         appendLog("街へ戻った。探索を終了した。");
       }
+
       if (typeof updateDisplay === "function") {
         updateDisplay();
       }
     });
   }
 
-  // 通常攻撃・ボス・スキルなどはそのまま
+  // 通常攻撃・ボス・スキルなど
   document.getElementById("exploreBtn")?.addEventListener("click", () => playerAttack());
 
   const bossBtn = document.getElementById("bossStartBtn");
@@ -394,15 +472,49 @@ function initExploreAndBattle() {
 
 // ショップ
 function initShop() {
-  document.getElementById("shopBuyPotion")  ?.addEventListener("click", () => buyPotion("potion", 60));
-  document.getElementById("shopBuyHiPotion")?.addEventListener("click", () => buyPotion("hiPotion", 100));
-  document.getElementById("shopBuyMana")    ?.addEventListener("click", () => buyPotion("manaPotion", 80));
-  document.getElementById("shopBuyHiMana")  ?.addEventListener("click", () => buyPotion("hiManaPotion", 120));
-  document.getElementById("shopBuyBomb")    ?.addEventListener("click", () => buyPotion("bomb", 100));
+  document.getElementById("shopBuyPotion")  ?.addEventListener("click", () => {
+    if (window.isExploring || currentEnemy) {
+      appendLog("探索中はショップを利用できない！");
+      return;
+    }
+    buyPotion("potion", 60);
+  });
+  document.getElementById("shopBuyHiPotion")?.addEventListener("click", () => {
+    if (window.isExploring || currentEnemy) {
+      appendLog("探索中はショップを利用できない！");
+      return;
+    }
+    buyPotion("hiPotion", 100);
+  });
+  document.getElementById("shopBuyMana")?.addEventListener("click", () => {
+    if (window.isExploring || currentEnemy) {
+      appendLog("探索中はショップを利用できない！");
+      return;
+    }
+    buyPotion("manaPotion", 80);
+  });
+  document.getElementById("shopBuyHiMana")?.addEventListener("click", () => {
+    if (window.isExploring || currentEnemy) {
+      appendLog("探索中はショップを利用できない！");
+      return;
+    }
+    buyPotion("hiManaPotion", 120);
+  });
+  document.getElementById("shopBuyBomb")?.addEventListener("click", () => {
+    if (window.isExploring || currentEnemy) {
+      appendLog("探索中はショップを利用できない！");
+      return;
+    }
+    buyPotion("bomb", 100);
+  });
 
   const healBtn = document.getElementById("shopHealHP");
   if (healBtn) {
     healBtn.addEventListener("click", () => {
+      if (window.isExploring || currentEnemy) {
+        appendLog("探索中は宿屋を利用できない！");
+        return;
+      }
       const price = 80;
       if (money < price) {
         setLog("お金が足りない（宿屋 80G）");
@@ -461,6 +573,10 @@ function initMarket() {
   const sellRefresh = document.getElementById("marketSellRefreshBtn");
   if (sellRefresh) {
     sellRefresh.addEventListener("click", () => {
+      if (window.isExploring || currentEnemy) {
+        appendLog("探索中は市場を利用できない！");
+        return;
+      }
       if (typeof refreshMarketSellCandidates === "function") {
         refreshMarketSellCandidates();
       }
@@ -469,6 +585,10 @@ function initMarket() {
   const sellCat = document.getElementById("marketSellCategory");
   if (sellCat) {
     sellCat.addEventListener("change", () => {
+      if (window.isExploring || currentEnemy) {
+        appendLog("探索中は市場を利用できない！");
+        return;
+      }
       if (typeof refreshMarketSellItems === "function") {
         refreshMarketSellItems();
       }
@@ -477,6 +597,10 @@ function initMarket() {
   const sellBtn = document.getElementById("marketSellBtn");
   if (sellBtn) {
     sellBtn.addEventListener("click", () => {
+      if (window.isExploring || currentEnemy) {
+        appendLog("探索中は市場を利用できない！");
+        return;
+      }
       if (typeof doMarketSell === "function") {
         doMarketSell();
       }
@@ -486,6 +610,10 @@ function initMarket() {
   const buyRefresh = document.getElementById("marketBuyRefreshBtn");
   if (buyRefresh) {
     buyRefresh.addEventListener("click", () => {
+      if (window.isExploring || currentEnemy) {
+        appendLog("探索中は市場を利用できない！");
+        return;
+      }
       if (typeof refreshMarketBuyList === "function") {
         refreshMarketBuyList();
       }
@@ -494,6 +622,10 @@ function initMarket() {
   const catButtons = document.querySelectorAll(".market-cat-tab");
   catButtons.forEach(btn => {
     btn.addEventListener("click", () => {
+      if (window.isExploring || currentEnemy) {
+        appendLog("探索中は市場を利用できない！");
+        return;
+      }
       const cat = btn.dataset.cat || "all";
       if (typeof filterMarketBuyListByCategory === "function") {
         filterMarketBuyListByCategory(cat);
@@ -504,6 +636,10 @@ function initMarket() {
   const orderBtn = document.getElementById("marketOrderBtn");
   if (orderBtn) {
     orderBtn.addEventListener("click", () => {
+      if (window.isExploring || currentEnemy) {
+        appendLog("探索中は市場を利用できない！");
+        return;
+      }
       if (typeof doMarketOrder === "function") {
         doMarketOrder();
       }

@@ -626,4 +626,9 @@ function updateDisplay() {
   }
   updateBossButtonUI();
   refreshGatherFieldSelect();
+
+  // ★ 帰還ボタンの表示更新
+  if (typeof updateReturnTownButton === "function") {
+    updateReturnTownButton();
+  }
 }

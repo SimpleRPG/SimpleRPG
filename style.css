@@ -543,3 +543,9 @@ input[type="text"] {
 
 /* ペット専用要素は JS 側で display 切替 */
 .pet-only {}
+.btn-return {
+  background: linear-gradient(135deg, #444, #222);
+  border-color: rgba(200,200,200,0.9);
+  font-size: 11px;
+  padding: 3px 8px;
+}

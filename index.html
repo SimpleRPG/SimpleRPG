@@ -36,6 +36,7 @@
       防御力: <span id="defTotal">0</span><br>
     </div>
 
+    <!-- ペット情報（動物使い専用 UI） -->
     <div id="petInfo" class="pet-only">
       <hr>
       <p>
@@ -181,7 +182,7 @@
           ボスに挑む
         </button>
 
-        <div id="enemyStatusArea">
+        <div id="enemyStatusArea" style="display:none;">
           敵：<span id="enemyNameText">-</span>
           HP：<span id="enemyHpText">0</span> / <span id="enemyHpMaxText">0</span>
         </div>
@@ -198,7 +199,9 @@
           <button id="exploreStartBtn" class="btn-attack">
             探索する
           </button>
-
+          <button id="returnTownBtn" class="btn-return" style="display:none;">
+            街へ戻る
+          </button>
           <span id="exploreInfo" class="explore-help-text">
             行き先を選んで「探索する」を押すとイベントが発生します
           </span>
@@ -231,6 +234,7 @@
             </div>
 
             <div id="battlePetCol">
+              <!-- ペット用戦闘UIがあればここに -->
             </div>
           </div>
         </div>
@@ -354,7 +358,7 @@
         <p id="marketInfo" style="margin-top:8px; font-size:12px; color:#ccc;"></p>
       </div>
 
-      <!-- ステータス -->
+            <!-- ステータス -->
       <div id="pageStatus" class="tab-page">
         <h2>ステータス</h2>
 
@@ -406,8 +410,10 @@
           ポーション: Lv<span id="skCraftPotionLv">0</span>
         </div>
 
-        <h3>ペットステータス（動物使いのみ）</h3>
-        <div class="status-block">
+        <!-- ★ 見出しにも pet-only を付ける -->
+        <h3 class="pet-only">ペットステータス（動物使いのみ）</h3>
+        <!-- 一度も動物使いになっていない間は togglePetUI で非表示 -->
+        <div class="status-block pet-only">
           ペットLv: <span id="stPetLevel">1</span><br>
           ペット経験値: <span id="stPetExp">0</span> / <span id="stPetExpToNext">5</span><br>
           ペット転生回数: <span id="stPetRebirthCount">0</span><br>
@@ -423,6 +429,7 @@
 
     <div id="log"></div>
 
+    <!-- 職業選択モーダル -->
     <div id="jobModal">
       <div id="jobModalInner">
         <h3 id="jobModalTitle">最初の職業を選択</h3>
@@ -438,6 +445,7 @@
       </div>
     </div>
 
+    <!-- ペット成長タイプ変更モーダル -->
     <div id="petGrowthModal" style="display:none;">
       <div id="petGrowthModalInner">
         <h3>ペット成長タイプを変更</h3>
