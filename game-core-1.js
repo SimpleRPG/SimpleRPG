@@ -131,6 +131,12 @@ Object.keys(CRAFT_SKILLS_INIT).forEach(cat=>{
 
 let prevStats = { hp:null, mp:null, sp:null, money:null };
 
+// ▼▼▼ セレクトの「最後に選んだ値」を覚える用 ▼▼▼
+let lastSelectedGatherField    = null;
+let lastSelectedFieldPotionId  = null; // useItemSelect 用
+let lastSelectedBattlePotionId = null; // battleItemSelect 用
+// ▲▲▲ ここまで ▲▲▲
+
 // =======================
 // 共通UI
 // =======================
@@ -262,7 +268,7 @@ function checkGatherAreaUnlockBySkill(resourceKey) {
 function refreshGatherFieldSelect() {
   const sel = document.getElementById("gatherField");
   if (!sel) return;
-  const current = sel.value;
+  const prev = lastSelectedGatherField || sel.value;
 
   sel.innerHTML = "";
 
@@ -285,8 +291,9 @@ function refreshGatherFieldSelect() {
     sel.appendChild(f3);
   }
 
-  const hasCurrent = Array.from(sel.options).some(o => o.value === current);
-  sel.value = hasCurrent ? current : sel.options[0].value;
+  const hasCurrent = prev && Array.from(sel.options).some(o => o.value === prev);
+  sel.value = hasCurrent ? prev : (sel.options[0]?.value || "field1");
+  lastSelectedGatherField = sel.value;
 }
 
 let intermediateMats = {
@@ -384,14 +391,14 @@ function updateMaterialTexts() {
   const keys  = ["wood","ore","herb","cloth","leather","water"];
 
   const detailLines = keys.map(k => {
-  const m = materials[k];
-  const t1 = m.t1 || 0;
-  const t2 = m.t2 || 0;
-  const t3 = m.t3 || 0;
-  const t4 = m.t4 || 0;
-  const total = t1 + t2 + t3 + t4;
-  return `${names[k]}: 合計${total} (T1:${t1}/T2:${t2}/T3:${t3}/T4:${t4})`;
-});
+    const m = materials[k];
+    const t1 = m.t1 || 0;
+    const t2 = m.t2 || 0;
+    const t3 = m.t3 || 0;
+    const t4 = m.t4 || 0;
+    const total = t1 + t2 + t3 + t4;
+    return `${names[k]}: 合計${total} (T1:${t1}/T2:${t2}/T3:${t3}/T4:${t4})`;
+  });
 
   const detailText = detailLines.join("\n");
   const gDetail = document.getElementById("gatherMatDetail");
@@ -400,42 +407,68 @@ function updateMaterialTexts() {
   if (cDetail) cDetail.textContent = detailText;
 }
 
+// =======================
+// ポーション用セレクト（選択記憶付き）
+// =======================
+
 function refreshUseItemSelect() {
   const sel = document.getElementById("useItemSelect");
   if (!sel) return;
+
+  const prev = lastSelectedFieldPotionId || sel.value || "";
+
   sel.innerHTML = "";
   const none = document.createElement("option");
   none.value = "";
   none.textContent = "選択しない";
   sel.appendChild(none);
+
   potions.forEach(p => {
     if (p.type === POTION_TYPE_DAMAGE) return;
-    if (potionCounts[p.id] > 0) {
+    const cnt = potionCounts[p.id] || 0;
+    if (cnt > 0) {
       const opt = document.createElement("option");
       opt.value = p.id;
-      opt.textContent = `${p.name}（${potionCounts[p.id]}）`;
+      opt.textContent = `${p.name}（${cnt}）`;
       sel.appendChild(opt);
     }
   });
+
+  const hasPrev = prev && Array.from(sel.options).some(o => o.value === prev);
+  sel.value = hasPrev ? prev : "";
+  lastSelectedFieldPotionId = sel.value || null;
 }
 
 function refreshBattleItemSelect() {
   const sel = document.getElementById("battleItemSelect");
   if (!sel) return;
+
+  const prev = lastSelectedBattlePotionId || sel.value || "";
+
   sel.innerHTML = "";
   const none = document.createElement("option");
   none.value = "";
   none.textContent = "選択しない";
   sel.appendChild(none);
+
   potions.forEach(p => {
-    if (potionCounts[p.id] > 0) {
+    const cnt = potionCounts[p.id] || 0;
+    if (cnt > 0) {
       const opt = document.createElement("option");
       opt.value = p.id;
-      opt.textContent = `${p.name}（${potionCounts[p.id]}）`;
+      opt.textContent = `${p.name}（${cnt}）`;
       sel.appendChild(opt);
     }
   });
+
+  const hasPrev = prev && Array.from(sel.options).some(o => o.value === prev);
+  sel.value = hasPrev ? prev : "";
+  lastSelectedBattlePotionId = sel.value || null;
 }
+
+// =======================
+// 強化情報・スキルボタン
+// =======================
 
 function updateEnhanceInfo() {
   const info = document.getElementById("enhanceInfo");
@@ -499,6 +532,10 @@ function updateSkillButtonsByJob() {
     skillBtn.style.display = "inline-block";
   }
 }
+
+// =======================
+// 表示更新
+// =======================
 
 function updateDisplay() {
   recalcStats();
@@ -628,7 +665,7 @@ function updateDisplay() {
   updateBossButtonUI();
   refreshGatherFieldSelect();
 
-  // ★ 帰還ボタンの表示更新
+  // 帰還ボタンの表示更新
   if (typeof updateReturnTownButton === "function") {
     updateReturnTownButton();
   }

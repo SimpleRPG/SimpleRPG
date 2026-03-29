@@ -17,6 +17,10 @@ const areaBossAvailable = {
 window.isExploring   = false;      // 街にいる: false / どこか探索中: true
 window.exploringArea = "field";    // 現在探索しているエリアID
 
+// ポーション選択の記憶
+let lastSelectedFieldPotionId  = null;
+let lastSelectedBattlePotionId = null;
+
 // =======================
 // 状態異常・バフデバフ定義
 // =======================
@@ -145,11 +149,9 @@ const STATUS_EFFECTS = {
     baseDuration: 3,
     beforeAction(targetCtx, inst) {
       appendLog(`${targetCtx.name}は眠っていて動けない！`);
-      // 行動できないままターンを消費
       return false;
     },
     onDamaged(targetCtx, inst) {
-      // ダメージを受けたら即解除
       inst.remain = 0;
       appendLog(`${targetCtx.name}は目を覚ました！`);
     }
@@ -331,7 +333,6 @@ function onPlayerDamagedByEnemy() {
       def.onDamaged(ctx, inst);
     }
   }
-  // 残り0になったものを削除
   playerStatuses = playerStatuses.filter(s => s.remain > 0);
 }
 function onEnemyDamagedByPlayer() {
@@ -535,7 +536,6 @@ function startBattleCommon(enemy, isBoss) {
   enemyHp = enemy.hp;
   isBossBattle = !!isBoss;
 
-  // 戦闘開始時に敵の状態をリセット
   enemyStatuses = [];
 
   setBattleCommandVisible(true);
@@ -549,9 +549,8 @@ function endBattleCommon() {
   enemyHpMax = 0;
   isBossBattle = false;
 
-  // 戦闘終了時に双方の戦闘系状態をクリア（毒などはバトル中のみの想定）
   enemyStatuses = [];
-  playerStatuses = playerStatuses.filter(inst => false); // 全削除
+  playerStatuses = playerStatuses.filter(inst => false);
 
   setBattleCommandVisible(false);
   setExploreUIVisible(true);
@@ -572,18 +571,15 @@ function playerAttack(){
     return;
   }
 
-  // 行動前 状態異常チェック
   const pre = beforeActionPlayer();
   if (!pre.canAct) {
-    // 行動失敗でもターンは進む
-    enemyTurn();         // 敵ターン
+    enemyTurn();
     tickStatusesTurnEndForBoth();
     updateDisplay();
     return;
   }
 
-  // 命中判定（必要なら）
-  let hitRate = 0.95; // 基本命中率
+  let hitRate = 0.95;
   hitRate = modifyAccuracyForPlayer(hitRate);
   if (Math.random() > hitRate) {
     appendLog("あなたの攻撃は外れた！");
@@ -593,7 +589,6 @@ function playerAttack(){
     return;
   }
 
-  // ダメージ計算
   let baseDamage = Math.max(1, atkTotal - (currentEnemy.def || 0));
   baseDamage = applyAttackBuffsForPlayer(baseDamage);
   baseDamage = applyDefenseBuffsForEnemy(baseDamage);
@@ -619,28 +614,21 @@ function playerAttack(){
     return;
   }
 
-  // ペットターン（既存ロジック）
   doPetTurn();
   if (enemyHp <= 0) {
     return;
   }
 
-  // 敵行動
   enemyTurn();
-
-  // ターン終了時に状態異常のターンを進める
   tickStatusesTurnEndForBoth();
-
   updateDisplay();
 }
 
 function enemyTurn(){
   if (!currentEnemy) return;
 
-  // 行動前 状態異常チェック
   const pre = beforeActionEnemy();
   if (!pre.canAct) {
-    // 敵が動けなかった場合もターンは進んだ扱いなのでここで return
     updateDisplay();
     return;
   }
@@ -671,7 +659,6 @@ function enemyTurn(){
       hp = 0;
       appendLog("あなたは倒れてしまった…");
 
-      // 街に戻る＝探索終了
       window.isExploring   = false;
       window.exploringArea = "field";
 
@@ -839,21 +826,18 @@ function doExploreEvent(area){
 
   const roll = Math.random();
 
-  // 20% 何もなし
   if (roll < 0.2) {
     appendLog("何も見つからなかった…");
     updateReturnTownButton();
     return;
   }
 
-  // 20% ランダムイベント
   if (roll < 0.4) {
     doExploreRandomEvent(area);
     updateReturnTownButton();
     return;
   }
 
-  // 残り60% 戦闘
   const enemy = getRandomEnemyForArea(area);
   if (!enemy) {
     appendLog("敵データが見つからない");
@@ -864,14 +848,12 @@ function doExploreEvent(area){
   startNormalBattle(enemy);
 }
 
-// 探索ランダムイベント本体
 function doExploreRandomEvent(area) {
   const roll = Math.random();
 
   if (roll < 0.34) {
-    // 罠イベント
     const maxHp = hpMax || 1;
-    const damage = Math.max(1, Math.floor(maxHp * 0.05)); // 最大HPの5％
+    const damage = Math.max(1, Math.floor(maxHp * 0.05));
     hp = Math.max(0, hp - damage);
     appendLog("足元の罠が作動した！" + damage + "ダメージを受けた。");
 
@@ -879,7 +861,6 @@ function doExploreRandomEvent(area) {
       hp = 0;
       appendLog("あなたは罠で倒れてしまった…");
 
-      // 街に戻る＝探索終了
       window.isExploring   = false;
       window.exploringArea = "field";
 
@@ -949,9 +930,6 @@ function doExploreRandomEvent(area) {
     updateDisplay();
     return;
   } else if (roll < 0.67) {
-    // 宝箱イベント（エリアごとにGと素材ティアを変える）
-
-    // ゴールド範囲（エリア別）
     let goldMin = 5;
     let goldMax = 15;
 
@@ -969,8 +947,7 @@ function doExploreRandomEvent(area) {
     money = (money || 0) + goldGain;
     appendLog("小さな宝箱を見つけた！" + goldGain + "Gを手に入れた。");
 
-    // 素材ドロップ（1〜2個）
-    const dropCount = 1 + Math.floor(Math.random() * 2); // 1〜2個
+    const dropCount = 1 + Math.floor(Math.random() * 2);
     const baseKeys = ["wood","ore","herb","cloth","leather","water"];
     const baseNames = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
 
@@ -979,31 +956,26 @@ function doExploreRandomEvent(area) {
       const m = materials[matKey];
       if (!m) continue;
 
-      // エリアごとにメインティアを固定
       let tier = "t1";
       if (area === "field") {
-        // T1メイン、たまにT2
         tier = (Math.random() < 0.9) ? "t1" : "t2";
       } else if (area === "forest") {
-        // T2メイン、たまにT1/T3
         const r = Math.random();
         if      (r < 0.1) tier = "t1";
         else if (r < 0.9) tier = "t2";
         else              tier = "t3";
       } else if (area === "cave") {
-        // T3メイン、たまにT2/T4
         const r = Math.random();
         if      (r < 0.1) tier = "t2";
         else if (r < 0.9) tier = "t3";
         else              tier = "t4";
       } else if (area === "mine") {
-        // T4メイン、たまにT3
         tier = (Math.random() < 0.8) ? "t4" : "t3";
       }
 
       m[tier] = (m[tier] || 0) + 1;
 
-      const tierLabel = tier.toUpperCase(); // "T1"〜"T4"
+      const tierLabel = tier.toUpperCase();
       const name = baseNames[matKey] || matKey;
       appendLog(`宝箱の中から ${tierLabel}${name} を1つ手に入れた。`);
     }
@@ -1011,9 +983,8 @@ function doExploreRandomEvent(area) {
     updateDisplay();
     return;
   } else {
-    // 休憩イベント
     const maxHp = hpMax || 1;
-    const heal = Math.max(1, Math.floor(maxHp * 0.1)); // 最大HPの10％
+    const heal = Math.max(1, Math.floor(maxHp * 0.1));
     const beforeHp = hp;
     hp = Math.min(maxHp, hp + heal);
 
@@ -1044,7 +1015,6 @@ function tryEscape(){
   if(Math.random() < rate){
     appendLog("うまく逃げ切れた！");
     escapeFailBonus = 0;
-    // 逃走時はフィールドに留まる仕様なので isExploring はそのまま
     endBattleCommon();
   }else{
     appendLog("逃走失敗！");
@@ -1052,6 +1022,58 @@ function tryEscape(){
     enemyTurn();
     tickStatusesTurnEndForBoth();
   }
+}
+
+// =======================
+// アイテム用セレクト再描画（ポーション）
+// =======================
+
+function refreshUseItemSelect() {
+  const sel = document.getElementById("useItemSelect");
+  if (!sel) return;
+
+  const prev = lastSelectedFieldPotionId || sel.value || null;
+
+  sel.innerHTML = "";
+
+  for (const p of potions) {
+    const cnt = potionCounts[p.id] || 0;
+    if (cnt <= 0) continue;
+    const opt = document.createElement("option");
+    opt.value = p.id;
+    opt.textContent = `${p.name}（${cnt}）`;
+    sel.appendChild(opt);
+  }
+
+  if (prev && Array.from(sel.options).some(o => o.value === prev)) {
+    sel.value = prev;
+  }
+
+  lastSelectedFieldPotionId = sel.value || null;
+}
+
+function refreshBattleItemSelect() {
+  const sel = document.getElementById("battleItemSelect");
+  if (!sel) return;
+
+  const prev = lastSelectedBattlePotionId || sel.value || null;
+
+  sel.innerHTML = "";
+
+  for (const p of potions) {
+    const cnt = potionCounts[p.id] || 0;
+    if (cnt <= 0) continue;
+    const opt = document.createElement("option");
+    opt.value = p.id;
+    opt.textContent = `${p.name}（${cnt}）`;
+    sel.appendChild(opt);
+  }
+
+  if (prev && Array.from(sel.options).some(o => o.value === prev)) {
+    sel.value = prev;
+  }
+
+  lastSelectedBattlePotionId = sel.value || null;
 }
 
 // =======================
@@ -1069,8 +1091,11 @@ function usePotionOutsideBattle(){
   if(!p){ appendLog("そのアイテムは存在しない"); return; }
   if(potionCounts[id]<=0){
     appendLog("そのアイテムを持っていない");
+    refreshUseItemSelect();
     return;
   }
+
+  lastSelectedFieldPotionId = id;
 
   const prevHp = hp;
   const prevMp = mp;
@@ -1090,6 +1115,7 @@ function usePotionOutsideBattle(){
     appendLog(`${p.name} を使用した（HP ${prevHp} → ${hp}、+${healedHp} / MP ${prevMp} → ${mp}、+${healedMp}）`);
   }
 
+  refreshUseItemSelect();
   updateDisplay();
 }
 
@@ -1104,8 +1130,11 @@ function useBattleItem(){
   if(!p){ appendLog("そのアイテムは存在しない"); return; }
   if(potionCounts[id]<=0){
     appendLog("そのアイテムを持っていない");
+    refreshBattleItemSelect();
     return;
   }
+
+  lastSelectedBattlePotionId = id;
 
   const prevHp = hp;
   const prevMp = mp;
@@ -1124,6 +1153,8 @@ function useBattleItem(){
     const healedMp = mp - prevMp;
     appendLog(`戦闘中に ${p.name} を使用した（HP ${prevHp} → ${hp}、+${healedHp} / MP ${prevMp} → ${mp}、+${healedMp}）`);
   }
+
+  refreshBattleItemSelect();
 
   if(currentEnemy){
     enemyTurn();
@@ -1217,6 +1248,13 @@ function initGame() {
 
   if (typeof refreshExploreAreaSelect === "function") {
     refreshExploreAreaSelect();
+  }
+
+  if (typeof refreshUseItemSelect === "function") {
+    refreshUseItemSelect();
+  }
+  if (typeof refreshBattleItemSelect === "function") {
+    refreshBattleItemSelect();
   }
 
   updateDisplay();
