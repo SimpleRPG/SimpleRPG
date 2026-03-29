@@ -32,12 +32,12 @@ const BASE_EXP_PER_BATTLE = 25;
 
 // 素材（tier別カウント）
 const materials = {
-  wood:    { t1: 0, t2: 0, t3: 0 },
-  ore:     { t1: 0, t2: 0, t3: 0 },
-  herb:    { t1: 0, t2: 0, t3: 0 },
-  cloth:   { t1: 0, t2: 0, t3: 0 },
-  leather: { t1: 0, t2: 0, t3: 0 },
-  water:   { t1: 0, t2: 0, t3: 0 }
+  wood:    { t1: 0, t2: 0, t3: 0, t4: 0 },
+  ore:     { t1: 0, t2: 0, t3: 0, t4: 0 },
+  herb:    { t1: 0, t2: 0, t3: 0, t4: 0 },
+  cloth:   { t1: 0, t2: 0, t3: 0, t4: 0 },
+  leather: { t1: 0, t2: 0, t3: 0, t4: 0 },
+  water:   { t1: 0, t2: 0, t3: 0, t4: 0 }
 };
 
 // 互換用の合計getter
@@ -384,13 +384,14 @@ function updateMaterialTexts() {
   const keys  = ["wood","ore","herb","cloth","leather","water"];
 
   const detailLines = keys.map(k => {
-    const m = materials[k];
-    const t1 = m.t1 || 0;
-    const t2 = m.t2 || 0;
-    const t3 = m.t3 || 0;
-    const total = t1 + t2 + t3;
-    return `${names[k]}: 合計${total} (T1:${t1}/T2:${t2}/T3:${t3})`;
-  });
+  const m = materials[k];
+  const t1 = m.t1 || 0;
+  const t2 = m.t2 || 0;
+  const t3 = m.t3 || 0;
+  const t4 = m.t4 || 0;
+  const total = t1 + t2 + t3 + t4;
+  return `${names[k]}: 合計${total} (T1:${t1}/T2:${t2}/T3:${t3}/T4:${t4})`;
+});
 
   const detailText = detailLines.join("\n");
   const gDetail = document.getElementById("gatherMatDetail");

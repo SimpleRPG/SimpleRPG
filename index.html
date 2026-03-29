@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>しんぷるRPG</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div id="appRoot">
@@ -20,414 +20,424 @@
       <button id="tabStatus"  class="tab-button">ステータス</button>
     </div>
 
-    <div id="statusBar">
-      HP: <span id="hp">30</span>/<span id="hpMax">30</span>
-      MP: <span id="mp">10</span>/<span id="mpMax">10</span>
-      SP: <span id="sp">10</span>/<span id="spMax">10</span>
-      所持金: <span id="money">0</span>
-      <button id="toggleDetailBtn">▼詳細</button>
-    </div>
-
-    <div id="detailPanel" style="display:none;">
-      職業: <span id="jobName">未設定</span><br>
-      装備中武器: <span id="equippedWeaponName">なし</span>,
-      装備中防具: <span id="equippedArmorName">なし</span><br>
-      攻撃力: <span id="atkTotal">0</span>,
-      防御力: <span id="defTotal">0</span><br>
-    </div>
-
-    <!-- ペット情報（動物使い専用 UI） -->
-    <div id="petInfo" class="pet-only">
-      <hr>
-      <p>
-        ペットLv: <span id="petLevel">1</span>
-        / HP: <span id="petHp">10</span> / <span id="petHpMax">10</span>
-      </p>
-    </div>
-
-    <div id="mainArea">
-      <!-- 採取 -->
-      <div id="pageGather" class="tab-page active">
-        <h2>採取</h2>
-        <p>採取対象を選んで採取（待ち時間なし）。</p>
-
-        <label class="text-caption">フィールド:</label>
-        <select id="gatherField">
-          <option value="field1">近郊の原っぱ(T1のみ)</option>
-          <option value="field2">星降りの丘(T1多/T2少)</option>
-          <option value="field3">翠風の谷(T1/T2/T3)</option>
-        </select>
-
-        <select id="gatherTarget">
-          <option value="wood">木</option>
-          <option value="ore">鉱石</option>
-          <option value="herb">草</option>
-          <option value="cloth">布</option>
-          <option value="leather">皮</option>
-          <option value="water">水</option>
-        </select>
-        <button id="gather">採取</button>
-
-        <div style="display:flex; align-items:center; gap:4px; margin-top:4px;">
-          <p id="gatherMaterials" style="flex:1;">
-            所持素材：木0 / 鉱石0 / 草0 / 布0 / 皮0 / 水0
-          </p>
-          <button id="toggleMatDetailBtn" style="font-size:11px; padding:2px 6px;">
-            詳細▼
-          </button>
-        </div>
-        <pre id="gatherMatDetail" style="display:none; font-size:11px; margin:2px 0 0;"></pre>
+    <!-- PC/スマホ共通レイアウトの本体 -->
+    <div id="layoutBody">
+      <!-- ★ ステータスバーを layoutBody 直下に移動 ★ -->
+      <div id="statusBar">
+        HP: <span id="hp">30</span>/<span id="hpMax">30</span>
+        MP: <span id="mp">10</span>/<span id="mpMax">10</span>
+        SP: <span id="sp">10</span>/<span id="spMax">10</span>
+        所持金: <span id="money">0</span>
+        <button id="toggleDetailBtn">▼詳細</button>
       </div>
 
-      <!-- クラフト -->
-      <div id="pageCraft" class="tab-page">
-        <h2>クラフト</h2>
+      <!-- 左カラム: メインタブ（ゲーム画面） -->
+      <div id="mainColumn">
+        <div id="mainArea">
+          <!-- 採取 -->
+          <div id="pageGather" class="tab-page active">
+            <h2>採取</h2>
+            <p>採取対象を選んで採取（待ち時間なし）。</p>
 
-        <div style="display:flex; align-items:center; gap:4px;">
-          <p id="craftMaterials" style="flex:1;">
-            所持素材：木0 / 鉱石0 / 草0 / 布0 / 皮0 / 水0
-          </p>
-          <button id="toggleMatDetailBtn2" style="font-size:11px; padding:2px 6px;">
-            詳細▼
-          </button>
-        </div>
-        <pre id="craftMatDetail" style="display:none; font-size:11px; margin:2px 0 0;"></pre>
-
-        <!-- クラフトカテゴリタブ -->
-        <div id="craftCategoryTabs" style="margin:4px 0;">
-          <button class="craft-cat-tab active" data-cat="weapon">武器</button>
-          <button class="craft-cat-tab" data-cat="armor">防具</button>
-          <button class="craft-cat-tab" data-cat="potion">ポーション</button>
-          <button class="craft-cat-tab" data-cat="tool">道具</button>
-          <button class="craft-cat-tab" data-cat="material">素材</button>
-        </div>
-
-        <!-- ティア選択 -->
-        <div id="craftTierRow" style="margin:4px 0;">
-          <label style="font-size:12px;">ティア:</label>
-          <select id="craftTierSelect">
-            <option value="all">すべて</option>
-            <option value="T1">T1</option>
-            <option value="T2">T2</option>
-            <option value="T3">T3</option>
-          </select>
-        </div>
-
-        <!-- カテゴリ別パネル -->
-        <div id="craftPanelWeapon" class="craft-panel">
-          <h3>武器クラフト</h3>
-          <select id="weaponSelect"></select>
-          <button id="craftWeaponBtn">武器を作る</button>
-        </div>
-
-        <div id="craftPanelArmor" class="craft-panel" style="display:none;">
-          <h3>防具クラフト</h3>
-          <select id="armorSelect"></select>
-          <button id="craftArmorBtn">防具を作る</button>
-        </div>
-
-        <div id="craftPanelPotion" class="craft-panel" style="display:none;">
-          <h3>ポーションクラフト</h3>
-          <select id="potionSelect"></select>
-          <button id="craftPotionBtn">ポーションを作る</button>
-        </div>
-
-        <div id="craftPanelTool" class="craft-panel" style="display:none;">
-          <h3>道具クラフト</h3>
-          <select id="toolSelect"></select>
-          <button id="craftToolBtn">道具を作る</button>
-        </div>
-
-        <div id="craftPanelMaterial" class="craft-panel" style="display:none;">
-          <h3>素材（中間素材）クラフト</h3>
-          <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
-            <label style="font-size:12px;">中間素材:</label>
-            <select id="intermediateSelect" style="flex:1;"></select>
-            <button id="craftIntermediateBtn">作る</button>
-          </div>
-          <div id="intermediateInfo" style="font-size:11px; color:#ccc;">
-            素材から板材・インゴットなどを作成します。
-          </div>
-        </div>
-
-        <!-- 選んだレシピの必要素材表示 -->
-        <div id="craftCostInfo" style="font-size:11px; margin-top:4px; color:#ccc;">
-          必要素材：-
-        </div>
-      </div>
-
-      <!-- 装備 -->
-      <div id="pageEquip" class="tab-page">
-        <h2>装備</h2>
-
-        <h3>武器を装備</h3>
-        <select id="weaponEquipSelect"></select>
-        <button id="equipWeaponBtn">装備</button>
-
-        <h3>防具を装備</h3>
-        <select id="armorEquipSelect"></select>
-        <button id="equipArmorBtn">装備</button>
-
-        <h3>装備強化</h3>
-        <p id="enhanceInfo">装備中の武器・防具を強化します。</p>
-        <button id="enhanceWeaponBtn">武器を強化</button>
-        <button id="enhanceArmorBtn">防具を強化</button>
-      </div>
-
-      <!-- 探索 / 戦闘 -->
-      <div id="pageExplore" class="tab-page">
-        <h2>探索 / 戦闘</h2>
-
-        <button id="bossStartBtn" class="btn-attack" style="display:none;">
-          ボスに挑む
-        </button>
-
-        <div id="enemyStatusArea" style="display:none;">
-          敵：<span id="enemyNameText">-</span>
-          HP：<span id="enemyHpText">0</span> / <span id="enemyHpMaxText">0</span>
-        </div>
-
-        <div class="explore-header-row">
-          <span class="label">行き先:</span>
-          <select id="exploreTarget">
-            <option value="field">草原（敵弱い・素材ほぼ出ない）</option>
-            <option value="forest">森（敵やや強い・草/木が少し出る）</option>
-            <option value="cave">洞窟（敵強い・素材少し）</option>
-            <option value="mine">廃鉱山（敵かなり強い・鉱石/皮レア）</option>
-          </select>
-
-          <button id="exploreStartBtn" class="btn-attack">
-            探索する
-          </button>
-          <button id="returnTownBtn" class="btn-return" style="display:none;">
-            街へ戻る
-          </button>
-          <span id="exploreInfo" class="explore-help-text">
-            行き先を選んで「探索する」を押すとイベントが発生します
-          </span>
-        </div>
-
-        <div id="battleCommandArea" style="display:none;">
-          <div id="battleButtons">
-            <div id="battleMainCol">
-              <button id="exploreBtn" class="btn-attack btn-main">攻撃</button>
-
-              <div id="magicBlock">
-                <label style="font-size:11px;">魔法:</label><br>
-                <select id="magicSelect"></select>
-                <button id="castMagicBtn" class="btn-magic">魔法を使う</button>
-              </div>
-
-              <div id="skillBlock">
-                <label style="font-size:11px;">武技:</label><br>
-                <select id="skillSelect"></select>
-                <button id="useSkillBtn" class="btn-skill">武技を使う</button>
-              </div>
-
-              <div>
-                <label style="font-size:11px;">戦闘アイテム:</label><br>
-                <select id="battleItemSelect"></select>
-                <button id="useBattleItemBtn" class="btn-item">戦闘で使う</button>
-              </div>
-
-              <button id="escapeBtn" style="margin-top:4px;">逃走する</button>
-            </div>
-
-            <div id="battlePetCol">
-              <!-- ペット用戦闘UIがあればここに -->
-            </div>
-          </div>
-        </div>
-
-        <div class="field-item-row">
-          <span class="label">フィールドで使うアイテム:</span>
-          <select id="useItemSelect"></select>
-          <button id="useItemBtn">使う</button>
-        </div>
-      </div>
-
-      <!-- ショップ -->
-      <div id="pageShop" class="tab-page">
-        <h2>ショップ</h2>
-        <p>ポーションや爆弾を購入できます。</p>
-
-        <div>
-          <button id="shopBuyPotion">ポーション(60G)</button>
-          <button id="shopBuyHiPotion">ハイポーション(100G)</button>
-          <button id="shopBuyMana">マナポーション(80G)</button>
-          <button id="shopBuyHiMana">ハイマナポーション(120G)</button>
-          <button id="shopBuyBomb">爆弾(100G)</button>
-        </div>
-
-        <hr>
-
-        <button id="shopHealHP">宿屋で休む(80G)</button>
-      </div>
-
-      <!-- 市場 -->
-      <div id="pageMarket" class="tab-page">
-        <h2>市場</h2>
-
-        <div style="margin-bottom:8px;">
-          <button id="marketTabSell" class="market-main-tab active">出品</button>
-          <button id="marketTabBuy"  class="market-main-tab">購入</button>
-        </div>
-
-        <div id="marketSellPanel">
-          <h3>出品する</h3>
-
-          <div style="margin-bottom:4px;">
-            <button id="marketSellRefreshBtn">出品候補を更新</button>
-          </div>
-
-          <div style="margin-bottom:4px;">
-            <label>カテゴリ:</label>
-            <select id="marketSellCategory">
-              <option value="weapon">武器</option>
-              <option value="armor">防具</option>
-              <option value="potion">ポーション</option>
-              <option value="material">素材</option>
+            <label class="text-caption">フィールド:</label>
+            <select id="gatherField">
+              <option value="field1">近郊の原っぱ(T1のみ)</option>
+              <option value="field2">星降りの丘(T1多/T2少)</option>
+              <option value="field3">翠風の谷(T1/T2/T3)</option>
             </select>
+
+            <select id="gatherTarget">
+              <option value="wood">木</option>
+              <option value="ore">鉱石</option>
+              <option value="herb">草</option>
+              <option value="cloth">布</option>
+              <option value="leather">皮</option>
+              <option value="water">水</option>
+            </select>
+            <button id="gather">採取</button>
+
+            <div style="display:flex; align-items:center; gap:4px; margin-top:4px;">
+              <p id="gatherMaterials" style="flex:1;">
+                所持素材：木0 / 鉱石0 / 草0 / 布0 / 皮0 / 水0
+              </p>
+              <button id="toggleMatDetailBtn" style="font-size:11px; padding:2px 6px;">
+                詳細▼
+              </button>
+            </div>
+            <pre id="gatherMatDetail" style="display:none; font-size:11px; margin:2px 0 0;"></pre>
           </div>
 
-          <div style="margin-bottom:4px;">
-            <label>アイテム:</label>
-            <select id="marketSellItem"></select>
+          <!-- クラフト -->
+          <div id="pageCraft" class="tab-page">
+            <h2>クラフト</h2>
+
+            <div style="display:flex; align-items:center; gap:4px;">
+              <p id="craftMaterials" style="flex:1;">
+                所持素材：木0 / 鉱石0 / 草0 / 布0 / 皮0 / 水0
+              </p>
+              <button id="toggleMatDetailBtn2" style="font-size:11px; padding:2px 6px;">
+                詳細▼
+              </button>
+            </div>
+            <pre id="craftMatDetail" style="display:none; font-size:11px; margin:2px 0 0;"></pre>
+
+            <!-- クラフトカテゴリタブ -->
+            <div id="craftCategoryTabs" style="margin:4px 0;">
+              <button class="craft-cat-tab active" data-cat="weapon">武器</button>
+              <button class="craft-cat-tab" data-cat="armor">防具</button>
+              <button class="craft-cat-tab" data-cat="potion">ポーション</button>
+              <button class="craft-cat-tab" data-cat="tool">道具</button>
+              <button class="craft-cat-tab" data-cat="material">素材</button>
+            </div>
+
+            <!-- ティア選択 -->
+            <div id="craftTierRow" style="margin:4px 0;">
+              <label style="font-size:12px;">ティア:</label>
+              <select id="craftTierSelect">
+                <option value="all">すべて</option>
+                <option value="T1">T1</option>
+                <option value="T2">T2</option>
+                <option value="T3">T3</option>
+              </select>
+            </div>
+
+            <!-- カテゴリ別パネル -->
+            <div id="craftPanelWeapon" class="craft-panel">
+              <h3>武器クラフト</h3>
+              <select id="weaponSelect"></select>
+              <button id="craftWeaponBtn">武器を作る</button>
+            </div>
+
+            <div id="craftPanelArmor" class="craft-panel" style="display:none;">
+              <h3>防具クラフト</h3>
+              <select id="armorSelect"></select>
+              <button id="craftArmorBtn">防具を作る</button>
+            </div>
+
+            <div id="craftPanelPotion" class="craft-panel" style="display:none;">
+              <h3>ポーションクラフト</h3>
+              <select id="potionSelect"></select>
+              <button id="craftPotionBtn">ポーションを作る</button>
+            </div>
+
+            <div id="craftPanelTool" class="craft-panel" style="display:none;">
+              <h3>道具クラフト</h3>
+              <select id="toolSelect"></select>
+              <button id="craftToolBtn">道具を作る</button>
+            </div>
+
+            <div id="craftPanelMaterial" class="craft-panel" style="display:none;">
+              <h3>素材（中間素材）クラフト</h3>
+              <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
+                <label style="font-size:12px;">中間素材:</label>
+                <select id="intermediateSelect" style="flex:1;"></select>
+                <button id="craftIntermediateBtn">作る</button>
+              </div>
+              <div id="intermediateInfo" style="font-size:11px; color:#ccc;">
+                素材から板材・インゴットなどを作成します。
+              </div>
+            </div>
+
+            <div id="craftCostInfo" style="font-size:11px; margin-top:4px; color:#ccc;">
+              必要素材：-
+            </div>
           </div>
 
-          <div style="margin-bottom:4px;">
-            <label>個数:</label>
-            <input id="marketSellAmount" type="number" value="1" min="1" style="width:60px;">
+          <!-- 装備 -->
+          <div id="pageEquip" class="tab-page">
+            <h2>装備</h2>
+
+            <h3>武器を装備</h3>
+            <select id="weaponEquipSelect"></select>
+            <button id="equipWeaponBtn">装備</button>
+
+            <h3>防具を装備</h3>
+            <select id="armorEquipSelect"></select>
+            <button id="equipArmorBtn">装備</button>
+
+            <h3>装備強化</h3>
+            <p id="enhanceInfo">装備中の武器・防具を強化します。</p>
+            <button id="enhanceWeaponBtn">武器を強化</button>
+            <button id="enhanceArmorBtn">防具を強化</button>
           </div>
 
-          <div style="margin-bottom:4px;">
-            <label>価格(1個あたり):</label>
-            <input id="marketSellPrice" type="number" value="10" min="1" style="width:80px;">
+          <!-- 探索 / 戦闘 -->
+          <div id="pageExplore" class="tab-page">
+            <h2>探索 / 戦闘</h2>
+
+            <button id="bossStartBtn" class="btn-attack" style="display:none;">
+              ボスに挑む
+            </button>
+
+            <div id="enemyStatusArea" style="display:none;">
+              敵：<span id="enemyNameText">-</span>
+              HP：<span id="enemyHpText">0</span> / <span id="enemyHpMaxText">0</span>
+            </div>
+
+            <div class="explore-header-row">
+              <span class="label">行き先:</span>
+              <select id="exploreTarget">
+                <option value="field">草原（敵弱い・素材ほぼ出ない）</option>
+                <option value="forest">森（敵やや強い・草/木が少し出る）</option>
+                <option value="cave">洞窟（敵強い・素材少し）</option>
+                <option value="mine">廃鉱山（敵かなり強い・鉱石/皮レア）</option>
+              </select>
+
+              <button id="exploreStartBtn" class="btn-attack">
+                探索する
+              </button>
+              <button id="returnTownBtn" class="btn-return" style="display:none;">
+                街へ戻る
+              </button>
+              <span id="exploreInfo" class="explore-help-text">
+                行き先を選んで「探索する」を押すとイベントが発生します
+              </span>
+            </div>
+
+            <div id="battleCommandArea" style="display:none;">
+              <div id="battleButtons">
+                <div id="battleMainCol">
+                  <button id="exploreBtn" class="btn-attack btn-main">攻撃</button>
+
+                  <div id="magicBlock">
+                    <label style="font-size:11px;">魔法:</label><br>
+                    <select id="magicSelect"></select>
+                    <button id="castMagicBtn" class="btn-magic">魔法を使う</button>
+                  </div>
+
+                  <div id="skillBlock">
+                    <label style="font-size:11px;">武技:</label><br>
+                    <select id="skillSelect"></select>
+                    <button id="useSkillBtn" class="btn-skill">武技を使う</button>
+                  </div>
+
+                  <div>
+                    <label style="font-size:11px;">戦闘アイテム:</label><br>
+                    <select id="battleItemSelect"></select>
+                    <button id="useBattleItemBtn" class="btn-item">戦闘で使う</button>
+                  </div>
+
+                  <button id="escapeBtn" style="margin-top:4px;">逃走する</button>
+                </div>
+
+                <div id="battlePetCol">
+                  <!-- ペット用戦闘UIがあればここに -->
+                </div>
+              </div>
+            </div>
+
+            <div class="field-item-row">
+              <span class="label">フィールドで使うアイテム:</span>
+              <select id="useItemSelect"></select>
+              <button id="useItemBtn">使う</button>
+            </div>
           </div>
 
-          <button id="marketSellBtn">出品する</button>
-        </div>
+          <!-- ショップ -->
+<div id="pageShop" class="tab-page">
+  <h2>ショップ</h2>
+  <p>消耗品やサービスを購入できます。</p>
 
-        <div id="marketBuyPanel" style="display:none; margin-top:12px;">
-          <h3>購入 / 買い注文</h3>
+  <p>所持ゴールド: <span id="shopGoldDisplay">0</span>G</p>
 
-          <div style="margin-bottom:8px;">
-            <button id="marketSubTabPurchase" class="market-sub-tab active">出品一覧</button>
-            <button id="marketSubTabOrders"   class="market-sub-tab">買い注文</button>
+  <div id="shopCategoryTabs">
+    <button class="shop-category-button" data-category="item">消耗品</button>
+    <button class="shop-category-button" data-category="service">サービス</button>
+  </div>
+
+  <div id="shopItemList"></div>
+
+  <div id="shopItemDetail" style="margin-top: 8px; border-top: 1px solid #888; padding-top: 8px;">
+    <p id="shopItemName">商品を選択してください。</p>
+    <p id="shopItemDesc"></p>
+    <p id="shopItemPrice"></p>
+    <button id="shopBuyButton" disabled>購入する</button>
+  </div>
+</div>
+
+          <!-- 市場 -->
+          <div id="pageMarket" class="tab-page">
+            <h2>市場</h2>
+
+            <div style="margin-bottom:8px;">
+              <button id="marketTabSell" class="market-main-tab active">出品</button>
+              <button id="marketTabBuy"  class="market-main-tab">購入</button>
+            </div>
+
+            <div id="marketSellPanel">
+              <h3>出品する</h3>
+
+              <div style="margin-bottom:4px;">
+                <button id="marketSellRefreshBtn">出品候補を更新</button>
+              </div>
+
+              <div style="margin-bottom:4px;">
+                <label>カテゴリ:</label>
+                <select id="marketSellCategory">
+                  <option value="weapon">武器</option>
+                  <option value="armor">防具</option>
+                  <option value="potion">ポーション</option>
+                  <option value="material">素材</option>
+                </select>
+              </div>
+
+              <div style="margin-bottom:4px;">
+                <label>アイテム:</label>
+                <select id="marketSellItem"></select>
+              </div>
+
+              <div style="margin-bottom:4px;">
+                <label>個数:</label>
+                <input id="marketSellAmount" type="number" value="1" min="1" style="width:60px;">
+              </div>
+
+              <div style="margin-bottom:4px;">
+                <label>価格(1個あたり):</label>
+                <input id="marketSellPrice" type="number" value="10" min="1" style="width:80px;">
+              </div>
+
+              <button id="marketSellBtn">出品する</button>
+            </div>
+
+            <div id="marketBuyPanel" style="display:none; margin-top:12px;">
+              <h3>購入 / 買い注文</h3>
+
+              <div style="margin-bottom:8px;">
+                <button id="marketSubTabPurchase" class="market-sub-tab active">出品一覧</button>
+                <button id="marketSubTabOrders"   class="market-sub-tab">買い注文</button>
+              </div>
+
+              <div id="marketSubPagePurchase" class="market-sub-page active">
+                <div style="margin-bottom:4px;">
+                  <button id="marketBuyRefreshBtn">出品更新</button>
+                </div>
+
+                <div style="margin-bottom:4px;">
+                  <button class="market-cat-tab active" data-cat="all">すべて</button>
+                  <button class="market-cat-tab" data-cat="weapon">武器</button>
+                  <button class="market-cat-tab" data-cat="armor">防具</button>
+                  <button class="market-cat-tab" data-cat="potion">ポーション</button>
+                  <button class="market-cat-tab" data-cat="material">素材</button>
+                </div>
+
+                <div id="marketBuyListContainer">
+                </div>
+              </div>
+
+              <div id="marketSubPageOrders" class="market-sub-page" style="display:none;">
+                <h4>買い注文を出す</h4>
+                <div style="margin-bottom:4px;">
+                  <label>アイテム:</label>
+                  <select id="marketOrderItem"></select>
+                </div>
+                <div style="margin-bottom:4px;">
+                  <label>価格(1個あたり):</label>
+                  <input id="marketOrderPrice" type="number" value="10" min="1" style="width:80px;">
+                </div>
+                <div style="margin-bottom:4px;">
+                  <label>個数:</label>
+                  <input id="marketOrderAmount" type="number" value="1" min="1" style="width:60px;">
+                </div>
+                <button id="marketOrderBtn">買い注文を出す</button>
+
+                <h4 style="margin-top:8px;">現在の買い注文</h4>
+                <div id="marketOrderList">
+                </div>
+              </div>
+            </div>
+
+            <p id="marketInfo" style="margin-top:8px; font-size:12px; color:#ccc;"></p>
           </div>
 
-          <div id="marketSubPagePurchase" class="market-sub-page active">
-            <div style="margin-bottom:4px;">
-              <button id="marketBuyRefreshBtn">出品更新</button>
+          <!-- ステータス（タブページとしても残す） -->
+          <div id="pageStatus" class="tab-page">
+            <h2>ステータス</h2>
+
+            <div class="status-block">
+              レベル: <span id="stLevel">1</span><br>
+              経験値: <span id="stExp">0</span> / <span id="stExpToNext">100</span><br>
+              転生回数: <span id="stRebirthCount">0</span><br>
+              成長タイプ: <span id="stGrowthType">バランス型</span><br>
+              職業:
+              <span id="stJobName">未設定</span>
+              <button id="changeJobBtn" style="margin-left:4px; font-size:11px; padding:1px 6px;">
+                職業を変更
+              </button>
             </div>
 
-            <div style="margin-bottom:4px;">
-              <button class="market-cat-tab active" data-cat="all">すべて</button>
-              <button class="market-cat-tab" data-cat="weapon">武器</button>
-              <button class="market-cat-tab" data-cat="armor">防具</button>
-              <button class="market-cat-tab" data-cat="potion">ポーション</button>
-              <button class="market-cat-tab" data-cat="material">素材</button>
+            <div class="status-block">
+              STR: <span id="stSTR">1</span>,
+              VIT: <span id="stVIT">1</span>,
+              INT: <span id="stINT">1</span>,
+              DEX: <span id="stDEX">1</span>,
+              LUK: <span id="stLUK">1</span><br>
+              攻撃力: <span id="stAtkTotal">0</span>,
+              防御力: <span id="stDefTotal">0</span><br>
+              最大HP: <span id="stHpMax">30</span>,
+              最大MP: <span id="stMpMax">10</span>,
+              最大SP: <span id="stSpMax">10</span>
             </div>
 
-            <div id="marketBuyListContainer">
+            <h3>転生</h3>
+            <div class="status-block">
+              Lv10以上で転生できます。転生するとLv1に戻りますが、ステータスにボーナスが付きます。<br>
+              <button id="rebirthBtn">転生する</button>
+            </div>
+
+            <h3>採取スキル</h3>
+            <div id="gatherSkillBox" class="status-block">
+              木: Lv<span id="skGatherWoodLv">0</span>,
+              鉱石: Lv<span id="skGatherOreLv">0</span>,
+              草: Lv<span id="skGatherHerbLv">0</span><br>
+              布: Lv<span id="skGatherClothLv">0</span>,
+              皮: Lv<span id="skGatherLeatherLv">0</span>,
+              水: Lv<span id="skGatherWaterLv">0</span>
+            </div>
+
+            <h3>クラフトスキル</h3>
+            <div id="craftSkillBox" class="status-block">
+              武器: Lv<span id="skCraftWeaponLv">0</span>,
+              防具: Lv<span id="skCraftArmorLv">0</span>,
+              ポーション: Lv<span id="skCraftPotionLv">0</span>
+            </div>
+
+            <h3 class="pet-only">ペットステータス（動物使いのみ）</h3>
+            <div class="status-block pet-only">
+              ペットLv: <span id="stPetLevel">1</span><br>
+              ペット経験値: <span id="stPetExp">0</span> / <span id="stPetExpToNext">5</span><br>
+              ペット転生回数: <span id="stPetRebirthCount">0</span><br>
+              成長タイプ: <span id="stPetGrowthType">バランス型</span><br>
+              ペットHP: <span id="stPetHp">10</span> / <span id="stPetHpMax">10</span>
+            </div>
+
+            <div class="status-block">
+              <button id="changePetGrowthBtn" class="pet-only">ペット成長タイプを変更</button>
             </div>
           </div>
+        </div><!-- /#mainArea -->
+      </div><!-- /#mainColumn -->
 
-          <div id="marketSubPageOrders" class="market-sub-page" style="display:none;">
-            <h4>買い注文を出す</h4>
-            <div style="margin-bottom:4px;">
-              <label>アイテム:</label>
-              <select id="marketOrderItem"></select>
-            </div>
-            <div style="margin-bottom:4px;">
-              <label>価格(1個あたり):</label>
-              <input id="marketOrderPrice" type="number" value="10" min="1" style="width:80px;">
-            </div>
-            <div style="margin-bottom:4px;">
-              <label>個数:</label>
-              <input id="marketOrderAmount" type="number" value="1" min="1" style="width:60px;">
-            </div>
-            <button id="marketOrderBtn">買い注文を出す</button>
-
-            <h4 style="margin-top:8px;">現在の買い注文</h4>
-            <div id="marketOrderList">
-            </div>
-          </div>
+      <!-- 右カラム: 詳細＋ペット＋ログ（PCでサイド表示） -->
+      <div id="sideColumn">
+        <div id="detailPanel" style="display:none;">
+          職業: <span id="jobName">未設定</span><br>
+          装備中武器: <span id="equippedWeaponName">なし</span>,
+          装備中防具: <span id="equippedArmorName">なし</span><br>
+          攻撃力: <span id="atkTotal">0</span>,
+          防御力: <span id="defTotal">0</span><br>
         </div>
 
-        <p id="marketInfo" style="margin-top:8px; font-size:12px; color:#ccc;"></p>
-      </div>
-
-            <!-- ステータス -->
-      <div id="pageStatus" class="tab-page">
-        <h2>ステータス</h2>
-
-        <div class="status-block">
-          レベル: <span id="stLevel">1</span><br>
-          経験値: <span id="stExp">0</span> / <span id="stExpToNext">100</span><br>
-          転生回数: <span id="stRebirthCount">0</span><br>
-          成長タイプ: <span id="stGrowthType">バランス型</span><br>
-          職業:
-          <span id="stJobName">未設定</span>
-          <button id="changeJobBtn" style="margin-left:4px; font-size:11px; padding:1px 6px;">
-            職業を変更
-          </button>
+        <div id="petInfo" class="pet-only">
+          <hr>
+          <p>
+            ペットLv: <span id="petLevel">1</span>
+            / HP: <span id="petHp">10</span> / <span id="petHpMax">10</span>
+          </p>
         </div>
 
-        <div class="status-block">
-          STR: <span id="stSTR">1</span>,
-          VIT: <span id="stVIT">1</span>,
-          INT: <span id="stINT">1</span>,
-          DEX: <span id="stDEX">1</span>,
-          LUK: <span id="stLUK">1</span><br>
-          攻撃力: <span id="stAtkTotal">0</span>,
-          防御力: <span id="stDefTotal">0</span><br>
-          最大HP: <span id="stHpMax">30</span>,
-          最大MP: <span id="stMpMax">10</span>,
-          最大SP: <span id="stSpMax">10</span>
-        </div>
-
-        <h3>転生</h3>
-        <div class="status-block">
-          Lv10以上で転生できます。転生するとLv1に戻りますが、ステータスにボーナスが付きます。<br>
-          <button id="rebirthBtn">転生する</button>
-        </div>
-
-        <h3>採取スキル</h3>
-        <div id="gatherSkillBox" class="status-block">
-          木: Lv<span id="skGatherWoodLv">0</span>,
-          鉱石: Lv<span id="skGatherOreLv">0</span>,
-          草: Lv<span id="skGatherHerbLv">0</span><br>
-          布: Lv<span id="skGatherClothLv">0</span>,
-          皮: Lv<span id="skGatherLeatherLv">0</span>,
-          水: Lv<span id="skGatherWaterLv">0</span>
-        </div>
-
-        <h3>クラフトスキル</h3>
-        <div id="craftSkillBox" class="status-block">
-          武器: Lv<span id="skCraftWeaponLv">0</span>,
-          防具: Lv<span id="skCraftArmorLv">0</span>,
-          ポーション: Lv<span id="skCraftPotionLv">0</span>
-        </div>
-
-        <!-- ★ 見出しにも pet-only を付ける -->
-        <h3 class="pet-only">ペットステータス（動物使いのみ）</h3>
-        <!-- 一度も動物使いになっていない間は togglePetUI で非表示 -->
-        <div class="status-block pet-only">
-          ペットLv: <span id="stPetLevel">1</span><br>
-          ペット経験値: <span id="stPetExp">0</span> / <span id="stPetExpToNext">5</span><br>
-          ペット転生回数: <span id="stPetRebirthCount">0</span><br>
-          成長タイプ: <span id="stPetGrowthType">バランス型</span><br>
-          ペットHP: <span id="stPetHp">10</span> / <span id="stPetHpMax">10</span>
-        </div>
-
-        <div class="status-block">
-          <button id="changePetGrowthBtn" class="pet-only">ペット成長タイプを変更</button>
-        </div>
-      </div>
-    </div><!-- /#mainArea -->
-
-    <div id="log"></div>
+        <div id="log"></div>
+      </div><!-- /#sideColumn -->
+    </div><!-- /#layoutBody -->
 
     <!-- 職業選択モーダル -->
     <div id="jobModal">
@@ -469,11 +479,13 @@
   <script src="gather-data.js"></script>
   <script src="equip-data.js"></script>
   <script src="craft-data.js"></script>
+  <script src="game-shop.js"></script>
 
   <script src="game-core-1.js"></script>
   <script src="game-core-2.js"></script>
   <script src="game-core-3.js"></script>
   <script src="game-core-4.js"></script>
+  <script src="game-core-5.js"></script>
 
   <script src="skill-core.js"></script>
   <script src="market-core.js"></script>

@@ -1,12 +1,11 @@
 // game-core-3.js
-// 探索・戦闘・ボス関連
+// 探索・戦闘・ボス関連＋状態異常システム
 
 // =======================
-// グローバル状態（追記分）
+// グローバル状態
 // =======================
 
 // エリアごとの「今ボスに挑める状態か」
-// 一度見つかるとボス戦を1回するまで true
 const areaBossAvailable = {
   field:  false,
   forest: false,
@@ -14,28 +13,380 @@ const areaBossAvailable = {
   mine:   false
 };
 
-// 探索滞在状態（window 直下に置いて、game-ui.js と確実に共有する）
+// 探索滞在状態（UI側と共有）
 window.isExploring   = false;      // 街にいる: false / どこか探索中: true
 window.exploringArea = "field";    // 現在探索しているエリアID
+
+// =======================
+// 状態異常・バフデバフ定義
+// =======================
+//
+// プレイヤー: playerStatuses
+// 敵: enemyStatuses
+//
+// ターン管理は「プレイヤー行動＋敵行動」で1ターン進む前提。
+// 毎ターン終了時に tickStatusesTurnEnd を呼ぶ。
+
+let playerStatuses = [];
+let enemyStatuses  = [];
+
+// 共通定義テーブル
+const STATUS_EFFECTS = {
+  poison: {
+    id: "poison",
+    name: "毒",
+    baseDuration: 3,
+    onTurnEnd(targetCtx) {
+      const hpMax = targetCtx.hpMax();
+      const applyHp = targetCtx.applyHp;
+      const name = targetCtx.name;
+      const dmg = Math.max(1, Math.floor(hpMax * 0.04));
+      applyHp(-dmg);
+      appendLog(`${name}は毒で${dmg}ダメージを受けた！`);
+    }
+  },
+  burn: {
+    id: "burn",
+    name: "やけど",
+    baseDuration: 3,
+    onTurnEnd(targetCtx) {
+      const hpMax = targetCtx.hpMax();
+      const applyHp = targetCtx.applyHp;
+      const name = targetCtx.name;
+      const dmg = Math.max(1, Math.floor(hpMax * 0.03));
+      applyHp(-dmg);
+      appendLog(`${name}はやけどで${dmg}ダメージを受けた！`);
+    },
+    modifyAttack(mult) {
+      return mult * 0.9;
+    }
+  },
+  bleed: {
+    id: "bleed",
+    name: "出血",
+    baseDuration: 2,
+    onTurnEnd(targetCtx) {
+      const hpNow = targetCtx.hp();
+      const applyHp = targetCtx.applyHp;
+      const name = targetCtx.name;
+      const dmg = Math.max(1, Math.floor(hpNow * 0.06));
+      applyHp(-dmg);
+      appendLog(`${name}は出血で${dmg}ダメージを受けた！`);
+    }
+  },
+  regen: {
+    id: "regen",
+    name: "リジェネ",
+    baseDuration: 3,
+    onTurnEnd(targetCtx) {
+      const hpMax = targetCtx.hpMax();
+      const applyHp = targetCtx.applyHp;
+      const name = targetCtx.name;
+      const heal = Math.max(1, Math.floor(hpMax * 0.04));
+      applyHp(heal);
+      appendLog(`${name}はリジェネで${heal}回復した！`);
+    }
+  },
+  atk_up: {
+    id: "atk_up",
+    name: "攻撃アップ",
+    baseDuration: 3,
+    modifyAttack(mult) {
+      return mult * 1.25;
+    }
+  },
+  atk_down: {
+    id: "atk_down",
+    name: "攻撃ダウン",
+    baseDuration: 3,
+    modifyAttack(mult) {
+      return mult * 0.8;
+    }
+  },
+  def_up: {
+    id: "def_up",
+    name: "防御アップ",
+    baseDuration: 3,
+    modifyDefense(mult) {
+      return mult * 0.75;
+    }
+  },
+  def_down: {
+    id: "def_down",
+    name: "防御ダウン",
+    baseDuration: 3,
+    modifyDefense(mult) {
+      return mult * 1.25;
+    }
+  },
+  blind: {
+    id: "blind",
+    name: "暗闇",
+    baseDuration: 3,
+    modifyAccuracy(acc) {
+      return acc - 0.3;
+    }
+  },
+  paralyze: {
+    id: "paralyze",
+    name: "麻痺",
+    baseDuration: 2,
+    beforeAction(targetCtx) {
+      if (Math.random() < 0.5) {
+        appendLog(`${targetCtx.name}は麻痺して動けない！`);
+        return false;
+      }
+      return true;
+    }
+  },
+  sleep: {
+    id: "sleep",
+    name: "睡眠",
+    baseDuration: 3,
+    beforeAction(targetCtx, inst) {
+      appendLog(`${targetCtx.name}は眠っていて動けない！`);
+      // 行動できないままターンを消費
+      return false;
+    },
+    onDamaged(targetCtx, inst) {
+      // ダメージを受けたら即解除
+      inst.remain = 0;
+      appendLog(`${targetCtx.name}は目を覚ました！`);
+    }
+  },
+  confuse: {
+    id: "confuse",
+    name: "混乱",
+    baseDuration: 2,
+    beforeAction(targetCtx, inst, actionCtx) {
+      if (Math.random() < 0.5) {
+        actionCtx.forceTarget = "selfOrAlly";
+        appendLog(`${targetCtx.name}は混乱している！`);
+      }
+      return true;
+    }
+  },
+  silence: {
+    id: "silence",
+    name: "沈黙",
+    baseDuration: 3,
+    canUseMagic() {
+      return false;
+    }
+  },
+  crit_up: {
+    id: "crit_up",
+    name: "クリティカルアップ",
+    baseDuration: 3,
+    modifyCritRate(rate) {
+      return rate + 0.2;
+    }
+  }
+};
+
+// 対象コンテキストヘルパ
+function makePlayerCtx() {
+  return {
+    name: "あなた",
+    hp: () => hp,
+    hpMax: () => hpMax,
+    applyHp: delta => {
+      hp = Math.max(0, Math.min(hpMax, hp + delta));
+    }
+  };
+}
+function makeEnemyCtx() {
+  return {
+    name: currentEnemy ? currentEnemy.name : "敵",
+    hp: () => enemyHp,
+    hpMax: () => enemyHpMax,
+    applyHp: delta => {
+      enemyHp = Math.max(0, Math.min(enemyHpMax, enemyHp + delta));
+    }
+  };
+}
+
+// 状態の付与
+function addStatusToPlayer(id) {
+  const def = STATUS_EFFECTS[id];
+  if (!def) return;
+  const ex = playerStatuses.find(s => s.id === id);
+  if (ex) {
+    ex.remain = Math.max(ex.remain, def.baseDuration);
+  } else {
+    playerStatuses.push({ id, remain: def.baseDuration });
+  }
+}
+
+function addStatusToEnemy(id) {
+  const def = STATUS_EFFECTS[id];
+  if (!def || !currentEnemy) return;
+  const ex = enemyStatuses.find(s => s.id === id);
+  if (ex) {
+    ex.remain = Math.max(ex.remain, def.baseDuration);
+  } else {
+    enemyStatuses.push({ id, remain: def.baseDuration });
+  }
+}
+
+// 行動前チェック（麻痺・睡眠・混乱など）
+function beforeActionPlayer() {
+  const ctx = makePlayerCtx();
+  const actionCtx = {};
+  for (const inst of playerStatuses) {
+    const def = STATUS_EFFECTS[inst.id];
+    if (def && def.beforeAction) {
+      const ok = def.beforeAction(ctx, inst, actionCtx);
+      if (!ok) return { canAct: false };
+    }
+  }
+  return { canAct: true, actionCtx };
+}
+
+function beforeActionEnemy() {
+  if (!currentEnemy) return { canAct: false };
+  const ctx = makeEnemyCtx();
+  const actionCtx = {};
+  for (const inst of enemyStatuses) {
+    const def = STATUS_EFFECTS[inst.id];
+    if (def && def.beforeAction) {
+      const ok = def.beforeAction(ctx, inst, actionCtx);
+      if (!ok) return { canAct: false };
+    }
+  }
+  return { canAct: true, actionCtx };
+}
+
+// ダメージ計算前の攻防補正
+function applyAttackBuffsForPlayer(base) {
+  let mult = 1.0;
+  for (const inst of playerStatuses) {
+    const def = STATUS_EFFECTS[inst.id];
+    if (def && def.modifyAttack) {
+      mult = def.modifyAttack(mult);
+    }
+  }
+  return Math.max(1, Math.floor(base * mult));
+}
+function applyAttackBuffsForEnemy(base) {
+  let mult = 1.0;
+  for (const inst of enemyStatuses) {
+    const def = STATUS_EFFECTS[inst.id];
+    if (def && def.modifyAttack) {
+      mult = def.modifyAttack(mult);
+    }
+  }
+  return Math.max(1, Math.floor(base * mult));
+}
+function applyDefenseBuffsForPlayer(damage) {
+  let mult = 1.0;
+  for (const inst of playerStatuses) {
+    const def = STATUS_EFFECTS[inst.id];
+    if (def && def.modifyDefense) {
+      mult = def.modifyDefense(mult);
+    }
+  }
+  return Math.max(1, Math.floor(damage * mult));
+}
+function applyDefenseBuffsForEnemy(damage) {
+  let mult = 1.0;
+  for (const inst of enemyStatuses) {
+    const def = STATUS_EFFECTS[inst.id];
+    if (def && def.modifyDefense) {
+      mult = def.modifyDefense(mult);
+    }
+  }
+  return Math.max(1, Math.floor(damage * mult));
+}
+
+// 命中率補正（プレイヤー→敵）
+function modifyAccuracyForPlayer(acc) {
+  let a = acc;
+  for (const inst of playerStatuses) {
+    const def = STATUS_EFFECTS[inst.id];
+    if (def && def.modifyAccuracy) {
+      a = def.modifyAccuracy(a);
+    }
+  }
+  return a;
+}
+// 命中率補正（敵→プレイヤー）
+function modifyAccuracyForEnemy(acc) {
+  let a = acc;
+  for (const inst of enemyStatuses) {
+    const def = STATUS_EFFECTS[inst.id];
+    if (def && def.modifyAccuracy) {
+      a = def.modifyAccuracy(a);
+    }
+  }
+  return a;
+}
+
+// ダメージを受けたときのフック（睡眠解除など）
+function onPlayerDamagedByEnemy() {
+  const ctx = makePlayerCtx();
+  for (const inst of playerStatuses) {
+    const def = STATUS_EFFECTS[inst.id];
+    if (def && def.onDamaged) {
+      def.onDamaged(ctx, inst);
+    }
+  }
+  // 残り0になったものを削除
+  playerStatuses = playerStatuses.filter(s => s.remain > 0);
+}
+function onEnemyDamagedByPlayer() {
+  const ctx = makeEnemyCtx();
+  for (const inst of enemyStatuses) {
+    const def = STATUS_EFFECTS[inst.id];
+    if (def && def.onDamaged) {
+      def.onDamaged(ctx, inst);
+    }
+  }
+  enemyStatuses = enemyStatuses.filter(s => s.remain > 0);
+}
+
+// ターン終了時処理
+function tickStatusesTurnEndForBoth() {
+  // プレイヤー
+  {
+    const ctx = makePlayerCtx();
+    for (const inst of playerStatuses) {
+      const def = STATUS_EFFECTS[inst.id];
+      if (def && def.onTurnEnd) {
+        def.onTurnEnd(ctx, inst);
+      }
+      inst.remain -= 1;
+    }
+    playerStatuses = playerStatuses.filter(s => s.remain > 0);
+  }
+
+  // 敵
+  if (currentEnemy) {
+    const ctx = makeEnemyCtx();
+    for (const inst of enemyStatuses) {
+      const def = STATUS_EFFECTS[inst.id];
+      if (def && def.onTurnEnd) {
+        def.onTurnEnd(ctx, inst);
+      }
+      inst.remain -= 1;
+    }
+    enemyStatuses = enemyStatuses.filter(s => s.remain > 0);
+  }
+}
 
 // =======================
 // 敵・エリア関連ヘルパ
 // =======================
 
-// AREA_ENEMY_TABLE の旧形式 / 新形式 両対応
-// 旧:  AREA_ENEMY_TABLE.field = ["slime", "wolf", ...]
-// 新:  AREA_ENEMY_TABLE.field = { enemyIds: [...], weights: [...] }
 function getRandomEnemyForArea(area) {
   const table = AREA_ENEMY_TABLE[area] || AREA_ENEMY_TABLE.field;
 
-  // 1) 旧形式: 単純な id 配列
   if (Array.isArray(table)) {
     if (table.length === 0) return null;
     const id = table[Math.floor(Math.random() * table.length)];
     return ENEMIES[id] || null;
   }
 
-  // 2) 新形式: { enemyIds: [...], weights: [...] }
   if (!table || !Array.isArray(table.enemyIds) || !Array.isArray(table.weights)) {
     return null;
   }
@@ -73,10 +424,7 @@ function setExploreUIVisible(visible) {
 // =======================
 // 探索エリアセレクト更新
 // =======================
-//
-// areaBossCleared の状態に応じて、探索先セレクト(exploreTarget)に
-// 草原 / 森 / 洞窟 / 廃鉱山 を出し分ける。
-//
+
 function refreshExploreAreaSelect() {
   const sel = document.getElementById("exploreTarget");
   if (!sel) return;
@@ -84,7 +432,6 @@ function refreshExploreAreaSelect() {
   const prev = sel.value;
   sel.innerHTML = "";
 
-  // 草原（常に解放）
   {
     const opt = document.createElement("option");
     opt.value = "field";
@@ -92,7 +439,6 @@ function refreshExploreAreaSelect() {
     sel.appendChild(opt);
   }
 
-  // 森：草原ボスクリア済みなら解放
   if (typeof areaBossCleared === "undefined" || areaBossCleared.field) {
     const opt = document.createElement("option");
     opt.value = "forest";
@@ -100,7 +446,6 @@ function refreshExploreAreaSelect() {
     sel.appendChild(opt);
   }
 
-  // 洞窟：森ボスクリア済みなら解放
   if (typeof areaBossCleared === "undefined" || areaBossCleared.forest) {
     const opt = document.createElement("option");
     opt.value = "cave";
@@ -108,7 +453,6 @@ function refreshExploreAreaSelect() {
     sel.appendChild(opt);
   }
 
-  // 廃鉱山：洞窟ボスクリア済みなら解放
   if (typeof areaBossCleared === "undefined" || areaBossCleared.cave) {
     const opt = document.createElement("option");
     opt.value = "mine";
@@ -146,8 +490,7 @@ function updateBossButtonUI() {
 // =======================
 // 帰還ボタン表示制御
 // =======================
-//
-// 戦闘中は非表示、探索中のみ表示、街（未探索時）は非表示
+
 function updateReturnTownButton() {
   const btn = document.getElementById("returnTownBtn");
   if (!btn) return;
@@ -192,6 +535,9 @@ function startBattleCommon(enemy, isBoss) {
   enemyHp = enemy.hp;
   isBossBattle = !!isBoss;
 
+  // 戦闘開始時に敵の状態をリセット
+  enemyStatuses = [];
+
   setBattleCommandVisible(true);
   setExploreUIVisible(false);
   updateDisplay();
@@ -202,6 +548,10 @@ function endBattleCommon() {
   enemyHp = 0;
   enemyHpMax = 0;
   isBossBattle = false;
+
+  // 戦闘終了時に双方の戦闘系状態をクリア（毒などはバトル中のみの想定）
+  enemyStatuses = [];
+  playerStatuses = playerStatuses.filter(inst => false); // 全削除
 
   setBattleCommandVisible(false);
   setExploreUIVisible(true);
@@ -221,9 +571,36 @@ function playerAttack(){
     appendLog("攻撃する敵がいない");
     return;
   }
-  const damage = Math.max(1, atkTotal - (currentEnemy.def || 0));
-  enemyHp -= damage;
-  appendLog(`あなたの攻撃！ ${currentEnemy.name}に${damage}ダメージ！`);
+
+  // 行動前 状態異常チェック
+  const pre = beforeActionPlayer();
+  if (!pre.canAct) {
+    // 行動失敗でもターンは進む
+    enemyTurn();         // 敵ターン
+    tickStatusesTurnEndForBoth();
+    updateDisplay();
+    return;
+  }
+
+  // 命中判定（必要なら）
+  let hitRate = 0.95; // 基本命中率
+  hitRate = modifyAccuracyForPlayer(hitRate);
+  if (Math.random() > hitRate) {
+    appendLog("あなたの攻撃は外れた！");
+    enemyTurn();
+    tickStatusesTurnEndForBoth();
+    updateDisplay();
+    return;
+  }
+
+  // ダメージ計算
+  let baseDamage = Math.max(1, atkTotal - (currentEnemy.def || 0));
+  baseDamage = applyAttackBuffsForPlayer(baseDamage);
+  baseDamage = applyDefenseBuffsForEnemy(baseDamage);
+
+  enemyHp -= baseDamage;
+  onEnemyDamagedByPlayer();
+  appendLog(`あなたの攻撃！ ${currentEnemy.name}に${baseDamage}ダメージ！`);
 
   if(enemyHp <= 0){
     enemyHp = 0;
@@ -242,15 +619,31 @@ function playerAttack(){
     return;
   }
 
+  // ペットターン（既存ロジック）
   doPetTurn();
   if (enemyHp <= 0) {
     return;
   }
+
+  // 敵行動
   enemyTurn();
+
+  // ターン終了時に状態異常のターンを進める
+  tickStatusesTurnEndForBoth();
+
+  updateDisplay();
 }
 
 function enemyTurn(){
   if (!currentEnemy) return;
+
+  // 行動前 状態異常チェック
+  const pre = beforeActionEnemy();
+  if (!pre.canAct) {
+    // 敵が動けなかった場合もターンは進んだ扱いなのでここで return
+    updateDisplay();
+    return;
+  }
 
   let target = "player";
   if (jobId === 2 && petHp > 0) {
@@ -258,15 +651,20 @@ function enemyTurn(){
   }
 
   if (target === "player") {
-    let dmg = Math.max(1, (currentEnemy.atk || 3) - defTotal);
+    let baseAtk = (currentEnemy.atk || 3);
+    baseAtk = applyAttackBuffsForEnemy(baseAtk);
+
+    let dmg = Math.max(1, baseAtk - defTotal);
+    dmg = applyDefenseBuffsForPlayer(dmg);
 
     if (shieldBlowGuardTurnRemain > 0) {
       dmg = Math.floor(dmg * 0.5);
-      shieldBlowGuardTurnRemain = 0;
+      shieldBlowGuardGuardTurnRemain = 0;
       appendLog("シールドブロウの効果でダメージが軽減された！");
     }
 
     hp -= dmg;
+    onPlayerDamagedByEnemy();
     appendLog(`${currentEnemy.name}の攻撃！ あなたに${dmg}ダメージ`);
 
     if (hp <= 0) {
@@ -342,7 +740,9 @@ function enemyTurn(){
     }
   } else {
     let petDef = Math.floor(petLevel * 0.5);
-    let dmg = Math.max(1, (currentEnemy.atk || 3) - petDef);
+    let baseAtk = (currentEnemy.atk || 3);
+    baseAtk = applyAttackBuffsForEnemy(baseAtk);
+    let dmg = Math.max(1, baseAtk - petDef);
 
     petHp -= dmg;
     appendLog(`${currentEnemy.name}の攻撃！ ペットに${dmg}ダメージ`);
@@ -417,7 +817,7 @@ function onBossDefeated() {
 }
 
 // =======================
-// 探索
+// 探索（ランダムイベント対応版）
 // =======================
 
 function doExploreEvent(area){
@@ -439,12 +839,21 @@ function doExploreEvent(area){
 
   const roll = Math.random();
 
+  // 20% 何もなし
   if (roll < 0.2) {
     appendLog("何も見つからなかった…");
     updateReturnTownButton();
     return;
   }
 
+  // 20% ランダムイベント
+  if (roll < 0.4) {
+    doExploreRandomEvent(area);
+    updateReturnTownButton();
+    return;
+  }
+
+  // 残り60% 戦闘
   const enemy = getRandomEnemyForArea(area);
   if (!enemy) {
     appendLog("敵データが見つからない");
@@ -453,6 +862,171 @@ function doExploreEvent(area){
   }
   appendLog(`${enemy.name} が現れた！`);
   startNormalBattle(enemy);
+}
+
+// 探索ランダムイベント本体
+function doExploreRandomEvent(area) {
+  const roll = Math.random();
+
+  if (roll < 0.34) {
+    // 罠イベント
+    const maxHp = hpMax || 1;
+    const damage = Math.max(1, Math.floor(maxHp * 0.05)); // 最大HPの5％
+    hp = Math.max(0, hp - damage);
+    appendLog("足元の罠が作動した！" + damage + "ダメージを受けた。");
+
+    if (hp <= 0) {
+      hp = 0;
+      appendLog("あなたは罠で倒れてしまった…");
+
+      // 街に戻る＝探索終了
+      window.isExploring   = false;
+      window.exploringArea = "field";
+
+      hp = hpMax;
+      mp = mpMax;
+      sp = spMax;
+      petHp = petHpMax;
+
+      money = Math.floor(money / 2);
+
+      let brokeSomething = false;
+
+      function reduceDurabilityOnEquipTrap() {
+        if (equippedWeaponId && Array.isArray(weapons)) {
+          const w = weapons.find(x => x.id === equippedWeaponId);
+          if (w && typeof w.durability === "number") {
+            w.durability = Math.max(0, w.durability - 1);
+            if (w.durability <= 0) {
+              const cnt = weaponCounts[w.id] || 0;
+              weaponCounts[w.id] = Math.max(0, cnt - 1);
+              appendLog(`${w.name} は壊れてしまった…`);
+              brokeSomething = true;
+              if (weaponCounts[w.id] <= 0 && equippedWeaponId === w.id) {
+                equippedWeaponId = null;
+              }
+            } else {
+              brokeSomething = true;
+            }
+          }
+        }
+
+        if (equippedArmorId && Array.isArray(armors)) {
+          const a = armors.find(x => x.id === equippedArmorId);
+          if (a && typeof a.durability === "number") {
+            a.durability = Math.max(0, a.durability - 1);
+            if (a.durability <= 0) {
+              const cnt = armorCounts[a.id] || 0;
+              armorCounts[a.id] = Math.max(0, cnt - 1);
+              appendLog(`${a.name} は壊れてしまった…`);
+              brokeSomething = true;
+              if (armorCounts[a.id] <= 0 && equippedArmorId === a.id) {
+                equippedArmorId = null;
+              }
+            } else {
+              brokeSomething = true;
+            }
+          }
+        }
+
+        if (typeof refreshEquipSelects === "function") {
+          refreshEquipSelects();
+        }
+      }
+      reduceDurabilityOnEquipTrap();
+
+      if (brokeSomething) {
+        appendLog("街に戻った… 休んで回復し、所持ゴールドを半分失い、装備の耐久度が1減少した。");
+      } else {
+        appendLog("街に戻った… 休んで回復し、所持ゴールドを半分失った。");
+      }
+
+      updateReturnTownButton();
+      updateDisplay();
+      return;
+    }
+
+    updateDisplay();
+    return;
+  } else if (roll < 0.67) {
+    // 宝箱イベント（エリアごとにGと素材ティアを変える）
+
+    // ゴールド範囲（エリア別）
+    let goldMin = 5;
+    let goldMax = 15;
+
+    if (area === "field") {
+      goldMin = 5;   goldMax = 15;
+    } else if (area === "forest") {
+      goldMin = 10;  goldMax = 20;
+    } else if (area === "cave") {
+      goldMin = 20;  goldMax = 30;
+    } else if (area === "mine") {
+      goldMin = 30;  goldMax = 40;
+    }
+
+    const goldGain = goldMin + Math.floor(Math.random() * (goldMax - goldMin + 1));
+    money = (money || 0) + goldGain;
+    appendLog("小さな宝箱を見つけた！" + goldGain + "Gを手に入れた。");
+
+    // 素材ドロップ（1〜2個）
+    const dropCount = 1 + Math.floor(Math.random() * 2); // 1〜2個
+    const baseKeys = ["wood","ore","herb","cloth","leather","water"];
+    const baseNames = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
+
+    for (let i = 0; i < dropCount; i++) {
+      const matKey = baseKeys[Math.floor(Math.random() * baseKeys.length)];
+      const m = materials[matKey];
+      if (!m) continue;
+
+      // エリアごとにメインティアを固定
+      let tier = "t1";
+      if (area === "field") {
+        // T1メイン、たまにT2
+        tier = (Math.random() < 0.9) ? "t1" : "t2";
+      } else if (area === "forest") {
+        // T2メイン、たまにT1/T3
+        const r = Math.random();
+        if      (r < 0.1) tier = "t1";
+        else if (r < 0.9) tier = "t2";
+        else              tier = "t3";
+      } else if (area === "cave") {
+        // T3メイン、たまにT2/T4
+        const r = Math.random();
+        if      (r < 0.1) tier = "t2";
+        else if (r < 0.9) tier = "t3";
+        else              tier = "t4";
+      } else if (area === "mine") {
+        // T4メイン、たまにT3
+        tier = (Math.random() < 0.8) ? "t4" : "t3";
+      }
+
+      m[tier] = (m[tier] || 0) + 1;
+
+      const tierLabel = tier.toUpperCase(); // "T1"〜"T4"
+      const name = baseNames[matKey] || matKey;
+      appendLog(`宝箱の中から ${tierLabel}${name} を1つ手に入れた。`);
+    }
+
+    updateDisplay();
+    return;
+  } else {
+    // 休憩イベント
+    const maxHp = hpMax || 1;
+    const heal = Math.max(1, Math.floor(maxHp * 0.1)); // 最大HPの10％
+    const beforeHp = hp;
+    hp = Math.min(maxHp, hp + heal);
+
+    const actualHeal = hp - beforeHp;
+    if (actualHeal > 0) {
+      appendLog("静かな泉でひと休みした。HPが " + actualHeal + " 回復した。");
+    } else {
+      appendLog("静かな泉でひと休みしたが、特に回復する必要はなかった。");
+    }
+
+    updateDisplay();
+    return;
+  }
 }
 
 // =======================
@@ -476,6 +1050,7 @@ function tryEscape(){
     appendLog("逃走失敗！");
     escapeFailBonus += 0.1;
     enemyTurn();
+    tickStatusesTurnEndForBoth();
   }
 }
 
@@ -496,9 +1071,25 @@ function usePotionOutsideBattle(){
     appendLog("そのアイテムを持っていない");
     return;
   }
+
+  const prevHp = hp;
+  const prevMp = mp;
+
   applyPotionEffect(p, false);
   potionCounts[id]--;
-  appendLog(`${p.name} を使用した`);
+
+  if (p.type === POTION_TYPE_HP) {
+    const healed = hp - prevHp;
+    appendLog(`${p.name} を使用した（HP ${prevHp} → ${hp}、+${healed}）`);
+  } else if (p.type === POTION_TYPE_MP) {
+    const healed = mp - prevMp;
+    appendLog(`${p.name} を使用した（MP ${prevMp} → ${mp}、+${healed}）`);
+  } else if (p.type === POTION_TYPE_BOTH) {
+    const healedHp = hp - prevHp;
+    const healedMp = mp - prevMp;
+    appendLog(`${p.name} を使用した（HP ${prevHp} → ${hp}、+${healedHp} / MP ${prevMp} → ${mp}、+${healedMp}）`);
+  }
+
   updateDisplay();
 }
 
@@ -515,29 +1106,66 @@ function useBattleItem(){
     appendLog("そのアイテムを持っていない");
     return;
   }
+
+  const prevHp = hp;
+  const prevMp = mp;
+
   applyPotionEffect(p, true);
   potionCounts[id]--;
-  appendLog(`戦闘中に ${p.name} を使用した`);
+
+  if (p.type === POTION_TYPE_HP) {
+    const healed = hp - prevHp;
+    appendLog(`戦闘中に ${p.name} を使用した（HP ${prevHp} → ${hp}、+${healed}）`);
+  } else if (p.type === POTION_TYPE_MP) {
+    const healed = mp - prevMp;
+    appendLog(`戦闘中に ${p.name} を使用した（MP ${prevMp} → ${mp}、+${healed}）`);
+  } else if (p.type === POTION_TYPE_BOTH) {
+    const healedHp = hp - prevHp;
+    const healedMp = mp - prevMp;
+    appendLog(`戦闘中に ${p.name} を使用した（HP ${prevHp} → ${hp}、+${healedHp} / MP ${prevMp} → ${mp}、+${healedMp}）`);
+  }
+
   if(currentEnemy){
     enemyTurn();
+    tickStatusesTurnEndForBoth();
   }
   updateDisplay();
 }
 
 function applyPotionEffect(p, inBattle){
   if(p.type === POTION_TYPE_HP){
-    const heal = p.power;
+    const heal = (p.power <= 1)
+      ? Math.max(1, Math.floor(hpMax * p.power))
+      : Math.floor(p.power);
+    const before = hp;
     hp = Math.min(hpMax, hp + heal);
-    appendLog(`HPが${heal}回復した`);
+    const actual = hp - before;
+    appendLog(`HPが${actual}回復した`);
   } else if(p.type === POTION_TYPE_MP){
-    const heal = p.power;
+    const heal = (p.power <= 1)
+      ? Math.max(1, Math.floor(mpMax * p.power))
+      : Math.floor(p.power);
+    const before = mp;
     mp = Math.min(mpMax, mp + heal);
-    appendLog(`MPが${heal}回復した`);
+    const actual = mp - before;
+    appendLog(`MPが${actual}回復した`);
   } else if(p.type === POTION_TYPE_BOTH){
-    const heal = p.power;
-    hp = Math.min(hpMax, hp + heal);
-    mp = Math.min(mpMax, mp + heal);
-    appendLog(`HPとMPが${heal}回復した`);
+    const healHp = (p.power <= 1)
+      ? Math.max(1, Math.floor(hpMax * p.power))
+      : Math.floor(p.power);
+    const healMp = (p.power <= 1)
+      ? Math.max(1, Math.floor(mpMax * p.power))
+      : Math.floor(p.power);
+
+    const beforeHp = hp;
+    const beforeMp = mp;
+
+    hp = Math.min(hpMax, hp + healHp);
+    mp = Math.min(mpMax, mp + healMp);
+
+    const actualHp = hp - beforeHp;
+    const actualMp = mp - beforeMp;
+    appendLog(`HPが${actualHp}回復し、MPが${actualMp}回復した`);
   } else if(p.type === POTION_TYPE_DAMAGE){
     if(!inBattle || !currentEnemy){
       appendLog("爆弾は戦闘中にしか使えない");
@@ -556,6 +1184,7 @@ function applyPotionEffect(p, inBattle){
     }
 
     enemyHp -= dmg;
+    onEnemyDamagedByPlayer();
     appendLog(`爆弾を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！`);
     if(enemyHp <= 0){
       enemyHp = 0;
@@ -624,8 +1253,4 @@ function initGame() {
   if (typeof updateReturnTownButton === "function") {
     updateReturnTownButton();
   }
-}
-function isInTown() {
-  // 「街にいる」＝探索していない、かつ戦闘中でもない
-  return !window.isExploring && !currentEnemy;
 }

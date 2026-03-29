@@ -106,7 +106,8 @@ function gather(){
 // クラフト共通
 // =======================
 
-// 必要素材表示
+// 必要素材表示（「必要/所持」を出す）
+// 武器・防具・ポーション・道具 + 中間素材（material）に対応
 function updateCraftCostInfo(category, recipeId){
   const infoEl = document.getElementById("craftCostInfo");
   if (!infoEl) return;
@@ -123,7 +124,39 @@ function updateCraftCostInfo(category, recipeId){
   } else if (category === "tool") {
     recipe = CRAFT_RECIPES.tool.find(r => r.id === recipeId);
   } else if (category === "material") {
-    infoEl.textContent = "必要素材：-";
+    // 中間素材の定義から必要素材を表示する
+    if (!Array.isArray(INTERMEDIATE_MATERIALS)) {
+      infoEl.textContent = "必要素材：-";
+      return;
+    }
+    const def = INTERMEDIATE_MATERIALS.find(m => m.id === recipeId);
+    if (!def || !def.from) {
+      infoEl.textContent = "必要素材：-";
+      return;
+    }
+
+    const baseNames = {
+      wood:   "木",
+      ore:    "鉱石",
+      herb:   "草",
+      cloth:  "布",
+      leather:"皮",
+      water:  "水"
+    };
+
+    const parts = [];
+    Object.keys(def.from).forEach(baseKey => {
+      const tierInfo = def.from[baseKey];
+      const m = materials[baseKey];
+      Object.keys(tierInfo).forEach(tierKey => {
+        const need = tierInfo[tierKey];
+        const have = m ? (m[tierKey] || 0) : 0;
+        const tierLabel = tierKey.toUpperCase();
+        const name = baseNames[baseKey] || baseKey;
+        parts.push(`${tierLabel}${name} ${have}/${need}`);
+      });
+    });
+    infoEl.textContent = "必要素材：" + (parts.length ? parts.join("、") : "-");
     return;
   }
 
@@ -203,7 +236,7 @@ function updateCraftCostInfo(category, recipeId){
       have = intermediateMats[k] || 0;
       label = interNames[k] || k;
     } else {
-      // それ以外（基本的には来ない想定だが、念のため）
+      // それ以外
       label = k;
     }
 
@@ -364,6 +397,9 @@ function addCraftSkillExp(category){
 function craftWeapon(){
   const sel = document.getElementById("weaponSelect");
   if(!sel || !sel.value) return;
+
+  const prevRecipeId = sel.value;
+
   const recipe = CRAFT_RECIPES.weapon.find(r => r.id === sel.value);
   if(!recipe){ appendLog("その武器レシピは存在しない"); return; }
   if(!hasMaterials(recipe.cost)){ appendLog("素材が足りない"); return; }
@@ -375,11 +411,20 @@ function craftWeapon(){
 
   refreshEquipSelects();
   updateDisplay();
+
+  const selAfter = document.getElementById("weaponSelect");
+  if (selAfter) {
+    selAfter.value = prevRecipeId;
+    updateCraftCostInfo("weapon", prevRecipeId);
+  }
 }
 
 function craftArmor(){
   const sel = document.getElementById("armorSelect");
   if(!sel || !sel.value) return;
+
+  const prevRecipeId = sel.value;
+
   const recipe = CRAFT_RECIPES.armor.find(r => r.id === sel.value);
   if(!recipe){ appendLog("その防具レシピは存在しない"); return; }
   if(!hasMaterials(recipe.cost)){ appendLog("素材が足りない"); return; }
@@ -391,11 +436,20 @@ function craftArmor(){
 
   refreshEquipSelects();
   updateDisplay();
+
+  const selAfter = document.getElementById("armorSelect");
+  if (selAfter) {
+    selAfter.value = prevRecipeId;
+    updateCraftCostInfo("armor", prevRecipeId);
+  }
 }
 
 function craftPotion(){
   const sel = document.getElementById("potionSelect");
   if(!sel || !sel.value) return;
+
+  const prevRecipeId = sel.value;
+
   const recipe = CRAFT_RECIPES.potion.find(r => r.id === sel.value);
   if(!recipe){ appendLog("そのポーションレシピは存在しない"); return; }
   if(!hasMaterials(recipe.cost)){ appendLog("素材が足りない"); return; }
@@ -404,13 +458,25 @@ function craftPotion(){
   potionCounts[recipe.id] = (potionCounts[recipe.id] || 0) + 1;
   addCraftSkillExp("potion");
   appendLog(`${recipe.name} をクラフトした`);
+
   updateDisplay();
+  refreshEquipSelects();
+
+  const selAfter = document.getElementById("potionSelect");
+  if (selAfter) {
+    selAfter.value = prevRecipeId;
+    updateCraftCostInfo("potion", prevRecipeId);
+  }
 }
 
-// 道具クラフト（爆弾T1〜T3など）
+// 道具クラフト（爆弾T1〜T3など将来用）
+// ※現時点では個数管理は未実装。戦闘アイテムは potionCounts で管理。
 function craftTool(){
   const sel = document.getElementById("toolSelect");
   if(!sel || !sel.value) return;
+
+  const prevRecipeId = sel.value;
+
   const recipe = CRAFT_RECIPES.tool.find(r => r.id === sel.value);
   if(!recipe){ appendLog("その道具レシピは存在しない"); return; }
   if(!hasMaterials(recipe.cost)){ appendLog("素材が足りない"); return; }
@@ -418,7 +484,15 @@ function craftTool(){
   consumeMaterials(recipe.cost);
   addCraftSkillExp("tool");
   appendLog(`${recipe.name} をクラフトした`);
+
   updateDisplay();
+  refreshEquipSelects();
+
+  const selAfter = document.getElementById("toolSelect");
+  if (selAfter) {
+    selAfter.value = prevRecipeId;
+    updateCraftCostInfo("tool", prevRecipeId);
+  }
 }
 
 // 中間素材クラフト
@@ -458,8 +532,9 @@ function craftIntermediate(interId){
     });
   });
 
-  if (typeof intermediateMats !== "object") return;
-  intermediateMats[interId] = (intermediateMats[interId] || 0) + 1;
+  if (typeof intermediateMats === "object") {
+    intermediateMats[interId] = (intermediateMats[interId] || 0) + 1;
+  }
 
   appendLog(`${def.name} を作成した`);
   updateDisplay();
@@ -512,8 +587,7 @@ function refreshEquipSelects(){
     });
   }
 
-  // クラフト用セレクト（表示名 T1短剣/T1ポーション/T1爆弾）
-
+  // クラフト用セレクト（武器）
   if(wCraftSel){
     wCraftSel.innerHTML="";
     CRAFT_RECIPES.weapon.forEach(r=>{
@@ -525,11 +599,14 @@ function refreshEquipSelects(){
       const m = r.id.match(/_T(\d)/);
       const tierLabel = m ? `T${m[1]}` : "";
       const baseName = r.name.replace(/T\d$/, "");
-      opt.textContent = tierLabel ? `${tierLabel}${baseName}` : r.name;
+      const owned = weaponCounts[r.id] || 0;
+      const ownedText = owned > 0 ? `（所持${owned}）` : "";
+      opt.textContent = tierLabel ? `${tierLabel}${baseName}${ownedText}` : `${r.name}${ownedText}`;
       wCraftSel.appendChild(opt);
     });
   }
 
+  // クラフト用セレクト（防具）
   if(aCraftSel){
     aCraftSel.innerHTML="";
     CRAFT_RECIPES.armor.forEach(r=>{
@@ -541,11 +618,14 @@ function refreshEquipSelects(){
       const m = r.id.match(/_T(\d)/);
       const tierLabel = m ? `T${m[1]}` : "";
       const baseName = r.name.replace(/T\d$/, "");
-      opt.textContent = tierLabel ? `${tierLabel}${baseName}` : r.name;
+      const owned = armorCounts[r.id] || 0;
+      const ownedText = owned > 0 ? `（所持${owned}）` : "";
+      opt.textContent = tierLabel ? `${tierLabel}${baseName}${ownedText}` : `${r.name}${ownedText}`;
       aCraftSel.appendChild(opt);
     });
   }
 
+  // クラフト用セレクト（ポーション）
   if(pCraftSel){
     pCraftSel.innerHTML="";
     CRAFT_RECIPES.potion.forEach(r=>{
@@ -557,11 +637,14 @@ function refreshEquipSelects(){
       const m = r.id.match(/T(\d)$/);
       const tierLabel = m ? `T${m[1]}` : "";
       const baseName = r.name.replace(/T\d$/, "");
-      opt.textContent = tierLabel ? `${tierLabel}${baseName}` : r.name;
+      const owned = potionCounts[r.id] || 0;
+      const ownedText = owned > 0 ? `（所持${owned}）` : "";
+      opt.textContent = tierLabel ? `${tierLabel}${baseName}${ownedText}` : `${r.name}${ownedText}`;
       pCraftSel.appendChild(opt);
     });
   }
 
+  // クラフト用セレクト（道具）
   if(tCraftSel){
     tCraftSel.innerHTML="";
     CRAFT_RECIPES.tool.forEach(r=>{
@@ -573,10 +656,16 @@ function refreshEquipSelects(){
       const m = r.id.match(/_T(\d)/);
       const tierLabel = m ? `T${m[1]}` : "";
       const baseName = r.name.replace(/T\d$/, "");
+      // 道具は今のところ個数管理なし（将来用）
       opt.textContent = tierLabel ? `${tierLabel}${baseName}` : r.name;
       tCraftSel.appendChild(opt);
     });
   }
+
+  // ★ 必要素材表示の初期値決定
+
+  const interSel = document.getElementById("intermediateSelect");
+  const infoEl   = document.getElementById("craftCostInfo");
 
   if (wCraftSel && wCraftSel.value) {
     updateCraftCostInfo("weapon", wCraftSel.value);
@@ -586,6 +675,11 @@ function refreshEquipSelects(){
     updateCraftCostInfo("potion", pCraftSel.value);
   } else if (tCraftSel && tCraftSel.value) {
     updateCraftCostInfo("tool", tCraftSel.value);
+  } else if (interSel && interSel.value) {
+    // 武器防具ポーション道具が空なら、中間素材を優先
+    updateCraftCostInfo("material", interSel.value);
+  } else if (infoEl) {
+    infoEl.textContent = "必要素材：-";
   }
 }
 
