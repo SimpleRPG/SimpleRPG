@@ -458,3 +458,18 @@
       skillBtn.style.display   = "";
     }
   }
+ // 職業に応じて戦闘スキルUIを切り替える
+function updateSkillButtonsByJob() {
+  const magicBlock = document.getElementById("magicBlock"); // 魔法UIブロック
+  const skillBlock = document.getElementById("skillBlock"); // 武技UIブロック
+
+  // 魔法ブロック: 魔法使いのみ表示
+  if (magicBlock) {
+    magicBlock.style.display = (jobId === 1) ? "" : "none";
+  }
+
+  // 武技ブロック: 戦士・動物使いのみ表示
+  if (skillBlock) {
+    skillBlock.style.display = (jobId === 0 || jobId === 2) ? "" : "none";
+  }
+} 

@@ -87,13 +87,8 @@
             <p>採取対象を選んで採取（待ち時間なし）。</p>
 
             <label class="text-caption">フィールド:</label>
-            <select id="gatherField">
-              <option value="field1">近郊の原っぱ(T1のみ)</option>
-              <option value="field2">星降りの丘(T1多/T2少)</option>
-              <option value="field3">翠風の谷(T1/T2/T3)</option>
-              <!-- 料理素材用フィールド -->
-              <option value="cook">料理素材の採取地</option>
-            </select>
+            <!-- option は JS 側で全部生成する -->
+            <select id="gatherField"></select>
 
             <select id="gatherTarget">
               <option value="wood">木</option>
@@ -488,7 +483,10 @@
               草: Lv<span id="skGatherHerbLv">0</span><br>
               布: Lv<span id="skGatherClothLv">0</span>,
               皮: Lv<span id="skGatherLeatherLv">0</span>,
-              水: Lv<span id="skGatherWaterLv">0</span>
+              水: Lv<span id="skGatherWaterLv">0</span><br>
+              狩猟: Lv<span id="skGatherHuntLv">0</span>,
+              釣り: Lv<span id="skGatherFishLv">0</span>,
+              畑: Lv<span id="skGatherFarmLv">0</span>
             </div>
 
             <h3>クラフトスキル</h3>

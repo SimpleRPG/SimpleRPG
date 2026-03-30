@@ -2,6 +2,100 @@
 // 採取・クラフト・中間素材・装備・強化
 
 // =======================
+// 採取フィールド定義
+// =======================
+
+const GATHER_FIELDS = [
+  { id: "field1", name: "近郊の原っぱ(T1のみ)" },
+  { id: "field2", name: "星降りの丘(T1多/T2少)" },
+  { id: "field3", name: "翠風の谷(T1/T2/T3)" },
+  { id: "cook",   name: "料理素材の採取地" }
+];
+
+// 採取スキルレベルによるフィールド解放条件
+// フィールド × 資源(target) ごとに必要Lvを持つ
+// wood / ore / herb / cloth / leather / water
+const GATHER_FIELD_REQUIRE_LV = {
+  field1: { wood: 0,  ore: 0,  herb: 0,  cloth: 0,  leather: 0,  water: 0 },
+  field2: { wood: 20, ore: 20, herb: 20, cloth: 20, leather: 20, water: 20 },
+  field3: { wood: 40, ore: 40, herb: 40, cloth: 40, leather: 40, water: 40 }
+  // cook は制限なし
+};
+
+// 採取スキルでフィールド解放をチェックするフック
+function checkGatherAreaUnlockBySkill(resourceKey) {
+  // いまは何もしないダミーでOK（将来「新しい採取場所に行けそうだ」ログを出す用）
+}
+
+// 現在選択中の target（木／鉱石…）を取得するヘルパ
+function getCurrentGatherTarget() {
+  const targetSel = document.getElementById("gatherTarget");
+  if (!targetSel) return null;
+  return targetSel.value || null; // wood / ore / herb / cloth / leather / water
+}
+
+// このフィールドに「今の target で」入れるか判定
+function canEnterGatherFieldForTarget(fieldId, target) {
+  if (!target) return false;
+  if (fieldId === "cook") return true; // 料理は常にOK
+
+  const s = gatherSkills[target];
+  const lv = s ? s.lv : 0;
+
+  const table = GATHER_FIELD_REQUIRE_LV[fieldId] || {};
+  const needLv = table[target] ?? 0;
+
+  return lv >= needLv;
+}
+
+// 採取場所セレクトを更新（game-ui.js からも呼ばれる）
+// 「今選んでいる target で行けるエリアだけ」を表示する
+function refreshGatherFieldSelect() {
+  const sel = document.getElementById("gatherField");
+  if (!sel) return;
+
+  const currentTarget = getCurrentGatherTarget();
+
+  const prev = sel.value;
+  sel.innerHTML = "";
+
+  const unlocked = [];
+
+  GATHER_FIELDS.forEach(f => {
+    // cook は常に表示
+    if (f.id === "cook") {
+      const opt = document.createElement("option");
+      opt.value = f.id;
+      opt.textContent = f.name;
+      sel.appendChild(opt);
+      unlocked.push(f.id);
+      return;
+    }
+
+    // 通常フィールドは「今の target で行けるかどうか」で判定
+    if (!currentTarget) return;
+    if (!canEnterGatherFieldForTarget(f.id, currentTarget)) return;
+
+    const opt = document.createElement("option");
+    opt.value = f.id;
+    opt.textContent = f.name; // 必要Lvの表示は付けない（一覧には出さない仕様）
+    sel.appendChild(opt);
+    unlocked.push(f.id);
+  });
+
+  // 以前選んでいたフィールドがまだ解放済みなら維持、ダメなら先頭
+  const exists = unlocked.includes(prev);
+  if (exists) {
+    sel.value = prev;
+  } else if (unlocked.length > 0) {
+    sel.value = unlocked[0];
+  } else {
+    // 何もない場合の保険（理論上 cook だけは残るはず）
+    sel.value = "";
+  }
+}
+
+// =======================
 // 採取
 // =======================
 
@@ -15,6 +109,8 @@ function addGatherSkillExp(resourceKey){
     s.expToNext = Math.floor(s.expToNext * 1.3) + 1;
     appendLog(`${resourceKey} 採取スキルがLv${s.lv}になった！`);
   }
+  // 採取スキルLvが上がったら、行けるフィールド一覧を更新
+  refreshGatherFieldSelect();
 }
 
 function calcGatherAmount(resourceKey){
@@ -127,7 +223,9 @@ function gather(){
 
   checkGatherAreaUnlockBySkill(target);
 
-  const needLv = GATHER_FIELD_REQUIRE_LV[field] || 0;
+  // フィールド × target ごとの必要Lvを参照
+  const table = GATHER_FIELD_REQUIRE_LV[field] || {};
+  const needLv = table[target] ?? 0;
   if (lv < needLv) {
     appendLog(`このエリアで採取するには「${target}」採取スキルLv${needLv}が必要です（現在Lv${lv}）`);
     updateDisplay();

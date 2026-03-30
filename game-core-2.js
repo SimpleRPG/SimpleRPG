@@ -5,6 +5,16 @@
 // レベル・転生
 // =======================
 
+// ★ 追加: レベルに応じた最大HPを返す関数
+// Lv1 は hpMaxBase (=30) のまま、Lv2 以降は +2ずつ伸ばす例。
+function recalcHpMaxByLevel() {
+  if (level <= 1) {
+    return hpMaxBase;                   // Lv1: 30
+  } else {
+    return hpMaxBase + (level - 1) * 2; // Lv2〜: +2ずつ
+  }
+}
+
 function applyLevelUpGrowth() {
   const pool = [];
   if (growthType === 0) {
@@ -44,8 +54,8 @@ function addExp(amount) {
     level++;
     leveled = true;
 
-    // ベース成長
-    hpMax = hpMaxBase + level * 2;
+    // ★ ベース成長: HP 最大値をレベルに応じて決定
+    hpMax = recalcHpMaxByLevel();
     hp    = hpMax;
     mp    = mpMax;
     sp    = spMax;
@@ -151,8 +161,8 @@ function doRebirth() {
   exp       = 0;
   expToNext = BASE_EXP_PER_LEVEL;
 
-  // 基礎ステ再計算
-  hpMax = hpMaxBase + level * 2;
+  // ★ 基礎ステ再計算（HPはレベルに応じて）
+  hpMax = recalcHpMaxByLevel();
   hp    = hpMax;
   mpMax = mpMaxBase;
   mp    = mpMax;
@@ -262,8 +272,7 @@ function handleHungerThirstOnAction(actionType) {
   hungerActionCount++;
   thirstActionCount++;
 
-  // 5アクションごとに -5 ずつ減らす例
-    // 毎アクション -1
+  // 毎アクション -1
   hunger = Math.max(0, hunger - 1);
   thirst = Math.max(0, thirst - 1);
 
