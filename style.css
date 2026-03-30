@@ -130,7 +130,7 @@ h1 {
 }
 
 /* ======================
-   ステータスバー
+   ステータスバー（HP/MP/SPバー＋所持金）
    ====================== */
 
 #statusBar {
@@ -141,17 +141,79 @@ h1 {
   border: 1px solid rgba(140,130,210,0.6);
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   font-size: 0.8rem;
-  white-space: nowrap;      /* 基本は1行 */
+  white-space: nowrap;
 }
 
-#statusBar span {
-  font-weight: 600;
+/* 左側に HP/MP/SP、右端に所持金＋詳細ボタン */
+#statusBar .stat-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 0;
 }
 
-#statusBar #money {
+.stat-label {
+  width: 26px;
+  text-align: right;
+  color: var(--text-sub);
+  font-size: 11px;
+}
+
+.stat-bar {
+  flex: 1 1 auto;
+  height: 14px;
+  background: #06060c;
+  border-radius: 999px;
+  border: 1px solid rgba(120,120,190,0.9);
+  overflow: hidden;
+  position: relative;
+}
+
+.stat-fill {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  text-shadow: 0 0 3px rgba(0,0,0,0.8);
+  transition: width 0.2s ease-out;
+}
+
+/* HP/MP/SP 色分け */
+.hp-bar .stat-fill {
+  background: linear-gradient(90deg, #ff5c5c, #ff9966);
+}
+
+.mp-bar .stat-fill {
+  background: linear-gradient(90deg, #4da6ff, #6f9fff);
+}
+
+.sp-bar .stat-fill {
+  background: linear-gradient(90deg, #f2c94c, #f2994a);
+}
+
+.stat-text {
+  position: relative;
+  z-index: 1;
+}
+
+/* 所持金＋詳細ボタン */
+.stat-money {
+  margin-left: 4px;
+  font-size: 11px;
+  color: var(--text-sub);
+  white-space: nowrap;
+}
+
+.stat-money #money {
   color: var(--gold);
+  font-weight: 600;
 }
 
 #toggleDetailBtn {
@@ -164,17 +226,89 @@ h1 {
   white-space: nowrap;
 }
 
+/* ★ 空腹・水分ステータスバー */
+/* ★ 空腹・水分ステータスバー */
+#hungerThirstBar {
+  margin-bottom: 6px;
+  padding: 4px 6px;
+  background: #0d0d16;
+  border-radius: 6px;
+  border: 1px solid rgba(90,90,150,0.7);
+  font-size: 11px;
+}
+
+#hungerThirstBar .ht-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 左右にラベル、その横にバー */
+.ht-label {
+  width: 32px;
+  text-align: right;
+  color: var(--text-sub);
+}
+
+/* 共通バー */
+.ht-bar {
+  flex: 1 1 0;
+  height: 10px;
+  background: #06060c;
+  border-radius: 999px;
+  border: 1px solid rgba(120,120,190,0.9);
+  overflow: hidden;
+  position: relative;
+}
+
+.ht-fill {
+  height: 100%;
+  width: 100%; /* JSで width を上書き */
+  background: linear-gradient(90deg, #70e070, #f5d46a);
+  transition: width 0.2s ease-out;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ht-text {
+  position: relative;
+  z-index: 1;
+  font-size: 10px;
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+}
+
 /* スマホ幅では少しだけ縮小して1行に入りやすくする */
 @media (max-width: 480px) {
   #statusBar {
     font-size: 0.72rem;
     padding: 3px 4px;
-    gap: 3px;
+    gap: 4px;
+  }
+
+  .stat-bar {
+    height: 12px;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    width: 24px;
+  }
+
+  .stat-text {
+    font-size: 9px;
   }
 
   #toggleDetailBtn {
     font-size: 9px;
     padding: 0 5px;
+  }
+
+  #hungerThirstBar {
+    font-size: 10px;
+    padding: 3px 5px;
   }
 }
 
@@ -210,7 +344,8 @@ h1 {
 /* PC時はサイドカードっぽく統一 */
 .layout-desktop #statusBar,
 .layout-desktop #detailPanel,
-.layout-desktop #petInfo {
+.layout-desktop #petInfo,
+.layout-desktop #hungerThirstBar {
   background: #101018;
   border-radius: 6px;
   border: 1px solid rgba(90,90,150,0.7);
@@ -633,6 +768,7 @@ input[type="text"] {
 
 /* ペット専用要素は JS 側で display 切替 */
 .pet-only {}
+
 .btn-return {
   background: linear-gradient(135deg, #444, #222);
   border-color: rgba(200,200,200,0.9);
@@ -741,4 +877,8 @@ input[type="text"] {
     padding: 5px 6px;
     min-height: 34px;
   }
+}
+/* 採取ページは常に1カラムでシンプルに表示 */
+#pageGather {
+  display: block;
 }

@@ -599,12 +599,18 @@ function playerAttack(){
 
   if(enemyHp <= 0){
     enemyHp = 0;
-    const expGain = currentEnemy.exp || BASE_EXP_PER_BATTLE;
+
+    // ★ 空腹・水分状態に応じたEXP（5 or 8）を使用
+    const expGain = getBattleExpPerWin(currentEnemy);
     const moneyGain = currentEnemy.money || 10;
     appendLog(`${currentEnemy.name}を倒した！ 経験値${expGain}と${moneyGain}Gを手に入れた`);
+
     addExp(expGain);
     money += moneyGain;
     addPetExp(Math.floor(expGain/2));
+
+    // 行動として空腹・水分を進行させる
+    handleHungerThirstOnAction("battleWin");
 
     if (isBossBattle) {
       onBossDefeated();
@@ -1219,12 +1225,16 @@ function applyPotionEffect(p, inBattle){
     appendLog(`爆弾を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！`);
     if(enemyHp <= 0){
       enemyHp = 0;
-      const expGain = currentEnemy.exp || BASE_EXP_PER_BATTLE;
+
+      const expGain = getBattleExpPerWin(currentEnemy);
       const moneyGain = currentEnemy.money || 10;
       appendLog(`${currentEnemy.name}を倒した！ 経験値${expGain}と${moneyGain}Gを手に入れた`);
+
       addExp(expGain);
       money += moneyGain;
       addPetExp(Math.floor(expGain/2));
+
+      handleHungerThirstOnAction("battleWin");
 
       if (isBossBattle) {
         onBossDefeated();

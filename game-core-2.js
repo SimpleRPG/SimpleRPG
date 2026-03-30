@@ -1,5 +1,5 @@
 // game-core-2.js
-// レベル・転生・職業・ペット
+// レベル・転生・職業・ペット ＋ 空腹・水分・EXPボーナス
 
 // =======================
 // レベル・転生
@@ -207,6 +207,83 @@ function doRebirth() {
 }
 
 // =======================
+// 空腹・水分・EXPボーナス
+// =======================
+
+// 0〜100。初期は満タン
+let hunger = 100;
+let thirst = 100;
+
+// 100になった瞬間から20分間は減らさないためのタイムスタンプ(ms)
+let wellFedUntil = 0;
+
+// 行動回数カウンタ（戦闘・採取など）
+let hungerActionCount = 0;
+let thirstActionCount = 0;
+
+// 今「満腹＆十分な水分」かどうか
+function isWellFed() {
+  const now = Date.now();
+  // 100にしてから20分経過していなければ常に満腹扱い
+  if (now < wellFedUntil) return true;
+  // タイマー切れ後は実際の値で判定
+  return hunger >= 90 && thirst >= 90;
+}
+
+// 戦闘1勝あたりの経験値を返す
+// （敵expを無視して「5 or 8固定」にしたい案に合わせている）
+function getBattleExpPerWin(enemy) {
+  // 将来、敵ごとのexpを活かすならここで enemy.exp を使って倍率をかける
+  return isWellFed() ? 8 : 5;
+}
+
+// 空腹・水分を増やす（料理・飲み物から呼ぶ想定）
+function restoreHungerThirst(addHunger, addThirst) {
+  hunger = Math.min(100, hunger + (addHunger || 0));
+  thirst = Math.min(100, thirst + (addThirst || 0));
+
+  // どちらかでも100になったら20分間は減らさない
+  if (hunger === 100 || thirst === 100) {
+    wellFedUntil = Date.now() + 20 * 60 * 1000;
+  }
+
+  updateDisplay();
+}
+
+// 行動時（戦闘勝利・採取成功など）に呼ぶ。放置では減らさない。
+function handleHungerThirstOnAction(actionType) {
+  const now = Date.now();
+  if (now < wellFedUntil) {
+    // 満腹タイム中は一切減らさない
+    return;
+  }
+
+  // 行動内容で分岐したければ actionType を見る（今は共通で+1）
+  hungerActionCount++;
+  thirstActionCount++;
+
+  // 5アクションごとに -5 ずつ減らす例
+    // 毎アクション -1
+  hunger = Math.max(0, hunger - 1);
+  thirst = Math.max(0, thirst - 1);
+
+  // カウンタはもう不要なら消してよい
+  hungerActionCount = 0;
+  thirstActionCount = 0;
+
+  updateDisplay();
+}
+
+// UI側から現在値を引くためのヘルパー
+function getHungerValue() {
+  return hunger;
+}
+
+function getThirstValue() {
+  return thirst;
+}
+
+// =======================
 // 職業・ペット成長タイプ
 // =======================
 
@@ -259,6 +336,13 @@ function applyJobChange(newJobId) {
     else if (newJobId === 1) growthType = 2; // 魔法使い=INT型
     else if (newJobId === 2) growthType = 4; // 動物使い=バランス型
   }
+
+  // ★ 職業変更後にステータス再計算
+  recalcStats();
+
+  // ★ 職業選択・変更時に MP/SP を最大まで回復
+  mp = mpMax;
+  sp = spMax;
 
   appendLog(`職業を「${getJobName()}」に変更した`);
   closeJobModal();

@@ -133,8 +133,6 @@ let prevStats = { hp:null, mp:null, sp:null, money:null };
 
 // ▼▼▼ セレクトの「最後に選んだ値」を覚える用 ▼▼▼
 let lastSelectedGatherField    = null;
-let lastSelectedFieldPotionId  = null; // useItemSelect 用
-let lastSelectedBattlePotionId = null; // battleItemSelect 用
 // ▲▲▲ ここまで ▲▲▲
 
 // =======================
@@ -327,18 +325,30 @@ function calcArmorEffectiveDef(a, baseVIT) {
   return a.def + enhanceBonus + Math.floor(baseVIT * (a.scaleVit || 0));
 }
 function recalcStats() {
-  let baseSTR = STR, baseVIT = VIT, baseINT = INT_;
+    let baseSTR = STR, baseVIT = VIT, baseINT = INT_;
   let jobMpBonusRate = 0;
-  if (jobId === 0) {
+
+  if (jobId === 0) { // 戦士
     baseSTR = Math.floor(baseSTR * 1.2);
     baseVIT = Math.floor(baseVIT * 1.1);
-  } else if (jobId === 1) {
+  } else if (jobId === 1) { // 魔法使い
     baseINT = Math.floor(baseINT * 1.2);
     jobMpBonusRate = 0.2;
   }
-  const intMpBonus = Math.floor(baseINT * 1.0);
-  mpMax = Math.floor(mpMaxBase * (1 + jobMpBonusRate)) + intMpBonus;
+
+  // ★ MP最大値の計算
+  // 未就職時: ベース値だけ（きっちり10）
+  // 就職後: 職業補正 + (INT-1) からボーナス（INT=1のときは+0）
+  const intMpBonus = Math.max(0, Math.floor(baseINT - 1));
+
+  if (jobId == null) {
+    mpMax = mpMaxBase; // 10固定
+  } else {
+    mpMax = Math.floor(mpMaxBase * (1 + jobMpBonusRate)) + intMpBonus;
+  }
+
   if (mp > mpMax) mp = mpMax;
+
   spMax = spMaxBase;
   if (sp > spMax) sp = spMax;
 
@@ -539,10 +549,27 @@ function updateSkillButtonsByJob() {
 
 function updateDisplay() {
   recalcStats();
-  animateIfChanged("hp", hp, "hp");
-  animateIfChanged("hpMax", hpMax, "hpMax");
-  animateIfChanged("mp", mp, "mp");
-  animateIfChanged("sp", sp, "sp");
+    // HP/MP/SP ゲージ＋テキスト更新
+  const hpRate = Math.max(0, Math.min(1, hpMax > 0 ? hp / hpMax : 0));
+  const mpRate = Math.max(0, Math.min(1, mpMax > 0 ? mp / mpMax : 0));
+  const spRate = Math.max(0, Math.min(1, spMax > 0 ? sp / spMax : 0));
+
+  const hpFill = document.getElementById("hpBarFill");
+  const mpFill = document.getElementById("mpBarFill");
+  const spFill = document.getElementById("spBarFill");
+  const hpText = document.getElementById("hpBarText");
+  const mpText = document.getElementById("mpBarText");
+  const spText = document.getElementById("spBarText");
+
+  if (hpFill) hpFill.style.width = (hpRate * 100) + "%";
+  if (mpFill) mpFill.style.width = (mpRate * 100) + "%";
+  if (spFill) spFill.style.width = (spRate * 100) + "%";
+
+  if (hpText) hpText.textContent = `${hp} / ${hpMax}`;
+  if (mpText) mpText.textContent = `${mp} / ${mpMax}`;
+  if (spText) spText.textContent = `${sp} / ${spMax}`;
+
+  // お金は従来通りアニメ付きで
   animateIfChanged("money", money, "money");
 
   setText("atkTotal", atkTotal);
@@ -666,7 +693,23 @@ function updateDisplay() {
   refreshGatherFieldSelect();
 
   // 帰還ボタンの表示更新
+    // 帰還ボタンの表示更新
   if (typeof updateReturnTownButton === "function") {
     updateReturnTownButton();
   }
+
+  // ★ 空腹・水分のUI更新を追加
+  const hungerTextEl = document.getElementById("hungerText");
+  const thirstTextEl = document.getElementById("thirstText");
+  const hungerGaugeEl = document.getElementById("hungerGauge");
+  const thirstGaugeEl = document.getElementById("thirstGauge");
+
+  if (hungerTextEl)  hungerTextEl.textContent  = hunger;
+  if (thirstTextEl)  thirstTextEl.textContent  = thirst;
+
+  const hRate = Math.max(0, Math.min(100, hunger)) / 100;
+  const tRate = Math.max(0, Math.min(100, thirst)) / 100;
+  
+  if (hungerGaugeEl) hungerGaugeEl.style.width = (hRate * 100) + "%";
+  if (thirstGaugeEl) thirstGaugeEl.style.width = (tRate * 100) + "%";
 }

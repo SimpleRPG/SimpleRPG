@@ -28,16 +28,99 @@ function calcGatherAmount(resourceKey){
   if(Math.random() < extraChance){
     total += 1;
   }
-  return total;
+  // 最低1個は欲しければここで保証（通常素材・料理素材で共通）
+  return Math.max(1, total);
 }
 
 function gather(){
   const targetSel = document.getElementById("gatherTarget");
   if (!targetSel) return;
-  const target = targetSel.value;
+  const target = targetSel.value; // wood / ore / herb / cloth / leather / water
 
   const fieldSel = document.getElementById("gatherField");
-  const field = fieldSel ? fieldSel.value : "field1"; 
+  const field = fieldSel ? fieldSel.value : "field1";
+
+  // 料理採取モードかどうかをチェック
+  if (field === "cook") {
+    const cookModeSel = document.getElementById("gatherCookingMode");
+    if (!cookModeSel) {
+      appendLog("料理採取モードの設定が見つかりません");
+      return;
+    }
+    const mode = cookModeSel.value; // "hunt" / "fish" / "farm"
+
+    // 対応する採取スキルで量を計算
+    const added = calcGatherAmount(mode);
+
+    // 料理素材プール（カテゴリ均一）
+    const GATHER_COOK_HUNT = [
+      "meat_hard",
+      "meat_soft",
+      "meat_fatty",
+      "meat_premium",
+      "meat_magic"
+    ];
+    const GATHER_COOK_FISH = [
+      "fish_small",
+      "fish_river",
+      "fish_sea",
+      "fish_big",
+      "fish_deep"
+    ];
+    const GATHER_COOK_FARM = [
+      "veg_root_rough",
+      "veg_leaf_crisp",
+      "veg_mushroom_aroma",
+      "veg_spice",
+      "veg_herb_aroma",
+      "veg_premium",
+      "veg_mountain",
+      "veg_dried",
+      "grain_coarse",
+      "grain_refined",
+      "grain_mochi",
+      "grain_ancient",
+      "spice_salt_rock",
+      "spice_pepper",
+      "spice_premium",
+      "spice_secret"
+    ];
+
+    let pool = [];
+    if (mode === "hunt")      pool = GATHER_COOK_HUNT;
+    else if (mode === "fish") pool = GATHER_COOK_FISH;
+    else                      pool = GATHER_COOK_FARM;
+
+    if (!pool.length) {
+      appendLog("今は料理素材を採取できない");
+      return;
+    }
+
+    if (typeof cookingMats !== "object") {
+      appendLog("料理素材の保管オブジェクトが未定義です（cookingMats）");
+      return;
+    }
+
+    for (let i = 0; i < added; i++) {
+      const id = pool[Math.floor(Math.random() * pool.length)];
+      cookingMats[id] = (cookingMats[id] || 0) + 1;
+    }
+
+    addGatherSkillExp(mode);
+
+    const modeLabel = (mode === "hunt") ? "狩猟" : (mode === "fish" ? "釣り" : "畑");
+    appendLog(`【${modeLabel}】で料理素材を${added}個採取した`);
+
+    // 採取も行動として空腹・水分を進行させる
+    if (typeof handleHungerThirstOnAction === "function") {
+      handleHungerThirstOnAction("gather");
+    }
+
+    updateDisplay();
+    return;
+  }
+
+  // ここから下は従来どおりの「通常素材採取」（木/鉱石/草/布/皮/水）
 
   const s = gatherSkills[target];
   const lv = s ? s.lv : 0;
@@ -98,6 +181,11 @@ function gather(){
   if (t1 > 0) appendLog(`T1${names[target]}を${t1}つ採取した！`);
   if (t2 > 0) appendLog(`T2${names[target]}を${t2}つ採取した！`);
   if (t3 > 0) appendLog(`T3${names[target]}を${t3}つ採取した！`);
+
+  // ★ 採取も行動として空腹・水分を進行させる
+  if (typeof handleHungerThirstOnAction === "function") {
+    handleHungerThirstOnAction("gather");
+  }
 
   updateDisplay();
 }

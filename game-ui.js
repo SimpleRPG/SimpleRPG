@@ -3,21 +3,234 @@
 
 // 画面サイズに応じてレイアウトクラスを付ける
 function applyResponsiveLayout() {
-  const w = window.innerWidth; // ビューポート幅[web:139]
+  const w = window.innerWidth;
   const root = document.documentElement;
 
   root.classList.remove("layout-mobile", "layout-tablet", "layout-desktop");
 
   if (w < 600) {
-    // スマホ想定
     root.classList.add("layout-mobile");
   } else if (w < 1024) {
-    // タブレット想定
     root.classList.add("layout-tablet");
   } else {
-    // PC想定
     root.classList.add("layout-desktop");
   }
+}
+
+// =======================
+// 料理関連 ヘルパー
+// =======================
+
+// cook-data.js で定義される前提:
+// const COOKING_RECIPES = { food: [...], drink: [...] };
+
+// 必要素材テキスト更新（既存 craftCostInfo を流用）
+function updateCookingCostInfo(recipe) {
+  const costInfo = document.getElementById("craftCostInfo");
+  if (!costInfo) return;
+
+  if (!recipe) {
+    costInfo.textContent = "必要素材：-";
+    return;
+  }
+
+  const parts = recipe.requires.map(req => `${req.type}×${req.amount}`);
+  costInfo.textContent = "必要素材：" + parts.join(" / ");
+}
+
+// 所持素材取得（既存の仕組みに合わせて後で実装）
+function getCookingMaterialAmount(type) {
+  // ここは craft-data / gather-data 側の実装に合わせて書き換え推奨
+  if (typeof getMaterialAmount === "function") {
+    return getMaterialAmount(type);
+  }
+  return 0;
+}
+
+// 素材消費
+function consumeCookingMaterial(type, amount) {
+  if (typeof consumeMaterial === "function") {
+    consumeMaterial(type, amount);
+  }
+}
+
+// インベントリに料理アイテム追加
+function addCookingItemToInventory(itemId, amount) {
+  if (typeof addItemToInventory === "function") {
+    addItemToInventory(itemId, amount);
+  }
+}
+
+// 素材チェック
+function canCraftCooking(recipe) {
+  if (!recipe || !recipe.requires) return false;
+  return recipe.requires.every(req => {
+    const have = getCookingMaterialAmount(req.type);
+    return have >= req.amount;
+  });
+}
+
+// 料理クラフト本体
+function doCraftCooking(recipe) {
+  if (!recipe) return;
+
+  if (window.isExploring || window.currentEnemy) {
+    if (typeof appendLog === "function") {
+      appendLog("探索中はクラフトできない！");
+    }
+    return;
+  }
+
+  if (!canCraftCooking(recipe)) {
+    if (typeof appendLog === "function") {
+      appendLog("素材が足りません。");
+    }
+    return;
+  }
+
+  recipe.requires.forEach(req => {
+    consumeCookingMaterial(req.type, req.amount);
+  });
+
+  addCookingItemToInventory(recipe.id, 1);
+
+  if (typeof appendLog === "function") {
+    appendLog(`${recipe.name} を作成した！`);
+  }
+
+  // 素材表示の更新が必要ならここで呼ぶ（例: updateMaterialDisplay など）
+}
+
+// 料理セレクトを埋める
+function populateCookingSelects() {
+  if (typeof COOKING_RECIPES === "undefined") return;
+
+  const foodSelect  = document.getElementById("foodSelect");
+  const drinkSelect = document.getElementById("drinkSelect");
+  const tierFilter  = document.getElementById("craftTierSelect");
+  const currentTier = tierFilter ? tierFilter.value : "all";
+
+  if (foodSelect) {
+    foodSelect.innerHTML = "";
+    COOKING_RECIPES.food
+      .filter(r => currentTier === "all" || r.tier === currentTier)
+      .forEach(r => {
+        const opt = document.createElement("option");
+        opt.value = r.id;
+        opt.textContent = `[${r.tier}] ${r.name}`;
+        foodSelect.appendChild(opt);
+      });
+  }
+
+  if (drinkSelect) {
+    drinkSelect.innerHTML = "";
+    COOKING_RECIPES.drink
+      .filter(r => currentTier === "all" || r.tier === currentTier)
+      .forEach(r => {
+        const opt = document.createElement("option");
+        opt.value = r.id;
+        opt.textContent = `[${r.tier}] ${r.name}`;
+        drinkSelect.appendChild(opt);
+      });
+  }
+}
+
+// 料理クラフトボタンとイベント
+function initCookingCraftUI() {
+  if (typeof COOKING_RECIPES === "undefined") return;
+
+  const foodSelect   = document.getElementById("foodSelect");
+  const drinkSelect  = document.getElementById("drinkSelect");
+  const foodBtn      = document.getElementById("craftFoodBtn");
+  const drinkBtn     = document.getElementById("craftDrinkBtn");
+  const tierFilter   = document.getElementById("craftTierSelect");
+
+  // 初回表示（ティアを見て埋める）
+  populateCookingSelects();
+
+  // ティア変更時: セレクトと必要素材更新
+  if (tierFilter) {
+    tierFilter.addEventListener("change", () => {
+      populateCookingSelects();
+
+      const idFood  = foodSelect?.value;
+      const idDrink = drinkSelect?.value;
+      const recipe =
+        COOKING_RECIPES.food.find(r => r.id === idFood) ||
+        COOKING_RECIPES.drink.find(r => r.id === idDrink) ||
+        null;
+      updateCookingCostInfo(recipe);
+    });
+  }
+
+  if (foodSelect) {
+    foodSelect.addEventListener("change", e => {
+      const id = e.target.value;
+      const recipe = COOKING_RECIPES.food.find(r => r.id === id);
+      updateCookingCostInfo(recipe);
+    });
+  }
+
+  if (drinkSelect) {
+    drinkSelect.addEventListener("change", e => {
+      const id = e.target.value;
+      const recipe = COOKING_RECIPES.drink.find(r => r.id === id);
+      updateCookingCostInfo(recipe);
+    });
+  }
+
+  if (foodBtn) {
+    foodBtn.addEventListener("click", () => {
+      const id = foodSelect?.value;
+      const recipe = COOKING_RECIPES.food.find(r => r.id === id);
+      doCraftCooking(recipe);
+    });
+  }
+
+  if (drinkBtn) {
+    drinkBtn.addEventListener("click", () => {
+      const id = drinkSelect?.value;
+      const recipe = COOKING_RECIPES.drink.find(r => r.id === id);
+      doCraftCooking(recipe);
+    });
+  }
+
+  // 初期コスト表示
+  const initId = foodSelect?.value || drinkSelect?.value;
+  const initRecipe =
+    COOKING_RECIPES.food.find(r => r.id === initId) ||
+    COOKING_RECIPES.drink.find(r => r.id === initId) ||
+    null;
+  updateCookingCostInfo(initRecipe);
+}
+
+// 料理サブタブ（食べ物／飲み物）
+function initCookingSubTabs() {
+  const subTabs = document.querySelectorAll(".cook-sub-tab");
+  const panelFood  = document.getElementById("cookPanelFood");
+  const panelDrink = document.getElementById("cookPanelDrink");
+
+  if (!subTabs.length || !panelFood || !panelDrink) return;
+
+  subTabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      subTabs.forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+
+      const sub = tab.dataset.sub; // "food" or "drink"
+      if (sub === "food") {
+        panelFood.style.display  = "";
+        panelDrink.style.display = "none";
+      } else {
+        panelFood.style.display  = "none";
+        panelDrink.style.display = "";
+      }
+    });
+  });
+
+  // 初期状態: 食べ物タブを表示
+  const first = subTabs[0];
+  if (first) first.click();
 }
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -83,11 +296,18 @@ window.addEventListener("DOMContentLoaded", () => {
         refreshEquipSelects();
       }
 
+      // 料理リストも毎回更新しておく
+      if (typeof COOKING_RECIPES !== "undefined") {
+        populateCookingSelects();
+      }
+
       const w = document.getElementById("weaponSelect");
       const a = document.getElementById("armorSelect");
       const p = document.getElementById("potionSelect");
       const t = document.getElementById("toolSelect");
       const interSel = document.getElementById("intermediateSelect");
+      const foodSel  = document.getElementById("foodSelect");
+      const drinkSel = document.getElementById("drinkSelect");
       const infoEl = document.getElementById("craftCostInfo");
 
       if (w && w.value)           updateCraftCostInfo("weapon", w.value);
@@ -96,6 +316,14 @@ window.addEventListener("DOMContentLoaded", () => {
       else if (t && t.value)      updateCraftCostInfo("tool",  t.value);
       else if (interSel && interSel.value)
         updateCraftCostInfo("material", interSel.value);
+      else if (foodSel && typeof COOKING_RECIPES !== "undefined") {
+        const r = COOKING_RECIPES.food.find(x => x.id === foodSel.value);
+        updateCookingCostInfo(r);
+      }
+      else if (drinkSel && typeof COOKING_RECIPES !== "undefined") {
+        const r = COOKING_RECIPES.drink.find(x => x.id === drinkSel.value);
+        updateCookingCostInfo(r);
+      }
       else if (infoEl)
         infoEl.textContent = "必要素材：-";
     }
@@ -230,6 +458,21 @@ window.addEventListener("DOMContentLoaded", () => {
   // 採取関連
   // =======================
 
+  // 料理採取用UI（gatherField === "cook" のときに表示）
+  const gatherFieldSel = document.getElementById("gatherField");
+  const gatherCookingRow = document.getElementById("gatherCookingRow");
+  if (gatherFieldSel && gatherCookingRow) {
+    const updateCookingRow = () => {
+      if (gatherFieldSel.value === "cook") {
+        gatherCookingRow.style.display = "";
+      } else {
+        gatherCookingRow.style.display = "none";
+      }
+    };
+    gatherFieldSel.addEventListener("change", updateCookingRow);
+    updateCookingRow();
+  }
+
   const gatherBtn = document.getElementById("gather");
   if (gatherBtn && typeof gather === "function") {
     gatherBtn.addEventListener("click", () => {
@@ -241,7 +484,6 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  const gatherFieldSel = document.getElementById("gatherField");
   if (gatherFieldSel && typeof refreshGatherFieldSelect === "function") {
     refreshGatherFieldSelect();
   }
@@ -302,7 +544,8 @@ window.addEventListener("DOMContentLoaded", () => {
     armor:    document.getElementById("craftPanelArmor"),
     potion:   document.getElementById("craftPanelPotion"),
     tool:     document.getElementById("craftPanelTool"),
-    material: document.getElementById("craftPanelMaterial")
+    material: document.getElementById("craftPanelMaterial"),
+    cooking:  document.getElementById("craftPanelCooking")
   };
 
   function setCraftCategory(cat){
@@ -333,6 +576,20 @@ window.addEventListener("DOMContentLoaded", () => {
     } else if (cat === "material") {
       const sel = document.getElementById("intermediateSelect");
       if (sel && sel.value) { updateCraftCostInfo("material", sel.value); return; }
+    } else if (cat === "cooking") {
+      if (typeof COOKING_RECIPES !== "undefined") {
+        populateCookingSelects();
+        const foodSel  = document.getElementById("foodSelect");
+        const drinkSel = document.getElementById("drinkSelect");
+        const idFood   = foodSel?.value;
+        const idDrink  = drinkSel?.value;
+        const recipe =
+          COOKING_RECIPES.food.find(r => r.id === idFood) ||
+          COOKING_RECIPES.drink.find(r => r.id === idDrink) ||
+          null;
+        updateCookingCostInfo(recipe);
+        return;
+      }
     }
 
     if (infoEl) infoEl.textContent = "必要素材：-";
@@ -346,6 +603,13 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   setCraftCategory("weapon");
+
+  // =======================
+  // 料理サブタブ初期化
+  // =======================
+
+  initCookingSubTabs();
+  initCookingCraftUI();
 
   // =======================
   // クラフトボタン・セレクト
@@ -399,6 +663,7 @@ window.addEventListener("DOMContentLoaded", () => {
   if (craftTierSelect && typeof refreshEquipSelects === "function") {
     craftTierSelect.addEventListener("change", () => {
       refreshEquipSelects();
+      populateCookingSelects();
     });
   }
 
@@ -568,9 +833,6 @@ window.addEventListener("DOMContentLoaded", () => {
   // =======================
   // ショップ
   // =======================
-
-  // 旧ショップボタン系は廃止（shopBuyPotion などのハンドラは削除）
-  // 新ショップは game-shop.js 側の initShop() で初期化する
 
   if (typeof initShop === "function") {
     initShop();

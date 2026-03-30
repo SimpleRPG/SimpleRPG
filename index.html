@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>しんぷるRPG</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div id="appRoot">
@@ -22,13 +22,60 @@
 
     <!-- PC/スマホ共通レイアウトの本体 -->
     <div id="layoutBody">
-      <!-- ★ ステータスバーを layoutBody 直下に移動 ★ -->
+      <!-- ステータスバー -->
       <div id="statusBar">
-        HP: <span id="hp">30</span>/<span id="hpMax">30</span>
-        MP: <span id="mp">10</span>/<span id="mpMax">10</span>
-        SP: <span id="sp">10</span>/<span id="spMax">10</span>
-        所持金: <span id="money">0</span>
+        <div class="stat-row">
+          <span class="stat-label">HP</span>
+          <div class="stat-bar hp-bar">
+            <div class="stat-fill" id="hpBarFill">
+              <span class="stat-text" id="hpBarText">30 / 30</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-row">
+          <span class="stat-label">MP</span>
+          <div class="stat-bar mp-bar">
+            <div class="stat-fill" id="mpBarFill">
+              <span class="stat-text" id="mpBarText">10 / 10</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-row">
+          <span class="stat-label">SP</span>
+          <div class="stat-bar sp-bar">
+            <div class="stat-fill" id="spBarFill">
+              <span class="stat-text" id="spBarText">10 / 10</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-money">
+          所持金:
+          <span id="money">0</span>G
+        </div>
+
         <button id="toggleDetailBtn">▼詳細</button>
+      </div>
+
+      <!-- 空腹・水分ステータスバー -->
+      <div id="hungerThirstBar">
+        <div class="ht-row">
+          <span class="ht-label">空腹</span>
+          <div class="ht-bar">
+            <div id="hungerGauge" class="ht-fill">
+              <span id="hungerText" class="ht-text">100</span>
+            </div>
+          </div>
+
+          <span class="ht-label">水分</span>
+          <div class="ht-bar">
+            <div id="thirstGauge" class="ht-fill">
+              <span id="thirstText" class="ht-text">100</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- 左カラム: メインタブ（ゲーム画面） -->
@@ -44,6 +91,8 @@
               <option value="field1">近郊の原っぱ(T1のみ)</option>
               <option value="field2">星降りの丘(T1多/T2少)</option>
               <option value="field3">翠風の谷(T1/T2/T3)</option>
+              <!-- 料理素材用フィールド -->
+              <option value="cook">料理素材の採取地</option>
             </select>
 
             <select id="gatherTarget">
@@ -54,6 +103,17 @@
               <option value="leather">皮</option>
               <option value="water">水</option>
             </select>
+
+            <!-- 料理採取モード（狩猟/釣り/畑） -->
+            <div id="gatherCookingRow" style="margin-top:4px; display:none;">
+              <label class="text-caption">料理採取:</label>
+              <select id="gatherCookingMode">
+                <option value="hunt">狩猟（肉）</option>
+                <option value="fish">釣り（魚）</option>
+                <option value="farm">畑・菜園（野菜/穀物/調味料）</option>
+              </select>
+            </div>
+
             <button id="gather">採取</button>
 
             <div style="display:flex; align-items:center; gap:4px; margin-top:4px;">
@@ -88,6 +148,8 @@
               <button class="craft-cat-tab" data-cat="potion">ポーション</button>
               <button class="craft-cat-tab" data-cat="tool">道具</button>
               <button class="craft-cat-tab" data-cat="material">素材</button>
+              <!-- 追加: 料理カテゴリ -->
+              <button class="craft-cat-tab" data-cat="cooking">料理</button>
             </div>
 
             <!-- ティア選択 -->
@@ -135,6 +197,41 @@
               </div>
               <div id="intermediateInfo" style="font-size:11px; color:#ccc;">
                 素材から板材・インゴットなどを作成します。
+              </div>
+            </div>
+
+            <!-- 追加: 料理クラフトパネル -->
+            <div id="craftPanelCooking" class="craft-panel" style="display:none;">
+              <h3>料理クラフト</h3>
+
+              <!-- 料理内サブタブ -->
+              <div id="cookSubTabs" style="margin:4px 0;">
+                <button class="cook-sub-tab active" data-sub="food">食べ物</button>
+                <button class="cook-sub-tab" data-sub="drink">飲み物</button>
+              </div>
+
+              <!-- 食べ物パネル -->
+              <div id="cookPanelFood">
+                <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
+                  <label style="font-size:12px;">食べ物:</label>
+                  <select id="foodSelect" style="flex:1;"></select>
+                  <button id="craftFoodBtn">料理を作る</button>
+                </div>
+                <div style="font-size:11px; color:#ccc;">
+                  食べ物バフは1種類だけ有効になります。
+                </div>
+              </div>
+
+              <!-- 飲み物パネル -->
+              <div id="cookPanelDrink" style="display:none;">
+                <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
+                  <label style="font-size:12px;">飲み物:</label>
+                  <select id="drinkSelect" style="flex:1;"></select>
+                  <button id="craftDrinkBtn">飲み物を作る</button>
+                </div>
+                <div style="font-size:11px; color:#ccc;">
+                  飲み物バフも1種類だけ有効になります。
+                </div>
               </div>
             </div>
 
@@ -234,26 +331,26 @@
           </div>
 
           <!-- ショップ -->
-<div id="pageShop" class="tab-page">
-  <h2>ショップ</h2>
-  <p>消耗品やサービスを購入できます。</p>
+          <div id="pageShop" class="tab-page">
+            <h2>ショップ</h2>
+            <p>消耗品やサービスを購入できます。</p>
 
-  <p>所持ゴールド: <span id="shopGoldDisplay">0</span>G</p>
+            <p>所持ゴールド: <span id="shopGoldDisplay">0</span>G</span></p>
 
-  <div id="shopCategoryTabs">
-    <button class="shop-category-button" data-category="item">消耗品</button>
-    <button class="shop-category-button" data-category="service">サービス</button>
-  </div>
+            <div id="shopCategoryTabs">
+              <button class="shop-category-button" data-category="item">消耗品</button>
+              <button class="shop-category-button" data-category="service">サービス</button>
+            </div>
 
-  <div id="shopItemList"></div>
+            <div id="shopItemList"></div>
 
-  <div id="shopItemDetail" style="margin-top: 8px; border-top: 1px solid #888; padding-top: 8px;">
-    <p id="shopItemName">商品を選択してください。</p>
-    <p id="shopItemDesc"></p>
-    <p id="shopItemPrice"></p>
-    <button id="shopBuyButton" disabled>購入する</button>
-  </div>
-</div>
+            <div id="shopItemDetail" style="margin-top: 8px; border-top: 1px solid #888; padding-top: 8px;">
+              <p id="shopItemName">商品を選択してください。</p>
+              <p id="shopItemDesc"></p>
+              <p id="shopItemPrice"></p>
+              <button id="shopBuyButton" disabled>購入する</button>
+            </div>
+          </div>
 
           <!-- 市場 -->
           <div id="pageMarket" class="tab-page">
@@ -349,7 +446,7 @@
             <p id="marketInfo" style="margin-top:8px; font-size:12px; color:#ccc;"></p>
           </div>
 
-          <!-- ステータス（タブページとしても残す） -->
+          <!-- ステータス -->
           <div id="pageStatus" class="tab-page">
             <h2>ステータス</h2>
 
@@ -399,6 +496,7 @@
               武器: Lv<span id="skCraftWeaponLv">0</span>,
               防具: Lv<span id="skCraftArmorLv">0</span>,
               ポーション: Lv<span id="skCraftPotionLv">0</span>
+              <!-- 料理スキルを足すならここに追加予定 -->
             </div>
 
             <h3 class="pet-only">ペットステータス（動物使いのみ）</h3>
@@ -480,6 +578,7 @@
   <script src="equip-data.js"></script>
   <script src="craft-data.js"></script>
   <script src="game-shop.js"></script>
+  <script src="cook-data.js"></script>
 
   <script src="game-core-1.js"></script>
   <script src="game-core-2.js"></script>

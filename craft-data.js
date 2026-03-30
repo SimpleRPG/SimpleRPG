@@ -1,5 +1,6 @@
 // craft-data.js
 // クラフトレシピ＆クラフトスキル定義＋成功率ボーナス＆品質ロジック
+// ＋ 料理用素材カテゴリとの整合性を取りやすい形の下準備
 
 // =======================
 // スキル定義
@@ -15,6 +16,8 @@ const CRAFT_SKILLS_INIT = {
   armor:  { lv: 0, exp: 0, expToNext: 10 },
   potion: { lv: 0, exp: 0, expToNext: 10 },
   tool:   { lv: 0, exp: 0, expToNext: 10 }
+  // 料理スキルを増やすならここに:
+  // cooking: { lv: 0, exp: 0, expToNext: 10 }
 };
 
 // =======================
@@ -27,24 +30,24 @@ const CRAFT_SKILLS_INIT = {
 
 const INTERMEDIATE_MATERIALS = [
   // 板材（木から）
-  { id: "woodPlank_T1",   name: "T1板材",        from: { wood: { t1: 3 } } },
-  { id: "woodPlank_T2",   name: "T2板材",        from: { wood: { t2: 3 } } },
-  { id: "woodPlank_T3",   name: "T3板材",        from: { wood: { t3: 3 } } },
+  { id: "woodPlank_T1",   name: "T1板材",          from: { wood:    { t1: 3 } } },
+  { id: "woodPlank_T2",   name: "T2板材",          from: { wood:    { t2: 3 } } },
+  { id: "woodPlank_T3",   name: "T3板材",          from: { wood:    { t3: 3 } } },
 
   // インゴット（鉱石から）
-  { id: "ironIngot_T1",   name: "T1鉄インゴット", from: { ore:  { t1: 4 } } },
-  { id: "ironIngot_T2",   name: "T2鉄インゴット", from: { ore:  { t2: 4 } } },
-  { id: "ironIngot_T3",   name: "T3鉄インゴット", from: { ore:  { t3: 4 } } },
+  { id: "ironIngot_T1",   name: "T1鉄インゴット",  from: { ore:     { t1: 4 } } },
+  { id: "ironIngot_T2",   name: "T2鉄インゴット",  from: { ore:     { t2: 4 } } },
+  { id: "ironIngot_T3",   name: "T3鉄インゴット",  from: { ore:     { t3: 4 } } },
 
   // 布束（布から）
-  { id: "clothBolt_T1",   name: "T1布束",        from: { cloth: { t1: 3 } } },
-  { id: "clothBolt_T2",   name: "T2布束",        from: { cloth: { t2: 3 } } },
-  { id: "clothBolt_T3",   name: "T3布束",        from: { cloth: { t3: 3 } } },
+  { id: "clothBolt_T1",   name: "T1布束",          from: { cloth:   { t1: 3 } } },
+  { id: "clothBolt_T2",   name: "T2布束",          from: { cloth:   { t2: 3 } } },
+  { id: "clothBolt_T3",   name: "T3布束",          from: { cloth:   { t3: 3 } } },
 
   // 強化皮（皮から）
-  { id: "toughLeather_T1",name: "T1強化皮",      from: { leather: { t1: 3 } } },
-  { id: "toughLeather_T2",name: "T2強化皮",      from: { leather: { t2: 3 } } },
-  { id: "toughLeather_T3",name: "T3強化皮",      from: { leather: { t3: 3 } } }
+  { id: "toughLeather_T1",name: "T1強化皮",        from: { leather: { t1: 3 } } },
+  { id: "toughLeather_T2",name: "T2強化皮",        from: { leather: { t2: 3 } } },
+  { id: "toughLeather_T3",name: "T3強化皮",        from: { leather: { t3: 3 } } }
 ];
 
 // =======================
@@ -54,6 +57,9 @@ const INTERMEDIATE_MATERIALS = [
 // cost は「基本素材」と「中間素材」を混在させてOK。
 // basic: wood/ore/herb/cloth/leather/water + その tier 指定版（wood_T1 など）
 // intermediate: woodPlank_Tx / ironIngot_Tx / clothBolt_Tx / toughLeather_Tx
+//
+// ※料理用素材（肉/魚/野菜/穀物/調味料）は COOKING_RECIPES 側で別管理。
+//   ここでは装備・ポーション・道具のみ。
 
 const CRAFT_RECIPES = {
   // ---- 武器 ----
