@@ -98,15 +98,16 @@ let materials = {
   leather: { t1: 0, t2: 0, t3: 0 },
   water:   { t1: 0, t2: 0, t3: 0 }
 };
-
-// 合計値を返すヘルパー（game-core-4 の hasMaterials / updateCraftCostInfo から利用）
+// ★料理素材
+let cookingMats = {};
+// 合計値を返すヘルパー
 function getMatTotal(key) {
   const m = materials[key];
   if (!m) return 0;
   return (m.t1 || 0) + (m.t2 || 0) + (m.t3 || 0);
 }
 
-// 中間素材（craft-data.js の INTERMEDIATE_MATERIALS と対応）
+// 中間素材
 let intermediateMats = {};
 
 // =======================
@@ -129,7 +130,6 @@ let enemyHpMax     = 0;
 let isBossBattle   = false;
 
 // エリア別ボス撃破フラグ
-// 実際のエリア解放は game-core-3 側のロジックで制御する前提
 let areaBossCleared = {
   field:  false,
   forest: false,
@@ -161,31 +161,21 @@ function getJobName() {
 // =======================
 // ステータス再計算
 // =======================
-//
-// ★ HPの成長式そのものは game-core-2.js（addExp/doRebirth）で決める前提。
-//   ここでは「現在の *_Base と hpMax の整合を取りつつ、
-//   現在値を最大値でクリップする」だけに留める。
 
 function recalcStats() {
-  // HP/MP/SP 最大値
-  // hpMax はレベルアップ・転生時に game-core-2 側で更新される想定なので、
-  // ここでは「最低でも hpMaxBase 以上にしておく」程度にとどめる。
   if (hpMax < hpMaxBase) {
     hpMax = hpMaxBase;
   }
   mpMax = mpMaxBase;
   spMax = spMaxBase;
 
-  // 現在値のクリップ
   hp = Math.min(hp, hpMax);
   mp = Math.min(mp, mpMax);
   sp = Math.min(sp, spMax);
 
-  // 基礎攻撃・防御
   const baseAtk = STR + Math.floor(level * 0.5);
   const baseDef = VIT + Math.floor(level * 0.5);
 
-  // 装備補正
   let weaponAtk = 0;
   let weaponScaleStr = 0;
   let weaponScaleInt = 0;
@@ -211,7 +201,6 @@ function recalcStats() {
     }
   }
 
-  // 最終攻撃力・防御力
   const atkFromStr = Math.floor(STR * 0.5);
   const atkFromDex = Math.floor(DEX_ * 0.3);
   const atkFromWeaponStr = Math.floor(STR * weaponScaleStr);
@@ -236,7 +225,6 @@ function recalcStats() {
     defFromDex +
     defFromArmorVit;
 
-  // 表示更新
   if (typeof updateDisplay === "function") {
     updateDisplay();
   }
@@ -273,17 +261,12 @@ function initIntermediateMats() {
 }
 
 function initGame() {
-  // 基本ステ初期化（上部のデフォルトを利用）
-
-  // 装備・所持品初期化
   initWeaponsAndArmors();
   initIntermediateMats();
 
-  // 採取・クラフトスキル初期化
   gatherSkills = JSON.parse(JSON.stringify(GATHER_SKILLS_INIT));
   craftSkills  = JSON.parse(JSON.stringify(CRAFT_SKILLS_INIT));
 
-  // 探索・ボスフラグ初期化
   exploringArea = null;
   isExploring   = false;
 
@@ -299,9 +282,6 @@ function initGame() {
   enemyHpMax   = 0;
   isBossBattle = false;
 
-  // 職業・ペットはデフォルトのまま（jobId=null, pet…）
-
-  // ステータス計算＆表示
   recalcStats();
 }
 
@@ -319,6 +299,16 @@ function appendLog(msg) {
   const el = document.getElementById("log");
   if (!el) return;
   el.textContent = msg + "\n" + el.textContent;
+}
+
+// =======================
+// 素材表示ヘルパー
+// =======================
+
+// ★ UI に統一したので、ここでは何もしないダミー関数にしておく
+function updateMaterialDetailTexts() {
+  // 何もしない（従来の UI 更新は game-ui.js の
+  // updateGatherMatDetailText / updateCraftMatDetailText に委譲）
 }
 
 // =======================
@@ -455,4 +445,57 @@ function updateDisplay() {
   petOnlyEls.forEach(el => {
     el.style.display = (jobId === 2) ? "" : "none";
   });
+
+  // 空腹・水分バー
+  const hungerGauge = document.getElementById("hungerGauge");
+  const hungerText  = document.getElementById("hungerText");
+  const thirstGauge = document.getElementById("thirstGauge");
+  const thirstText  = document.getElementById("thirstText");
+
+  if (typeof getHungerValue === "function" && hungerGauge && hungerText) {
+    const h = getHungerValue();
+    const ratio = Math.max(0, Math.min(100, h)) / 100;
+    hungerGauge.style.width = (ratio * 100) + "%";
+    hungerText.textContent  = h;
+  }
+
+  if (typeof getThirstValue === "function" && thirstGauge && thirstText) {
+    const t = getThirstValue();
+    const ratio = Math.max(0, Math.min(100, t)) / 100;
+    thirstGauge.style.width = (ratio * 100) + "%";
+    thirstText.textContent  = t;
+  }
+
+  // 採取スキル表示
+  const skWood   = document.getElementById("skGatherWoodLv");
+  const skOre    = document.getElementById("skGatherOreLv");
+  const skHerb   = document.getElementById("skGatherHerbLv");
+  const skCloth  = document.getElementById("skGatherClothLv");
+  const skLeather= document.getElementById("skGatherLeatherLv");
+  const skWater  = document.getElementById("skGatherWaterLv");
+  const skHunt   = document.getElementById("skGatherHuntLv");
+  const skFish   = document.getElementById("skGatherFishLv");
+  const skFarm   = document.getElementById("skGatherFarmLv");
+
+  if (skWood  && gatherSkills.wood)    skWood.textContent    = gatherSkills.wood.lv;
+  if (skOre   && gatherSkills.ore)     skOre.textContent     = gatherSkills.ore.lv;
+  if (skHerb  && gatherSkills.herb)    skHerb.textContent    = gatherSkills.herb.lv;
+  if (skCloth && gatherSkills.cloth)   skCloth.textContent   = gatherSkills.cloth.lv;
+  if (skLeather && gatherSkills.leather) skLeather.textContent = gatherSkills.leather.lv;
+  if (skWater && gatherSkills.water)   skWater.textContent   = gatherSkills.water.lv;
+  if (skHunt  && gatherSkills.hunt)    skHunt.textContent    = gatherSkills.hunt.lv;
+  if (skFish  && gatherSkills.fish)    skFish.textContent    = gatherSkills.fish.lv;
+  if (skFarm  && gatherSkills.farm)    skFarm.textContent    = gatherSkills.farm.lv;
+  
+  const skCraftWeapon = document.getElementById("skCraftWeaponLv");
+  const skCraftArmor  = document.getElementById("skCraftArmorLv");
+  const skCraftPotion = document.getElementById("skCraftPotionLv");
+  const skCraftTool   = document.getElementById("skCraftToolLv");
+
+  if (skCraftWeapon && craftSkills.weapon) skCraftWeapon.textContent = craftSkills.weapon.lv;
+  if (skCraftArmor  && craftSkills.armor)  skCraftArmor.textContent  = craftSkills.armor.lv;
+  if (skCraftPotion && craftSkills.potion) skCraftPotion.textContent = craftSkills.potion.lv;
+  if (skCraftTool   && craftSkills.tool)   skCraftTool.textContent   = craftSkills.tool.lv;
+
+  // ★ 素材ラベルは game-ui.js 側で更新するのでここでは触らない
 }

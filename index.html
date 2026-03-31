@@ -17,6 +17,7 @@
       <button id="tabExplore" class="tab-button">探索</button>
       <button id="tabShop"    class="tab-button">ショップ</button>
       <button id="tabMarket"  class="tab-button">市場</button>
+      <button id="tabWarehouse" class="tab-button">倉庫</button>
       <button id="tabStatus"  class="tab-button">ステータス</button>
     </div>
 
@@ -90,30 +91,13 @@
             <!-- option は JS 側で全部生成する -->
             <select id="gatherField"></select>
 
-            <select id="gatherTarget">
-              <option value="wood">木</option>
-              <option value="ore">鉱石</option>
-              <option value="herb">草</option>
-              <option value="cloth">布</option>
-              <option value="leather">皮</option>
-              <option value="water">水</option>
-            </select>
-
-            <!-- 料理採取モード（狩猟/釣り/畑） -->
-            <div id="gatherCookingRow" style="margin-top:4px; display:none;">
-              <label class="text-caption">料理採取:</label>
-              <select id="gatherCookingMode">
-                <option value="hunt">狩猟（肉）</option>
-                <option value="fish">釣り（魚）</option>
-                <option value="farm">畑・菜園（野菜/穀物/調味料）</option>
-              </select>
-            </div>
+            <select id="gatherTarget"></select>
 
             <button id="gather">採取</button>
 
             <div style="display:flex; align-items:center; gap:4px; margin-top:4px;">
               <p id="gatherMaterials" style="flex:1;">
-                所持素材：木0 / 鉱石0 / 草0 / 布0 / 皮0 / 水0
+                所持素材：-
               </p>
               <button id="toggleMatDetailBtn" style="font-size:11px; padding:2px 6px;">
                 詳細▼
@@ -128,7 +112,7 @@
 
             <div style="display:flex; align-items:center; gap:4px;">
               <p id="craftMaterials" style="flex:1;">
-                所持素材：木0 / 鉱石0 / 草0 / 布0 / 皮0 / 水0
+                所持素材：-
               </p>
               <button id="toggleMatDetailBtn2" style="font-size:11px; padding:2px 6px;">
                 詳細▼
@@ -439,6 +423,60 @@
             </div>
 
             <p id="marketInfo" style="margin-top:8px; font-size:12px; color:#ccc;"></p>
+          </div>
+
+          <!-- 倉庫 -->
+          <div id="pageWarehouse" class="tab-page">
+            <h2>倉庫</h2>
+
+            <!-- 上: 手持ちインベントリ -->
+            <h3>手持ち</h3>
+            <div id="carryInventoryBox" class="status-block" style="font-size:12px;">
+              <p>ポーション（最大10本）</p>
+              <div id="carryPotionsList"></div>
+
+              <p>料理（食べ物 最大3品）</p>
+              <div id="carryFoodsList"></div>
+
+              <p>料理（飲み物 最大3杯）</p>
+              <div id="carryDrinksList"></div>
+
+              <p>武器（最大2本）</p>
+              <div id="carryWeaponsList"></div>
+
+              <p>防具（最大2着）</p>
+              <div id="carryArmorsList"></div>
+
+              <p>道具（最大3個）</p>
+              <div id="carryToolsList"></div>
+            </div>
+
+            <!-- 下: 倉庫（長期保管） -->
+            <h3>倉庫</h3>
+            <div id="warehouseBox" class="status-block" style="font-size:12px;">
+              <p>ポーション</p>
+              <div id="warehousePotionsList"></div>
+
+              <p>料理（食べ物）</p>
+              <div id="warehouseFoodsList"></div>
+
+              <p>料理（飲み物）</p>
+              <div id="warehouseDrinksList"></div>
+
+              <p>武器</p>
+              <div id="warehouseWeaponsList"></div>
+
+              <p>防具</p>
+              <div id="warehouseArmorsList"></div>
+
+              <p>道具</p>
+              <div id="warehouseToolsList"></div>
+            </div>
+
+            <!-- 簡易操作（とりあえずボタンベース） -->
+            <div style="margin-top:8px; font-size:11px;">
+              <p>※詳細な出し入れUI（選択→移動ボタン）は後で追加します。</p>
+            </div>
           </div>
 
           <!-- ステータス -->

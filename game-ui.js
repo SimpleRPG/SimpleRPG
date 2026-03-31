@@ -1,7 +1,7 @@
 // game-ui.js
 // 各種ボタン・タブ・セレクトのイベントバインドとUI制御
 
-console.log("game-ui.js start");
+console.log("game-ui.js srt");
 
 // 画面サイズに応じてレイアウトクラスを付ける
 function applyResponsiveLayout() {
@@ -17,6 +17,118 @@ function applyResponsiveLayout() {
   } else {
     root.classList.add("layout-desktop");
   }
+}
+
+// 素材詳細テキスト更新（採取タブ用）
+function updateGatherMatDetailText() {
+  const label = document.getElementById("gatherMaterials");
+  const area  = document.getElementById("gatherMatDetail");
+  if (!label || !area || typeof window.materials === "undefined") return;
+
+  const names = {
+    wood:   "木",
+    ore:    "鉱石",
+    herb:   "草",
+    cloth:  "布",
+    leather:"皮",
+    water:  "水"
+  };
+
+  function formatTierNums(matObj) {
+    const m = matObj || {};
+    const t1 = m.t1 || 0;
+    const t2 = m.t2 || 0;
+    const t3 = m.t3 || 0;
+    return `${t1}/${t2}/${t3}`;
+  }
+
+  const keys = ["wood","ore","herb","cloth","leather","water"];
+
+  // 詳細（全素材の T1/T2/T3）
+  const lines = keys.map(k => {
+    const m = window.materials[k] || {};
+    return `${names[k]}: ${formatTierNums(m)}`;
+  });
+  // 実際の改行にする
+  area.textContent = lines.join("\n");
+
+  // ラベル（直近採取したティアを優先して表示）
+  let labelText = "所持素材：-";
+
+  if (window.lastGatherInfo && window.lastGatherInfo.baseKey) {
+    const info    = window.lastGatherInfo;
+    const baseKey = info.baseKey;
+    const tiers   = info.tiers || {};
+    const t1 = tiers.t1 || 0;
+    const t2 = tiers.t2 || 0;
+    const t3 = tiers.t3 || 0;
+
+    let picked = "";
+    if (t3 > 0)      picked = `T3${names[baseKey]}`;
+    else if (t2 > 0) picked = `T2${names[baseKey]}`;
+    else if (t1 > 0) picked = `T1${names[baseKey]}`;
+
+    if (picked) {
+      labelText = `所持素材：${picked}`;
+    }
+  }
+
+  label.textContent = labelText;
+}
+
+// 素材詳細テキスト更新（クラフトタブ用）
+function updateCraftMatDetailText() {
+  const label = document.getElementById("craftMaterials");
+  const area  = document.getElementById("craftMatDetail");
+  if (!label || !area || typeof window.materials === "undefined") return;
+
+  const names = {
+    wood:   "木",
+    ore:    "鉱石",
+    herb:   "草",
+    cloth:  "布",
+    leather:"皮",
+    water:  "水"
+  };
+
+  function formatTierNums(matObj) {
+    const m = matObj || {};
+    const t1 = m.t1 || 0;
+    const t2 = m.t2 || 0;
+    const t3 = m.t3 || 0;
+    return `${t1}/${t2}/${t3}`;
+  }
+
+  const keys = ["wood","ore","herb","cloth","leather","water"];
+
+  const lines = keys.map(k => {
+    const m = window.materials[k] || {};
+    return `${names[k]}: ${formatTierNums(m)}`;
+  });
+  // 実際の改行にする
+  area.textContent = lines.join("\n");
+
+  let labelText = "所持素材：-";
+
+  if (window.lastGatherInfo && window.lastGatherInfo.baseKey) {
+    const info    = window.lastGatherInfo;
+    const baseKey = info.baseKey;
+    const tiers   = info.tiers || {};
+    const t1 = tiers.t1 || 0;
+    const t2 = tiers.t2 || 0;
+    const t3 = tiers.t3 || 0;
+
+    let picked = "";
+    if (t3 > 0)      picked = `T3${names[baseKey]}`;
+    else if (t2 > 0) picked = `T2${names[baseKey]}`;
+    else if (t1 > 0) picked = `T1${names[baseKey]}`;
+
+    if (picked) {
+      labelText = `所持素材：${picked}`;
+    }
+  }
+
+  label.textContent = labelText;
 }
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -37,13 +149,14 @@ window.addEventListener("DOMContentLoaded", () => {
   // =======================
 
   const tabButtonsMap = {
-    tabGather:  "pageGather",
-    tabCraft:   "pageCraft",
-    tabEquip:   "pageEquip",
-    tabExplore: "pageExplore",
-    tabShop:    "pageShop",
-    tabMarket:  "pageMarket",
-    tabStatus:  "pageStatus"
+    tabGather:    "pageGather",
+    tabCraft:     "pageCraft",
+    tabEquip:     "pageEquip",
+    tabExplore:   "pageExplore",
+    tabShop:      "pageShop",
+    tabMarket:    "pageMarket",
+    tabWarehouse: "pageWarehouse", // 倉庫タブを追加
+    tabStatus:    "pageStatus"
   };
 
   const tabPages = Object.values(tabButtonsMap).map(id => document.getElementById(id));
@@ -51,7 +164,7 @@ window.addEventListener("DOMContentLoaded", () => {
   function showTabByPageId(pageId) {
     // 探索中・戦闘中のタブ制限
     if (window.isExploring || window.currentEnemy) {
-      const allowed = ["pageExplore", "pageStatus"];
+      const allowed = ["pageExplore", "pageStatus"]; // 倉庫は「街でしか触れない」仕様のまま
       if (!allowed.includes(pageId)) {
         if (typeof appendLog === "function") {
           appendLog("探索中はその行動はできない！");
@@ -112,6 +225,9 @@ window.addEventListener("DOMContentLoaded", () => {
       }
       else if (infoEl)
         infoEl.textContent = "必要素材：-";
+
+      // クラフトタブに来たタイミングでも詳細を最新化
+      updateCraftMatDetailText();
     }
 
     // 市場タブを開いたときに最新状態へ
@@ -126,6 +242,13 @@ window.addEventListener("DOMContentLoaded", () => {
         if (typeof refreshMarketOrderList === "function") {
           refreshMarketOrderList();
         }
+      }
+    }
+
+    // 倉庫タブを開いたときに最新状態へ
+    if (pageId === "pageWarehouse") {
+      if (typeof refreshWarehouseUI === "function") {
+        refreshWarehouseUI();
       }
     }
   }
@@ -160,7 +283,10 @@ window.addEventListener("DOMContentLoaded", () => {
   const gatherMatDetail = document.getElementById("gatherMatDetail");
   if (toggleMatDetailBtn && gatherMatDetail) {
     toggleMatDetailBtn.addEventListener("click", () => {
-      const visible = gatherMatDetail.style.display === "block";
+      // トグル時に毎回テキストも更新
+      updateGatherMatDetailText();
+      // display が空（= 初期CSS none）のときにも対応
+      const visible = gatherMatDetail.style.display === "block" || getComputedStyle(gatherMatDetail).display === "block";
       gatherMatDetail.style.display = visible ? "none" : "block";
       toggleMatDetailBtn.textContent = visible ? "詳細▼" : "詳細▲";
     });
@@ -171,7 +297,9 @@ window.addEventListener("DOMContentLoaded", () => {
   const craftMatDetail = document.getElementById("craftMatDetail");
   if (toggleMatDetailBtn2 && craftMatDetail) {
     toggleMatDetailBtn2.addEventListener("click", () => {
-      const visible = craftMatDetail.style.display === "block";
+      // トグル時に毎回テキストも更新
+      updateCraftMatDetailText();
+      const visible = craftMatDetail.style.display === "block" || getComputedStyle(craftMatDetail).display === "block";
       craftMatDetail.style.display = visible ? "none" : "block";
       toggleMatDetailBtn2.textContent = visible ? "詳細▼" : "詳細▲";
     });
@@ -244,19 +372,16 @@ window.addEventListener("DOMContentLoaded", () => {
   // 採取関連
   // =======================
 
-  // 料理採取用UI（gatherField === "cook" のときに表示）
   const gatherFieldSel = document.getElementById("gatherField");
-  const gatherCookingRow = document.getElementById("gatherCookingRow");
-  if (gatherFieldSel && gatherCookingRow) {
-    const updateCookingRow = () => {
-      if (gatherFieldSel.value === "cook") {
-        gatherCookingRow.style.display = "";
-      } else {
-        gatherCookingRow.style.display = "none";
+
+  // フィールド変更時にターゲットリストを更新（game-core-4.js 側のロジックを使用）
+  if (gatherFieldSel) {
+    const onFieldChange = () => {
+      if (typeof refreshGatherTargetSelect === "function") {
+        refreshGatherTargetSelect();
       }
     };
-    gatherFieldSel.addEventListener("change", updateCookingRow);
-    updateCookingRow();
+    gatherFieldSel.addEventListener("change", onFieldChange);
   }
 
   const gatherBtn = document.getElementById("gather");
@@ -267,10 +392,14 @@ window.addEventListener("DOMContentLoaded", () => {
         return;
       }
       gather();
+      // 採取後に詳細も更新
+      updateGatherMatDetailText();
+      updateCraftMatDetailText();
     });
   }
 
-  if (gatherFieldSel && typeof refreshGatherFieldSelect === "function") {
+  // 起動時にフィールド＆ターゲットを初期化
+  if (typeof refreshGatherFieldSelect === "function") {
     refreshGatherFieldSelect();
   }
 
@@ -291,7 +420,7 @@ window.addEventListener("DOMContentLoaded", () => {
       sel.appendChild(opt);
     });
 
-    function updateIntermediateInfo(){
+    function updateIntermediateInfo() {
       const id = sel.value;
       const infoEl = document.getElementById("craftCostInfo");
       if (!id) {
@@ -314,6 +443,9 @@ window.addEventListener("DOMContentLoaded", () => {
       if (typeof craftIntermediate === "function") {
         craftIntermediate(id);
         updateIntermediateInfo();
+        // クラフト後に詳細も更新
+        updateGatherMatDetailText();
+        updateCraftMatDetailText();
       }
     });
   }
@@ -334,7 +466,7 @@ window.addEventListener("DOMContentLoaded", () => {
     cooking:  document.getElementById("craftPanelCooking")
   };
 
-  function setCraftCategory(cat){
+  function setCraftCategory(cat) {
     craftCatTabs.forEach(btn => {
       if (btn.dataset.cat === cat) btn.classList.add("active");
       else                         btn.classList.remove("active");
@@ -527,6 +659,10 @@ window.addEventListener("DOMContentLoaded", () => {
     if (typeof appendLog === "function") {
       appendLog(`${recipe.name} を作成した！`);
     }
+
+    // 料理クラフト後も詳細更新
+    updateGatherMatDetailText();
+    updateCraftMatDetailText();
   }
 
   function initCookingCraftUI() {
@@ -608,6 +744,8 @@ window.addEventListener("DOMContentLoaded", () => {
         return;
       }
       craftWeapon();
+      updateGatherMatDetailText();
+      updateCraftMatDetailText();
     });
   }
 
@@ -619,6 +757,8 @@ window.addEventListener("DOMContentLoaded", () => {
         return;
       }
       craftArmor();
+      updateGatherMatDetailText();
+      updateCraftMatDetailText();
     });
   }
 
@@ -630,6 +770,8 @@ window.addEventListener("DOMContentLoaded", () => {
         return;
       }
       craftPotion();
+      updateGatherMatDetailText();
+      updateCraftMatDetailText();
     });
   }
 
@@ -641,6 +783,8 @@ window.addEventListener("DOMContentLoaded", () => {
         return;
       }
       craftTool();
+      updateGatherMatDetailText();
+      updateCraftMatDetailText();
     });
   }
 
@@ -980,7 +1124,16 @@ window.addEventListener("DOMContentLoaded", () => {
   if (typeof refreshEquipSelects === "function") {
     refreshEquipSelects();
   }
+
+  // 初期の素材詳細も一度描画しておく
+  updateGatherMatDetailText();
+  updateCraftMatDetailText();
+
   if (typeof updateDisplay === "function") {
     updateDisplay();
+  }
+  // 倉庫表示を一度初期化しておく
+  if (typeof refreshWarehouseUI === "function") {
+    refreshWarehouseUI();
   }
 });

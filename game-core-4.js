@@ -6,10 +6,10 @@
 // =======================
 
 const GATHER_FIELDS = [
-  { id: "field1", name: "近郊の原っぱ(T1のみ)" },
-  { id: "field2", name: "星降りの丘(T1多/T2少)" },
-  { id: "field3", name: "翠風の谷(T1/T2/T3)" },
-  { id: "cook",   name: "料理素材の採取地" }
+  { id: "field1", name: "近郊の原っぱ" },
+  { id: "field2", name: "星降りの丘" },
+  { id: "field3", name: "翠風の谷" },
+  { id: "cook",   name: "食材調達" }
 ];
 
 // 採取スキルレベルによるフィールド解放条件
@@ -31,7 +31,90 @@ function checkGatherAreaUnlockBySkill(resourceKey) {
 function getCurrentGatherTarget() {
   const targetSel = document.getElementById("gatherTarget");
   if (!targetSel) return null;
+  const fieldSel = document.getElementById("gatherField");
+  const field = fieldSel ? fieldSel.value : null;
+
+  // 料理フィールドのときは通常資源ターゲットは意味を持たない
+  if (field === "cook") return null;
+
   return targetSel.value || null; // wood / ore / herb / cloth / leather / water
+}
+
+// フィールドに応じて採取ターゲットセレクトの中身を切り替える
+function refreshGatherTargetSelect() {
+  const targetSel = document.getElementById("gatherTarget");
+  const fieldSel  = document.getElementById("gatherField");
+  if (!targetSel || !fieldSel) return;
+
+  const field = fieldSel.value;
+  const prev  = targetSel.value;
+
+  targetSel.innerHTML = "";
+
+  // =======================
+  // 料理素材の採取地
+  // =======================
+  if (field === "cook") {
+    // 料理採取時は「狩猟 / 釣り / 畑」をターゲットとして出す
+    const modes = [
+      { id: "hunt", name: "狩猟" },
+      { id: "fish", name: "釣り" },
+      { id: "farm", name: "畑・菜園" }
+    ];
+    modes.forEach(m => {
+      const opt = document.createElement("option");
+      opt.value = m.id;
+      opt.textContent = m.name;
+      targetSel.appendChild(opt);
+    });
+
+    if (prev && modes.some(m => m.id === prev)) {
+      targetSel.value = prev;
+    } else {
+      targetSel.value = "hunt";
+    }
+    return;
+  }
+
+  // =======================
+  // 通常フィールド: 木/鉱石/草/布/皮/水
+  // =======================
+  const targets = [
+    { id: "wood",    name: "木" },
+    { id: "ore",     name: "鉱石" },
+    { id: "herb",    name: "草" },
+    { id: "cloth",   name: "布" },
+    { id: "leather", name: "皮" },
+    { id: "water",   name: "水" }
+  ];
+
+  targets.forEach(t => {
+    const s  = gatherSkills[t.id];
+    const lv = s ? s.lv : 0;
+
+    // フィールド × target ごとの必要Lv
+    const table = GATHER_FIELD_REQUIRE_LV[field] || {};
+    const needLv = table[t.id] ?? 0;
+
+    // 今のスキルLvでこのフィールドで採れる素材だけ出す
+    if (lv < needLv) return;
+
+    const opt = document.createElement("option");
+    opt.value = t.id;
+    opt.textContent = t.name;
+    targetSel.appendChild(opt);
+  });
+
+  if (prev && Array.from(targetSel.options).some(o => o.value === prev)) {
+    targetSel.value = prev;
+  } else if (targetSel.options.length) {
+    targetSel.value = targetSel.options[0].value;
+  } else {
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "採取できる対象がありません";
+    targetSel.appendChild(opt);
+  }
 }
 
 // このフィールドに「今の target で」入れるか判定
@@ -54,16 +137,28 @@ function refreshGatherFieldSelect() {
   const sel = document.getElementById("gatherField");
   if (!sel) return;
 
-  const currentTarget = getCurrentGatherTarget();
+  const currentTarget = getCurrentGatherTarget(); // cook のときは null
 
   const prev = sel.value;
   sel.innerHTML = "";
 
   const unlocked = [];
 
+  // ★ 全採取スキルが Lv0 かどうかチェック
+  const allGatherLv0 =
+    gatherSkills.wood.lv    === 0 &&
+    gatherSkills.ore.lv     === 0 &&
+    gatherSkills.herb.lv    === 0 &&
+    gatherSkills.cloth.lv   === 0 &&
+    gatherSkills.leather.lv === 0 &&
+    gatherSkills.water.lv   === 0 &&
+    gatherSkills.hunt.lv    === 0 &&
+    gatherSkills.fish.lv    === 0 &&
+    gatherSkills.farm.lv    === 0;
+
   GATHER_FIELDS.forEach(f => {
-    // cook は常に表示
     if (f.id === "cook") {
+      // 料理採取地は常に表示
       const opt = document.createElement("option");
       opt.value = f.id;
       opt.textContent = f.name;
@@ -72,27 +167,43 @@ function refreshGatherFieldSelect() {
       return;
     }
 
-    // 通常フィールドは「今の target で行けるかどうか」で判定
-    if (!currentTarget) return;
+    // 全採取スキルLv0なら field1 だけ表示（field2/3 は隠す）
+    if (allGatherLv0 && f.id !== "field1") {
+      return;
+    }
+
+    // target が null（＝まだ何も選んでない）かつ cook 以外のときだけ、
+    // field1〜3 を全部出す
+    if (!currentTarget && f.id !== "cook") {
+      const opt = document.createElement("option");
+      opt.value = f.id;
+      opt.textContent = f.name;
+      sel.appendChild(opt);
+      unlocked.push(f.id);
+      return;
+    }
+
+    // target が決まっている場合だけスキルチェック
     if (!canEnterGatherFieldForTarget(f.id, currentTarget)) return;
 
     const opt = document.createElement("option");
     opt.value = f.id;
-    opt.textContent = f.name; // 必要Lvの表示は付けない（一覧には出さない仕様）
+    opt.textContent = f.name;
     sel.appendChild(opt);
     unlocked.push(f.id);
   });
 
-  // 以前選んでいたフィールドがまだ解放済みなら維持、ダメなら先頭
   const exists = unlocked.includes(prev);
   if (exists) {
     sel.value = prev;
   } else if (unlocked.length > 0) {
     sel.value = unlocked[0];
   } else {
-    // 何もない場合の保険（理論上 cook だけは残るはず）
     sel.value = "";
   }
+
+  // フィールド変更に合わせてターゲットも更新
+  refreshGatherTargetSelect();
 }
 
 // =======================
@@ -111,6 +222,11 @@ function addGatherSkillExp(resourceKey){
   }
   // 採取スキルLvが上がったら、行けるフィールド一覧を更新
   refreshGatherFieldSelect();
+
+  // ステータス画面の採取スキル欄も更新
+  if (typeof updateDisplay === "function") {
+    updateDisplay();
+  }
 }
 
 function calcGatherAmount(resourceKey){
@@ -128,17 +244,55 @@ function calcGatherAmount(resourceKey){
   return Math.max(1, total);
 }
 
+// 料理素材名テーブル（ログ表示用）
+const COOKING_MAT_NAMES = {
+  meat_hard: "固い肉",
+  meat_soft: "やわらかい肉",
+  meat_fatty: "脂身の多い肉",
+  meat_premium: "高級肉",
+  meat_magic: "不思議な肉",
+  fish_small: "小魚",
+  fish_river: "川魚",
+  fish_sea: "海魚",
+  fish_big: "大きな魚",
+  fish_deep: "深海魚",
+  veg_root_rough: "ゴロゴロ根菜",
+  veg_leaf_crisp: "シャキシャキ葉菜",
+  veg_mushroom_aroma: "香るキノコ",
+  veg_spice: "香辛料",
+  veg_herb_aroma: "香草",
+  veg_premium: "高級野菜",
+  veg_mountain: "山菜",
+  veg_dried: "乾物",
+  grain_coarse: "粗挽き穀物",
+  grain_refined: "精製穀物",
+  grain_mochi: "もちもち穀物",
+  grain_ancient: "古代穀物",
+  spice_salt_rock: "岩塩",
+  spice_pepper: "胡椒",
+  spice_premium: "高級スパイス",
+  spice_secret: "秘伝スパイス"
+};
+
+// ★ 直近の通常素材採取のティア内訳を記録する（game-core-1 から参照用）
+window.lastGatherInfo = null;
+// 形式: { baseKey: "wood", field: "field1", tiers: { t1: 数, t2: 数, t3: 数 } }
+
 function gather(){
+  // 採取対象セレクト
   const targetSel = document.getElementById("gatherTarget");
   if (!targetSel) return;
-  const target = targetSel.value; // wood / ore / herb / cloth / leather / water
+  const target = targetSel.value; // wood / ore / herb / cloth / leather / water or "hunt/fish/farm"
 
+  // フィールドセレクト
   const fieldSel = document.getElementById("gatherField");
   const field = fieldSel ? fieldSel.value : "field1";
 
-  // 料理採取モードかどうかをチェック
+  // =======================
+  // 料理採取モード
+  // =======================
   if (field === "cook") {
-    const cookModeSel = document.getElementById("gatherCookingMode");
+    const cookModeSel = document.getElementById("gatherTarget");
     if (!cookModeSel) {
       appendLog("料理採取モードの設定が見つかりません");
       return;
@@ -183,9 +337,13 @@ function gather(){
     ];
 
     let pool = [];
-    if (mode === "hunt")      pool = GATHER_COOK_HUNT;
-    else if (mode === "fish") pool = GATHER_COOK_FISH;
-    else                      pool = GATHER_COOK_FARM;
+    if (mode === "hunt") {
+      pool = GATHER_COOK_HUNT;
+    } else if (mode === "fish") {
+      pool = GATHER_COOK_FISH;
+    } else {
+      pool = GATHER_COOK_FARM;
+    }
 
     if (!pool.length) {
       appendLog("今は料理素材を採取できない");
@@ -197,15 +355,28 @@ function gather(){
       return;
     }
 
+    // 何を何個拾ったか集計
+    let gained = {};
     for (let i = 0; i < added; i++) {
       const id = pool[Math.floor(Math.random() * pool.length)];
       cookingMats[id] = (cookingMats[id] || 0) + 1;
+      gained[id] = (gained[id] || 0) + 1;
     }
 
     addGatherSkillExp(mode);
 
-    const modeLabel = (mode === "hunt") ? "狩猟" : (mode === "fish" ? "釣り" : "畑");
-    appendLog(`【${modeLabel}】で料理素材を${added}個採取した`);
+    const modeLabel =
+      (mode === "hunt") ? "狩猟" :
+      (mode === "fish") ? "釣り" :
+      "畑";
+
+    const parts = Object.keys(gained).map(id => {
+      const name = COOKING_MAT_NAMES[id] || id;
+      return `${name}×${gained[id]}`;
+    });
+    const gainedText = parts.length ? parts.join("、") : `料理素材×${added}`;
+
+    appendLog(`【${modeLabel}】で ${gainedText} を採取した`);
 
     // 採取も行動として空腹・水分を進行させる
     if (typeof handleHungerThirstOnAction === "function") {
@@ -216,7 +387,9 @@ function gather(){
     return;
   }
 
-  // ここから下は従来どおりの「通常素材採取」（木/鉱石/草/布/皮/水）
+  // =======================
+  // 通常素材採取（木/鉱石/草/布/皮/水）
+  // =======================
 
   const s = gatherSkills[target];
   const lv = s ? s.lv : 0;
@@ -235,14 +408,18 @@ function gather(){
   addGatherSkillExp(target);
   let added = calcGatherAmount(target);
 
-  let jobBonus=0;
-  if(jobId===0&&(target==="ore"||target==="leather")) jobBonus=Math.random()<0.2?1:0;
-  else if(jobId===1&&(target==="herb"||target==="water")) jobBonus=Math.random()<0.2?1:0;
-  else if(jobId===2&&(target==="cloth"||target==="leather")) jobBonus=Math.random()<0.2?1:0;
+  let jobBonus = 0;
+  if (jobId === 0 && (target === "ore" || target === "leather")) {
+    jobBonus = Math.random() < 0.2 ? 1 : 0;
+  } else if (jobId === 1 && (target === "herb" || target === "water")) {
+    jobBonus = Math.random() < 0.2 ? 1 : 0;
+  } else if (jobId === 2 && (target === "cloth" || target === "leather")) {
+    jobBonus = Math.random() < 0.2 ? 1 : 0;
+  }
 
-  const lukBonus=(Math.random() < LUK_*0.01)?1:0;
-  added+=jobBonus+lukBonus;
-  if(added<0)added=0;
+  const lukBonus = (Math.random() < LUK_ * 0.01) ? 1 : 0;
+  added += jobBonus + lukBonus;
+  if (added < 0) added = 0;
 
   if (!materials || !materials[target]) {
     appendLog("採取素材の定義が見つかりません");
@@ -275,22 +452,69 @@ function gather(){
   materials[target].t2 += t2;
   materials[target].t3 += t3;
 
-  const names={wood:"木",ore:"鉱石",herb:"草",cloth:"布",leather:"皮",water:"水"};
+  const names = {
+    wood: "木",
+    ore: "鉱石",
+    herb: "草",
+    cloth: "布",
+    leather: "皮",
+    water: "水"
+  };
   if (t1 > 0) appendLog(`T1${names[target]}を${t1}つ採取した！`);
   if (t2 > 0) appendLog(`T2${names[target]}を${t2}つ採取した！`);
   if (t3 > 0) appendLog(`T3${names[target]}を${t3}つ採取した！`);
 
-  // ★ 採取も行動として空腹・水分を進行させる
+  // ★ 直近の通常素材採取情報を記録（game-core-1 側の表示用）
+  lastGatherInfo = {
+    baseKey: target,   // "wood" など
+    field: field,      // "field1" など
+    tiers: {
+      t1: t1,
+      t2: t2,
+      t3: t3
+    }
+  };
+
+  // 採取も行動として空腹・水分を進行させる
   if (typeof handleHungerThirstOnAction === "function") {
     handleHungerThirstOnAction("gather");
   }
-
-  updateDisplay();
+  if (typeof updateDisplay === "function") {
+    updateDisplay();
+  }
 }
 
 // =======================
 // クラフト共通
 // =======================
+
+// クラフト品質関連（0:普通, 1:良品, 2:傑作）
+const QUALITY_NAMES = ["", "【良品】", "【傑作】"];
+
+// 必要なら性能補正用レート（今は未使用、後でダメージ計算側で使う想定）
+const QUALITY_RATE = [1.0, 1.05, 1.12];
+
+// クラフトスキルLvヘルパー
+function getCraftSkill(category){
+  return craftSkills[category];
+}
+
+function getCraftSkillLevel(category){
+  const s = getCraftSkill(category);
+  return s ? s.lv : 0;
+}
+
+function addCraftSkillExp(category){
+  const s = getCraftSkill(category);
+  if(!s) return;
+  s.exp += 1;
+  while(s.exp >= s.expToNext && s.lv < CRAFT_SKILL_MAX_LV){
+    s.exp -= s.expToNext;
+    s.lv++;
+    s.expToNext = Math.floor(s.expToNext * 1.3) + 1;
+    appendLog(`${category} クラフトスキルがLv${s.lv}になった！`);
+  }
+}
 
 // 必要素材表示（「必要/所持」を出す）
 // 武器・防具・ポーション・道具 + 中間素材（material）に対応
@@ -404,12 +628,8 @@ function updateCraftCostInfo(category, recipeId){
     let have = 0;
     let label;
 
-    if (k in materials) {
-      // wood / ore など基本素材（ティア混ざり合計）
-      have = getMatTotal(k);
-      label = baseNames[k] || k;
-    } else if (k in tierMatNames) {
-      // herb_T1 などティア固定基本素材
+    // 1. ティア付き基本素材（herb_T1 など）
+    if (k in tierMatNames) {
       const [base, tier] = k.split("_"); // 例: "ore", "T1"
       const m = materials[base];
       if (m) {
@@ -417,13 +637,25 @@ function updateCraftCostInfo(category, recipeId){
         have = m[tierKey] || 0;
       }
       label = tierMatNames[k];
-    } else if (typeof intermediateMats === "object" && intermediateMats[k] != null) {
-      // 中間素材
-      have = intermediateMats[k] || 0;
-      label = interNames[k] || k;
+
+    // 2. 中間素材（woodPlank_T1 など）
+    } else if (k in interNames) {
+      if (typeof intermediateMats === "object") {
+        have = intermediateMats[k] || 0;
+      } else {
+        have = 0;
+      }
+      label = interNames[k];
+
+    // 3. 基本素材（wood / ore など、ティア混在で合計）
+    } else if (k in materials) {
+      have = getMatTotal(k);
+      label = baseNames[k] || k;
+
+    // 4. それ以外（将来の拡張用）
     } else {
-      // それ以外
       label = k;
+      have = 0;
     }
 
     list.push(`${label} ${have}/${need}`);
@@ -560,22 +792,6 @@ function consumeMaterials(cost){
   }
 }
 
-function getCraftSkill(category){
-  return craftSkills[category];
-}
-
-function addCraftSkillExp(category){
-  const s = getCraftSkill(category);
-  if(!s) return;
-  s.exp += 1;
-  while(s.exp >= s.expToNext && s.lv < CRAFT_SKILL_MAX_LV){
-    s.exp -= s.expToNext;
-    s.lv++;
-    s.expToNext = Math.floor(s.expToNext * 1.3) + 1;
-    appendLog(`${category} クラフトスキルがLv${s.lv}になった！`);
-  }
-}
-
 // =======================
 // 各種クラフト
 // =======================
@@ -590,10 +806,27 @@ function craftWeapon(){
   if(!recipe){ appendLog("その武器レシピは存在しない"); return; }
   if(!hasMaterials(recipe.cost)){ appendLog("素材が足りない"); return; }
 
+  const skillLv = getCraftSkillLevel("weapon");
+  const successRate = calcCraftSuccessRate(recipe.baseRate, skillLv);
+
+  // 失敗判定
+  if (Math.random() >= successRate) {
+    consumeMaterials(recipe.cost);
+    addCraftSkillExp("weapon");
+    appendLog(`${recipe.name} のクラフトに失敗した…（素材は消費された）`);
+    updateDisplay();
+    return;
+  }
+
+  // 成功：素材消費＋品質ロール
   consumeMaterials(recipe.cost);
-  weaponCounts[recipe.id] = (weaponCounts[recipe.id] || 0) + 1;
   addCraftSkillExp("weapon");
-  appendLog(`${recipe.name} をクラフトした`);
+
+  const q = rollQualityBySkillLv(skillLv); // 0:普通 1:良品 2:傑作
+  const qName = QUALITY_NAMES[q];
+
+  weaponCounts[recipe.id] = (weaponCounts[recipe.id] || 0) + 1;
+  appendLog(`${qName}${recipe.name} をクラフトした`);
 
   refreshEquipSelects();
   updateDisplay();
@@ -615,10 +848,25 @@ function craftArmor(){
   if(!recipe){ appendLog("その防具レシピは存在しない"); return; }
   if(!hasMaterials(recipe.cost)){ appendLog("素材が足りない"); return; }
 
+  const skillLv = getCraftSkillLevel("armor");
+  const successRate = calcCraftSuccessRate(recipe.baseRate, skillLv);
+
+  if (Math.random() >= successRate) {
+    consumeMaterials(recipe.cost);
+    addCraftSkillExp("armor");
+    appendLog(`${recipe.name} のクラフトに失敗した…（素材は消費された）`);
+    updateDisplay();
+    return;
+  }
+
   consumeMaterials(recipe.cost);
-  armorCounts[recipe.id] = (armorCounts[recipe.id] || 0) + 1;
   addCraftSkillExp("armor");
-  appendLog(`${recipe.name} をクラフトした`);
+
+  const q = rollQualityBySkillLv(skillLv);
+  const qName = QUALITY_NAMES[q];
+
+  armorCounts[recipe.id] = (armorCounts[recipe.id] || 0) + 1;
+  appendLog(`${qName}${recipe.name} をクラフトした`);
 
   refreshEquipSelects();
   updateDisplay();
@@ -640,9 +888,28 @@ function craftPotion(){
   if(!recipe){ appendLog("そのポーションレシピは存在しない"); return; }
   if(!hasMaterials(recipe.cost)){ appendLog("素材が足りない"); return; }
 
+  const skillLv = getCraftSkillLevel("potion");
+  const successRate = calcCraftSuccessRate(recipe.baseRate, skillLv);
+
+  if (Math.random() >= successRate) {
+    consumeMaterials(recipe.cost);
+    addCraftSkillExp("potion");
+    appendLog(`${recipe.name} のクラフトに失敗した…（素材は消費された）`);
+    updateDisplay();
+    refreshEquipSelects();
+    const selAfterFail = document.getElementById("potionSelect");
+    if (selAfterFail) {
+      selAfterFail.value = prevRecipeId;
+      updateCraftCostInfo("potion", prevRecipeId);
+    }
+    return;
+  }
+
   consumeMaterials(recipe.cost);
-  potionCounts[recipe.id] = (potionCounts[recipe.id] || 0) + 1;
   addCraftSkillExp("potion");
+  potionCounts[recipe.id] = (potionCounts[recipe.id] || 0) + 1;
+
+  // ポーションは品質差なし（必要なら QUALITY_NAMES を使ってもよい）
   appendLog(`${recipe.name} をクラフトした`);
 
   updateDisplay();
@@ -667,8 +934,27 @@ function craftTool(){
   if(!recipe){ appendLog("その道具レシピは存在しない"); return; }
   if(!hasMaterials(recipe.cost)){ appendLog("素材が足りない"); return; }
 
+  const skillLv = getCraftSkillLevel("tool");
+  const successRate = calcCraftSuccessRate(recipe.baseRate, skillLv);
+
+  if (Math.random() >= successRate) {
+    consumeMaterials(recipe.cost);
+    addCraftSkillExp("tool");
+    appendLog(`${recipe.name} のクラフトに失敗した…（素材は消費された）`);
+    updateDisplay();
+    refreshEquipSelects();
+    const selAfterFail = document.getElementById("toolSelect");
+    if (selAfterFail) {
+      selAfterFail.value = prevRecipeId;
+      updateCraftCostInfo("tool", prevRecipeId);
+    }
+    return;
+  }
+
   consumeMaterials(recipe.cost);
   addCraftSkillExp("tool");
+
+  // 道具も今は品質差なし（必要なら QUALITY_NAMES を使う）
   appendLog(`${recipe.name} をクラフトした`);
 
   updateDisplay();
@@ -742,6 +1028,7 @@ function refreshEquipSelects(){
   const aCraftSel = document.getElementById("armorSelect");
   const pCraftSel = document.getElementById("potionSelect");
   const tCraftSel = document.getElementById("toolSelect");
+  const interSel  = document.getElementById("intermediateSelect");
   const tierSel   = document.getElementById("craftTierSelect");
   const tierFilter= tierSel ? tierSel.value : "all";
 
@@ -848,10 +1135,25 @@ function refreshEquipSelects(){
     });
   }
 
-  // ★ 必要素材表示の初期値決定
+  // クラフト用セレクト（中間素材）
+  if (interSel) {
+    interSel.innerHTML = "";
+    if (Array.isArray(INTERMEDIATE_MATERIALS)) {
+      INTERMEDIATE_MATERIALS.forEach(def => {
+        // id に _T1 / _T2 / _T3 などが入っている前提でフィルタ
+        if (tierFilter !== "all") {
+          if (!def.id.includes("_" + tierFilter)) return;
+        }
+        const opt = document.createElement("option");
+        opt.value = def.id;
+        opt.textContent = def.name || def.id;
+        interSel.appendChild(opt);
+      });
+    }
+  }
 
-  const interSel = document.getElementById("intermediateSelect");
-  const infoEl   = document.getElementById("craftCostInfo");
+  // 必要素材表示の初期値決定
+  const infoEl = document.getElementById("craftCostInfo");
 
   if (wCraftSel && wCraftSel.value) {
     updateCraftCostInfo("weapon", wCraftSel.value);
@@ -862,7 +1164,6 @@ function refreshEquipSelects(){
   } else if (tCraftSel && tCraftSel.value) {
     updateCraftCostInfo("tool", tCraftSel.value);
   } else if (interSel && interSel.value) {
-    // 武器防具ポーション道具が空なら、中間素材を優先
     updateCraftCostInfo("material", interSel.value);
   } else if (infoEl) {
     infoEl.textContent = "必要素材：-";

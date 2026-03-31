@@ -1,5 +1,5 @@
 // =============== 料理データ定義 ===============
-
+// cook-data.js
 const COOKING_RECIPES = {
   food: [
     // ---- T1 ----
