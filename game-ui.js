@@ -23,6 +23,7 @@ function applyResponsiveLayout() {
 function updateGatherMatDetailText() {
   const label = document.getElementById("gatherMaterials");
   const area  = document.getElementById("gatherMatDetail");
+  // materials がまだ作られていない場合は何もしないで終わる
   if (!label || !area || typeof window.materials === "undefined") return;
 
   const names = {
@@ -34,25 +35,16 @@ function updateGatherMatDetailText() {
     water:  "水"
   };
 
-  function formatTierNums(matObj) {
-    const m = matObj || {};
+  const keys = ["wood","ore","herb","cloth","leather","water"];
+  const lines = keys.map(k => {
+    const m  = window.materials[k] || {};
     const t1 = m.t1 || 0;
     const t2 = m.t2 || 0;
     const t3 = m.t3 || 0;
-    return `${t1}/${t2}/${t3}`;
-  }
-
-  const keys = ["wood","ore","herb","cloth","leather","water"];
-
-  // 詳細（全素材の T1/T2/T3）
-  const lines = keys.map(k => {
-    const m = window.materials[k] || {};
-    return `${names[k]}: ${formatTierNums(m)}`;
+    return `${names[k]}: ${t1}/${t2}/${t3}`;
   });
-  // 実際の改行にする
   area.textContent = lines.join("\n");
 
-  // ラベル（直近採取したティアを優先して表示）
   let labelText = "所持素材：-";
 
   if (window.lastGatherInfo && window.lastGatherInfo.baseKey) {
@@ -105,7 +97,6 @@ function updateCraftMatDetailText() {
     const m = window.materials[k] || {};
     return `${names[k]}: ${formatTierNums(m)}`;
   });
-  // 実際の改行にする
   area.textContent = lines.join("\n");
 
   let labelText = "所持素材：-";
@@ -285,8 +276,8 @@ window.addEventListener("DOMContentLoaded", () => {
     toggleMatDetailBtn.addEventListener("click", () => {
       // トグル時に毎回テキストも更新
       updateGatherMatDetailText();
-      // display が空（= 初期CSS none）のときにも対応
-      const visible = gatherMatDetail.style.display === "block" || getComputedStyle(gatherMatDetail).display === "block";
+      const visible = gatherMatDetail.style.display === "block" ||
+                      getComputedStyle(gatherMatDetail).display === "block";
       gatherMatDetail.style.display = visible ? "none" : "block";
       toggleMatDetailBtn.textContent = visible ? "詳細▼" : "詳細▲";
     });
@@ -297,9 +288,9 @@ window.addEventListener("DOMContentLoaded", () => {
   const craftMatDetail = document.getElementById("craftMatDetail");
   if (toggleMatDetailBtn2 && craftMatDetail) {
     toggleMatDetailBtn2.addEventListener("click", () => {
-      // トグル時に毎回テキストも更新
       updateCraftMatDetailText();
-      const visible = craftMatDetail.style.display === "block" || getComputedStyle(craftMatDetail).display === "block";
+      const visible = craftMatDetail.style.display === "block" ||
+                      getComputedStyle(craftMatDetail).display === "block";
       craftMatDetail.style.display = visible ? "none" : "block";
       toggleMatDetailBtn2.textContent = visible ? "詳細▼" : "詳細▲";
     });
@@ -374,7 +365,6 @@ window.addEventListener("DOMContentLoaded", () => {
 
   const gatherFieldSel = document.getElementById("gatherField");
 
-  // フィールド変更時にターゲットリストを更新（game-core-4.js 側のロジックを使用）
   if (gatherFieldSel) {
     const onFieldChange = () => {
       if (typeof refreshGatherTargetSelect === "function") {
@@ -392,13 +382,11 @@ window.addEventListener("DOMContentLoaded", () => {
         return;
       }
       gather();
-      // 採取後に詳細も更新
       updateGatherMatDetailText();
       updateCraftMatDetailText();
     });
   }
 
-  // 起動時にフィールド＆ターゲットを初期化
   if (typeof refreshGatherFieldSelect === "function") {
     refreshGatherFieldSelect();
   }
@@ -443,7 +431,6 @@ window.addEventListener("DOMContentLoaded", () => {
       if (typeof craftIntermediate === "function") {
         craftIntermediate(id);
         updateIntermediateInfo();
-        // クラフト後に詳細も更新
         updateGatherMatDetailText();
         updateCraftMatDetailText();
       }
@@ -538,7 +525,7 @@ window.addEventListener("DOMContentLoaded", () => {
         subTabs.forEach(t => t.classList.remove("active"));
         tab.classList.add("active");
 
-        const sub = tab.dataset.sub; // "food" or "drink"
+        const sub = tab.dataset.sub;
         if (sub === "food") {
           panelFood.style.display  = "";
           panelDrink.style.display = "none";
@@ -549,7 +536,6 @@ window.addEventListener("DOMContentLoaded", () => {
       });
     });
 
-    // 初期状態: 食べ物タブを表示
     const first = subTabs[0];
     if (first) first.click();
   }
@@ -660,7 +646,6 @@ window.addEventListener("DOMContentLoaded", () => {
       appendLog(`${recipe.name} を作成した！`);
     }
 
-    // 料理クラフト後も詳細更新
     updateGatherMatDetailText();
     updateCraftMatDetailText();
   }
@@ -1125,14 +1110,13 @@ window.addEventListener("DOMContentLoaded", () => {
     refreshEquipSelects();
   }
 
-  // 初期の素材詳細も一度描画しておく
   updateGatherMatDetailText();
   updateCraftMatDetailText();
 
   if (typeof updateDisplay === "function") {
     updateDisplay();
   }
-  // 倉庫表示を一度初期化しておく
+
   if (typeof refreshWarehouseUI === "function") {
     refreshWarehouseUI();
   }
