@@ -23,7 +23,6 @@ function applyResponsiveLayout() {
 function updateGatherMatDetailText() {
   const label = document.getElementById("gatherMaterials");
   const area  = document.getElementById("gatherMatDetail");
-  // materials がまだ作られていない場合は何もしないで終わる
   if (!label || !area || typeof window.materials === "undefined") return;
 
   const names = {
@@ -130,13 +129,11 @@ window.addEventListener("DOMContentLoaded", () => {
     initGame();
   }
 
-  // 初回レイアウト適用
   applyResponsiveLayout();
-  // リサイズ時も更新
   window.addEventListener("resize", applyResponsiveLayout);
 
   // =======================
-  // タブ切り替え（idベース）
+  // タブ切り替え
   // =======================
 
   const tabButtonsMap = {
@@ -146,16 +143,15 @@ window.addEventListener("DOMContentLoaded", () => {
     tabExplore:   "pageExplore",
     tabShop:      "pageShop",
     tabMarket:    "pageMarket",
-    tabWarehouse: "pageWarehouse", // 倉庫タブを追加
+    tabWarehouse: "pageWarehouse",
     tabStatus:    "pageStatus"
   };
 
   const tabPages = Object.values(tabButtonsMap).map(id => document.getElementById(id));
 
   function showTabByPageId(pageId) {
-    // 探索中・戦闘中のタブ制限
     if (window.isExploring || window.currentEnemy) {
-      const allowed = ["pageExplore", "pageStatus"]; // 倉庫は「街でしか触れない」仕様のまま
+      const allowed = ["pageExplore", "pageStatus"];
       if (!allowed.includes(pageId)) {
         if (typeof appendLog === "function") {
           appendLog("探索中はその行動はできない！");
@@ -173,20 +169,15 @@ window.addEventListener("DOMContentLoaded", () => {
     Object.entries(tabButtonsMap).forEach(([btnId, pid]) => {
       const btn = document.getElementById(btnId);
       if (!btn) return;
-      if (pid === pageId) {
-        btn.classList.add("active");
-      } else {
-        btn.classList.remove("active");
-      }
+      if (pid === pageId) btn.classList.add("active");
+      else                btn.classList.remove("active");
     });
 
-    // クラフトタブを開いたときだけクラフトUI更新
     if (pageId === "pageCraft") {
       if (typeof refreshEquipSelects === "function") {
         refreshEquipSelects();
       }
 
-      // 料理リストも毎回更新
       if (typeof COOKING_RECIPES !== "undefined") {
         populateCookingSelects();
       }
@@ -217,11 +208,9 @@ window.addEventListener("DOMContentLoaded", () => {
       else if (infoEl)
         infoEl.textContent = "必要素材：-";
 
-      // クラフトタブに来たタイミングでも詳細を最新化
       updateCraftMatDetailText();
     }
 
-    // 市場タブを開いたときに最新状態へ
     if (pageId === "pageMarket") {
       if (!window.isExploring && !window.currentEnemy) {
         if (typeof refreshMarketSellCandidates === "function") {
@@ -236,7 +225,6 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // 倉庫タブを開いたときに最新状態へ
     if (pageId === "pageWarehouse") {
       if (typeof refreshWarehouseUI === "function") {
         refreshWarehouseUI();
@@ -252,7 +240,6 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // 初期タブ（採取）
   showTabByPageId("pageGather");
 
   // =======================
@@ -274,7 +261,6 @@ window.addEventListener("DOMContentLoaded", () => {
   const gatherMatDetail = document.getElementById("gatherMatDetail");
   if (toggleMatDetailBtn && gatherMatDetail) {
     toggleMatDetailBtn.addEventListener("click", () => {
-      // トグル時に毎回テキストも更新
       updateGatherMatDetailText();
       const visible = gatherMatDetail.style.display === "block" ||
                       getComputedStyle(gatherMatDetail).display === "block";
@@ -300,7 +286,6 @@ window.addEventListener("DOMContentLoaded", () => {
   // 探索・戦闘関連
   // =======================
 
-  // 探索開始
   const exploreStartBtn = document.getElementById("exploreStartBtn");
   if (exploreStartBtn && typeof doExploreEvent === "function") {
     exploreStartBtn.addEventListener("click", () => {
@@ -316,25 +301,21 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // 通常攻撃（戦闘）
   const attackBtn = document.getElementById("exploreBtn");
   if (attackBtn && typeof playerAttack === "function") {
     attackBtn.addEventListener("click", () => playerAttack());
   }
 
-  // 逃走
   const escapeBtn = document.getElementById("escapeBtn");
   if (escapeBtn && typeof tryEscape === "function") {
     escapeBtn.addEventListener("click", () => tryEscape());
   }
 
-  // ボス
   const bossBtn = document.getElementById("bossStartBtn");
   if (bossBtn && typeof startBossBattle === "function") {
     bossBtn.addEventListener("click", () => startBossBattle());
   }
 
-  // 街へ戻る
   const returnTownBtn = document.getElementById("returnTownBtn");
   if (returnTownBtn) {
     returnTownBtn.addEventListener("click", () => {
@@ -349,11 +330,11 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // 戦闘アイテム / フィールドアイテム
   const battleItemUseBtn = document.getElementById("useBattleItemBtn");
   if (battleItemUseBtn && typeof useBattleItem === "function") {
     battleItemUseBtn.addEventListener("click", () => useBattleItem());
   }
+
   const useItemBtn = document.getElementById("useItemBtn");
   if (useItemBtn && typeof usePotionOutsideBattle === "function") {
     useItemBtn.addEventListener("click", () => usePotionOutsideBattle());
@@ -364,7 +345,6 @@ window.addEventListener("DOMContentLoaded", () => {
   // =======================
 
   const gatherFieldSel = document.getElementById("gatherField");
-
   if (gatherFieldSel) {
     const onFieldChange = () => {
       if (typeof refreshGatherTargetSelect === "function") {
