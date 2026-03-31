@@ -2,6 +2,12 @@
 // レベル・転生・職業・ペット ＋ 空腹・水分・EXPボーナス
 
 // =======================
+// レベルアップ必要経験値（定数）
+// =======================
+
+const BASE_EXP_PER_LEVEL = 100;
+
+// =======================
 // レベル・転生
 // =======================
 
@@ -102,7 +108,8 @@ function addPetExp(amount) {
 }
 
 function applyRebirthBonus() {
-  const choices = ["STR","VIT","INT","DEX","LUK","HP","MP","SP"];
+  // ★ バグ修正: "INT" → "INT_"、"DEX" → "DEX_" に統一
+  const choices = ["STR","VIT","INT_","DEX_","LUK","HP","MP","SP"];
   let msgList = [];
   const rolls = 1; // 今は1回固定（必要なら将来拡張）
 
@@ -123,10 +130,12 @@ function applyRebirthBonus() {
     } else if (pick === "VIT") {
       VIT += 1;
       msgList.push("VIT +1");
-    } else if (pick === "INT") {
+    } else if (pick === "INT_") {
+      // ★ バグ修正: INT_ 変数を正しく参照
       INT_ += 1;
       msgList.push("INT +1");
-    } else if (pick === "DEX") {
+    } else if (pick === "DEX_") {
+      // ★ バグ修正: DEX_ 変数を正しく参照
       DEX_ += 1;
       msgList.push("DEX +1");
     } else if (pick === "LUK") {
@@ -169,7 +178,7 @@ function doRebirth() {
   spMax = spMaxBase;
   sp    = spMax;
 
-  // 素材と所持品リセット
+  // 素材リセット（materials オブジェクトのみ操作、廃止変数は触らない）
   if (typeof materials !== "undefined") {
     Object.keys(materials).forEach(k => {
       materials[k].t1 = 0;
@@ -177,7 +186,7 @@ function doRebirth() {
       materials[k].t3 = 0;
     });
   }
-  wood = ore = herb = cloth = leather = water = 0;
+  // ★ バグ修正: 存在しない変数 wood/ore/herb/cloth/leather/water への代入を削除
 
   money = 0;
   Object.keys(weaponCounts).forEach(k => weaponCounts[k] = 0);

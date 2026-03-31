@@ -21,6 +21,9 @@ window.exploringArea = "field";    // 現在探索しているエリアID
 let lastSelectedFieldPotionId  = null;
 let lastSelectedBattlePotionId = null;
 
+// ★ バグ修正: escapeFailBonus が未宣言だったため宣言を追加
+let escapeFailBonus = 0;
+
 // =======================
 // 状態異常・バフデバフ定義
 // =======================
@@ -107,12 +110,15 @@ const STATUS_EFFECTS = {
       return mult * 0.8;
     }
   },
+  // ★ 設計メモ: modifyDefense の mult はダメージへの乗算係数。
+  //   def_up  → 受けるダメージを減らす → mult * 0.75 (正しい)
+  //   def_down → 受けるダメージを増やす → mult * 1.25 (正しい)
   def_up: {
     id: "def_up",
     name: "防御アップ",
     baseDuration: 3,
     modifyDefense(mult) {
-      return mult * 0.75;
+      return mult * 0.75;  // ダメージ25%軽減
     }
   },
   def_down: {
@@ -120,7 +126,7 @@ const STATUS_EFFECTS = {
     name: "防御ダウン",
     baseDuration: 3,
     modifyDefense(mult) {
-      return mult * 1.25;
+      return mult * 1.25;  // ダメージ25%増加
     }
   },
   blind: {
@@ -558,6 +564,31 @@ function endBattleCommon() {
 }
 
 // =======================
+// 戦闘勝利共通処理
+// ★ バグ修正: skill-core.js から呼ばれる winBattle() を定義
+// =======================
+
+function winBattle() {
+  if (!currentEnemy) return;
+
+  const expGain   = getBattleExpPerWin(currentEnemy);
+  const moneyGain = currentEnemy.money || 10;
+  appendLog(`${currentEnemy.name}を倒した！ 経験値${expGain}と${moneyGain}Gを手に入れた`);
+
+  addExp(expGain);
+  money += moneyGain;
+  addPetExp(Math.floor(expGain / 2));
+
+  handleHungerThirstOnAction("battleWin");
+
+  if (isBossBattle) {
+    onBossDefeated();
+  } else {
+    endBattleCommon();
+  }
+}
+
+// =======================
 // 通常戦闘
 // =======================
 
@@ -653,7 +684,8 @@ function enemyTurn(){
 
     if (shieldBlowGuardTurnRemain > 0) {
       dmg = Math.floor(dmg * 0.5);
-      shieldBlowGuardGuardTurnRemain = 0;
+      // ★ バグ修正: shieldBlowGuardGuardTurnRemain（タイポ）→ shieldBlowGuardTurnRemain
+      shieldBlowGuardTurnRemain = 0;
       appendLog("シールドブロウの効果でダメージが軽減された！");
     }
 
