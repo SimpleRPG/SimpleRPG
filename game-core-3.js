@@ -1,25 +1,18 @@
 // game-core-3.js
-// 探索・戦闘・ボス関連＋状態異常システム
+// 戦闘・ボス関連＋状態異常システム（探索や敵生成は game-core-5.js 側で担当）
 
 // =======================
-// グローバル状態
+// バフソース種別定数
 // =======================
+//
+// いずれ料理バフ・スキルバフ・ポーションバフなどを
+// 別カテゴリで管理できるようにするための種別。
 
-// エリアごとの「今ボスに挑める状態か」
-const areaBossAvailable = {
-  field:  false,
-  forest: false,
-  cave:   false,
-  mine:   false
-};
-
-// 探索滞在状態（UI側と共有）
-window.isExploring   = false;      // 街にいる: false / どこか探索中: true
-window.exploringArea = "field";    // 現在探索しているエリアID
-
-// ポーション選択の記憶
-let lastSelectedFieldPotionId  = null;
-let lastSelectedBattlePotionId = null;
+const BUFF_SOURCE_FOOD   = "food";
+const BUFF_SOURCE_DRINK  = "drink";
+const BUFF_SOURCE_SKILL  = "skill";
+const BUFF_SOURCE_POTION = "potion";
+const BUFF_SOURCE_OTHER  = "other";
 
 // =======================
 // 状態異常・バフデバフ定義
@@ -29,7 +22,7 @@ let lastSelectedBattlePotionId = null;
 // 敵: enemyStatuses
 //
 // ターン管理は「プレイヤー行動＋敵行動」で1ターン進む前提。
-// 毎ターン終了時に tickStatusesTurnEnd を呼ぶ。
+// 毎ターン終了時に tickStatusesTurnEndForBoth を呼ぶ。
 
 let playerStatuses = [];
 let enemyStatuses  = [];
@@ -183,6 +176,211 @@ const STATUS_EFFECTS = {
     modifyCritRate(rate) {
       return rate + 0.2;
     }
+  },
+
+  // =======================
+  // 料理バフ（肉＝物理・魚＝魔法）
+  // =======================
+
+  // 肉系: 物理攻撃アップ（STR/物理与ダメ）
+  food_meat_atk_T1: {
+    id: "food_meat_atk_T1",
+    name: "料理:物理攻撃アップT1",
+    baseDuration: 30,
+    modifyAttack(mult) {
+      return mult * 1.10;
+    }
+  },
+  food_meat_atk_T2: {
+    id: "food_meat_atk_T2",
+    name: "料理:物理攻撃アップT2",
+    baseDuration: 45,
+    modifyAttack(mult) {
+      return mult * 1.18;
+    }
+  },
+  food_meat_atk_T3: {
+    id: "food_meat_atk_T3",
+    name: "料理:物理攻撃アップT3",
+    baseDuration: 60,
+    modifyAttack(mult) {
+      return mult * 1.25;
+    }
+  },
+  food_meat_atk_steak_T2: {
+    id: "food_meat_atk_steak_T2",
+    name: "料理:物理攻撃アップ(ステーキT2)",
+    baseDuration: 45,
+    modifyAttack(mult) {
+      return mult * 1.22;
+    }
+  },
+  food_meat_atk_steak_T3: {
+    id: "food_meat_atk_steak_T3",
+    name: "料理:物理攻撃アップ(ステーキT3)",
+    baseDuration: 60,
+    modifyAttack(mult) {
+      return mult * 1.30;
+    }
+  },
+  food_meat_atk_roast_T3: {
+    id: "food_meat_atk_roast_T3",
+    name: "料理:物理攻撃アップ(ローストT3)",
+    baseDuration: 60,
+    modifyAttack(mult) {
+      return mult * 1.28;
+    }
+  },
+
+  // 野菜スープ系: 防御アップ
+  food_veg_def_T1: {
+    id: "food_veg_def_T1",
+    name: "料理:防御アップT1",
+    baseDuration: 30,
+    modifyDefense(mult) {
+      return mult * 0.90;
+    }
+  },
+  food_veg_def_T2: {
+    id: "food_veg_def_T2",
+    name: "料理:防御アップT2",
+    baseDuration: 45,
+    modifyDefense(mult) {
+      return mult * 0.82;
+    }
+  },
+  food_veg_def_T3: {
+    id: "food_veg_def_T3",
+    name: "料理:防御アップT3",
+    baseDuration: 60,
+    modifyDefense(mult) {
+      return mult * 0.75;
+    }
+  },
+  food_veg_def_stew_T2: {
+    id: "food_veg_def_stew_T2",
+    name: "料理:防御アップ(シチューT2)",
+    baseDuration: 45,
+    modifyDefense(mult) {
+      return mult * 0.78;
+    }
+  },
+  food_veg_def_stew_T3: {
+    id: "food_veg_def_stew_T3",
+    name: "料理:防御アップ(シチューT3)",
+    baseDuration: 60,
+    modifyDefense(mult) {
+      return mult * 0.70;
+    }
+  },
+  food_veg_def_potage_T3: {
+    id: "food_veg_def_potage_T3",
+    name: "料理:防御アップ(ポタージュT3)",
+    baseDuration: 60,
+    modifyDefense(mult) {
+      return mult * 0.72;
+    }
+  },
+  food_veg_t2: {
+    id: "food_veg_t2",
+    name: "料理:防御アップ(汎用T2)",
+    baseDuration: 45,
+    modifyDefense(mult) {
+      return mult * 0.80;
+    }
+  },
+  food_veg_t3: {
+    id: "food_veg_t3",
+    name: "料理:防御アップ(汎用T3)",
+    baseDuration: 60,
+    modifyDefense(mult) {
+      return mult * 0.72;
+    }
+  },
+
+  // 魚スープ系: 魔法攻撃アップ（INT/魔法与ダメ）
+  food_fish_int_T1: {
+    id: "food_fish_int_T1",
+    name: "料理:魔法攻撃アップT1",
+    baseDuration: 30,
+    modifyMagicAttack(mult) {
+      return mult * 1.10;
+    }
+  },
+  food_fish_int_T2: {
+    id: "food_fish_int_T2",
+    name: "料理:魔法攻撃アップT2",
+    baseDuration: 45,
+    modifyMagicAttack(mult) {
+      return mult * 1.18;
+    }
+  },
+  food_fish_int_T3: {
+    id: "food_fish_int_T3",
+    name: "料理:魔法攻撃アップT3",
+    baseDuration: 60,
+    modifyMagicAttack(mult) {
+      return mult * 1.25;
+    }
+  },
+
+  // 飲み物バフ（既存仕様を崩さず軽め）
+  drink_mp_regen_T1: {
+    id: "drink_mp_regen_T1",
+    name: "飲み物:回復T1",
+    baseDuration: 30,
+    onTurnEnd(targetCtx) {
+      appendLog("ハーブティーの効果で精神が落ち着いた…");
+    }
+  },
+  drink_mp_regen_T2: {
+    id: "drink_mp_regen_T2",
+    name: "飲み物:回復T2",
+    baseDuration: 45,
+    onTurnEnd(targetCtx) {
+      appendLog("濃縮ハーブティーの効果で集中力が高まっている…");
+    }
+  },
+  drink_mp_regen_T3: {
+    id: "drink_mp_regen_T3",
+    name: "飲み物:回復T3",
+    baseDuration: 60,
+    onTurnEnd(targetCtx) {
+      appendLog("祝福のハーブティーの効果で魔力があふれている…");
+    }
+  },
+  drink_sp_buff_T1: {
+    id: "drink_sp_buff_T1",
+    name: "飲み物:活力T1",
+    baseDuration: 30,
+    modifyAccuracy(acc) {
+      return acc + 0.05;
+    },
+    modifyCritRate(rate) {
+      return rate + 0.03;
+    }
+  },
+  drink_sp_buff_T2: {
+    id: "drink_sp_buff_T2",
+    name: "飲み物:活力T2",
+    baseDuration: 45,
+    modifyAccuracy(acc) {
+      return acc + 0.08;
+    },
+    modifyCritRate(rate) {
+      return rate + 0.05;
+    }
+  },
+  drink_sp_buff_T3: {
+    id: "drink_sp_buff_T3",
+    name: "飲み物:活力T3",
+    baseDuration: 60,
+    modifyAccuracy(acc) {
+      return acc + 0.10;
+    },
+    modifyCritRate(rate) {
+      return rate + 0.07;
+    }
   }
 };
 
@@ -208,7 +406,10 @@ function makeEnemyCtx() {
   };
 }
 
+// =======================
 // 状態の付与
+// =======================
+
 function addStatusToPlayer(id) {
   const def = STATUS_EFFECTS[id];
   if (!def) return;
@@ -216,7 +417,7 @@ function addStatusToPlayer(id) {
   if (ex) {
     ex.remain = Math.max(ex.remain, def.baseDuration);
   } else {
-    playerStatuses.push({ id, remain: def.baseDuration });
+    playerStatuses.push({ id, remain: def.baseDuration, source: BUFF_SOURCE_OTHER });
   }
 }
 
@@ -227,7 +428,39 @@ function addStatusToEnemy(id) {
   if (ex) {
     ex.remain = Math.max(ex.remain, def.baseDuration);
   } else {
-    enemyStatuses.push({ id, remain: def.baseDuration });
+    enemyStatuses.push({ id, remain: def.baseDuration, source: BUFF_SOURCE_OTHER });
+  }
+}
+
+// 料理バフ専用
+function addFoodStatusToPlayer(id, durationOverride) {
+  const def = STATUS_EFFECTS[id];
+  if (!def) return;
+  const baseDur = (typeof durationOverride === "number" && durationOverride > 0)
+    ? durationOverride
+    : (def.baseDuration || 0);
+
+  const ex = playerStatuses.find(s => s.id === id && s.source === BUFF_SOURCE_FOOD);
+  if (ex) {
+    ex.remain = Math.max(ex.remain, baseDur);
+  } else {
+    playerStatuses.push({ id, remain: baseDur, source: BUFF_SOURCE_FOOD });
+  }
+}
+
+// スキルバフ専用
+function addSkillStatusToPlayer(id, durationOverride) {
+  const def = STATUS_EFFECTS[id];
+  if (!def) return;
+  const baseDur = (typeof durationOverride === "number" && durationOverride > 0)
+    ? durationOverride
+    : (def.baseDuration || 0);
+
+  const ex = playerStatuses.find(s => s.id === id && s.source === BUFF_SOURCE_SKILL);
+  if (ex) {
+    ex.remain = Math.max(ex.remain, baseDur);
+  } else {
+    playerStatuses.push({ id, remain: baseDur, source: BUFF_SOURCE_SKILL });
   }
 }
 
@@ -259,7 +492,7 @@ function beforeActionEnemy() {
   return { canAct: true, actionCtx };
 }
 
-// ダメージ計算前の攻防補正
+// ダメージ計算前の攻防補正（物理）
 function applyAttackBuffsForPlayer(base) {
   let mult = 1.0;
   for (const inst of playerStatuses) {
@@ -301,7 +534,19 @@ function applyDefenseBuffsForEnemy(damage) {
   return Math.max(1, Math.floor(damage * mult));
 }
 
-// 命中率補正（プレイヤー→敵）
+// 魔法攻撃用補正
+function applyMagicAttackBuffsForPlayer(base) {
+  let mult = 1.0;
+  for (const inst of playerStatuses) {
+    const def = STATUS_EFFECTS[inst.id];
+    if (def && def.modifyMagicAttack) {
+      mult = def.modifyMagicAttack(mult);
+    }
+  }
+  return Math.max(1, Math.floor(base * mult));
+}
+
+// 命中率補正
 function modifyAccuracyForPlayer(acc) {
   let a = acc;
   for (const inst of playerStatuses) {
@@ -312,7 +557,6 @@ function modifyAccuracyForPlayer(acc) {
   }
   return a;
 }
-// 命中率補正（敵→プレイヤー）
 function modifyAccuracyForEnemy(acc) {
   let a = acc;
   for (const inst of enemyStatuses) {
@@ -324,7 +568,7 @@ function modifyAccuracyForEnemy(acc) {
   return a;
 }
 
-// ダメージを受けたときのフック（睡眠解除など）
+// ダメージを受けたときのフック
 function onPlayerDamagedByEnemy() {
   const ctx = makePlayerCtx();
   for (const inst of playerStatuses) {
@@ -348,7 +592,6 @@ function onEnemyDamagedByPlayer() {
 
 // ターン終了時処理
 function tickStatusesTurnEndForBoth() {
-  // プレイヤー
   {
     const ctx = makePlayerCtx();
     for (const inst of playerStatuses) {
@@ -361,7 +604,6 @@ function tickStatusesTurnEndForBoth() {
     playerStatuses = playerStatuses.filter(s => s.remain > 0);
   }
 
-  // 敵
   if (currentEnemy) {
     const ctx = makeEnemyCtx();
     for (const inst of enemyStatuses) {
@@ -376,153 +618,27 @@ function tickStatusesTurnEndForBoth() {
 }
 
 // =======================
-// 敵・エリア関連ヘルパ
+// 敵ステータス UI
 // =======================
 
-function getRandomEnemyForArea(area) {
-  const table = AREA_ENEMY_TABLE[area] || AREA_ENEMY_TABLE.field;
+function updateEnemyStatusUI() {
+  const area   = document.getElementById("enemyStatusArea");
+  const nameEl = document.getElementById("enemyNameText");
+  const hpEl   = document.getElementById("enemyHpText");
+  const hpMaxEl= document.getElementById("enemyHpMaxText");
 
-  if (Array.isArray(table)) {
-    if (table.length === 0) return null;
-    const id = table[Math.floor(Math.random() * table.length)];
-    return ENEMIES[id] || null;
-  }
-
-  if (!table || !Array.isArray(table.enemyIds) || !Array.isArray(table.weights)) {
-    return null;
-  }
-
-  const ids = table.enemyIds;
-  const weights = table.weights;
-  if (ids.length === 0 || ids.length !== weights.length) {
-    return null;
-  }
-
-  const total = weights.reduce((a, b) => a + b, 0);
-  let r = Math.random() * total;
-  for (let i = 0; i < ids.length; i++) {
-    r -= weights[i];
-    if (r <= 0) {
-      const id = ids[i];
-      return ENEMIES[id] || null;
-    }
-  }
-  const lastId = ids[ids.length - 1];
-  return ENEMIES[lastId] || null;
-}
-
-function getCurrentArea() {
-  const sel = document.getElementById("exploreTarget");
-  return sel ? sel.value : "field";
-}
-
-// 探索UI（行き先＋探索ボタン）の表示切替
-function setExploreUIVisible(visible) {
-  const row = document.querySelector(".explore-header-row");
-  if (row) row.style.display = visible ? "flex" : "none";
-}
-
-// =======================
-// 探索エリアセレクト更新
-// =======================
-
-function refreshExploreAreaSelect() {
-  const sel = document.getElementById("exploreTarget");
-  if (!sel) return;
-
-  const prev = sel.value;
-  sel.innerHTML = "";
-
-  {
-    const opt = document.createElement("option");
-    opt.value = "field";
-    opt.textContent = "草原（敵弱い・素材ほぼ出ない）";
-    sel.appendChild(opt);
-  }
-
-  if (typeof areaBossCleared === "undefined" || areaBossCleared.field) {
-    const opt = document.createElement("option");
-    opt.value = "forest";
-    opt.textContent = "森（敵やや強い・草/木が少し出る）";
-    sel.appendChild(opt);
-  }
-
-  if (typeof areaBossCleared === "undefined" || areaBossCleared.forest) {
-    const opt = document.createElement("option");
-    opt.value = "cave";
-    opt.textContent = "洞窟（敵強い・素材少し）";
-    sel.appendChild(opt);
-  }
-
-  if (typeof areaBossCleared === "undefined" || areaBossCleared.cave) {
-    const opt = document.createElement("option");
-    opt.value = "mine";
-    opt.textContent = "廃鉱山（敵かなり強い・鉱石/皮レア）";
-    sel.appendChild(opt);
-  }
-
-  const exists = Array.from(sel.options).some(o => o.value === prev);
-  sel.value = exists ? prev : (sel.options[0]?.value || "field");
-
-  if (typeof updateBossButtonUI === "function") {
-    updateBossButtonUI();
-  }
-}
-
-// =======================
-// ボスボタン表示
-// =======================
-
-function updateBossButtonUI() {
-  const bossBtn = document.getElementById("bossStartBtn");
-  if (!bossBtn) return;
-
-  const area = window.isExploring
-    ? (window.exploringArea || getCurrentArea())
-    : getCurrentArea();
-
-  if (areaBossAvailable[area]) {
-    bossBtn.style.display = "inline-block";
-  } else {
-    bossBtn.style.display = "none";
-  }
-}
-
-// =======================
-// 帰還ボタン表示制御
-// =======================
-
-function updateReturnTownButton() {
-  const btn = document.getElementById("returnTownBtn");
-  if (!btn) return;
+  if (!area || !nameEl || !hpEl || !hpMaxEl) return;
 
   if (currentEnemy) {
-    btn.style.display = "none";
-    return;
-  }
-
-  if (window.isExploring) {
-    btn.style.display = "inline-block";
+    area.style.display = "";
+    nameEl.textContent  = currentEnemy.name || "-";
+    hpEl.textContent    = enemyHp;
+    hpMaxEl.textContent = enemyHpMax;
   } else {
-    btn.style.display = "none";
-  }
-}
-
-// =======================
-// 探索時のボス発見判定
-// =======================
-
-function tryFindBossOnExplore() {
-  const area = window.isExploring
-    ? (window.exploringArea || getCurrentArea())
-    : getCurrentArea();
-  if (areaBossAvailable[area]) return;
-
-  const roll = Math.random();
-  if (roll < 0.0005) {
-    areaBossAvailable[area] = true;
-    appendLog("強い気配を感じる… このエリアのボスに挑めるようになった！");
-    updateBossButtonUI();
+    area.style.display = "none";
+    nameEl.textContent  = "-";
+    hpEl.textContent    = "0";
+    hpMaxEl.textContent = "0";
   }
 }
 
@@ -540,6 +656,11 @@ function startBattleCommon(enemy, isBoss) {
 
   setBattleCommandVisible(true);
   setExploreUIVisible(false);
+
+  updateEnemyStatusUI();
+  if (typeof updateReturnTownButton === "function") {
+    updateReturnTownButton();   // 戦闘中は帰還ボタン非表示
+  }
   updateDisplay();
 }
 
@@ -554,6 +675,11 @@ function endBattleCommon() {
 
   setBattleCommandVisible(false);
   setExploreUIVisible(true);
+
+  updateEnemyStatusUI();
+  if (typeof updateReturnTownButton === "function") {
+    updateReturnTownButton();   // 探索中なら帰還ボタン表示
+  }
   updateDisplay();
 }
 
@@ -565,8 +691,8 @@ function startNormalBattle(enemy) {
   startBattleCommon(enemy, false);
 }
 
-function playerAttack(){
-  if(!currentEnemy){
+function playerAttack() {
+  if (!currentEnemy) {
     appendLog("攻撃する敵がいない");
     return;
   }
@@ -575,6 +701,7 @@ function playerAttack(){
   if (!pre.canAct) {
     enemyTurn();
     tickStatusesTurnEndForBoth();
+    updateEnemyStatusUI();
     updateDisplay();
     return;
   }
@@ -585,6 +712,7 @@ function playerAttack(){
     appendLog("あなたの攻撃は外れた！");
     enemyTurn();
     tickStatusesTurnEndForBoth();
+    updateEnemyStatusUI();
     updateDisplay();
     return;
   }
@@ -597,23 +725,11 @@ function playerAttack(){
   onEnemyDamagedByPlayer();
   appendLog(`あなたの攻撃！ ${currentEnemy.name}に${baseDamage}ダメージ！`);
 
-  if(enemyHp <= 0){
+  if (enemyHp <= 0) {
     enemyHp = 0;
 
-    // ★ 空腹・水分状態に応じたEXP（5 or 8）を使用
-    const expGain = getBattleExpPerWin(currentEnemy);
-    const moneyGain = currentEnemy.money || 10;
-    appendLog(`${currentEnemy.name}を倒した！ 経験値${expGain}と${moneyGain}Gを手に入れた`);
-
-    addExp(expGain);
-    money += moneyGain;
-    addPetExp(Math.floor(expGain/2));
-
-    // 行動として空腹・水分を進行させる
-    handleHungerThirstOnAction("battleWin");
-
-    if (isBossBattle) {
-      onBossDefeated();
+    if (typeof onEnemyDefeatedCore === "function") {
+      onEnemyDefeatedCore(currentEnemy);
     } else {
       endBattleCommon();
     }
@@ -627,14 +743,16 @@ function playerAttack(){
 
   enemyTurn();
   tickStatusesTurnEndForBoth();
+  updateEnemyStatusUI();
   updateDisplay();
 }
 
-function enemyTurn(){
+function enemyTurn() {
   if (!currentEnemy) return;
 
   const pre = beforeActionEnemy();
   if (!pre.canAct) {
+    updateEnemyStatusUI();
     updateDisplay();
     return;
   }
@@ -653,7 +771,7 @@ function enemyTurn(){
 
     if (shieldBlowGuardTurnRemain > 0) {
       dmg = Math.floor(dmg * 0.5);
-      shieldBlowGuardGuardTurnRemain = 0;
+      shieldBlowGuardTurnRemain = 0;
       appendLog("シールドブロウの効果でダメージが軽減された！");
     }
 
@@ -668,9 +786,9 @@ function enemyTurn(){
       window.isExploring   = false;
       window.exploringArea = "field";
 
-      hp = hpMax;
-      mp = mpMax;
-      sp = spMax;
+      hp    = hpMax;
+      mp    = mpMax;
+      sp    = spMax;
       petHp = petHpMax;
 
       money = Math.floor(money / 2);
@@ -729,13 +847,14 @@ function enemyTurn(){
       endBattleCommon();
     } else {
       tickSkillBuffTurns();
+      updateEnemyStatusUI();
       updateDisplay();
     }
   } else {
-    let petDef = Math.floor(petLevel * 0.5);
+    let petDef  = Math.floor(petLevel * 0.5);
     let baseAtk = (currentEnemy.atk || 3);
-    baseAtk = applyAttackBuffsForEnemy(baseAtk);
-    let dmg = Math.max(1, baseAtk - petDef);
+    baseAtk     = applyAttackBuffsForEnemy(baseAtk);
+    let dmg     = Math.max(1, baseAtk - petDef);
 
     petHp -= dmg;
     appendLog(`${currentEnemy.name}の攻撃！ ペットに${dmg}ダメージ`);
@@ -746,6 +865,7 @@ function enemyTurn(){
     }
 
     tickSkillBuffTurns();
+    updateEnemyStatusUI();
     updateDisplay();
   }
 }
@@ -810,495 +930,27 @@ function onBossDefeated() {
 }
 
 // =======================
-// 探索（ランダムイベント対応版）
-// =======================
-
-function doExploreEvent(area){
-  if (currentEnemy) {
-    appendLog("戦闘中は探索できない！");
-    return;
-  }
-
-  if (!area) {
-    area = window.isExploring
-      ? (window.exploringArea || getCurrentArea())
-      : getCurrentArea();
-  }
-
-  window.exploringArea = area;
-  window.isExploring = true;
-
-  tryFindBossOnExplore();
-
-  const roll = Math.random();
-
-  if (roll < 0.2) {
-    appendLog("何も見つからなかった…");
-    updateReturnTownButton();
-    return;
-  }
-
-  if (roll < 0.4) {
-    doExploreRandomEvent(area);
-    updateReturnTownButton();
-    return;
-  }
-
-  const enemy = getRandomEnemyForArea(area);
-  if (!enemy) {
-    appendLog("敵データが見つからない");
-    updateReturnTownButton();
-    return;
-  }
-  appendLog(`${enemy.name} が現れた！`);
-  startNormalBattle(enemy);
-}
-
-function doExploreRandomEvent(area) {
-  const roll = Math.random();
-
-  if (roll < 0.34) {
-    const maxHp = hpMax || 1;
-    const damage = Math.max(1, Math.floor(maxHp * 0.05));
-    hp = Math.max(0, hp - damage);
-    appendLog("足元の罠が作動した！" + damage + "ダメージを受けた。");
-
-    if (hp <= 0) {
-      hp = 0;
-      appendLog("あなたは罠で倒れてしまった…");
-
-      window.isExploring   = false;
-      window.exploringArea = "field";
-
-      hp = hpMax;
-      mp = mpMax;
-      sp = spMax;
-      petHp = petHpMax;
-
-      money = Math.floor(money / 2);
-
-      let brokeSomething = false;
-
-      function reduceDurabilityOnEquipTrap() {
-        if (equippedWeaponId && Array.isArray(weapons)) {
-          const w = weapons.find(x => x.id === equippedWeaponId);
-          if (w && typeof w.durability === "number") {
-            w.durability = Math.max(0, w.durability - 1);
-            if (w.durability <= 0) {
-              const cnt = weaponCounts[w.id] || 0;
-              weaponCounts[w.id] = Math.max(0, cnt - 1);
-              appendLog(`${w.name} は壊れてしまった…`);
-              brokeSomething = true;
-              if (weaponCounts[w.id] <= 0 && equippedWeaponId === w.id) {
-                equippedWeaponId = null;
-              }
-            } else {
-              brokeSomething = true;
-            }
-          }
-        }
-
-        if (equippedArmorId && Array.isArray(armors)) {
-          const a = armors.find(x => x.id === equippedArmorId);
-          if (a && typeof a.durability === "number") {
-            a.durability = Math.max(0, a.durability - 1);
-            if (a.durability <= 0) {
-              const cnt = armorCounts[a.id] || 0;
-              armorCounts[a.id] = Math.max(0, cnt - 1);
-              appendLog(`${a.name} は壊れてしまった…`);
-              brokeSomething = true;
-              if (armorCounts[a.id] <= 0 && equippedArmorId === a.id) {
-                equippedArmorId = null;
-              }
-            } else {
-              brokeSomething = true;
-            }
-          }
-        }
-
-        if (typeof refreshEquipSelects === "function") {
-          refreshEquipSelects();
-        }
-      }
-      reduceDurabilityOnEquipTrap();
-
-      if (brokeSomething) {
-        appendLog("街に戻った… 休んで回復し、所持ゴールドを半分失い、装備の耐久度が1減少した。");
-      } else {
-        appendLog("街に戻った… 休んで回復し、所持ゴールドを半分失った。");
-      }
-
-      updateReturnTownButton();
-      updateDisplay();
-      return;
-    }
-
-    updateDisplay();
-    return;
-  } else if (roll < 0.67) {
-    let goldMin = 5;
-    let goldMax = 15;
-
-    if (area === "field") {
-      goldMin = 5;   goldMax = 15;
-    } else if (area === "forest") {
-      goldMin = 10;  goldMax = 20;
-    } else if (area === "cave") {
-      goldMin = 20;  goldMax = 30;
-    } else if (area === "mine") {
-      goldMin = 30;  goldMax = 40;
-    }
-
-    const goldGain = goldMin + Math.floor(Math.random() * (goldMax - goldMin + 1));
-    money = (money || 0) + goldGain;
-    appendLog("小さな宝箱を見つけた！" + goldGain + "Gを手に入れた。");
-
-    const dropCount = 1 + Math.floor(Math.random() * 2);
-    const baseKeys = ["wood","ore","herb","cloth","leather","water"];
-    const baseNames = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
-
-    for (let i = 0; i < dropCount; i++) {
-      const matKey = baseKeys[Math.floor(Math.random() * baseKeys.length)];
-      const m = materials[matKey];
-      if (!m) continue;
-
-      let tier = "t1";
-      if (area === "field") {
-        tier = (Math.random() < 0.9) ? "t1" : "t2";
-      } else if (area === "forest") {
-        const r = Math.random();
-        if      (r < 0.1) tier = "t1";
-        else if (r < 0.9) tier = "t2";
-        else              tier = "t3";
-      } else if (area === "cave") {
-        const r = Math.random();
-        if      (r < 0.1) tier = "t2";
-        else if (r < 0.9) tier = "t3";
-        else              tier = "t4";
-      } else if (area === "mine") {
-        tier = (Math.random() < 0.8) ? "t4" : "t3";
-      }
-
-      m[tier] = (m[tier] || 0) + 1;
-
-      const tierLabel = tier.toUpperCase();
-      const name = baseNames[matKey] || matKey;
-      appendLog(`宝箱の中から ${tierLabel}${name} を1つ手に入れた。`);
-    }
-
-    updateDisplay();
-    return;
-  } else {
-    const maxHp = hpMax || 1;
-    const heal = Math.max(1, Math.floor(maxHp * 0.1));
-    const beforeHp = hp;
-    hp = Math.min(maxHp, hp + heal);
-
-    const actualHeal = hp - beforeHp;
-    if (actualHeal > 0) {
-      appendLog("静かな泉でひと休みした。HPが " + actualHeal + " 回復した。");
-    } else {
-      appendLog("静かな泉でひと休みしたが、特に回復する必要はなかった。");
-    }
-
-    updateDisplay();
-    return;
-  }
-}
-
-// =======================
 // 逃走
 // =======================
 
-function tryEscape(){
-  if(!currentEnemy){
+function tryEscape() {
+  if (!currentEnemy) {
     appendLog("逃げる相手がいない");
     return;
   }
-  const baseRate = 0.4;
-  const lukBonus = LUK_ * 0.01;
-  const rate = Math.min(0.9, baseRate + lukBonus + escapeFailBonus);
-  if(Math.random() < rate){
+  const baseRate  = 0.4;
+  const lukBonus  = LUK_ * 0.01;
+  const rate      = Math.min(0.9, baseRate + lukBonus + escapeFailBonus);
+  if (Math.random() < rate) {
     appendLog("うまく逃げ切れた！");
     escapeFailBonus = 0;
     endBattleCommon();
-  }else{
+  } else {
     appendLog("逃走失敗！");
     escapeFailBonus += 0.1;
     enemyTurn();
     tickStatusesTurnEndForBoth();
-  }
-}
-
-// =======================
-// アイテム用セレクト再描画（ポーション）
-// =======================
-
-function refreshUseItemSelect() {
-  const sel = document.getElementById("useItemSelect");
-  if (!sel) return;
-
-  const prev = lastSelectedFieldPotionId || sel.value || null;
-
-  sel.innerHTML = "";
-
-  for (const p of potions) {
-    const cnt = potionCounts[p.id] || 0;
-    if (cnt <= 0) continue;
-    const opt = document.createElement("option");
-    opt.value = p.id;
-    opt.textContent = `${p.name}（${cnt}）`;
-    sel.appendChild(opt);
-  }
-
-  if (prev && Array.from(sel.options).some(o => o.value === prev)) {
-    sel.value = prev;
-  }
-
-  lastSelectedFieldPotionId = sel.value || null;
-}
-
-function refreshBattleItemSelect() {
-  const sel = document.getElementById("battleItemSelect");
-  if (!sel) return;
-
-  const prev = lastSelectedBattlePotionId || sel.value || null;
-
-  sel.innerHTML = "";
-
-  for (const p of potions) {
-    const cnt = potionCounts[p.id] || 0;
-    if (cnt <= 0) continue;
-    const opt = document.createElement("option");
-    opt.value = p.id;
-    opt.textContent = `${p.name}（${cnt}）`;
-    sel.appendChild(opt);
-  }
-
-  if (prev && Array.from(sel.options).some(o => o.value === prev)) {
-    sel.value = prev;
-  }
-
-  lastSelectedBattlePotionId = sel.value || null;
-}
-
-// =======================
-// アイテム使用（フィールド / 戦闘）
-// =======================
-
-function usePotionOutsideBattle(){
-  const sel = document.getElementById("useItemSelect");
-  if(!sel || !sel.value){
-    appendLog("使うアイテムを選んでください");
-    return;
-  }
-  const id = sel.value;
-  const p = potions.find(x=>x.id===id);
-  if(!p){ appendLog("そのアイテムは存在しない"); return; }
-  if(potionCounts[id]<=0){
-    appendLog("そのアイテムを持っていない");
-    refreshUseItemSelect();
-    return;
-  }
-
-  lastSelectedFieldPotionId = id;
-
-  const prevHp = hp;
-  const prevMp = mp;
-
-  applyPotionEffect(p, false);
-  potionCounts[id]--;
-
-  if (p.type === POTION_TYPE_HP) {
-    const healed = hp - prevHp;
-    appendLog(`${p.name} を使用した（HP ${prevHp} → ${hp}、+${healed}）`);
-  } else if (p.type === POTION_TYPE_MP) {
-    const healed = mp - prevMp;
-    appendLog(`${p.name} を使用した（MP ${prevMp} → ${mp}、+${healed}）`);
-  } else if (p.type === POTION_TYPE_BOTH) {
-    const healedHp = hp - prevHp;
-    const healedMp = mp - prevMp;
-    appendLog(`${p.name} を使用した（HP ${prevHp} → ${hp}、+${healedHp} / MP ${prevMp} → ${mp}、+${healedMp}）`);
-  }
-
-  refreshUseItemSelect();
-  updateDisplay();
-}
-
-function useBattleItem(){
-  const sel = document.getElementById("battleItemSelect");
-  if(!sel || !sel.value){
-    appendLog("戦闘で使うアイテムを選んでください");
-    return;
-  }
-  const id = sel.value;
-  const p = potions.find(x=>x.id===id);
-  if(!p){ appendLog("そのアイテムは存在しない"); return; }
-  if(potionCounts[id]<=0){
-    appendLog("そのアイテムを持っていない");
-    refreshBattleItemSelect();
-    return;
-  }
-
-  lastSelectedBattlePotionId = id;
-
-  const prevHp = hp;
-  const prevMp = mp;
-
-  applyPotionEffect(p, true);
-  potionCounts[id]--;
-
-  if (p.type === POTION_TYPE_HP) {
-    const healed = hp - prevHp;
-    appendLog(`戦闘中に ${p.name} を使用した（HP ${prevHp} → ${hp}、+${healed}）`);
-  } else if (p.type === POTION_TYPE_MP) {
-    const healed = mp - prevMp;
-    appendLog(`戦闘中に ${p.name} を使用した（MP ${prevMp} → ${mp}、+${healed}）`);
-  } else if (p.type === POTION_TYPE_BOTH) {
-    const healedHp = hp - prevHp;
-    const healedMp = mp - prevMp;
-    appendLog(`戦闘中に ${p.name} を使用した（HP ${prevHp} → ${hp}、+${healedHp} / MP ${prevMp} → ${mp}、+${healedMp}）`);
-  }
-
-  refreshBattleItemSelect();
-
-  if(currentEnemy){
-    enemyTurn();
-    tickStatusesTurnEndForBoth();
-  }
-  updateDisplay();
-}
-
-function applyPotionEffect(p, inBattle){
-  if(p.type === POTION_TYPE_HP){
-    const heal = (p.power <= 1)
-      ? Math.max(1, Math.floor(hpMax * p.power))
-      : Math.floor(p.power);
-    const before = hp;
-    hp = Math.min(hpMax, hp + heal);
-    const actual = hp - before;
-    appendLog(`HPが${actual}回復した`);
-  } else if(p.type === POTION_TYPE_MP){
-    const heal = (p.power <= 1)
-      ? Math.max(1, Math.floor(mpMax * p.power))
-      : Math.floor(p.power);
-    const before = mp;
-    mp = Math.min(mpMax, mp + heal);
-    const actual = mp - before;
-    appendLog(`MPが${actual}回復した`);
-  } else if(p.type === POTION_TYPE_BOTH){
-    const healHp = (p.power <= 1)
-      ? Math.max(1, Math.floor(hpMax * p.power))
-      : Math.floor(p.power);
-    const healMp = (p.power <= 1)
-      ? Math.max(1, Math.floor(mpMax * p.power))
-      : Math.floor(p.power);
-
-    const beforeHp = hp;
-    const beforeMp = mp;
-
-    hp = Math.min(hpMax, hp + healHp);
-    mp = Math.min(mpMax, mp + healMp);
-
-    const actualHp = hp - beforeHp;
-    const actualMp = mp - beforeMp;
-    appendLog(`HPが${actualHp}回復し、MPが${actualMp}回復した`);
-  } else if(p.type === POTION_TYPE_DAMAGE){
-    if(!inBattle || !currentEnemy){
-      appendLog("爆弾は戦闘中にしか使えない");
-      return;
-    }
-
-    let dmg = 0;
-    if (p.id === "bomb_T1" || p.id === "bomb") {
-      dmg = 10;
-    } else if (p.id === "bomb_T2") {
-      dmg = 50;
-    } else if (p.id === "bomb_T3") {
-      dmg = 100;
-    } else {
-      dmg = p.power || 5;
-    }
-
-    enemyHp -= dmg;
-    onEnemyDamagedByPlayer();
-    appendLog(`爆弾を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！`);
-    if(enemyHp <= 0){
-      enemyHp = 0;
-
-      const expGain = getBattleExpPerWin(currentEnemy);
-      const moneyGain = currentEnemy.money || 10;
-      appendLog(`${currentEnemy.name}を倒した！ 経験値${expGain}と${moneyGain}Gを手に入れた`);
-
-      addExp(expGain);
-      money += moneyGain;
-      addPetExp(Math.floor(expGain/2));
-
-      handleHungerThirstOnAction("battleWin");
-
-      if (isBossBattle) {
-        onBossDefeated();
-      } else {
-        endBattleCommon();
-      }
-    }
-  }
-}
-
-// =======================
-// 初期化
-// =======================
-
-let firstJobMessageShown = false;
-
-function initGame() {
-  if (typeof refreshEquipSelects === "function") {
-    refreshEquipSelects();
-  }
-
-  if (typeof refreshExploreAreaSelect === "function") {
-    refreshExploreAreaSelect();
-  }
-
-  if (typeof refreshUseItemSelect === "function") {
-    refreshUseItemSelect();
-  }
-  if (typeof refreshBattleItemSelect === "function") {
-    refreshBattleItemSelect();
-  }
-
-  updateDisplay();
-
-  if (typeof setBattleCommandVisible === "function") {
-    setBattleCommandVisible(false);
-  }
-
-  if (typeof refreshSkillUIs === "function") {
-    refreshSkillUIs();
-  }
-
-  if (typeof jobId === "undefined" || jobId === null) {
-    if (typeof openJobModal === "function") {
-      openJobModal();
-    }
-    if (!firstJobMessageShown && typeof setLog === "function") {
-      setLog("最初の職業を選んでください。");
-      firstJobMessageShown = true;
-    }
-  }
-
-  if (typeof updateSkillButtonsByJob === "function") {
-    updateSkillButtonsByJob();
-  }
-  if (typeof updateBattleSkillUIByJob === "function") {
-    updateBattleSkillUIByJob();
-  }
-
-  if (typeof updateBossButtonUI === "function") {
-    updateBossButtonUI();
-  }
-
-  if (typeof updateReturnTownButton === "function") {
-    updateReturnTownButton();
+    updateEnemyStatusUI();
+    updateDisplay();
   }
 }

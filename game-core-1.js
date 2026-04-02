@@ -98,8 +98,7 @@ let materials = {
   leather: { t1: 0, t2: 0, t3: 0 },
   water:   { t1: 0, t2: 0, t3: 0 }
 };
-// ★料理素材
-let cookingMats = {};
+window.materials = materials;
 // 合計値を返すヘルパー
 function getMatTotal(key) {
   const m = materials[key];
@@ -128,7 +127,7 @@ let currentEnemy   = null;
 let enemyHp        = 0;
 let enemyHpMax     = 0;
 let isBossBattle   = false;
-
+let escapeFailBonus = 0;
 // エリア別ボス撃破フラグ
 let areaBossCleared = {
   field:  false,

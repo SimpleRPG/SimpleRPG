@@ -302,8 +302,21 @@
               </div>
             </div>
 
+            <!-- フィールドで使う料理・飲み物・ポーション -->
             <div class="field-item-row">
-              <span class="label">フィールドで使うアイテム:</span>
+              <span class="label">使用する食べ物:</span>
+              <select id="fieldFoodSelect"></select>
+              <button id="eatFoodBtn">食べる</button>
+            </div>
+
+            <div class="field-item-row">
+              <span class="label">使用する飲み物:</span>
+              <select id="fieldDrinkSelect"></select>
+              <button id="drinkBtn">飲む</button>
+            </div>
+
+            <div class="field-item-row">
+              <span class="label">使用するアイテム:</span>
               <select id="useItemSelect"></select>
               <button id="useItemBtn">使う</button>
             </div>
@@ -314,7 +327,7 @@
             <h2>ショップ</h2>
             <p>消耗品やサービスを購入できます。</p>
 
-            <p>所持ゴールド: <span id="shopGoldDisplay">0</span>G</span></p>
+            <p>所持ゴールド: <span id="shopGoldDisplay">0</span>G</p>
 
             <div id="shopCategoryTabs">
               <button class="shop-category-button" data-category="item">消耗品</button>
@@ -429,54 +442,84 @@
           <div id="pageWarehouse" class="tab-page">
             <h2>倉庫</h2>
 
-            <!-- 上: 手持ちインベントリ -->
-            <h3>手持ち</h3>
-            <div id="carryInventoryBox" class="status-block" style="font-size:12px;">
-              <p>ポーション（最大10本）</p>
-              <div id="carryPotionsList"></div>
+            <div id="warehouseLists">
+              <!-- 手持ち側ボックス -->
+              <div class="warehouse-box">
+                <h3>手持ち</h3>
+                <p>ポーション（最大10本）</p>
+                <div id="carryPotionsList"></div>
 
-              <p>料理（食べ物 最大3品）</p>
-              <div id="carryFoodsList"></div>
+                <p>料理（食べ物 最大3品）</p>
+                <div id="carryFoodsList"></div>
 
-              <p>料理（飲み物 最大3杯）</p>
-              <div id="carryDrinksList"></div>
+                <p>料理（飲み物 最大3杯）</p>
+                <div id="carryDrinksList"></div>
 
-              <p>武器（最大2本）</p>
-              <div id="carryWeaponsList"></div>
+                <p>武器（最大2本）</p>
+                <div id="carryWeaponsList"></div>
 
-              <p>防具（最大2着）</p>
-              <div id="carryArmorsList"></div>
+                <p>防具（最大2着）</p>
+                <div id="carryArmorsList"></div>
 
-              <p>道具（最大3個）</p>
-              <div id="carryToolsList"></div>
+                <p>道具（最大3個）</p>
+                <div id="carryToolsList"></div>
+              </div>
+
+              <!-- 倉庫側ボックス -->
+              <div class="warehouse-box">
+                <h3>倉庫</h3>
+                <p>ポーション</p>
+                <div id="warehousePotionsList"></div>
+
+                <p>料理（食べ物）</p>
+                <div id="warehouseFoodsList"></div>
+
+                <p>料理（飲み物）</p>
+                <div id="warehouseDrinksList"></div>
+
+                <p>武器</p>
+                <div id="warehouseWeaponsList"></div>
+
+                <p>防具</p>
+                <div id="warehouseArmorsList"></div>
+
+                <p>道具</p>
+                <div id="warehouseToolsList"></div>
+              </div>
             </div>
 
-            <!-- 下: 倉庫（長期保管） -->
-            <h3>倉庫</h3>
-            <div id="warehouseBox" class="status-block" style="font-size:12px;">
-              <p>ポーション</p>
-              <div id="warehousePotionsList"></div>
-
-              <p>料理（食べ物）</p>
-              <div id="warehouseFoodsList"></div>
-
-              <p>料理（飲み物）</p>
-              <div id="warehouseDrinksList"></div>
-
-              <p>武器</p>
-              <div id="warehouseWeaponsList"></div>
-
-              <p>防具</p>
-              <div id="warehouseArmorsList"></div>
-
-              <p>道具</p>
-              <div id="warehouseToolsList"></div>
-            </div>
-
-            <!-- 簡易操作（とりあえずボタンベース） -->
-            <div style="margin-top:8px; font-size:11px;">
-              <p>※詳細な出し入れUI（選択→移動ボタン）は後で追加します。</p>
-            </div>
+            <!-- 右カラム用の説明パネル -->
+            <aside id="warehouseInfoPanel">
+              <h3>インベントリ情報</h3>
+              <p>倉庫と手持ちの出し入れができます。</p>
+              <div class="carry-limit-row">
+                <span>ポーション</span>
+                <span class="value" id="carryLimitPotionsText">0 / 10</span>
+              </div>
+              <div class="carry-limit-row">
+                <span>食べ物</span>
+                <span class="value" id="carryLimitFoodsText">0 / 3</span>
+              </div>
+              <div class="carry-limit-row">
+                <span>飲み物</span>
+                <span class="value" id="carryLimitDrinksText">0 / 3</span>
+              </div>
+              <div class="carry-limit-row">
+                <span>武器</span>
+                <span class="value" id="carryLimitWeaponsText">0 / 2</span>
+              </div>
+              <div class="carry-limit-row">
+                <span>防具</span>
+                <span class="value" id="carryLimitArmorsText">0 / 2</span>
+              </div>
+              <div class="carry-limit-row">
+                <span>道具</span>
+                <span class="value" id="carryLimitToolsText">0 / 3</span>
+              </div>
+              <p style="margin-top:6px; font-size:11px;">
+                ※詳細な出し入れUI（選択→移動ボタン）は後で追加します。
+              </p>
+            </aside>
           </div>
 
           <!-- ステータス -->
@@ -615,6 +658,7 @@
   <script src="craft-data.js"></script>
   <script src="game-shop.js"></script>
   <script src="cook-data.js"></script>
+  <script src="inventory-core.js"></script>
 
   <script src="game-core-1.js"></script>
   <script src="game-core-2.js"></script>
@@ -625,5 +669,6 @@
   <script src="skill-core.js"></script>
   <script src="market-core.js"></script>
   <script src="game-ui.js"></script>
+  <script src="game-ui-2.js"></script>
 </body>
 </html>

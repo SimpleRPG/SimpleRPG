@@ -17,14 +17,22 @@ const CARRY_LIMIT = {
 // =======================
 // 手持ちインベントリ構造
 // =======================
+//
+// 他ファイルやコンソールから参照できるように window 配下に出す。
 
-// idごとのカウント
-let carryPotions = {}; // { potionId: count }
-let carryFoods   = {}; // { foodId:   count }
-let carryDrinks  = {}; // { drinkId:  count }
-let carryWeapons = {}; // { weaponId: count }
-let carryArmors  = {}; // { armorId:  count }
-let carryTools   = {}; // { toolId:   count } // 現状は bomb_T1 などを想定
+window.carryPotions = window.carryPotions || {}; // { potionId: count }
+window.carryFoods   = window.carryFoods   || {}; // { foodId:   count }
+window.carryDrinks  = window.carryDrinks  || {}; // { drinkId:  count }
+window.carryWeapons = window.carryWeapons || {}; // { weaponId: count }
+window.carryArmors  = window.carryArmors  || {}; // { armorId:  count }
+window.carryTools   = window.carryTools   || {}; // { toolId:   count } // 現状は bomb_T1 などを想定
+
+const carryPotions = window.carryPotions;
+const carryFoods   = window.carryFoods;
+const carryDrinks  = window.carryDrinks;
+const carryWeapons = window.carryWeapons;
+const carryArmors  = window.carryArmors;
+const carryTools   = window.carryTools;
 
 // =======================
 // 合計数ヘルパー
@@ -42,13 +50,71 @@ function getCarryTotal(obj) {
 // ・武器/防具: weaponCounts / armorCounts が倉庫。
 // ・道具: 将来 potionCounts か別countsで管理するとして、ここでは倉庫側は「存在する＝倉庫」扱い。
 // ・料理: cook-data.js で新しく cookedFoods / cookedDrinks を導入する前提。
-//   ここでは仮のオブジェクトとして用意しておく。
 
-if (typeof cookedFoods === "undefined") {
-  window.cookedFoods = {}; // { foodId: count }
-}
-if (typeof cookedDrinks === "undefined") {
-  window.cookedDrinks = {}; // { drinkId: count }
+window.cookedFoods  = window.cookedFoods  || {}; // { foodId:  count }
+window.cookedDrinks = window.cookedDrinks || {}; // { drinkId: count }
+
+const cookedFoods  = window.cookedFoods;
+const cookedDrinks = window.cookedDrinks;
+
+// =======================
+// 汎用アイテム追加（クラフト・ドロップ用）
+// =======================
+
+const COOKING_DRINK_IDS = (typeof COOKING_RECIPES !== "undefined")
+  ? COOKING_RECIPES.drink.map(r => r.id)
+  : [];
+const COOKING_FOOD_IDS = (typeof COOKING_RECIPES !== "undefined")
+  ? COOKING_RECIPES.food.map(r => r.id)
+  : [];
+
+// クラフト結果や将来のドロップを倉庫側に入れる
+function addItemToInventory(itemId, amount) {
+  amount = Math.max(1, amount | 0);
+
+  // 1. 料理（飲み物） → cookedDrinks
+  if (COOKING_DRINK_IDS.includes(itemId)) {
+    window.cookedDrinks[itemId] = (window.cookedDrinks[itemId] || 0) + amount;
+    return;
+  }
+
+  // 2. 料理（食べ物） → cookedFoods
+  if (COOKING_FOOD_IDS.includes(itemId)) {
+    window.cookedFoods[itemId] = (window.cookedFoods[itemId] || 0) + amount;
+    return;
+  }
+
+  // 3. ポーション → potionCounts
+  if (typeof potionCounts !== "undefined" && Array.isArray(potions)) {
+    const p = potions.find(x => x.id === itemId);
+    if (p) {
+      potionCounts[itemId] = (potionCounts[itemId] || 0) + amount;
+      return;
+    }
+  }
+
+  // 4. 武器 → weaponCounts
+  if (typeof weaponCounts !== "undefined" && Array.isArray(weapons)) {
+    const w = weapons.find(x => x.id === itemId);
+    if (w) {
+      weaponCounts[itemId] = (weaponCounts[itemId] || 0) + amount;
+      return;
+    }
+  }
+
+  // 5. 防具 → armorCounts
+  if (typeof armorCounts !== "undefined" && Array.isArray(armors)) {
+    const a = armors.find(x => x.id === itemId);
+    if (a) {
+      armorCounts[itemId] = (armorCounts[itemId] || 0) + amount;
+      return;
+    }
+  }
+
+  // 6. その他（未分類）はログだけ
+  if (typeof appendLog === "function") {
+    appendLog(`addItemToInventory: 未対応ID ${itemId} に${amount}追加しようとしました`);
+  }
 }
 
 // =======================
@@ -210,13 +276,8 @@ function moveArmorToWarehouse(id, amount) {
 }
 
 // 道具（爆弾など）
-// 現状は bomb などが POTIONS_INIT に含まれているので、
-// 将来「toolCounts」が分かれた時用に一応フックを用意しておくイメージ。
-// ひとまず carryTools だけ使うラッパーにしておく。
-
 function moveToolToCarry(id, amount) {
   amount = Math.max(1, amount | 0);
-  // 倉庫側は potionCounts / intermediateMats など、後で決める前提のダミー
   appendLog("道具の倉庫管理は未実装です（後で実装）");
   return false;
 }
@@ -230,7 +291,6 @@ function moveToolToWarehouse(id, amount) {
   }
   carryTools[id] -= amount;
   if (carryTools[id] <= 0) delete carryTools[id];
-  // 倉庫側のtoolCountsに戻す処理は今後追加
   appendLog("道具を倉庫に戻す処理は未実装です（後で実装）");
   return true;
 }
@@ -241,7 +301,8 @@ function moveToolToWarehouse(id, amount) {
 //
 // ・フィールド用ポーションセレクト（useItemSelect）
 // ・戦闘アイテムセレクト（battleItemSelect）
-// ・今後追加予定の「食事セレクト」などから呼ぶ想定。
+// ・フィールド料理セレクト（fieldFoodSelect）
+// ・フィールド飲み物セレクト（fieldDrinkSelect）
 
 function refreshCarryPotionSelects() {
   const fieldSel  = document.getElementById("useItemSelect");
@@ -277,5 +338,67 @@ function refreshCarryPotionSelects() {
   fill(battleSel);
 }
 
-// TODO: 料理用セレクト（食べ物・飲み物）も
-// 「食べる」UIを決めたタイミングで同じノリで追加する。
+// 手持ち料理・飲み物セレクト更新
+function refreshCarryFoodDrinkSelects() {
+  const foodSel  = document.getElementById("fieldFoodSelect");
+  const drinkSel = document.getElementById("fieldDrinkSelect");
+
+  function fillFood(sel) {
+    if (!sel) return;
+    const prev = sel.value;
+    sel.innerHTML = "";
+
+    Object.keys(carryFoods).forEach(id => {
+      const cnt = carryFoods[id] || 0;
+      if (cnt <= 0) return;
+      const recipe = (typeof COOKING_RECIPES !== "undefined")
+        ? COOKING_RECIPES.food.find(r => r.id === id)
+        : null;
+      const name = recipe ? recipe.name : id;
+      const opt  = document.createElement("option");
+      opt.value = id;
+      opt.textContent = `${name}（${cnt}）`;
+      sel.appendChild(opt);
+    });
+
+    if (!sel.options.length) {
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = "手持ち料理なし";
+      sel.appendChild(opt);
+    } else if (prev && Array.from(sel.options).some(o => o.value === prev)) {
+      sel.value = prev;
+    }
+  }
+
+  function fillDrink(sel) {
+    if (!sel) return;
+    const prev = sel.value;
+    sel.innerHTML = "";
+
+    Object.keys(carryDrinks).forEach(id => {
+      const cnt = carryDrinks[id] || 0;
+      if (cnt <= 0) return;
+      const recipe = (typeof COOKING_RECIPES !== "undefined")
+        ? COOKING_RECIPES.drink.find(r => r.id === id)
+        : null;
+      const name = recipe ? recipe.name : id;
+      const opt  = document.createElement("option");
+      opt.value = id;
+      opt.textContent = `${name}（${cnt}）`;
+      sel.appendChild(opt);
+    });
+
+    if (!sel.options.length) {
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = "手持ち飲み物なし";
+      sel.appendChild(opt);
+    } else if (prev && Array.from(sel.options).some(o => o.value === prev)) {
+      sel.value = prev;
+    }
+  }
+
+  fillFood(foodSel);
+  fillDrink(drinkSel);
+}

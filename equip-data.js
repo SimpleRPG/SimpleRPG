@@ -7,6 +7,13 @@ const MAX_ENHANCE_LEVEL = 5;
 const ENHANCE_SUCCESS_RATES = [0.70, 0.50, 0.35, 0.25, 0.15];
 const ENHANCE_COST_MONEY   = [20,   40,   80,   120,  200];
 
+// レア強化素材（星屑の結晶）
+// ・どの採取からもごく低確率で落ちる汎用レア素材（gather-data.js 側で定義）
+// ・ここでは「強化で使用する特別素材」としてIDだけ共有しておく。
+//   実際に何段階目から要求するかなどのロジックは game-core 側で扱う前提。
+const ENHANCE_RARE_ITEM_ID   = "starShard";
+const ENHANCE_RARE_ITEM_NAME = "星屑の結晶";
+
 const BASE_DURABILITY = 3;
 
 // ポーション種別

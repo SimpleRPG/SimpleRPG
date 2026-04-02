@@ -73,3 +73,18 @@ const GATHER_AMOUNT_PARAMS = {
   // extraChanceCoeff: extraChanceCoeff * (lv / 100) が追加 +1 の確率
   extraChanceCoeff: 0.2
 };
+
+// =======================
+// レアドロップ用パラメータ
+// =======================
+//
+// ・どの採取アクションからでもごく低確率で落ちる汎用レア素材。
+// ・実装側（game-core）で Math.random() との比較に使う。
+// ・名前はどの素材から出ても違和感がないように「星屑の結晶」とする。
+
+// レア素材のIDと表示名
+const RARE_GATHER_ITEM_ID   = "starShard";
+const RARE_GATHER_ITEM_NAME = "星屑の結晶";
+
+// 採取1回あたりのレアドロップ確率（0.001% = 0.00001）
+const RARE_GATHER_DROP_RATE = 0.00001;

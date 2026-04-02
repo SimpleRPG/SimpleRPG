@@ -4,6 +4,7 @@
 // =======================
 // 採取フィールド定義
 // =======================
+// materials を必ず window 配下にそろえる
 
 const GATHER_FIELDS = [
   { id: "field1", name: "近郊の原っぱ" },
@@ -21,6 +22,12 @@ const GATHER_FIELD_REQUIRE_LV = {
   field3: { wood: 40, ore: 40, herb: 40, cloth: 40, leather: 40, water: 40 }
   // cook は制限なし
 };
+
+// 「星屑の結晶」強化用定数（他ファイルで上書きしてもOK）
+// 自己参照すると「Cannot access 'STAR_SHARD_ITEM_ID' before initialization」になるため素直な定義にする
+const STAR_SHARD_ITEM_ID = "starShard";   // itemCounts で使うキー名
+const STAR_SHARD_NEED_LV = 5;             // この強化段階（現在値）以上から星屑要求
+const STAR_SHARD_NEED_NUM = 1;            // 1回の強化で必要な個数
 
 // 採取スキルでフィールド解放をチェックするフック
 function checkGatherAreaUnlockBySkill(resourceKey) {
@@ -378,9 +385,40 @@ function gather(){
 
     appendLog(`【${modeLabel}】で ${gainedText} を採取した`);
 
+    // ★ 直近の料理素材採取情報を記録（UI表示用）
+    lastGatherInfo = {
+      kind: "cooking",
+      gained: gained   // { id: 個数, ... }
+    };
+
+    // ★ 料理採取でもレア素材（星屑の結晶）の超低確率ドロップ
+    if (typeof RARE_GATHER_DROP_RATE === "number" &&
+        typeof RARE_GATHER_ITEM_ID === "string") {
+      if (Math.random() < RARE_GATHER_DROP_RATE) {
+        if (typeof itemCounts === "object") {
+          itemCounts[RARE_GATHER_ITEM_ID] = (itemCounts[RARE_GATHER_ITEM_ID] || 0) + 1;
+        }
+        appendLog("✨ 星屑の結晶を手に入れた！（料理採取）");
+      }
+    }
+
     // 採取も行動として空腹・水分を進行させる
     if (typeof handleHungerThirstOnAction === "function") {
       handleHungerThirstOnAction("gather");
+    }
+
+    // ★ 料理クラフト画面の必要素材表示を更新
+    if (typeof COOKING_RECIPES !== "undefined" &&
+        typeof updateCookingCostInfo === "function") {
+      const foodSelect  = document.getElementById("foodSelect");
+      const drinkSelect = document.getElementById("drinkSelect");
+      const idFood  = foodSelect  ? foodSelect.value  : null;
+      const idDrink = drinkSelect ? drinkSelect.value : null;
+      const recipe =
+        (idFood  && COOKING_RECIPES.food.find(r => r.id === idFood)) ||
+        (idDrink && COOKING_RECIPES.drink.find(r => r.id === idDrink)) ||
+        null;
+      updateCookingCostInfo(recipe);
     }
 
     updateDisplay();
@@ -463,6 +501,18 @@ function gather(){
   if (t1 > 0) appendLog(`T1${names[target]}を${t1}つ採取した！`);
   if (t2 > 0) appendLog(`T2${names[target]}を${t2}つ採取した！`);
   if (t3 > 0) appendLog(`T3${names[target]}を${t3}つ採取した！`);
+
+  // ★ レア素材（星屑の結晶）の超低確率ドロップ
+  if (typeof RARE_GATHER_DROP_RATE === "number" &&
+      typeof RARE_GATHER_ITEM_ID === "string") {
+    if (Math.random() < RARE_GATHER_DROP_RATE) {
+      // インベントリに追加（itemCounts か inventory 周りの実装に合わせて処理）
+      if (typeof itemCounts === "object") {
+        itemCounts[RARE_GATHER_ITEM_ID] = (itemCounts[RARE_GATHER_ITEM_ID] || 0) + 1;
+      }
+      appendLog("✨ 星屑の結晶を手に入れた！");
+    }
+  }
 
   // ★ 直近の通常素材採取情報を記録（game-core-1 側の表示用）
   lastGatherInfo = {
@@ -1137,6 +1187,7 @@ function refreshEquipSelects(){
 
   // クラフト用セレクト（中間素材）
   if (interSel) {
+    const prevInterId = interSel.value; // ★ 直前の選択を退避
     interSel.innerHTML = "";
     if (Array.isArray(INTERMEDIATE_MATERIALS)) {
       INTERMEDIATE_MATERIALS.forEach(def => {
@@ -1149,6 +1200,11 @@ function refreshEquipSelects(){
         opt.textContent = def.name || def.id;
         interSel.appendChild(opt);
       });
+    }
+    // ★ 可能なら直前のIDに戻す
+    if (prevInterId &&
+        Array.from(interSel.options).some(o => o.value === prevInterId)) {
+      interSel.value = prevInterId;
     }
   }
 
@@ -1215,6 +1271,19 @@ function enhanceWeapon(){
     return;
   }
 
+  // ★ 星屑チェック（指定レベル以上のときだけ要求）
+  if (w.enhance >= STAR_SHARD_NEED_LV) {
+    if (typeof itemCounts !== "object") {
+      appendLog("星屑の結晶の所持情報が取得できない");
+      return;
+    }
+    const haveShard = itemCounts[STAR_SHARD_ITEM_ID] || 0;
+    if (haveShard < STAR_SHARD_NEED_NUM) {
+      appendLog(`星屑の結晶が足りない（${haveShard}/${STAR_SHARD_NEED_NUM}）`);
+      return;
+    }
+  }
+
   if(!consumeOneSameWeaponAsMaterial(w.id)){
     appendLog("同じ武器がもう1本必要です");
     return;
@@ -1228,11 +1297,19 @@ function enhanceWeapon(){
   money -= cost;
 
   const rate = ENHANCE_SUCCESS_RATES[w.enhance];
-  if(Math.random()<rate){
+  const success = Math.random()<rate;
+
+  // ★ 星屑消費（成功・失敗に関わらず消費）
+  if (w.enhance >= STAR_SHARD_NEED_LV && typeof itemCounts === "object") {
+    itemCounts[STAR_SHARD_ITEM_ID] =
+      Math.max(0, (itemCounts[STAR_SHARD_ITEM_ID] || 0) - STAR_SHARD_NEED_NUM);
+  }
+
+  if(success){
     w.enhance++;
-    appendLog(`武器強化成功！ ${w.name}+${w.enhance}になった（同名武器1本消費）`);
+    appendLog(`武器強化成功！ ${w.name}+${w.enhance}になった（同名武器1本消費${w.enhance-1 >= STAR_SHARD_NEED_LV ? "＋星屑の結晶消費" : ""}）`);
   }else{
-    appendLog("武器強化失敗…（同名武器は消費された）");
+    appendLog(`武器強化失敗…（同名武器は消費された${w.enhance >= STAR_SHARD_NEED_LV ? "／星屑の結晶も消費された" : ""}）`);
   }
   refreshEquipSelects();
   updateDisplay();
@@ -1251,6 +1328,19 @@ function enhanceArmor(){
     return;
   }
 
+  // ★ 星屑チェック（指定レベル以上のときだけ要求）
+  if (a.enhance >= STAR_SHARD_NEED_LV) {
+    if (typeof itemCounts !== "object") {
+      appendLog("星屑の結晶の所持情報が取得できない");
+      return;
+    }
+    const haveShard = itemCounts[STAR_SHARD_ITEM_ID] || 0;
+    if (haveShard < STAR_SHARD_NEED_NUM) {
+      appendLog(`星屑の結晶が足りない（${haveShard}/${STAR_SHARD_NEED_NUM}）`);
+      return;
+    }
+  }
+
   if(!consumeOneSameArmorAsMaterial(a.id)){
     appendLog("同じ防具がもう1つ必要です");
     return;
@@ -1264,11 +1354,19 @@ function enhanceArmor(){
   money -= cost;
 
   const rate = ENHANCE_SUCCESS_RATES[a.enhance];
-  if(Math.random()<rate){
+  const success = Math.random()<rate;
+
+  // ★ 星屑消費（成功・失敗に関わらず消費）
+  if (a.enhance >= STAR_SHARD_NEED_LV && typeof itemCounts === "object") {
+    itemCounts[STAR_SHARD_ITEM_ID] =
+      Math.max(0, (itemCounts[STAR_SHARD_ITEM_ID] || 0) - STAR_SHARD_NEED_NUM);
+  }
+
+  if(success){
     a.enhance++;
-    appendLog(`防具強化成功！ ${a.name}+${a.enhance}になった（同名防具1つ消費）`);
+    appendLog(`防具強化成功！ ${a.name}+${a.enhance}になった（同名防具1つ消費${a.enhance-1 >= STAR_SHARD_NEED_LV ? "＋星屑の結晶消費" : ""}）`);
   }else{
-    appendLog("防具強化失敗…（同名防具は消費された）");
+    appendLog(`防具強化失敗…（同名防具は消費された${a.enhance >= STAR_SHARD_NEED_LV ? "／星屑の結晶も消費された" : ""}）`);
   }
   refreshEquipSelects();
   updateDisplay();
