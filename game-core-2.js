@@ -61,11 +61,12 @@ function addExp(amount) {
     sp    = spMax;
 
     // 成長ロール
-    const rolls = getLevelUpRolls();
+  const rolls = getLevelUpRolls();
     for (let i = 0; i < rolls; i++) {
       applyLevelUpGrowth();
     }
 
+    // ★ 必要経験値をレベルアップごとに再設定
     expToNext = BASE_EXP_PER_LEVEL;
   }
   if (leveled) {
@@ -177,7 +178,8 @@ function doRebirth() {
       materials[k].t3 = 0;
     });
   }
-  wood = ore = herb = cloth = leather = water = 0;
+  // ★ 旧スカラー変数は未定義なので触らない（実害のある代入を削除）
+  // wood = ore = herb = cloth = leather = water = 0;
 
   money = 0;
   Object.keys(weaponCounts).forEach(k => weaponCounts[k] = 0);

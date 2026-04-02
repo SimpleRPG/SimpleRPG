@@ -2,12 +2,19 @@
 // 基本ステータス・装備・所持品管理など
 
 // =======================
+// 定数
+// =======================
+
+// レベルアップ用経験値ベース（Lvごとの必要値は addExp/doRebirth 側で利用）
+const BASE_EXP_PER_LEVEL = 100;
+
+// =======================
 // 基本ステータス
 // =======================
 
 let level = 1;
 let exp = 0;
-let expToNext = 100;
+let expToNext = BASE_EXP_PER_LEVEL;
 
 let rebirthCount = 0;
 let growthType = 4; // 0:STR,1:VIT,2:INT,3:LUK,4:バランス
@@ -69,6 +76,10 @@ const PET_SKILL_TRY_RATE = 0.3;
 
 // お金
 let money = 0;
+
+// 星屑など汎用アイテムカウント
+window.itemCounts = window.itemCounts || {};
+let itemCounts = window.itemCounts;
 
 // =======================
 // 装備・所持品
@@ -178,9 +189,11 @@ function recalcStats() {
   let weaponAtk = 0;
   let weaponScaleStr = 0;
   let weaponScaleInt = 0;
+  let weaponEnhance = 0;
   let armorDef = 0;
   let armorScaleVit = 0;
   let armorBonusDex = 0;
+  let armorEnhance = 0;
 
   if (equippedWeaponId) {
     const w = weapons.find(x => x.id === equippedWeaponId);
@@ -188,6 +201,7 @@ function recalcStats() {
       weaponAtk       = w.atk || 0;
       weaponScaleStr  = w.scaleStr || 0;
       weaponScaleInt  = w.scaleInt || 0;
+      weaponEnhance   = w.enhance || 0;
     }
   }
 
@@ -197,8 +211,19 @@ function recalcStats() {
       armorDef       = a.def || 0;
       armorScaleVit  = a.scaleVit || 0;
       armorBonusDex  = a.bonusDex || 0;
+      armorEnhance   = a.enhance || 0;
     }
   }
+
+  // 強化補正（1段階あたり+5%想定）
+  const WEAPON_ENH_RATE = 0.05;
+  const ARMOR_ENH_RATE  = 0.05;
+
+  const weaponEnhRate = 1 + weaponEnhance * WEAPON_ENH_RATE;
+  const armorEnhRate  = 1 + armorEnhance * ARMOR_ENH_RATE;
+
+  const enhancedWeaponAtk = Math.floor(weaponAtk * weaponEnhRate);
+  const enhancedArmorDef  = Math.floor(armorDef * armorEnhRate);
 
   const atkFromStr = Math.floor(STR * 0.5);
   const atkFromDex = Math.floor(DEX_ * 0.3);
@@ -207,7 +232,7 @@ function recalcStats() {
 
   atkTotal =
     baseAtk +
-    weaponAtk +
+    enhancedWeaponAtk +
     atkFromStr +
     atkFromDex +
     atkFromWeaponStr +
@@ -219,7 +244,7 @@ function recalcStats() {
 
   defTotal =
     baseDef +
-    armorDef +
+    enhancedArmorDef +
     defFromVit +
     defFromDex +
     defFromArmorVit;
@@ -280,6 +305,8 @@ function initGame() {
   enemyHp      = 0;
   enemyHpMax   = 0;
   isBossBattle = false;
+
+  expToNext = BASE_EXP_PER_LEVEL;
 
   recalcStats();
 }

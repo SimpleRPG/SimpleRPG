@@ -1,5 +1,5 @@
 // market-core.js
-// game-core-* と同じグローバル（money / weaponCounts / armors / potions / wood...）を前提にした市場ロジック
+// game-core-* と同じグローバル（money / weaponCounts / armors / potions / materials...）を前提にした市場ロジック
 
 // =======================
 // 市場（売り注文＋買い注文）
@@ -27,6 +27,48 @@ function addMarketLog(msg){
 }
 
 // -----------------------
+// 素材ヘルパー
+// -----------------------
+
+// materials[key].t1,t2,t3 の合算
+function getMatTotal(key) {
+  if (typeof materials !== "object") return 0;
+  const m = materials[key];
+  if (!m) return 0;
+  return (m.t1 || 0) + (m.t2 || 0) + (m.t3 || 0);
+}
+
+// 合計から指定量を減らす（T1→T2→T3 の順で消費）
+function consumeMaterials(key, amount) {
+  if (typeof materials !== "object") return false;
+  const m = materials[key];
+  if (!m) return false;
+  const total = getMatTotal(key);
+  if (total < amount) return false;
+
+  let remain = amount;
+
+  const tiers = ["t1", "t2", "t3"];
+  for (const t of tiers) {
+    const have = m[t] || 0;
+    if (have <= 0) continue;
+    const use = Math.min(have, remain);
+    m[t] = have - use;
+    remain -= use;
+    if (remain <= 0) break;
+  }
+  return true;
+}
+
+// 指定量を追加（基本は T1 に入れる）
+function addMaterials(key, amount) {
+  if (typeof materials !== "object") return;
+  const m = materials[key];
+  if (!m) return;
+  m.t1 = (m.t1 || 0) + amount;
+}
+
+// -----------------------
 // 在庫減少（出品時）
 // -----------------------
 function removeItemForSell(category, itemId, amount){
@@ -49,25 +91,10 @@ function removeItemForSell(category, itemId, amount){
     if(have < amount) return false;
     potionCounts[itemId] = have - amount;
   } else if(category === "material"){
-    // 基本素材（ティア合算管理のまま）
-    if(itemId === "wood"){
-      if(wood < amount) return false;
-      wood -= amount;
-    } else if(itemId === "ore"){
-      if(ore < amount) return false;
-      ore -= amount;
-    } else if(itemId === "herb"){
-      if(herb < amount) return false;
-      herb -= amount;
-    } else if(itemId === "cloth"){
-      if(cloth < amount) return false;
-      cloth -= amount;
-    } else if(itemId === "leather"){
-      if(leather < amount) return false;
-      leather -= amount;
-    } else if(itemId === "water"){
-      if(water < amount) return false;
-      water -= amount;
+    // 基本素材: materials.xxx を利用
+    if (itemId === "wood" || itemId === "ore" || itemId === "herb" ||
+        itemId === "cloth" || itemId === "leather" || itemId === "water") {
+      if (!consumeMaterials(itemId, amount)) return false;
     }
     // 中間素材（intermediateMats を game-core 側で持っている前提）
     else if (typeof intermediateMats === "object" && intermediateMats[itemId] != null) {
@@ -271,14 +298,14 @@ function addItemForBuy(category, itemId, amount){
   } else if(category === "armor"){
     armorCounts[itemId] = (armorCounts[itemId] || 0) + amount;
   } else if(category === "potion"){
-    potionCounts[itemId] = (potionCounts[itemId] || 0) + amount;
+    potionCounts[itemId] = (potionCounts[p.id] || 0) + amount;
   } else if(category === "material"){
-    if(itemId === "wood") wood += amount;
-    else if(itemId === "ore") ore += amount;
-    else if(itemId === "herb") herb += amount;
-    else if(itemId === "cloth") cloth += amount;
-    else if(itemId === "leather") leather += amount;
-    else if(itemId === "water") water += amount;
+    // 基本素材は materials.xxx に追加
+    if (itemId === "wood" || itemId === "ore" || itemId === "herb" ||
+        itemId === "cloth" || itemId === "leather" || itemId === "water") {
+      addMaterials(itemId, amount);
+    }
+    // 中間素材
     else if (typeof intermediateMats === "object" && intermediateMats[itemId] != null) {
       intermediateMats[itemId] = (intermediateMats[itemId] || 0) + amount;
     }
@@ -478,12 +505,12 @@ function refreshMarketSellItems(){
     });
   } else if (category === "material") {
     const mats = [
-      { id:"wood",    name:"木",    count: wood },
-      { id:"ore",     name:"鉱石",  count: ore },
-      { id:"herb",    name:"草",    count: herb },
-      { id:"cloth",   name:"布",    count: cloth },
-      { id:"leather", name:"皮",    count: leather },
-      { id:"water",   name:"水",    count: water }
+      { id:"wood",    name:"木",    count: getMatTotal("wood") },
+      { id:"ore",     name:"鉱石",  count: getMatTotal("ore") },
+      { id:"herb",    name:"草",    count: getMatTotal("herb") },
+      { id:"cloth",   name:"布",    count: getMatTotal("cloth") },
+      { id:"leather", name:"皮",    count: getMatTotal("leather") },
+      { id:"water",   name:"水",    count: getMatTotal("water") }
     ];
 
     // 中間素材があれば追加
@@ -496,7 +523,6 @@ function refreshMarketSellItems(){
           }
         });
       } else {
-        // 定義だけでループしたい場合
         Object.keys(intermediateMats).forEach(id => {
           const cnt = intermediateMats[id] || 0;
           if (cnt > 0) {
