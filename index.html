@@ -11,14 +11,12 @@
     <h1>しんぷるRPG</h1>
 
     <div id="tabs">
-      <button id="tabGather"  class="tab-button active">採取</button>
-      <button id="tabCraft"   class="tab-button">クラフト</button>
-      <button id="tabEquip"   class="tab-button">装備</button>
-      <button id="tabExplore" class="tab-button">探索</button>
-      <button id="tabShop"    class="tab-button">ショップ</button>
-      <button id="tabMarket"  class="tab-button">市場</button>
+      <button id="tabGather"    class="tab-button active">採取</button>
+      <button id="tabEquip"     class="tab-button">装備</button>
+      <button id="tabExplore"   class="tab-button">探索</button>
+      <button id="tabMagicDist" class="tab-button">魔巧区</button>
       <button id="tabWarehouse" class="tab-button">倉庫</button>
-      <button id="tabStatus"  class="tab-button">ステータス</button>
+      <button id="tabStatus"    class="tab-button">ステータス</button>
     </div>
 
     <!-- PC/スマホ共通レイアウトの本体 -->
@@ -106,116 +104,253 @@
             <pre id="gatherMatDetail" style="display:none; font-size:11px; margin:2px 0 0;"></pre>
           </div>
 
-          <!-- クラフト -->
-          <div id="pageCraft" class="tab-page">
-            <h2>クラフト</h2>
+          <!-- 魔巧区（クラフト＋ショップ＋市場＋採取拠点） -->
+          <div id="pageMagicDist" class="tab-page">
+            <h2>魔巧区</h2>
 
-            <div style="display:flex; align-items:center; gap:4px;">
-              <p id="craftMaterials" style="flex:1;">
-                所持素材：-
-              </p>
-              <button id="toggleMatDetailBtn2" style="font-size:11px; padding:2px 6px;">
-                詳細▼
-              </button>
-            </div>
-            <pre id="craftMatDetail" style="display:none; font-size:11px; margin:2px 0 0;"></pre>
-
-            <!-- クラフトカテゴリタブ -->
-            <div id="craftCategoryTabs" style="margin:4px 0;">
-              <button class="craft-cat-tab active" data-cat="weapon">武器</button>
-              <button class="craft-cat-tab" data-cat="armor">防具</button>
-              <button class="craft-cat-tab" data-cat="potion">ポーション</button>
-              <button class="craft-cat-tab" data-cat="tool">道具</button>
-              <button class="craft-cat-tab" data-cat="material">素材</button>
-              <!-- 追加: 料理カテゴリ -->
-              <button class="craft-cat-tab" data-cat="cooking">料理</button>
+            <!-- 魔巧区内サブタブ -->
+            <div id="magicDistTabs" style="margin:4px 0;">
+              <button class="magic-tab-button active" data-page="magic-craft">クラフト</button>
+              <button class="magic-tab-button" data-page="magic-shop">ショップ</button>
+              <button class="magic-tab-button" data-page="magic-market">市場</button>
+              <button class="magic-tab-button" data-page="magic-gather">採取拠点</button>
             </div>
 
-            <!-- ティア選択 -->
-            <div id="craftTierRow" style="margin:4px 0;">
-              <label style="font-size:12px;">ティア:</label>
-              <select id="craftTierSelect">
-                <option value="all">すべて</option>
-                <option value="T1">T1</option>
-                <option value="T2">T2</option>
-                <option value="T3">T3</option>
-              </select>
-            </div>
+            <!-- サブページ: クラフト（元 pageCraft の中身をそのまま移植） -->
+            <div id="magicPageCraft" class="magic-sub-page active">
+              <h3>クラフト</h3>
 
-            <!-- カテゴリ別パネル -->
-            <div id="craftPanelWeapon" class="craft-panel">
-              <h3>武器クラフト</h3>
-              <select id="weaponSelect"></select>
-              <button id="craftWeaponBtn">武器を作る</button>
-            </div>
-
-            <div id="craftPanelArmor" class="craft-panel" style="display:none;">
-              <h3>防具クラフト</h3>
-              <select id="armorSelect"></select>
-              <button id="craftArmorBtn">防具を作る</button>
-            </div>
-
-            <div id="craftPanelPotion" class="craft-panel" style="display:none;">
-              <h3>ポーションクラフト</h3>
-              <select id="potionSelect"></select>
-              <button id="craftPotionBtn">ポーションを作る</button>
-            </div>
-
-            <div id="craftPanelTool" class="craft-panel" style="display:none;">
-              <h3>道具クラフト</h3>
-              <select id="toolSelect"></select>
-              <button id="craftToolBtn">道具を作る</button>
-            </div>
-
-            <div id="craftPanelMaterial" class="craft-panel" style="display:none;">
-              <h3>素材（中間素材）クラフト</h3>
-              <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
-                <label style="font-size:12px;">中間素材:</label>
-                <select id="intermediateSelect" style="flex:1;"></select>
-                <button id="craftIntermediateBtn">作る</button>
+              <div style="display:flex; align-items:center; gap:4px;">
+                <p id="craftMaterials" style="flex:1;">
+                  所持素材：-
+                </p>
+                <button id="toggleMatDetailBtn2" style="font-size:11px; padding:2px 6px;">
+                  詳細▼
+                </button>
               </div>
-              <div id="intermediateInfo" style="font-size:11px; color:#ccc;">
-                素材から板材・インゴットなどを作成します。
-              </div>
-            </div>
+              <pre id="craftMatDetail" style="display:none; font-size:11px; margin:2px 0 0;"></pre>
 
-            <!-- 追加: 料理クラフトパネル -->
-            <div id="craftPanelCooking" class="craft-panel" style="display:none;">
-              <h3>料理クラフト</h3>
-
-              <!-- 料理内サブタブ -->
-              <div id="cookSubTabs" style="margin:4px 0;">
-                <button class="cook-sub-tab active" data-sub="food">食べ物</button>
-                <button class="cook-sub-tab" data-sub="drink">飲み物</button>
+              <!-- クラフトカテゴリタブ -->
+              <div id="craftCategoryTabs" style="margin:4px 0;">
+                <button class="craft-cat-tab active" data-cat="weapon">武器</button>
+                <button class="craft-cat-tab" data-cat="armor">防具</button>
+                <button class="craft-cat-tab" data-cat="potion">ポーション</button>
+                <button class="craft-cat-tab" data-cat="tool">道具</button>
+                <button class="craft-cat-tab" data-cat="material">素材</button>
+                <!-- 追加: 料理カテゴリ -->
+                <button class="craft-cat-tab" data-cat="cooking">料理</button>
               </div>
 
-              <!-- 食べ物パネル -->
-              <div id="cookPanelFood">
+              <!-- ティア選択 -->
+              <div id="craftTierRow" style="margin:4px 0;">
+                <label style="font-size:12px;">ティア:</label>
+                <select id="craftTierSelect">
+                  <option value="all">すべて</option>
+                  <option value="T1">T1</option>
+                  <option value="T2">T2</option>
+                  <option value="T3">T3</option>
+                </select>
+              </div>
+
+              <!-- カテゴリ別パネル -->
+              <div id="craftPanelWeapon" class="craft-panel">
+                <h3>武器クラフト</h3>
+                <select id="weaponSelect"></select>
+                <button id="craftWeaponBtn">武器を作る</button>
+              </div>
+
+              <div id="craftPanelArmor" class="craft-panel" style="display:none;">
+                <h3>防具クラフト</h3>
+                <select id="armorSelect"></select>
+                <button id="craftArmorBtn">防具を作る</button>
+              </div>
+
+              <div id="craftPanelPotion" class="craft-panel" style="display:none;">
+                <h3>ポーションクラフト</h3>
+                <select id="potionSelect"></select>
+                <button id="craftPotionBtn">ポーションを作る</button>
+              </div>
+
+              <div id="craftPanelTool" class="craft-panel" style="display:none;">
+                <h3>道具クラフト</h3>
+                <select id="toolSelect"></select>
+                <button id="craftToolBtn">道具を作る</button>
+              </div>
+
+              <div id="craftPanelMaterial" class="craft-panel" style="display:none;">
+                <h3>素材（中間素材）クラフト</h3>
                 <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
-                  <label style="font-size:12px;">食べ物:</label>
-                  <select id="foodSelect" style="flex:1;"></select>
-                  <button id="craftFoodBtn">料理を作る</button>
+                  <label style="font-size:12px;">中間素材:</label>
+                  <select id="intermediateSelect" style="flex:1;"></select>
+                  <button id="craftIntermediateBtn">作る</button>
                 </div>
-                <div style="font-size:11px; color:#ccc;">
-                  食べ物バフは1種類だけ有効になります。
+                <div id="intermediateInfo" style="font-size:11px; color:#ccc;">
+                  素材から板材・インゴットなどを作成します。
                 </div>
               </div>
 
-              <!-- 飲み物パネル -->
-              <div id="cookPanelDrink" style="display:none;">
-                <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
-                  <label style="font-size:12px;">飲み物:</label>
-                  <select id="drinkSelect" style="flex:1;"></select>
-                  <button id="craftDrinkBtn">飲み物を作る</button>
+              <!-- 追加: 料理クラフトパネル -->
+              <div id="craftPanelCooking" class="craft-panel" style="display:none;">
+                <h3>料理クラフト</h3>
+
+                <!-- 料理内サブタブ -->
+                <div id="cookSubTabs" style="margin:4px 0;">
+                  <button class="cook-sub-tab active" data-sub="food">食べ物</button>
+                  <button class="cook-sub-tab" data-sub="drink">飲み物</button>
                 </div>
-                <div style="font-size:11px; color:#ccc;">
-                  飲み物バフも1種類だけ有効になります。
+
+                <!-- 食べ物パネル -->
+                <div id="cookPanelFood">
+                  <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
+                    <label style="font-size:12px;">食べ物:</label>
+                    <select id="foodSelect" style="flex:1;"></select>
+                    <button id="craftFoodBtn">料理を作る</button>
+                  </div>
+                  <div style="font-size:11px; color:#ccc;">
+                    食べ物バフは1種類だけ有効になります。
+                  </div>
                 </div>
+
+                <!-- 飲み物パネル -->
+                <div id="cookPanelDrink" style="display:none;">
+                  <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
+                    <label style="font-size:12px;">飲み物:</label>
+                    <select id="drinkSelect" style="flex:1;"></select>
+                    <button id="craftDrinkBtn">飲み物を作る</button>
+                  </div>
+                  <div style="font-size:11px; color:#ccc;">
+                    飲み物バフも1種類だけ有効になります。
+                  </div>
+                </div>
+              </div>
+
+              <div id="craftCostInfo" style="font-size:11px; margin-top:4px; color:#ccc;">
+                必要素材：-
               </div>
             </div>
 
-            <div id="craftCostInfo" style="font-size:11px; margin-top:4px; color:#ccc;">
-              必要素材：-
+            <!-- サブページ: ショップ（元 pageShop） -->
+            <div id="magicPageShop" class="magic-sub-page" style="display:none;">
+              <h3>ショップ</h3>
+              <p>消耗品やサービスを購入できます。</p>
+
+              <p>所持ゴールド: <span id="shopGoldDisplay">0</span>G</p>
+
+              <div id="shopCategoryTabs">
+                <button class="shop-category-button" data-category="item">消耗品</button>
+                <button class="shop-category-button" data-category="service">サービス</button>
+              </div>
+
+              <div id="shopItemList"></div>
+
+              <div id="shopItemDetail" style="margin-top: 8px; border-top: 1px solid #888; padding-top: 8px;">
+                <p id="shopItemName">商品を選択してください。</p>
+                <p id="shopItemDesc"></p>
+                <p id="shopItemPrice"></p>
+                <button id="shopBuyButton" disabled>購入する</button>
+              </div>
+            </div>
+
+            <!-- サブページ: 市場（元 pageMarket） -->
+            <div id="magicPageMarket" class="magic-sub-page" style="display:none;">
+              <h3>市場</h3>
+
+              <div style="margin-bottom:8px;">
+                <button id="marketTabSell" class="market-main-tab active">出品</button>
+                <button id="marketTabBuy"  class="market-main-tab">購入</button>
+              </div>
+
+              <div id="marketSellPanel">
+                <h4>出品する</h4>
+
+                <div style="margin-bottom:4px;">
+                  <button id="marketSellRefreshBtn">出品候補を更新</button>
+                </div>
+
+                <div style="margin-bottom:4px;">
+                  <label>カテゴリ:</label>
+                  <select id="marketSellCategory">
+                    <option value="weapon">武器</option>
+                    <option value="armor">防具</option>
+                    <option value="potion">ポーション</option>
+                    <option value="material">素材</option>
+                  </select>
+                </div>
+
+                <div style="margin-bottom:4px;">
+                  <label>アイテム:</label>
+                  <select id="marketSellItem"></select>
+                </div>
+
+                <div style="margin-bottom:4px;">
+                  <label>個数:</label>
+                  <input id="marketSellAmount" type="number" value="1" min="1" style="width:60px;">
+                </div>
+
+                <div style="margin-bottom:4px;">
+                  <label>価格(1個あたり):</label>
+                  <input id="marketSellPrice" type="number" value="10" min="1" style="width:80px;">
+                </div>
+
+                <button id="marketSellBtn">出品する</button>
+              </div>
+
+              <div id="marketBuyPanel" style="display:none; margin-top:12px;">
+                <h4>購入 / 買い注文</h4>
+
+                <div style="margin-bottom:8px;">
+                  <button id="marketSubTabPurchase" class="market-sub-tab active">出品一覧</button>
+                  <button id="marketSubTabOrders"   class="market-sub-tab">買い注文</button>
+                </div>
+
+                <div id="marketSubPagePurchase" class="market-sub-page active">
+                  <div style="margin-bottom:4px;">
+                    <button id="marketBuyRefreshBtn">出品更新</button>
+                  </div>
+
+                  <div style="margin-bottom:4px;">
+                    <button class="market-cat-tab active" data-cat="all">すべて</button>
+                    <button class="market-cat-tab" data-cat="weapon">武器</button>
+                    <button class="market-cat-tab" data-cat="armor">防具</button>
+                    <button class="market-cat-tab" data-cat="potion">ポーション</button>
+                    <button class="market-cat-tab" data-cat="material">素材</button>
+                  </div>
+
+                  <div id="marketBuyListContainer">
+                  </div>
+                </div>
+
+                <div id="marketSubPageOrders" class="market-sub-page" style="display:none;">
+                  <h4>買い注文を出す</h4>
+                  <div style="margin-bottom:4px;">
+                    <label>アイテム:</label>
+                    <select id="marketOrderItem"></select>
+                  </div>
+                  <div style="margin-bottom:4px;">
+                    <label>価格(1個あたり):</label>
+                    <input id="marketOrderPrice" type="number" value="10" min="1" style="width:80px;">
+                  </div>
+                  <div style="margin-bottom:4px;">
+                    <label>個数:</label>
+                    <input id="marketOrderAmount" type="number" value="1" min="1" style="width:60px;">
+                  </div>
+                  <button id="marketOrderBtn">買い注文を出す</button>
+
+                  <h4 style="margin-top:8px;">現在の買い注文</h4>
+                  <div id="marketOrderList">
+                  </div>
+                </div>
+              </div>
+
+              <p id="marketInfo" style="margin-top:8px; font-size:12px; color:#ccc;"></p>
+            </div>
+
+            <!-- サブページ: 採取拠点（game-ui-2.js が埋める） -->
+            <div id="magicPageGather" class="magic-sub-page" style="display:none;">
+              <h3>採取拠点</h3>
+              <div id="gatherBaseStatus">
+                <!-- 採取拠点レベルUI -->
+              </div>
             </div>
           </div>
 
@@ -322,204 +457,123 @@
             </div>
           </div>
 
-          <!-- ショップ -->
-          <div id="pageShop" class="tab-page">
-            <h2>ショップ</h2>
-            <p>消耗品やサービスを購入できます。</p>
-
-            <p>所持ゴールド: <span id="shopGoldDisplay">0</span>G</p>
-
-            <div id="shopCategoryTabs">
-              <button class="shop-category-button" data-category="item">消耗品</button>
-              <button class="shop-category-button" data-category="service">サービス</button>
-            </div>
-
-            <div id="shopItemList"></div>
-
-            <div id="shopItemDetail" style="margin-top: 8px; border-top: 1px solid #888; padding-top: 8px;">
-              <p id="shopItemName">商品を選択してください。</p>
-              <p id="shopItemDesc"></p>
-              <p id="shopItemPrice"></p>
-              <button id="shopBuyButton" disabled>購入する</button>
-            </div>
-          </div>
-
-          <!-- 市場 -->
-          <div id="pageMarket" class="tab-page">
-            <h2>市場</h2>
-
-            <div style="margin-bottom:8px;">
-              <button id="marketTabSell" class="market-main-tab active">出品</button>
-              <button id="marketTabBuy"  class="market-main-tab">購入</button>
-            </div>
-
-            <div id="marketSellPanel">
-              <h3>出品する</h3>
-
-              <div style="margin-bottom:4px;">
-                <button id="marketSellRefreshBtn">出品候補を更新</button>
-              </div>
-
-              <div style="margin-bottom:4px;">
-                <label>カテゴリ:</label>
-                <select id="marketSellCategory">
-                  <option value="weapon">武器</option>
-                  <option value="armor">防具</option>
-                  <option value="potion">ポーション</option>
-                  <option value="material">素材</option>
-                </select>
-              </div>
-
-              <div style="margin-bottom:4px;">
-                <label>アイテム:</label>
-                <select id="marketSellItem"></select>
-              </div>
-
-              <div style="margin-bottom:4px;">
-                <label>個数:</label>
-                <input id="marketSellAmount" type="number" value="1" min="1" style="width:60px;">
-              </div>
-
-              <div style="margin-bottom:4px;">
-                <label>価格(1個あたり):</label>
-                <input id="marketSellPrice" type="number" value="10" min="1" style="width:80px;">
-              </div>
-
-              <button id="marketSellBtn">出品する</button>
-            </div>
-
-            <div id="marketBuyPanel" style="display:none; margin-top:12px;">
-              <h3>購入 / 買い注文</h3>
-
-              <div style="margin-bottom:8px;">
-                <button id="marketSubTabPurchase" class="market-sub-tab active">出品一覧</button>
-                <button id="marketSubTabOrders"   class="market-sub-tab">買い注文</button>
-              </div>
-
-              <div id="marketSubPagePurchase" class="market-sub-page active">
-                <div style="margin-bottom:4px;">
-                  <button id="marketBuyRefreshBtn">出品更新</button>
-                </div>
-
-                <div style="margin-bottom:4px;">
-                  <button class="market-cat-tab active" data-cat="all">すべて</button>
-                  <button class="market-cat-tab" data-cat="weapon">武器</button>
-                  <button class="market-cat-tab" data-cat="armor">防具</button>
-                  <button class="market-cat-tab" data-cat="potion">ポーション</button>
-                  <button class="market-cat-tab" data-cat="material">素材</button>
-                </div>
-
-                <div id="marketBuyListContainer">
-                </div>
-              </div>
-
-              <div id="marketSubPageOrders" class="market-sub-page" style="display:none;">
-                <h4>買い注文を出す</h4>
-                <div style="margin-bottom:4px;">
-                  <label>アイテム:</label>
-                  <select id="marketOrderItem"></select>
-                </div>
-                <div style="margin-bottom:4px;">
-                  <label>価格(1個あたり):</label>
-                  <input id="marketOrderPrice" type="number" value="10" min="1" style="width:80px;">
-                </div>
-                <div style="margin-bottom:4px;">
-                  <label>個数:</label>
-                  <input id="marketOrderAmount" type="number" value="1" min="1" style="width:60px;">
-                </div>
-                <button id="marketOrderBtn">買い注文を出す</button>
-
-                <h4 style="margin-top:8px;">現在の買い注文</h4>
-                <div id="marketOrderList">
-                </div>
-              </div>
-            </div>
-
-            <p id="marketInfo" style="margin-top:8px; font-size:12px; color:#ccc;"></p>
-          </div>
-
           <!-- 倉庫 -->
           <div id="pageWarehouse" class="tab-page">
             <h2>倉庫</h2>
 
-            <div id="warehouseLists">
-              <!-- 手持ち側ボックス -->
-              <div class="warehouse-box">
-                <h3>手持ち</h3>
-                <p>ポーション（最大10本）</p>
-                <div id="carryPotionsList"></div>
+            <!-- ★ここから内側を #pageWarehouseInner でラップ -->
+            <div id="pageWarehouseInner">
+              <!-- 倉庫内サブタブ -->
+              <div>
+                <div id="warehouseSubTabs" style="margin-bottom:8px;">
+                  <button id="warehouseTabItems" class="warehouse-sub-tab active">装備・アイテム</button>
+                  <button id="warehouseTabMaterials" class="warehouse-sub-tab">素材</button>
+                </div>
 
-                <p>料理（食べ物 最大3品）</p>
-                <div id="carryFoodsList"></div>
+                <!-- サブページ: 装備・アイテム（既存倉庫UI） -->
+                <div id="warehousePageItems" class="warehouse-sub-page active">
+                  <div id="warehouseLists">
+                    <!-- 手持ち側ボックス -->
+                    <div class="warehouse-box">
+                      <h3>手持ち</h3>
+                      <p>ポーション（最大10本）</p>
+                      <div id="carryPotionsList"></div>
 
-                <p>料理（飲み物 最大3杯）</p>
-                <div id="carryDrinksList"></div>
+                      <p>料理（食べ物 最大3品）</p>
+                      <div id="carryFoodsList"></div>
 
-                <p>武器（最大2本）</p>
-                <div id="carryWeaponsList"></div>
+                      <p>料理（飲み物 最大3杯）</p>
+                      <div id="carryDrinksList"></div>
 
-                <p>防具（最大2着）</p>
-                <div id="carryArmorsList"></div>
+                      <p>武器（最大2本）</p>
+                      <div id="carryWeaponsList"></div>
 
-                <p>道具（最大3個）</p>
-                <div id="carryToolsList"></div>
+                      <p>防具（最大2着）</p>
+                      <div id="carryArmorsList"></div>
+
+                      <p>道具（最大3個）</p>
+                      <div id="carryToolsList"></div>
+                    </div>
+
+                    <!-- 倉庫側ボックス -->
+                    <div class="warehouse-box">
+                      <h3>倉庫</h3>
+                      <p>ポーション</p>
+                      <div id="warehousePotionsList"></div>
+
+                      <p>料理（食べ物）</p>
+                      <div id="warehouseFoodsList"></div>
+
+                      <p>料理（飲み物）</p>
+                      <div id="warehouseDrinksList"></div>
+
+                      <p>武器</p>
+                      <div id="warehouseWeaponsList"></div>
+
+                      <p>防具</p>
+                      <div id="warehouseArmorsList"></div>
+
+                      <p>道具</p>
+                      <div id="warehouseToolsList"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- サブページ: 素材一覧 -->
+                <div id="warehousePageMaterials" class="warehouse-sub-page" style="display:none;">
+                  <h3>素材一覧</h3>
+
+                  <h4>採取素材</h4>
+                  <div id="gatherMaterialsList">
+                    <!-- game-ui-2.js で wood/ore/herb/cloth/leather/water の T1〜 を描画 -->
+                  </div>
+
+                  <h4>中間素材</h4>
+                  <div id="intermediateMaterialsList">
+                    <!-- game-ui-2.js で intermediateMats を描画 -->
+                  </div>
+
+                  <h4>料理素材</h4>
+                  <div id="cookingMaterialsList">
+                    <!-- game-ui-2.js で cookingMats + COOKING_MAT_NAMES を描画 -->
+                  </div>
+                </div>
               </div>
 
-              <!-- 倉庫側ボックス -->
-              <div class="warehouse-box">
-                <h3>倉庫</h3>
-                <p>ポーション</p>
-                <div id="warehousePotionsList"></div>
-
-                <p>料理（食べ物）</p>
-                <div id="warehouseFoodsList"></div>
-
-                <p>料理（飲み物）</p>
-                <div id="warehouseDrinksList"></div>
-
-                <p>武器</p>
-                <div id="warehouseWeaponsList"></div>
-
-                <p>防具</p>
-                <div id="warehouseArmorsList"></div>
-
-                <p>道具</p>
-                <div id="warehouseToolsList"></div>
-              </div>
+              <!-- 右カラム用の説明パネル -->
+              <aside id="warehouseInfoPanel">
+                <h3>インベントリ情報</h3>
+                <p>倉庫と手持ちの出し入れができます。</p>
+                <div class="carry-limit-row">
+                  <span>ポーション</span>
+                  <span class="value" id="carryLimitPotionsText">0 / 10</span>
+                </div>
+                <div class="carry-limit-row">
+                  <span>食べ物</span>
+                  <span class="value" id="carryLimitFoodsText">0 / 3</span>
+                </div>
+                <div class="carry-limit-row">
+                  <span>飲み物</span>
+                  <span class="value" id="carryLimitDrinksText">0 / 3</span>
+                </div>
+                <div class="carry-limit-row">
+                  <span>武器</span>
+                  <span class="value" id="carryLimitWeaponsText">0 / 2</span>
+                </div>
+                <div class="carry-limit-row">
+                  <span>防具</span>
+                  <span class="value" id="carryLimitArmorsText">0 / 2</span>
+                </div>
+                <div class="carry-limit-row">
+                  <span>道具</span>
+                  <span class="value" id="carryLimitToolsText">0 / 3</span>
+                </div>
+                <p style="margin-top:6px; font-size:11px;">
+                  ※詳細な出し入れUI（選択→移動ボタン）は後で追加します。
+                </p>
+              </aside>
             </div>
-
-            <!-- 右カラム用の説明パネル -->
-            <aside id="warehouseInfoPanel">
-              <h3>インベントリ情報</h3>
-              <p>倉庫と手持ちの出し入れができます。</p>
-              <div class="carry-limit-row">
-                <span>ポーション</span>
-                <span class="value" id="carryLimitPotionsText">0 / 10</span>
-              </div>
-              <div class="carry-limit-row">
-                <span>食べ物</span>
-                <span class="value" id="carryLimitFoodsText">0 / 3</span>
-              </div>
-              <div class="carry-limit-row">
-                <span>飲み物</span>
-                <span class="value" id="carryLimitDrinksText">0 / 3</span>
-              </div>
-              <div class="carry-limit-row">
-                <span>武器</span>
-                <span class="value" id="carryLimitWeaponsText">0 / 2</span>
-              </div>
-              <div class="carry-limit-row">
-                <span>防具</span>
-                <span class="value" id="carryLimitArmorsText">0 / 2</span>
-              </div>
-              <div class="carry-limit-row">
-                <span>道具</span>
-                <span class="value" id="carryLimitToolsText">0 / 3</span>
-              </div>
-              <p style="margin-top:6px; font-size:11px;">
-                ※詳細な出し入れUI（選択→移動ボタン）は後で追加します。
-              </p>
-            </aside>
+            <!-- ★ここまで #pageWarehouseInner -->
           </div>
 
           <!-- ステータス -->

@@ -11,12 +11,12 @@
 //   → 料理用の細かい素材（硬い獣肉…）は cookingMats 側で管理。
 
 const GATHER_TARGETS = [
-  { id: "wood",    name: "木"    },
-  { id: "ore",     name: "鉱石"  },
-  { id: "herb",    name: "草"    },
-  { id: "cloth",   name: "布"    },
-  { id: "leather", name: "皮"    },
-  { id: "water",   name: "水"    }
+  { id: "wood",    name: "木",    hasBase: true },
+  { id: "ore",     name: "鉱石",  hasBase: true },
+  { id: "herb",    name: "草",    hasBase: true },
+  { id: "cloth",   name: "布",    hasBase: true },
+  { id: "leather", name: "皮",    hasBase: true },
+  { id: "water",   name: "水",    hasBase: true }
 
   // 料理用は「狩猟/釣り/畑」という行動モードで扱うため、
   // ここには追加しない（GATHER_SKILLS 側だけに追加する）。

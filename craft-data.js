@@ -61,6 +61,16 @@ const INTERMEDIATE_MATERIALS = [
 const RARE_ENHANCE_MATERIAL_ID = "starShard";
 const RARE_ENHANCE_MATERIAL_NAME = "星屑の結晶";
 
+// 中間素材ID → 日本語名を返すヘルパー（拠点強化など他ファイルからも使う）
+function getIntermediateName(id) {
+  const mat = INTERMEDIATE_MATERIALS.find(m => m.id === id);
+  if (mat && mat.name) return mat.name;
+  if (id === RARE_ENHANCE_MATERIAL_ID) {
+    return RARE_ENHANCE_MATERIAL_NAME;
+  }
+  return id;
+}
+
 // =======================
 // レシピ一覧（T1〜T3装備＆ポーション）
 // =======================

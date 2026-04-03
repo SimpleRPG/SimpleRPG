@@ -151,6 +151,15 @@ function getCurrentAtkForSkill() {
   return base;
 }
 
+// 魔法用 INT＋バフ適用ヘルパ（料理バフなどを反映）
+function getEffectiveIntForMagic() {
+  let base = INT_;
+  if (typeof applyMagicAttackBuffsForPlayer === "function") {
+    base = applyMagicAttackBuffsForPlayer(base);
+  }
+  return base;
+}
+
 // ターン終了時に呼ぶ想定（enemyTurn の最後など）
 function tickSkillBuffTurns() {
   if (braveChargeTurnRemain > 0) {
@@ -184,9 +193,6 @@ function calcPetDamage() {
   return Math.max(1, Math.floor(roll));
 }
 
-// ペットターン：毎ターン自動で1回攻撃（敵がいれば）
-// ・期待ダメージがプレイヤー通常攻撃の 3〜4倍程度になるよう、petAtkBase 側でバランスを取る想定
-// ・たまに「ペットの一撃！」的なクリティカル演出を入れて手触りを上げる
 // ペットターン：毎ターン自動で行動（動物使い時のみ）
 // ・基本は通常攻撃
 // ・30%でスキル（powerBite / taunt / selfHeal）をランダム発動
@@ -212,7 +218,7 @@ function doPetTurn() {
       // 次のターンはほぼ確実にペットに攻撃を集める（簡易タゲ取り）
       appendLog(`ペットの${s.name}！ 敵の注意を引きつけた！`);
       // 次の enemyTurn で 100% ペットを狙うフラグ
-      petBuffTurnRemain = Math.max(petBuffTurnRemain, 1); // 流用 or 専用フラグを別途用意してもOK
+      petBuffTurnRemain = Math.max(petBuffTurnRemain, 1); // 流用
       usedSkill = true;
     } else if (s && s.id === "selfHeal") {
       const heal = Math.floor(petHpMax * (s.healRate || 0.3)) + 3;
@@ -282,18 +288,21 @@ function castMagicFromUI() {
   mp -= mpCost;
 
   if (skillId === "fireBolt") {
-    const dmg = 10 + INT_ * 2;
+    const baseInt = getEffectiveIntForMagic();
+    const dmg = 10 + baseInt * 2;
     enemyHp = Math.max(0, enemyHp - dmg);
     setLog(`ファイアボルト！ ${currentEnemy.name} に${dmg}ダメージ`);
   } else if (skillId === "iceLance") {
-    const dmg = 8 + Math.floor(INT_ * 1.8);
+    const baseInt = getEffectiveIntForMagic();
+    const dmg = 8 + Math.floor(baseInt * 1.8);
     enemyHp = Math.max(0, enemyHp - dmg);
     setLog(`アイスランス！ ${currentEnemy.name} に${dmg}ダメージ（防御が下がった気がする）`);
   } else if (skillId === "chainLightning") {
+    const baseInt = getEffectiveIntForMagic();
     const hits = 2 + Math.floor(Math.random() * 2); // 2〜3Hit
     let total = 0;
     for (let i = 0; i < hits; i++) {
-      const one = 6 + Math.floor(INT_ * 1.3);
+      const one = 6 + Math.floor(baseInt * 1.3);
       total += one;
     }
     enemyHp = Math.max(0, enemyHp - total);

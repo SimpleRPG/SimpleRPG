@@ -24,142 +24,145 @@ const ENEMIES = {
     isBoss: false
   },
 
-  // 森系（ここから先は元のまま）
+  // 森系（10転生目安に少し強化）
   forestWolf: {
     id: "forestWolf",
     name: "森のオオカミ",
-    hp: 70,
-    atk: 18,
+    hp: 80,     // 旧:70
+    atk: 20,    // 旧:18
     def: 3,
-    exp: 28,
-    money: 10,
+    exp: 30,    // やや増
+    money: 12,
     isBoss: false
   },
   goblin: {
     id: "goblin",
     name: "ゴブリン",
-    hp: 85,
-    atk: 20,
+    hp: 95,     // 旧:85
+    atk: 22,    // 旧:20
     def: 4,
-    exp: 35,
-    money: 12,
+    exp: 38,
+    money: 14,
     isBoss: false
   },
 
-  // 洞窟系
+  // 洞窟系（20転生目安に強化）
   caveGoblin: {
     id: "caveGoblin",
     name: "洞窟ゴブリン",
-    hp: 110,
-    atk: 28,
+    hp: 135,    // 旧:110
+    atk: 32,    // 旧:28
     def: 6,
-    exp: 55,
-    money: 20,
+    exp: 65,
+    money: 24,
     isBoss: false
   },
   goblinMage: {
     id: "goblinMage",
     name: "ゴブリンマジシャン",
-    hp: 120,
-    atk: 35,
+    hp: 150,    // 旧:120
+    atk: 40,    // 旧:35
     def: 6,
-    exp: 70,
-    money: 25,
+    exp: 80,
+    money: 30,
     isBoss: false
   },
   goblinTamer: {
     id: "goblinTamer",
     name: "ゴブリンテイマー",
-    hp: 140,
-    atk: 38,
+    hp: 180,    // 旧:140
+    atk: 45,    // 旧:38
     def: 7,
-    exp: 85,
-    money: 30,
+    exp: 100,
+    money: 36,
     isBoss: false
   },
   ogre: {
     id: "ogre",
     name: "オーガ",
-    hp: 200,
-    atk: 50,
+    hp: 240,    // 旧:200
+    atk: 56,    // 旧:50
     def: 9,
-    exp: 140,
-    money: 50,
+    exp: 160,
+    money: 60,
     isBoss: false
   },
 
-  // 廃鉱山系ザコ
+  // 廃鉱山系ザコ（40転生目安に強化）
   ogreBrute: {
     id: "ogreBrute",
     name: "オーガブルート",
-    hp: 260,
-    atk: 60,
+    hp: 340,    // 旧:260
+    atk: 70,    // 旧:60
     def: 11,
-    exp: 180,
-    money: 60,
+    exp: 210,
+    money: 70,
     isBoss: false
   },
   ogreGuard: {
     id: "ogreGuard",
     name: "オーガガード",
-    hp: 300,
-    atk: 58,
+    hp: 400,    // 旧:300
+    atk: 72,    // 旧:58
     def: 13,
-    exp: 210,
-    money: 70,
+    exp: 250,
+    money: 82,
     isBoss: false
   },
   ogreShaman: {
     id: "ogreShaman",
     name: "オーガシャーマン",
-    hp: 240,
-    atk: 65,
+    hp: 320,    // 旧:240
+    atk: 78,    // 旧:65
     def: 10,
-    exp: 230,
-    money: 80,
+    exp: 270,
+    money: 90,
     isBoss: false
   },
 
-  // ===== ボス =====（そのまま） =====
-
+  // ===== ボス =====
+  // 草原ボスはほぼ据え置き（0転生レベル100＋料理前提）
   kingSlime: {
     id: "kingSlime",
     name: "キングスライム？",
-    hp: 250,
-    atk: 40,
+    hp: 260,    // 旧:250（微増）
+    atk: 42,    // 旧:40
     def: 8,
     exp: 800,
     money: 200,
     isBoss: true
   },
+  // 森ボス：10転生＋料理前提で少し強化
   hundredWolfKing: {
     id: "hundredWolfKing",
     name: "百狼の王",
-    hp: 400,
-    atk: 65,
-    def: 10,
-    exp: 1500,
-    money: 400,
+    hp: 480,    // 旧:400
+    atk: 75,    // 旧:65
+    def: 11,    // 旧:10
+    exp: 1600,
+    money: 450,
     isBoss: true
   },
+  // 洞窟ボス：20転生前後＋装備＋料理前提
   goblinKing: {
     id: "goblinKing",
     name: "ゴブリンキング",
-    hp: 650,
-    atk: 90,
-    def: 14,
-    exp: 2600,
-    money: 700,
+    hp: 820,    // 旧:650
+    atk: 110,   // 旧:90
+    def: 15,    // 旧:14
+    exp: 2800,
+    money: 800,
     isBoss: true
   },
+  // 廃鉱山ボス：40転生前後＋フルバフ前提
   berserkOgre: {
     id: "berserkOgre",
     name: "バーサークオーガー",
-    hp: 1000,
-    atk: 120,
-    def: 18,
-    exp: 4000,
-    money: 1200,
+    hp: 1400,   // 旧:1000
+    atk: 145,   // 旧:120
+    def: 20,    // 旧:18
+    exp: 4500,
+    money: 1400,
     isBoss: true
   }
 };
@@ -167,7 +170,7 @@ const ENEMIES = {
 // ===== エリア別出現テーブル =====
 
 const AREA_ENEMY_TABLE = {
-  // 草原：スライム多め、たまにオオカミ（元の構成を継承）
+  // 草原：スライム多め、たまにオオカミ
   field: [
     "slime","slime","slime","slime",
     "wolf"

@@ -298,7 +298,8 @@ function addItemForBuy(category, itemId, amount){
   } else if(category === "armor"){
     armorCounts[itemId] = (armorCounts[itemId] || 0) + amount;
   } else if(category === "potion"){
-    potionCounts[itemId] = (potionCounts[p.id] || 0) + amount;
+    // 修正: p.id ではなく itemId を利用（仕様そのままでバグだけ修正）
+    potionCounts[itemId] = (potionCounts[itemId] || 0) + amount;
   } else if(category === "material"){
     // 基本素材は materials.xxx に追加
     if (itemId === "wood" || itemId === "ore" || itemId === "herb" ||

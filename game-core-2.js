@@ -5,8 +5,8 @@
 // レベル・転生
 // =======================
 
-// ★ 追加: レベルに応じた最大HPを返す関数
-// Lv1 は hpMaxBase (=30) のまま、Lv2 以降は +2ずつ伸ばす例。
+// ★ レベルに応じた最大HPを返す関数
+// Lv1 は hpMaxBase (=30) のまま、Lv2 以降は +2ずつ伸ばす。
 function recalcHpMaxByLevel() {
   if (level <= 1) {
     return hpMaxBase;                   // Lv1: 30
@@ -61,7 +61,7 @@ function addExp(amount) {
     sp    = spMax;
 
     // 成長ロール
-  const rolls = getLevelUpRolls();
+    const rolls = getLevelUpRolls();
     for (let i = 0; i < rolls; i++) {
       applyLevelUpGrowth();
     }
@@ -105,7 +105,7 @@ function addPetExp(amount) {
 function applyRebirthBonus() {
   const choices = ["STR","VIT","INT","DEX","LUK","HP","MP","SP"];
   let msgList = [];
-  const rolls = 1; // 今は1回固定（必要なら将来拡張）
+  const rolls = 3; // 今は3回固定（必要なら将来拡張）
 
   for (let i = 0; i < rolls; i++) {
     const pick = choices[Math.floor(Math.random() * choices.length)];
@@ -144,7 +144,7 @@ function applyPetRebirthBonus() {
   petHpBase  += 8;
 }
 
-const REBIRTH_LEVEL_REQ = 10;
+const REBIRTH_LEVEL_REQ = 100;
 
 function doRebirth() {
   if (level < REBIRTH_LEVEL_REQ) {
@@ -170,23 +170,7 @@ function doRebirth() {
   spMax = spMaxBase;
   sp    = spMax;
 
-  // 素材と所持品リセット
-  if (typeof materials !== "undefined") {
-    Object.keys(materials).forEach(k => {
-      materials[k].t1 = 0;
-      materials[k].t2 = 0;
-      materials[k].t3 = 0;
-    });
-  }
-  // ★ 旧スカラー変数は未定義なので触らない（実害のある代入を削除）
-  // wood = ore = herb = cloth = leather = water = 0;
-
-  money = 0;
-  Object.keys(weaponCounts).forEach(k => weaponCounts[k] = 0);
-  Object.keys(armorCounts).forEach(k  => armorCounts[k]  = 0);
-  Object.keys(potionCounts).forEach(k => potionCounts[k] = 0);
-  equippedWeaponId = null;
-  equippedArmorId  = null;
+  // ★ 素材と所持品はリセットしない（既存の保持仕様を維持する）
 
   // ペットリセット
   petLevel     = 1;
@@ -346,6 +330,17 @@ function applyJobChange(newJobId) {
     if      (newJobId === 0) growthType = 0; // 戦士=STR型
     else if (newJobId === 1) growthType = 2; // 魔法使い=INT型
     else if (newJobId === 2) growthType = 4; // 動物使い=バランス型
+  }
+
+  // ★ 動物使い用ペットスキルの初期化
+  if (jobId === 2) {
+    petSkills = [
+      { id: "powerBite", name: "パワーバイト", powerRate: 1.6 },
+      { id: "taunt",     name: "挑発" },
+      { id: "selfHeal",  name: "セルフヒール", healRate: 0.3 }
+    ];
+  } else {
+    petSkills = [];
   }
 
   // ★ 職業変更後にステータス再計算

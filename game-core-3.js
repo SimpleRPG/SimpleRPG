@@ -673,13 +673,18 @@ function startBattleCommon(enemy, isBoss) {
 }
 
 function endBattleCommon() {
+  // 敵側は全リセット
   currentEnemy = null;
   enemyHp = 0;
   enemyHpMax = 0;
   isBossBattle = false;
-
   enemyStatuses = [];
-  playerStatuses = playerStatuses.filter(inst => false);
+
+  // 戦闘専用バフのみ消去し、料理/飲み物バフは残す
+  playerStatuses = playerStatuses.filter(inst =>
+    inst.source === BUFF_SOURCE_FOOD ||
+    inst.source === BUFF_SOURCE_DRINK
+  );
 
   setBattleCommandVisible(false);
   setExploreUIVisible(true);
@@ -938,7 +943,7 @@ function onBossDefeated() {
 }
 
 // =======================
-// 逃走
+//逃走
 // =======================
 
 function tryEscape() {
@@ -961,4 +966,21 @@ function tryEscape() {
     updateEnemyStatusUI();
     updateDisplay();
   }
+}
+
+// =======================
+// 戦闘勝利共通処理
+// =======================
+function winBattle() {
+  // 経験値・ドロップなどの処理
+  if (typeof onEnemyDefeatedCore === "function") {
+    if (currentEnemy) {
+      onEnemyDefeatedCore(currentEnemy);
+    } else {
+      onEnemyDefeatedCore();
+    }
+  }
+
+  // 敵情報クリアと探索UI復帰は共通処理に委譲
+  endBattleCommon();
 }

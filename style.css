@@ -886,17 +886,16 @@ input[type="text"] {
   }
 }
 
-/* 採取ページは常に1カラムでシンプルに表示 */
-#pageGather {
-  display: block;
-}
-
 /* ======================
    倉庫タブ（インベントリ）レイアウト
    ====================== */
 
-/* 倉庫タブ全体を2カラムに */
+/* 倉庫タブ本体は .tab-page の制御に任せる */
 #pageWarehouse {
+}
+
+/* 倉庫タブ内部を2カラムに（#pageWarehouseInner を想定） */
+#pageWarehouseInner {
   display: grid;
   grid-template-columns: 1.4fr 1fr;
   gap: 8px;
@@ -904,7 +903,7 @@ input[type="text"] {
 }
 
 /* モバイルでは1カラムに落とす */
-.layout-mobile #pageWarehouse {
+.layout-mobile #pageWarehouseInner {
   grid-template-columns: 1fr;
 }
 
@@ -975,4 +974,31 @@ input[type="text"] {
 .carry-limit-row span.value {
   color: var(--text-main);
   font-weight: 600;
+}
+
+/* ======================
+   素材テーブル（倉庫タブのマテリアル表示用）
+   ====================== */
+
+.mat-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+.mat-table th,
+.mat-table td {
+  border: 1px solid rgba(90,90,150,0.7);
+  padding: 2px 4px;
+  text-align: right;
+}
+
+.mat-table th:first-child {
+  text-align: left;
+}
+
+.mat-table thead th {
+  background: #181826;
+  color: var(--text-sub);
 }
