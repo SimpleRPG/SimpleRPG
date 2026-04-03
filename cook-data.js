@@ -10,14 +10,14 @@ window.cookingMats = window.cookingMats || {};
 const COOKING_RECIPES = {
   food: [
     // ---- T1 ----
+    // T1: 2枠（メイン＋サブ1）に統一
     {
       id: 'food_meat_basic_T1',
-      name: '香草焼き獣肉',
+      name: '胡椒焼き獣肉',
       tier: 'T1',
       requires: [
-        { id: 'meat_soft',      amount: 1 }, // やわらかい肉
-        { id: 'veg_herb_aroma', amount: 1 }, // 香草
-        { id: 'spice_salt_rock',amount: 1 }  // 岩塩
+        { id: 'meat_soft',    amount: 1 }, // メイン：やわらかい肉
+        { id: 'spice_pepper', amount: 1 }  // サブ：胡椒
       ],
       effect: {
         kind: 'food',
@@ -26,7 +26,6 @@ const COOKING_RECIPES = {
         duration: 60,
         statusId: 'food_meat_atk_T1',
         durationTurns: 30,
-        // 空腹・水分回復（行動-1ペースに対して約10回分）
         hungerRecover: 10,
         thirstRecover: 0
       }
@@ -36,10 +35,8 @@ const COOKING_RECIPES = {
       name: '具だくさん野菜スープ',
       tier: 'T1',
       requires: [
-        { id: 'veg_root_rough', amount: 1 }, // ゴロゴロ根菜
-        { id: 'veg_leaf_crisp', amount: 1 }, // シャキシャキ葉菜
-        { id: 'grain_coarse',   amount: 1 }, // 粗挽き穀物
-        { id: 'spice_pepper',   amount: 1 }  // 胡椒
+        { id: 'veg_root_rough', amount: 1 }, // メイン：根菜
+        { id: 'grain_mochi',    amount: 1 }  // サブ：もちもち穀物
       ],
       effect: {
         kind: 'food',
@@ -48,44 +45,41 @@ const COOKING_RECIPES = {
         duration: 60,
         statusId: 'food_veg_def_T1',
         durationTurns: 30,
-        // シチュー系なので両方そこそこ
         hungerRecover: 7,
         thirstRecover: 7
       }
     },
     {
       id: 'food_fish_soup_T1',
-      name: '香草魚のスープ',
+      name: '岩塩魚のスープ',
       tier: 'T1',
       requires: [
-        { id: 'fish_river',      amount: 1 }, // 川魚
-        { id: 'veg_herb_aroma',  amount: 1 }, // 香草
-        { id: 'spice_salt_rock', amount: 1 }  // 岩塩
+        { id: 'fish_river',      amount: 1 }, // メイン：川魚
+        { id: 'spice_salt_rock', amount: 1 }  // サブ：岩塩
       ],
       effect: {
         kind: 'food',
-        intUp: 2,      // INT系（魔法攻撃）アップ
-        mpRegen: 3,    // MPリジェネ少し
+        intUp: 2,
+        mpRegen: 3,
         duration: 60,
         statusId: 'food_fish_int_T1',
         durationTurns: 30,
-        // 汁物だが「飯寄り」イメージ
         hungerRecover: 8,
         thirstRecover: 4
       }
     },
 
     // ---- T2 ----
-    // 香草焼き獣肉 T2（T1の強化版）
+    // T2: 4枠に統一（肉・魚・野菜それぞれ別の構成にできるだけバラし）
     {
       id: 'food_meat_basic_T2',
-      name: '香草焼き獣肉',
+      name: '胡椒焼き獣肉',
       tier: 'T2',
       requires: [
-        { id: 'meat_soft',      amount: 1 },
-        { id: 'meat_premium',   amount: 1 },
-        { id: 'veg_herb_aroma', amount: 2 },
-        { id: 'spice_premium',  amount: 1 }
+        { id: 'meat_soft',      amount: 1 }, // T1からの継続
+        { id: 'meat_premium',   amount: 1 }, // 高級肉
+        { id: 'veg_leaf_crisp', amount: 1 }, // 付け合わせ野菜
+        { id: 'spice_pepper',   amount: 1 }  // 胡椒
       ],
       effect: {
         kind: 'food',
@@ -98,16 +92,15 @@ const COOKING_RECIPES = {
         thirstRecover: 0
       }
     },
-    // 具だくさん野菜スープ T2（T1の強化版）
     {
       id: 'food_veg_stew_T2',
       name: '具だくさん野菜スープ',
       tier: 'T2',
       requires: [
-        { id: 'veg_root_rough',    amount: 1 },
-        { id: 'veg_leaf_crisp',    amount: 1 },
-        { id: 'veg_mushroom_aroma',amount: 1 },
-        { id: 'grain_refined',     amount: 1 }
+        { id: 'veg_root_rough',    amount: 1 }, // 根菜
+        { id: 'veg_mushroom_aroma',amount: 1 }, // キノコ
+        { id: 'veg_premium',       amount: 1 }, // 高級野菜
+        { id: 'grain_refined',     amount: 1 }  // 精製穀物
       ],
       effect: {
         kind: 'food',
@@ -120,16 +113,15 @@ const COOKING_RECIPES = {
         thirstRecover: 10
       }
     },
-    // 香草魚のスープ T2（T1の強化版）
     {
       id: 'food_fish_soup_T2',
-      name: '香草魚のスープ',
+      name: '岩塩魚のスープ',
       tier: 'T2',
       requires: [
-        { id: 'fish_river',      amount: 1 },
-        { id: 'fish_sea',        amount: 1 },
-        { id: 'veg_herb_aroma',  amount: 2 },
-        { id: 'spice_premium',   amount: 1 }
+        { id: 'fish_river',      amount: 1 }, // 川魚
+        { id: 'fish_sea',        amount: 1 }, // 海魚
+        { id: 'spice_salt_rock', amount: 1 }, // 岩塩
+        { id: 'veg_leaf_crisp',  amount: 1 }  // 葉物
       ],
       effect: {
         kind: 'food',
@@ -150,14 +142,14 @@ const COOKING_RECIPES = {
       tier: 'T2',
       requires: [
         { id: 'meat_premium',   amount: 1 }, // 高級肉
-        { id: 'meat_fatty',     amount: 1 }, // 脂身の多い肉
-        { id: 'veg_herb_aroma', amount: 2 }, // 香草
+        { id: 'meat_fatty',     amount: 1 }, // 脂身肉
+        { id: 'veg_root_rough', amount: 1 }, // 付け合わせ根菜
         { id: 'spice_premium',  amount: 1 }  // 高級スパイス
       ],
       effect: {
         kind: 'food',
         hpRegen: 10,
-        atkUp: 5,      // basic_T2よりちょい強めの攻撃寄り
+        atkUp: 5,
         duration: 90,
         statusId: 'food_meat_atk_steak_T2',
         durationTurns: 45,
@@ -171,12 +163,11 @@ const COOKING_RECIPES = {
       name: '濃厚ベジシチュー',
       tier: 'T2',
       requires: [
-        { id: 'veg_root_rough',    amount: 1 }, // 根菜
-        { id: 'veg_mushroom_aroma',amount: 1 }, // 香るキノコ
+        { id: 'veg_leaf_crisp',    amount: 1 }, // 葉物
+        { id: 'veg_mushroom_aroma',amount: 1 }, // キノコ
         { id: 'veg_premium',       amount: 1 }, // 高級野菜
-        { id: 'grain_refined',     amount: 1 }, // 精製穀物
-        { id: 'spice_spice',       amount: 0 }  // 使わないなら0でも可（後で削除可）
-      ].filter(r => r.amount > 0),
+        { id: 'grain_refined',     amount: 1 }  // 精製穀物
+      ],
       effect: {
         kind: 'food',
         defUp: 5,
@@ -190,16 +181,18 @@ const COOKING_RECIPES = {
     },
 
     // ---- T3 ----
-    // 香草焼き獣肉 T3
+    // T3: 6枠に統一。各メニューでできるだけ違う高級素材・スパイスを使わせる
     {
       id: 'food_meat_basic_T3',
-      name: '香草焼き獣肉',
+      name: '胡椒焼き獣肉',
       tier: 'T3',
       requires: [
-        { id: 'meat_magic',      amount: 1 },
-        { id: 'meat_premium',    amount: 1 },
-        { id: 'veg_herb_aroma',  amount: 3 },
-        { id: 'spice_secret',    amount: 1 }
+        { id: 'meat_magic',      amount: 1 }, // 不思議な肉
+        { id: 'meat_premium',    amount: 1 }, // 高級肉
+        { id: 'veg_leaf_crisp',  amount: 1 }, // 葉物
+        { id: 'spice_pepper',    amount: 1 }, // 胡椒
+        { id: 'grain_ancient',   amount: 1 }, // 古代穀物
+        { id: 'spice_secret',    amount: 1 }  // 秘伝スパイス
       ],
       effect: {
         kind: 'food',
@@ -212,16 +205,17 @@ const COOKING_RECIPES = {
         thirstRecover: 0
       }
     },
-    // 具だくさん野菜スープ T3
     {
       id: 'food_veg_stew_T3',
       name: '具だくさん野菜スープ',
       tier: 'T3',
       requires: [
-        { id: 'veg_root_rough',  amount: 1 },
-        { id: 'veg_leaf_crisp',  amount: 1 },
-        { id: 'veg_premium',     amount: 1 },
-        { id: 'grain_ancient',   amount: 1 }
+        { id: 'veg_root_rough',    amount: 1 }, // 根菜
+        { id: 'veg_leaf_crisp',    amount: 1 }, // 葉物
+        { id: 'veg_mushroom_aroma',amount: 1 }, // キノコ
+        { id: 'veg_premium',       amount: 1 }, // 高級野菜
+        { id: 'grain_ancient',     amount: 1 }, // 古代穀物
+        { id: 'spice_premium',     amount: 1 }  // 高級スパイス
       ],
       effect: {
         kind: 'food',
@@ -234,16 +228,17 @@ const COOKING_RECIPES = {
         thirstRecover: 13
       }
     },
-    // 香草魚のスープ T3
     {
       id: 'food_fish_soup_T3',
-      name: '香草魚のスープ',
+      name: '岩塩魚の香味スープ',
       tier: 'T3',
       requires: [
-        { id: 'fish_sea',        amount: 1 },
-        { id: 'fish_deep',       amount: 1 },
-        { id: 'veg_herb_aroma',  amount: 3 },
-        { id: 'spice_secret',    amount: 1 }
+        { id: 'fish_sea',        amount: 1 }, // 海魚
+        { id: 'fish_deep',       amount: 1 }, // 深海魚
+        { id: 'spice_salt_rock', amount: 1 }, // 岩塩
+        { id: 'veg_mountain',    amount: 1 }, // 山菜
+        { id: 'grain_ancient',   amount: 1 }, // 古代穀物
+        { id: 'spice_secret',    amount: 1 }  // 秘伝スパイス
       ],
       effect: {
         kind: 'food',
@@ -257,16 +252,17 @@ const COOKING_RECIPES = {
       }
     },
 
-    // 既存T2肉ステーキのT3版（ジューシー系上位）
     {
       id: 'food_meat_t3_steak',
       name: '特選獣肉ステーキ',
       tier: 'T3',
       requires: [
-        { id: 'meat_magic',      amount: 1 },
-        { id: 'meat_premium',    amount: 1 },
-        { id: 'meat_fatty',      amount: 1 },
-        { id: 'spice_secret',    amount: 1 }
+        { id: 'meat_magic',      amount: 1 }, // 不思議な肉
+        { id: 'meat_premium',    amount: 1 }, // 高級肉
+        { id: 'meat_fatty',      amount: 1 }, // 脂身肉
+        { id: 'veg_root_rough',  amount: 1 }, // 付け合わせ根菜
+        { id: 'veg_herb_aroma',  amount: 1 }, // 香草バター的なイメージ
+        { id: 'spice_secret',    amount: 1 }  // 秘伝ソース
       ],
       effect: {
         kind: 'food',
@@ -279,16 +275,17 @@ const COOKING_RECIPES = {
         thirstRecover: 0
       }
     },
-    // 既存T2ベジシチューのT3版
     {
       id: 'food_veg_t3_stew',
       name: '至高のベジシチュー',
       tier: 'T3',
       requires: [
-        { id: 'veg_mountain',  amount: 1 },
-        { id: 'veg_premium',   amount: 1 },
-        { id: 'grain_ancient', amount: 1 },
-        { id: 'spice_premium', amount: 1 }
+        { id: 'veg_mountain',     amount: 1 }, // 山菜
+        { id: 'veg_premium',      amount: 1 }, // 高級野菜
+        { id: 'veg_mushroom_aroma',amount: 1 }, // キノコ
+        { id: 'grain_ancient',    amount: 1 }, // 古代穀物
+        { id: 'spice_premium',    amount: 1 }, // 高級スパイス
+        { id: 'veg_leaf_crisp',   amount: 1 }  // 追加の葉物
       ],
       effect: {
         kind: 'food',
@@ -302,7 +299,6 @@ const COOKING_RECIPES = {
       }
     },
 
-    // 旧T3肉・野菜メニュー（そのまま残したい場合）
     {
       id: 'food_meat_t3',
       name: '王侯のロースト肉',
@@ -310,7 +306,9 @@ const COOKING_RECIPES = {
       requires: [
         { id: 'meat_magic',      amount: 1 }, // 不思議な肉
         { id: 'meat_premium',    amount: 1 }, // 高級肉
-        { id: 'veg_herb_aroma',  amount: 2 }, // 香草
+        { id: 'veg_herb_aroma',  amount: 1 }, // 香草
+        { id: 'veg_mountain',    amount: 1 }, // 山菜
+        { id: 'grain_ancient',   amount: 1 }, // 古代穀物
         { id: 'spice_secret',    amount: 1 }  // 秘伝スパイス
       ],
       effect: {
@@ -331,8 +329,10 @@ const COOKING_RECIPES = {
       requires: [
         { id: 'veg_mountain',     amount: 1 }, // 山菜
         { id: 'veg_premium',      amount: 1 }, // 高級野菜
+        { id: 'veg_leaf_crisp',   amount: 1 }, // 葉物
         { id: 'grain_ancient',    amount: 1 }, // 古代穀物
-        { id: 'spice_premium',    amount: 1 }  // 高級スパイス
+        { id: 'spice_premium',    amount: 1 }, // 高級スパイス
+        { id: 'veg_mushroom_aroma',amount: 1 } // キノコ
       ],
       effect: {
         kind: 'food',
@@ -349,13 +349,13 @@ const COOKING_RECIPES = {
 
   drink: [
     // ---- T1 ----
+    // T1ドリンクも2枠に揃える
     {
       id: 'drink_herb_tea',
       name: 'ハーブティー',
       tier: 'T1',
       requires: [
-        // 水用の料理素材IDがないので、現状は「水は通常素材」で消費しない前提にしておく
-        { id: 'veg_herb_aroma', amount: 1 } // 香草
+        { id: 'veg_herb_aroma', amount: 2 } // 香草×2（岩塩なし）
       ],
       effect: {
         kind: 'drink',
@@ -374,7 +374,7 @@ const COOKING_RECIPES = {
       tier: 'T1',
       requires: [
         { id: 'veg_leaf_crisp', amount: 1 }, // 葉物
-        { id: 'grain_coarse',   amount: 1 }  // 穀物
+        { id: 'grain_coarse',   amount: 1 }  // 粗挽き穀物
       ],
       effect: {
         kind: 'drink',
@@ -389,12 +389,15 @@ const COOKING_RECIPES = {
     },
 
     // ---- T2 ----
+    // T2ドリンクは4枠
     {
       id: 'drink_herb_tea_t2',
       name: '濃縮ハーブティー',
       tier: 'T2',
       requires: [
-        { id: 'veg_herb_aroma', amount: 2 } // 香草多め
+        { id: 'veg_herb_aroma', amount: 2 }, // 香草多め
+        { id: 'spice_premium',  amount: 1 }, // 高級スパイス
+        { id: 'grain_refined',  amount: 1 }  // 精製穀物（とろみ付け）
       ],
       effect: {
         kind: 'drink',
@@ -412,9 +415,10 @@ const COOKING_RECIPES = {
       name: '活力ジュースDX',
       tier: 'T2',
       requires: [
-        { id: 'veg_leaf_crisp', amount: 1 },
-        { id: 'veg_root_rough', amount: 1 },
-        { id: 'grain_refined',  amount: 1 }
+        { id: 'veg_leaf_crisp', amount: 1 }, // 葉物
+        { id: 'veg_root_rough', amount: 1 }, // 根菜
+        { id: 'grain_refined',  amount: 1 }, // 精製穀物
+        { id: 'spice_pepper',   amount: 1 }  // 胡椒
       ],
       effect: {
         kind: 'drink',
@@ -429,13 +433,18 @@ const COOKING_RECIPES = {
     },
 
     // ---- T3 ----
+    // T3ドリンクは6枠
     {
       id: 'drink_herb_tea_t3',
       name: '祝福のハーブティー',
       tier: 'T3',
       requires: [
-        { id: 'veg_herb_aroma', amount: 2 },
-        { id: 'spice_secret',   amount: 1 }
+        { id: 'veg_herb_aroma', amount: 2 }, // 香草
+        { id: 'veg_mountain',   amount: 1 }, // 山の薬草
+        { id: 'grain_ancient',  amount: 1 }, // 古代穀物
+        { id: 'spice_secret',   amount: 1 }, // 秘伝スパイス
+        { id: 'veg_leaf_crisp', amount: 1 }, // 葉物
+        { id: 'veg_root_rough', amount: 1 }  // 根菜
       ],
       effect: {
         kind: 'drink',
@@ -453,9 +462,12 @@ const COOKING_RECIPES = {
       name: '超活力ジュース',
       tier: 'T3',
       requires: [
-        { id: 'veg_premium',   amount: 1 },
-        { id: 'grain_ancient', amount: 1 },
-        { id: 'spice_premium', amount: 1 }
+        { id: 'veg_premium',       amount: 1 }, // 高級野菜
+        { id: 'veg_leaf_crisp',    amount: 1 }, // 葉物
+        { id: 'veg_root_rough',    amount: 1 }, // 根菜
+        { id: 'grain_ancient',     amount: 1 }, // 古代穀物
+        { id: 'spice_premium',     amount: 1 }, // 高級スパイス
+        { id: 'veg_mushroom_aroma',amount: 1 }  // キノコ
       ],
       effect: {
         kind: 'drink',

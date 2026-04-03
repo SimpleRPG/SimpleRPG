@@ -712,6 +712,75 @@ function useBattleItem() {
 }
 
 // =======================
+// 料理効果共通ヘルパ
+// =======================
+
+function applyFoodEffect(effect, foodId) {
+  if (!effect) return;
+
+  // バフ（攻撃・防御など）は既存のステータスシステムに委譲
+  if (effect.statusId && typeof addFoodStatusToPlayer === "function") {
+    addFoodStatusToPlayer(effect.statusId, effect.durationTurns);
+  }
+
+  // 空腹・喉回復
+  if (typeof restoreHungerThirst === "function") {
+    const h = effect.hungerRecover || 0;
+    const t = effect.thirstRecover || 0;
+    restoreHungerThirst(h, t);
+  }
+
+  // 直接回復系があれば HP/MP/SP に反映（あまり大きくない値なのでここで直書きしても影響少なめ）
+  if (typeof hp !== "undefined" && typeof hpMax !== "undefined" &&
+      typeof effect.hpRegen === "number") {
+    hp = Math.min(hpMax, hp + effect.hpRegen);
+  }
+  if (typeof mp !== "undefined" && typeof mpMax !== "undefined" &&
+      typeof effect.mpRegen === "number") {
+    mp = Math.min(mpMax, mp + effect.mpRegen);
+  }
+  if (typeof sp !== "undefined" && typeof spMax !== "undefined" &&
+      typeof effect.spRegen === "number") {
+    sp = Math.min(spMax, sp + effect.spRegen);
+  }
+
+  if (typeof updateDisplay === "function") {
+    updateDisplay();
+  }
+}
+
+function applyDrinkEffect(effect, drinkId) {
+  if (!effect) return;
+
+  if (effect.statusId && typeof addFoodStatusToPlayer === "function") {
+    addFoodStatusToPlayer(effect.statusId, effect.durationTurns);
+  }
+
+  if (typeof restoreHungerThirst === "function") {
+    const h = effect.hungerRecover || 0;
+    const t = effect.thirstRecover || 0;
+    restoreHungerThirst(h, t);
+  }
+
+  if (typeof hp !== "undefined" && typeof hpMax !== "undefined" &&
+      typeof effect.hpRegen === "number") {
+    hp = Math.min(hpMax, hp + effect.hpRegen);
+  }
+  if (typeof mp !== "undefined" && typeof mpMax !== "undefined" &&
+      typeof effect.mpRegen === "number") {
+    mp = Math.min(mpMax, mp + effect.mpRegen);
+  }
+  if (typeof sp !== "undefined" && typeof spMax !== "undefined" &&
+      typeof effect.spRegen === "number") {
+    sp = Math.min(spMax, sp + effect.spRegen);
+  }
+
+  if (typeof updateDisplay === "function") {
+    updateDisplay();
+  }
+}
+
+// =======================
 // 料理・飲み物使用（フィールド）
 // =======================
 
@@ -739,15 +808,7 @@ function eatFoodInField() {
     return;
   }
 
-  const eff = recipe.effect;
-
-  if (eff.statusId && typeof addFoodStatusToPlayer === "function") {
-    addFoodStatusToPlayer(eff.statusId, eff.durationTurns);
-  }
-
-  if (typeof restoreHungerThirst === "function") {
-    restoreHungerThirst(eff.hungerRecover || 0, eff.thirstRecover || 0);
-  }
+  applyFoodEffect(recipe.effect, id);
 
   carryFoods[id] = have - 1;
   if (carryFoods[id] <= 0) delete carryFoods[id];
@@ -756,9 +817,6 @@ function eatFoodInField() {
 
   if (typeof refreshCarryFoodDrinkSelects === "function") {
     refreshCarryFoodDrinkSelects();
-  }
-  if (typeof updateDisplay === "function") {
-    updateDisplay();
   }
 }
 
@@ -786,15 +844,7 @@ function drinkInField() {
     return;
   }
 
-  const eff = recipe.effect;
-
-  if (eff.statusId && typeof addFoodStatusToPlayer === "function") {
-    addFoodStatusToPlayer(eff.statusId, eff.durationTurns);
-  }
-
-  if (typeof restoreHungerThirst === "function") {
-    restoreHungerThirst(eff.hungerRecover || 0, eff.thirstRecover || 0);
-  }
+  applyDrinkEffect(recipe.effect, id);
 
   carryDrinks[id] = have - 1;
   if (carryDrinks[id] <= 0) delete carryDrinks[id];
@@ -804,9 +854,6 @@ function drinkInField() {
   if (typeof refreshCarryFoodDrinkSelects === "function") {
     refreshCarryFoodDrinkSelects();
   }
-  if (typeof updateDisplay === "function") {
-    updateDisplay();
-  }
 }
 
 // =======================
@@ -815,6 +862,19 @@ function drinkInField() {
 
 // 対応素材キー
 const GATHER_BASE_MATERIAL_KEYS = ["wood","ore","herb","cloth","leather","water"];
+
+// 素材名の日本語ラベル
+const GATHER_SKILL_LABEL_JA = {
+  wood:   "木",
+  ore:    "鉱石",
+  herb:   "草",
+  cloth:  "布",
+  leather:"皮",
+  water:  "水"
+};
+function getGatherSkillLabel(matKey) {
+  return GATHER_SKILL_LABEL_JA[matKey] || matKey;
+}
 
 // 素材ごとの拠点レベル（0=拠点なし, 1〜3）
 const gatherBases = {};
@@ -1069,7 +1129,8 @@ function tryUpgradeGatherBase(matKey) {
   }
   const skLv = gatherSkills[matKey].lv || 0;
   if (skLv < def.reqGatherLv) {
-    appendLog(`この拠点をLv${nextLv}にするには、採取スキル(${matKey}) Lv${def.reqGatherLv}が必要だ。`);
+    const label = getGatherSkillLabel(matKey);
+    appendLog(`この拠点をLv${nextLv}にするには、採取スキル(${label}) Lv${def.reqGatherLv}が必要だ。`);
     return;
   }
 
@@ -1085,7 +1146,8 @@ function tryUpgradeGatherBase(matKey) {
   // 必要素材一覧を先に表示
   (function showRequiredMats() {
     let lines = [];
-    lines.push(`採取拠点(${matKey}) Lv${currentLv} → Lv${nextLv} に必要な中間素材:`);
+    const label = getGatherSkillLabel(matKey);
+    lines.push(`採取拠点(${label}) Lv${currentLv} → Lv${nextLv} に必要な中間素材:`);
     for (const iid in needInter) {
       const need = needInter[iid] || 0;
       const have = intermediateMats[iid] || 0;
@@ -1131,7 +1193,8 @@ function tryUpgradeGatherBase(matKey) {
   }
 
   setGatherBaseLevel(matKey, nextLv);
-  appendLog(`採取拠点(${matKey})がLv${nextLv}になった！`);
+  const label = getGatherSkillLabel(matKey);
+  appendLog(`採取拠点(${label})がLv${nextLv}になった！`);
 
   if (typeof updateDisplay === "function") {
     updateDisplay();

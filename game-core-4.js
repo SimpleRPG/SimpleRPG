@@ -179,14 +179,15 @@ function refreshGatherFieldSelect() {
       return;
     }
 
-    // target が null（＝まだ何も選んでない）かつ cook 以外のときだけ、
-    // field1〜3 を全部出す
-    if (!currentTarget && f.id !== "cook") {
-      const opt = document.createElement("option");
-      opt.value = f.id;
-      opt.textContent = f.name;
-      sel.appendChild(opt);
-      unlocked.push(f.id);
+    // ★ target が null（＝まだ何も選んでない）ときは field1 だけ出す
+    if (!currentTarget) {
+      if (f.id === "field1") {
+        const opt = document.createElement("option");
+        opt.value = f.id;
+        opt.textContent = f.name;
+        sel.appendChild(opt);
+        unlocked.push(f.id);
+      }
       return;
     }
 
@@ -875,7 +876,11 @@ function craftWeapon(){
   const q = rollQualityBySkillLv(skillLv); // 0:普通 1:良品 2:傑作
   const qName = QUALITY_NAMES[q];
 
-  weaponCounts[recipe.id] = (weaponCounts[recipe.id] || 0) + 1;
+  // 個数カウントは inventory-core.js の addItemToInventory に一元化
+  if (typeof addItemToInventory === "function") {
+    addItemToInventory(recipe.id, 1);
+  }
+
   appendLog(`${qName}${recipe.name} をクラフトした`);
 
   refreshEquipSelects();
@@ -915,7 +920,10 @@ function craftArmor(){
   const q = rollQualityBySkillLv(skillLv);
   const qName = QUALITY_NAMES[q];
 
-  armorCounts[recipe.id] = (armorCounts[recipe.id] || 0) + 1;
+  if (typeof addItemToInventory === "function") {
+    addItemToInventory(recipe.id, 1);
+  }
+
   appendLog(`${qName}${recipe.name} をクラフトした`);
 
   refreshEquipSelects();
@@ -957,9 +965,12 @@ function craftPotion(){
 
   consumeMaterials(recipe.cost);
   addCraftSkillExp("potion");
-  potionCounts[recipe.id] = (potionCounts[recipe.id] || 0) + 1;
 
-  // ポーションは品質差なし（必要なら QUALITY_NAMES を使ってもよい）
+  if (typeof addItemToInventory === "function") {
+    addItemToInventory(recipe.id, 1);
+  }
+
+  // ポーションは品質差なし
   appendLog(`${recipe.name} をクラフトした`);
 
   updateDisplay();
@@ -1004,7 +1015,6 @@ function craftTool(){
   consumeMaterials(recipe.cost);
   addCraftSkillExp("tool");
 
-  // 道具も今は品質差なし（必要なら QUALITY_NAMES を使う）
   appendLog(`${recipe.name} をクラフトした`);
 
   updateDisplay();
@@ -1119,9 +1129,9 @@ function refreshEquipSelects(){
       }
       const opt=document.createElement("option");
       opt.value = r.id;
-      const m = r.id.match(/_T(\d)/);
+      const m = r.id.match(/_T(\\d)/);
       const tierLabel = m ? `T${m[1]}` : "";
-      const baseName = r.name.replace(/T\d$/, "");
+      const baseName = r.name.replace(/T\\d$/, "");
       const owned = weaponCounts[r.id] || 0;
       const ownedText = owned > 0 ? `（所持${owned}）` : "";
       opt.textContent = tierLabel ? `${tierLabel}${baseName}${ownedText}` : `${r.name}${ownedText}`;
@@ -1138,9 +1148,9 @@ function refreshEquipSelects(){
       }
       const opt=document.createElement("option");
       opt.value = r.id;
-      const m = r.id.match(/_T(\d)/);
+      const m = r.id.match(/_T(\\d)/);
       const tierLabel = m ? `T${m[1]}` : "";
-      const baseName = r.name.replace(/T\d$/, "");
+      const baseName = r.name.replace(/T\\d$/, "");
       const owned = armorCounts[r.id] || 0;
       const ownedText = owned > 0 ? `（所持${owned}）` : "";
       opt.textContent = tierLabel ? `${tierLabel}${baseName}${ownedText}` : `${r.name}${ownedText}`;
@@ -1157,9 +1167,9 @@ function refreshEquipSelects(){
       }
       const opt=document.createElement("option");
       opt.value = r.id;
-      const m = r.id.match(/T(\d)$/);
+      const m = r.id.match(/T(\\d)$/);
       const tierLabel = m ? `T${m[1]}` : "";
-      const baseName = r.name.replace(/T\d$/, "");
+      const baseName = r.name.replace(/T\\d$/, "");
       const owned = potionCounts[r.id] || 0;
       const ownedText = owned > 0 ? `（所持${owned}）` : "";
       opt.textContent = tierLabel ? `${tierLabel}${baseName}${ownedText}` : `${r.name}${ownedText}`;
@@ -1176,9 +1186,9 @@ function refreshEquipSelects(){
       }
       const opt=document.createElement("option");
       opt.value = r.id;
-      const m = r.id.match(/_T(\d)/);
+      const m = r.id.match(/_T(\\d)/);
       const tierLabel = m ? `T${m[1]}` : "";
-      const baseName = r.name.replace(/T\d$/, "");
+      const baseName = r.name.replace(/T\\d$/, "");
       // 道具は今のところ個数管理なし（将来用）
       opt.textContent = tierLabel ? `${tierLabel}${baseName}` : r.name;
       tCraftSel.appendChild(opt);

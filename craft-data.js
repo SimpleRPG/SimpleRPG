@@ -47,7 +47,17 @@ const INTERMEDIATE_MATERIALS = [
   // 強化皮（皮から）
   { id: "toughLeather_T1", name: "T1強化皮",        from: { leather: { t1: 3 } } },
   { id: "toughLeather_T2", name: "T2強化皮",        from: { leather: { t2: 3 } } },
-  { id: "toughLeather_T3", name: "T3強化皮",        from: { leather: { t3: 3 } } }
+  { id: "toughLeather_T3", name: "T3強化皮",        from: { leather: { t3: 3 } } },
+
+  // 調合用薬草（草から）
+  { id: "mixHerb_T1",      name: "T1調合用薬草",    from: { herb:    { t1: 3 } } },
+  { id: "mixHerb_T2",      name: "T2調合用薬草",    from: { herb:    { t2: 3 } } },
+  { id: "mixHerb_T3",      name: "T3調合用薬草",    from: { herb:    { t3: 3 } } },
+
+  // 蒸留水（水から）
+  { id: "distilledWater_T1", name: "T1蒸留水",      from: { water:   { t1: 3 } } },
+  { id: "distilledWater_T2", name: "T2蒸留水",      from: { water:   { t2: 3 } } },
+  { id: "distilledWater_T3", name: "T3蒸留水",      from: { water:   { t3: 3 } } }
 ];
 
 // =======================
@@ -78,6 +88,7 @@ function getIntermediateName(id) {
 // cost は「基本素材」と「中間素材」を混在させてOK。
 // basic: wood/ore/herb/cloth/leather/water + その tier 指定版（wood_T1 など）
 // intermediate: woodPlank_Tx / ironIngot_Tx / clothBolt_Tx / toughLeather_Tx
+//               mixHerb_Tx / distilledWater_Tx
 //
 // ※料理用素材（肉/魚/野菜/穀物/調味料）は COOKING_RECIPES 側で別管理。
 //   ここでは装備・ポーション・道具のみ。
@@ -294,52 +305,54 @@ const CRAFT_RECIPES = {
   // HPポーション：T1～T3
   // マナポーション：T1～T3
   // エリクサー：T3系を使った高級品
+  //
+  // すべて「調合用薬草 / 蒸留水」の中間素材を経由する形に変更。
   potion: [
-    // HPポーション（草と水はティア固定）
+    // HPポーション
     {
       id: "potionT1",
       name: "ポーションT1",
-      cost: { herb_T1: 2, water_T1: 1 },
+      cost: { mixHerb_T1: 1, distilledWater_T1: 1 },
       baseRate: 0.8
     },
     {
       id: "potionT2",
       name: "ポーションT2",
-      cost: { herb_T2: 3, water_T2: 2 },
+      cost: { mixHerb_T2: 1, distilledWater_T2: 1 },
       baseRate: 0.7
     },
     {
       id: "potionT3",
       name: "ポーションT3",
-      cost: { herb_T3: 4, water_T3: 3 },
+      cost: { mixHerb_T3: 1, distilledWater_T3: 1 },
       baseRate: 0.6
     },
 
-    // マナポーション
+    // マナポーション（少しコスト重め）
     {
       id: "manaT1",
       name: "マナポーションT1",
-      cost: { herb_T1: 2, water_T1: 2 },
+      cost: { mixHerb_T1: 1, distilledWater_T1: 2 },
       baseRate: 0.8
     },
     {
       id: "manaT2",
       name: "マナポーションT2",
-      cost: { herb_T2: 3, water_T2: 3 },
+      cost: { mixHerb_T2: 1, distilledWater_T2: 2 },
       baseRate: 0.7
     },
     {
       id: "manaT3",
       name: "マナポーションT3",
-      cost: { herb_T3: 4, water_T3: 4 },
+      cost: { mixHerb_T3: 1, distilledWater_T3: 2 },
       baseRate: 0.6
     },
 
-    // エリクサー（T3用）
+    // エリクサー（T3用・鉱石も使用）
     {
       id: "elixirT3",
       name: "エリクサー",
-      cost: { herb_T3: 5, water_T3: 5, ore_T3: 2 },
+      cost: { mixHerb_T3: 2, distilledWater_T3: 2, ore_T3: 2 },
       baseRate: 0.5
     }
   ],

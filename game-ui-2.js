@@ -13,6 +13,10 @@
 // - moveToolToCarry / moveToolToWarehouse（未実装ログのみ）
 // - refreshCarryPotionSelects, refreshCarryFoodDrinkSelects
 
+// ★追加：直近に表示した料理レシピを保存するグローバル
+window.lastCookingKind = window.lastCookingKind || null; // "food" | "drink"
+window.lastCookingId   = window.lastCookingId   || null;
+
 function refreshWarehouseUI() {
   // =======================
   // ヘルパ（1行描画）
@@ -248,6 +252,15 @@ function refreshWarehouseUI() {
       const name = getFoodName(id);
       const row = createRow(name, cnt, [
         {
+          label: "食べる",
+          onClick: () => {
+            if (typeof consumeFoodFromWarehouse === "function") {
+              consumeFoodFromWarehouse(id);
+              refreshWarehouseUI();
+            }
+          }
+        },
+        {
           label: "↑手持ちへ",
           onClick: () => {
             if (moveFoodToCarry(id, 1)) {
@@ -270,6 +283,15 @@ function refreshWarehouseUI() {
       if (cnt <= 0) return;
       const name = getDrinkName(id);
       const row = createRow(name, cnt, [
+        {
+          label: "飲む",
+          onClick: () => {
+            if (typeof consumeDrinkFromWarehouse === "function") {
+              consumeDrinkFromWarehouse(id);
+              refreshWarehouseUI();
+            }
+          }
+        },
         {
           label: "↑手持ちへ",
           onClick: () => {
@@ -393,44 +415,37 @@ function refreshWarehouseUI() {
     gatherMatListBox.appendChild(table);
   }
 
-  // 中間素材テーブル（baseName × T1〜T3）
+  // 中間素材テーブル（横=素材、縦=ティア）
   const intermListBox = document.getElementById("intermediateMaterialsList");
   if (intermListBox && Array.isArray(window.INTERMEDIATE_MATERIALS || INTERMEDIATE_MATERIALS)) {
     const src  = window.INTERMEDIATE_MATERIALS || INTERMEDIATE_MATERIALS;
     const mats = window.intermediateMats || {};
     intermListBox.innerHTML = "";
 
-    // 例: name が「T1板材 / T2板材 / T3板材」の想定
     const groups = {}; // baseName -> { name, t1, t2, t3 }
 
     src.forEach(m => {
-      let tier = "t1";
+      let tierKey = "t1";
       let baseName = m.name;
 
       if (m.name.startsWith("T1")) {
-        tier = "t1";
+        tierKey = "t1";
         baseName = m.name.replace(/^T1/, "").trim();
       } else if (m.name.startsWith("T2")) {
-        tier = "t2";
+        tierKey = "t2";
         baseName = m.name.replace(/^T2/, "").trim();
       } else if (m.name.startsWith("T3")) {
-        tier = "t3";
+        tierKey = "t3";
         baseName = m.name.replace(/^T3/, "").trim();
       }
 
       const baseId = baseName;
-
       if (!groups[baseId]) {
-        groups[baseId] = {
-          name: baseName,
-          t1: 0,
-          t2: 0,
-          t3: 0
-        };
+        groups[baseId] = { name: baseName, t1: 0, t2: 0, t3: 0 };
       }
 
       const cnt = mats[m.id] || 0;
-      groups[baseId][tier] = cnt;
+      groups[baseId][tierKey] = cnt;
     });
 
     const table = document.createElement("table");
@@ -439,35 +454,31 @@ function refreshWarehouseUI() {
     const thead = document.createElement("thead");
     const htr = document.createElement("tr");
     const thName = document.createElement("th");
-    thName.textContent = "素材";
-    const thT1 = document.createElement("th");
-    thT1.textContent = "T1";
-    const thT2 = document.createElement("th");
-    thT2.textContent = "T2";
-    const thT3 = document.createElement("th");
-    thT3.textContent = "T3";
-    htr.appendChild(thName);
-    htr.appendChild(thT1);
-    htr.appendChild(thT2);
-    htr.appendChild(thT3);
+    thName.textContent = "ティア";
+    const baseNames = Object.values(groups).map(g => g.name);
+    baseNames.forEach(name => {
+      const th = document.createElement("th");
+      th.textContent = name;
+      htr.appendChild(th);
+    });
+    thead.appendChild(thName);
     thead.appendChild(htr);
     table.appendChild(thead);
 
     const tbody = document.createElement("tbody");
-    Object.values(groups).forEach(g => {
+    ["t1", "t2", "t3"].forEach((tierKey, idx) => {
       const tr = document.createElement("tr");
-      const tdName = document.createElement("td");
-      const tdT1   = document.createElement("td");
-      const tdT2   = document.createElement("td");
-      const tdT3   = document.createElement("td");
-      tdName.textContent = g.name;
-      tdT1.textContent   = g.t1 || 0;
-      tdT2.textContent   = g.t2 || 0;
-      tdT3.textContent   = g.t3 || 0;
-      tr.appendChild(tdName);
-      tr.appendChild(tdT1);
-      tr.appendChild(tdT2);
-      tr.appendChild(tdT3);
+      const thTier = document.createElement("th");
+      thTier.textContent = `T${idx + 1}`;
+      tr.appendChild(thTier);
+
+      baseNames.forEach(name => {
+        const g = groups[name] || { t1: 0, t2: 0, t3: 0 };
+        const td = document.createElement("td");
+        td.textContent = g[tierKey] || 0;
+        tr.appendChild(td);
+      });
+
       tbody.appendChild(tr);
     });
     table.appendChild(tbody);
@@ -545,7 +556,6 @@ function refreshWarehouseUI() {
         labelSpan.textContent = `${def.label} Lv${level}`;
         row.appendChild(labelSpan);
 
-        // Lv+1 ボタン → コスト/条件チェック込みの tryUpgradeGatherBase を呼ぶ
         const upBtn = document.createElement("button");
         upBtn.textContent = "Lv+1";
         upBtn.style.fontSize = "10px";
@@ -558,7 +568,6 @@ function refreshWarehouseUI() {
         container.appendChild(row);
       });
 
-      // 自動採取ストックの簡易表示（存在する場合のみ）
       if (typeof window.gatherBaseStockTicks !== "undefined") {
         const stockInfo = document.createElement("div");
         stockInfo.style.marginTop = "4px";
@@ -614,11 +623,22 @@ function populateCookingSelects() {
     }
   }
 
-  const initId = foodSelect?.value || drinkSelect?.value || null;
-  const initRecipe =
-    COOKING_RECIPES.food.find(r => r.id === initId) ||
-    COOKING_RECIPES.drink.find(r => r.id === initId) ||
-    null;
+  // ★ 直近に見ていたレシピを優先して復元
+  let initRecipe = null;
+  if (window.lastCookingKind === "food" && window.lastCookingId) {
+    initRecipe = COOKING_RECIPES.food.find(r => r.id === window.lastCookingId) || null;
+  } else if (window.lastCookingKind === "drink" && window.lastCookingId) {
+    initRecipe = COOKING_RECIPES.drink.find(r => r.id === window.lastCookingId) || null;
+  }
+
+  if (!initRecipe) {
+    const initId = foodSelect?.value || drinkSelect?.value || null;
+    initRecipe =
+      COOKING_RECIPES.food.find(r => r.id === initId) ||
+      COOKING_RECIPES.drink.find(r => r.id === initId) ||
+      null;
+  }
+
   updateCookingCostInfo(initRecipe);
 }
 
@@ -626,9 +646,20 @@ function updateCookingCostInfo(recipe) {
   const costInfo = document.getElementById("craftCostInfo");
   if (!costInfo) return;
 
-  if (!recipe) {
+  if (!recipe || !recipe.requires || !recipe.requires.length) {
     costInfo.textContent = "必要素材：-";
     return;
+  }
+
+  // ★ ここで「どの種別＋IDか」を保存しておく
+  const isFood  = !!COOKING_RECIPES.food.find(r => r.id === recipe.id);
+  const isDrink = !!COOKING_RECIPES.drink.find(r => r.id === recipe.id);
+  if (isFood) {
+    window.lastCookingKind = "food";
+    window.lastCookingId   = recipe.id;
+  } else if (isDrink) {
+    window.lastCookingKind = "drink";
+    window.lastCookingId   = recipe.id;
   }
 
   const parts = recipe.requires.map(req => {
@@ -673,9 +704,10 @@ function addCookingItemToInventory(itemId, amount) {
 }
 
 function canCraftCooking(recipe) {
-  if (!recipe || !recipe.requires) return false;
+  if (!recipe || !Array.isArray(recipe.requires)) return false;
+  if (!window.cookingMats) return false;
   return recipe.requires.every(req => {
-    const have = getCookingMaterialAmount(req.id);
+    const have = window.cookingMats[req.id] || 0;
     return have >= req.amount;
   });
 }
@@ -702,6 +734,10 @@ function doCraftCooking(recipe) {
   const prevFoodId   = foodSelect  ? foodSelect.value  : null;
   const prevDrinkId  = drinkSelect ? drinkSelect.value : null;
 
+  // 実行元を判定
+  const isFoodRecipe  = !!COOKING_RECIPES.food.find(r => r.id === recipe.id);
+  const isDrinkRecipe = !!COOKING_RECIPES.drink.find(r => r.id === recipe.id);
+
   recipe.requires.forEach(req => {
     consumeCookingMaterial(req.id, req.amount);
   });
@@ -725,12 +761,30 @@ function doCraftCooking(recipe) {
     drinkSelect.value = prevDrinkId;
   }
 
-  const idFood  = foodSelect  ? foodSelect.value  : null;
-  const idDrink = drinkSelect ? drinkSelect.value : null;
-  const nextRecipe =
-    (idFood  && COOKING_RECIPES.food.find(r => r.id === idFood)) ||
-    (idDrink && COOKING_RECIPES.drink.find(r => r.id === idDrink)) ||
-    null;
+  // ★ クラフト直後も最後に使ったレシピとして保存
+  if (isFoodRecipe) {
+    window.lastCookingKind = "food";
+    window.lastCookingId   = recipe.id;
+  } else if (isDrinkRecipe) {
+    window.lastCookingKind = "drink";
+    window.lastCookingId   = recipe.id;
+  }
+
+  // 実行元を優先して次に表示するレシピ
+  let nextRecipe = null;
+  if (isFoodRecipe && foodSelect && foodSelect.value) {
+    nextRecipe = COOKING_RECIPES.food.find(r => r.id === foodSelect.value) || null;
+  } else if (isDrinkRecipe && drinkSelect && drinkSelect.value) {
+    nextRecipe = COOKING_RECIPES.drink.find(r => r.id === drinkSelect.value) || null;
+  } else {
+    const idFood  = foodSelect  ? foodSelect.value  : null;
+    const idDrink = drinkSelect ? drinkSelect.value : null;
+    nextRecipe =
+      (idFood  && COOKING_RECIPES.food.find(r => r.id === idFood)) ||
+      (idDrink && COOKING_RECIPES.drink.find(r => r.id === idDrink)) ||
+      null;
+  }
+
   updateCookingCostInfo(nextRecipe);
 
   if (typeof updateGatherMatDetailText === "function") {
@@ -798,12 +852,79 @@ function initCookingCraftUI() {
     });
   }
 
-  const initId = foodSelect?.value || drinkSelect?.value;
-  const initRecipe =
-    COOKING_RECIPES.food.find(r => r.id === initId) ||
-    COOKING_RECIPES.drink.find(r => r.id === initId) ||
-    null;
+  // 初回も「最後に見ていたレシピ」があれば復元
+  let initRecipe = null;
+  if (window.lastCookingKind === "food" && window.lastCookingId) {
+    initRecipe = COOKING_RECIPES.food.find(r => r.id === window.lastCookingId) || null;
+  } else if (window.lastCookingKind === "drink" && window.lastCookingId) {
+    initRecipe = COOKING_RECIPES.drink.find(r => r.id === window.lastCookingId) || null;
+  }
+  if (!initRecipe) {
+    const initId = foodSelect?.value || drinkSelect?.value;
+    initRecipe =
+      COOKING_RECIPES.food.find(r => r.id === initId) ||
+      COOKING_RECIPES.drink.find(r => r.id === initId) ||
+      null;
+  }
   updateCookingCostInfo(initRecipe);
+}
+
+// =======================
+// 倉庫から直接食べる／飲む用ヘルパ
+// =======================
+
+function consumeFoodFromWarehouse(id) {
+  if (window.isExploring || window.currentEnemy) {
+    if (typeof appendLog === "function") {
+      appendLog("探索中は倉庫から食事できない！");
+    }
+    return;
+  }
+  if (!window.cookedFoods || !window.cookedFoods[id]) {
+    return;
+  }
+
+  const recipe = (typeof COOKING_RECIPES !== "undefined" && COOKING_RECIPES.food)
+    ? COOKING_RECIPES.food.find(r => r.id === id)
+    : null;
+  if (!recipe || !recipe.effect) return;
+
+  if (typeof applyFoodEffect === "function") {
+    applyFoodEffect(recipe.effect, id);
+  }
+
+  window.cookedFoods[id] = Math.max(0, (window.cookedFoods[id] || 0) - 1);
+
+  if (typeof appendLog === "function") {
+    appendLog(`${recipe.name} を食べた！`);
+  }
+}
+
+function consumeDrinkFromWarehouse(id) {
+  if (window.isExploring || window.currentEnemy) {
+    if (typeof appendLog === "function") {
+      appendLog("探索中は倉庫から飲み物を飲めない！");
+    }
+    return;
+  }
+  if (!window.cookedDrinks || !window.cookedDrinks[id]) {
+    return;
+  }
+
+  const recipe = (typeof COOKING_RECIPES !== "undefined" && COOKING_RECIPES.drink)
+    ? COOKING_RECIPES.drink.find(r => r.id === id)
+    : null;
+  if (!recipe || !recipe.effect) return;
+
+  if (typeof applyDrinkEffect === "function") {
+    applyDrinkEffect(recipe.effect, id);
+  }
+
+  window.cookedDrinks[id] = Math.max(0, (window.cookedDrinks[id] || 0) - 1);
+
+  if (typeof appendLog === "function") {
+    appendLog(`${recipe.name} を飲んだ！`);
+  }
 }
 
 // =======================
