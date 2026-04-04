@@ -453,16 +453,30 @@ function refreshWarehouseUI() {
 
     const thead = document.createElement("thead");
     const htr = document.createElement("tr");
+
+    // 「ティア」は不要なので空ヘッダにする
     const thTier = document.createElement("th");
-    thTier.textContent = "ティア";
+    thTier.textContent = "";
     htr.appendChild(thTier);
 
-    const baseNames = Object.values(groups).map(g => g.name);
-    baseNames.forEach(name => {
-      const th = document.createElement("th");
-      th.textContent = name;
-      htr.appendChild(th);
+    // 採取素材の順番に対応した中間素材の表示順を固定
+    const baseOrder = [
+      "板材",         // wood
+      "鉄インゴット", // ore
+      "調合用薬草",   // herb
+      "布束",         // cloth
+      "強化皮",       // leather
+      "蒸留水"        // water
+    ];
+
+    baseOrder.forEach(baseName => {
+      if (groups[baseName]) {
+        const th = document.createElement("th");
+        th.textContent = baseName;
+        htr.appendChild(th);
+      }
     });
+
     thead.appendChild(htr);
     table.appendChild(thead);
 
@@ -473,11 +487,13 @@ function refreshWarehouseUI() {
       thT.textContent = `T${idx + 1}`;
       tr.appendChild(thT);
 
-      baseNames.forEach(name => {
-        const g = groups[name] || { t1: 0, t2: 0, t3: 0 };
-        const td = document.createElement("td");
-        td.textContent = g[tierKey] || 0;
-        tr.appendChild(td);
+      baseOrder.forEach(baseName => {
+        if (groups[baseName]) {
+          const g = groups[baseName];
+          const td = document.createElement("td");
+          td.textContent = g[tierKey] || 0;
+          tr.appendChild(td);
+        }
       });
 
       tbody.appendChild(tr);
