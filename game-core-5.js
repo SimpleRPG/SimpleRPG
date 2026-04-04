@@ -44,7 +44,7 @@ window.exploringArea = "field";    // 現在探索しているエリアID
 
 // ポーション選択の記憶
 let lastSelectedFieldPotionId  = null;
-let lastSelectedBattlePotionId = null;
+let lastSelectedBattleItemId   = null;
 
 // =======================
 // 現在エリア取得ヘルパ
@@ -573,7 +573,7 @@ function onEnemyDefeatedCore(enemyInst) {
 }
 
 // =======================
-// アイテム用セレクト再描画（ポーション）
+// アイテム用セレクト再描画（ポーション＋道具）
 // =======================
 
 function refreshUseItemSelect() {
@@ -600,28 +600,95 @@ function refreshUseItemSelect() {
   lastSelectedFieldPotionId = sel.value || null;
 }
 
+// 戦闘用アイテムセレクト（ポーション or 道具）
+// battleItemCategory セレクト（"potion" / "tool"）と連動し、最後に選んだカテゴリとアイテムを記憶する
 function refreshBattleItemSelect() {
   const sel = document.getElementById("battleItemSelect");
   if (!sel) return;
 
-  const prev = lastSelectedBattlePotionId || sel.value || null;
+  const categorySel = document.getElementById("battleItemCategory");
+  const category = categorySel ? (categorySel.value || window.lastBattleItemCategory || "potion")
+                               : (window.lastBattleItemCategory || "potion");
+
+  const prev = lastSelectedBattleItemId || sel.value || null;
 
   sel.innerHTML = "";
 
-  for (const p of potions) {
-    const cnt = potionCounts[p.id] || 0;
-    if (cnt <= 0) continue;
+  if (category === "potion") {
+    // 手持ちポーションのみ（carryPotions ベース）
+    if (typeof carryPotions !== "undefined" && Array.isArray(potions)) {
+      Object.keys(carryPotions).forEach(id => {
+        const cnt = carryPotions[id] || 0;
+        if (cnt <= 0) return;
+        const p = potions.find(x => x.id === id);
+        const name = p ? p.name : id;
+        const opt = document.createElement("option");
+        opt.value = id;
+        opt.textContent = `${name}（${cnt}）`;
+        sel.appendChild(opt);
+      });
+    }
+
+    if (!sel.options.length) {
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = "手持ちポーションなし";
+      sel.appendChild(opt);
+    }
+  } else if (category === "tool") {
+    // 手持ち道具のみ（carryTools ベース、爆弾など）
+    if (typeof carryTools !== "undefined") {
+      Object.keys(carryTools).forEach(id => {
+        const cnt = carryTools[id] || 0;
+        if (cnt <= 0) return;
+        let label = id;
+        if (id === "bomb") {
+          label = "爆弾";
+        } else if (id.startsWith("bomb_T1")) {
+          label = "爆弾T1";
+        } else if (id.startsWith("bomb_T2")) {
+          label = "爆弾T2";
+        } else if (id.startsWith("bomb_T3")) {
+          label = "爆弾T3";
+        }
+        const opt = document.createElement("option");
+        opt.value = id;
+        opt.textContent = `${label}（${cnt}）`;
+        sel.appendChild(opt);
+      });
+    }
+
+    if (!sel.options.length) {
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = "手持ち道具なし";
+      sel.appendChild(opt);
+    }
+  } else {
+    // 未知カテゴリ
     const opt = document.createElement("option");
-    opt.value = p.id;
-    opt.textContent = `${p.name}（${cnt}）`;
+    opt.value = "";
+    opt.textContent = "アイテムなし";
     sel.appendChild(opt);
   }
 
   if (prev && Array.from(sel.options).some(o => o.value === prev)) {
     sel.value = prev;
+  } else if (sel.options.length > 0) {
+    sel.selectedIndex = 0;
   }
 
-  lastSelectedBattlePotionId = sel.value || null;
+  lastSelectedBattleItemId = sel.value || null;
+  window.lastBattleItemCategory = category;
+
+  if (categorySel) {
+    categorySel.value = category;
+  }
+}
+
+// カテゴリ変更時に呼ぶ想定（HTML側で onchange="onBattleItemCategoryChanged()"）
+function onBattleItemCategoryChanged() {
+  refreshBattleItemSelect();
 }
 
 // =======================
@@ -673,33 +740,105 @@ function useBattleItem() {
     appendLog("戦闘で使うアイテムを選んでください");
     return;
   }
+
+  const categorySel = document.getElementById("battleItemCategory");
+  const category = categorySel ? (categorySel.value || window.lastBattleItemCategory || "potion")
+                               : (window.lastBattleItemCategory || "potion");
+
   const id = sel.value;
-  const p = potions.find(x => x.id === id);
-  if (!p) { appendLog("そのアイテムは存在しない"); return; }
-  if (potionCounts[id] <= 0) {
-    appendLog("そのアイテムを持っていない");
-    refreshBattleItemSelect();
+  lastSelectedBattleItemId = id;
+  window.lastBattleItemCategory = category;
+
+  if (category === "potion") {
+    // 手持ちポーション使用（carryPotions）
+    if (typeof carryPotions === "undefined") {
+      appendLog("ポーション所持データが見つからない");
+      refreshBattleItemSelect();
+      return;
+    }
+    const have = carryPotions[id] || 0;
+    if (have <= 0) {
+      appendLog("そのポーションを持っていない");
+      refreshBattleItemSelect();
+      return;
+    }
+
+    const p = potions.find(x => x.id === id);
+    if (!p) {
+      appendLog("そのアイテムは存在しない");
+      refreshBattleItemSelect();
+      return;
+    }
+
+    const prevHp = hp;
+    const prevMp = mp;
+
+    applyPotionEffect(p, true);
+
+    carryPotions[id] = have - 1;
+    if (carryPotions[id] <= 0) {
+      delete carryPotions[id];
+    }
+
+    if (p.type === POTION_TYPE_HP) {
+      const healed = hp - prevHp;
+      appendLog(`戦闘中に ${p.name} を使用した（HP ${prevHp} → ${hp}、+${healed}）`);
+    } else if (p.type === POTION_TYPE_MP) {
+      const healed = mp - prevMp;
+      appendLog(`戦闘中に ${p.name} を使用した（MP ${prevMp} → ${mp}、+${healed}）`);
+    } else if (p.type === POTION_TYPE_BOTH) {
+      const healedHp = hp - prevHp;
+      const healedMp = mp - prevMp;
+      appendLog(`戦闘中に ${p.name} を使用した（HP ${prevHp} → ${hp}、+${healedHp} / MP ${prevMp} → ${mp}、+${healedMp}）`);
+    }
+
+  } else if (category === "tool") {
+    // 手持ち道具使用（爆弾など）
+    if (typeof carryTools === "undefined") {
+      appendLog("道具所持データが見つからない");
+      refreshBattleItemSelect();
+      return;
+    }
+    const have = carryTools[id] || 0;
+    if (have <= 0) {
+      appendLog("その道具を持っていない");
+      refreshBattleItemSelect();
+      return;
+    }
+
+    // 爆弾ダメージテーブル
+    const BOMB_DAMAGE_TABLE = {
+      bomb:    7,
+      bomb_T1: 15,
+      bomb_T2: 30,
+      bomb_T3: 60
+    };
+    const dmg = BOMB_DAMAGE_TABLE[id] || 5;
+
+    carryTools[id] = have - 1;
+    if (carryTools[id] <= 0) {
+      delete carryTools[id];
+    }
+
+    if (!currentEnemy) {
+      appendLog("攻撃する敵がいない");
+    } else {
+      const beforeHp = enemyHp;
+      enemyHp = Math.max(0, enemyHp - dmg);
+      appendLog(`爆弾を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
+      if (enemyHp <= 0) {
+        if (typeof onEnemyDefeatedCore === "function") {
+          onEnemyDefeatedCore(currentEnemy);
+        } else {
+          endBattleCommon();
+        }
+        updateDisplay();
+        return;
+      }
+    }
+  } else {
+    appendLog("不明なアイテムカテゴリです");
     return;
-  }
-
-  lastSelectedBattlePotionId = id;
-
-  const prevHp = hp;
-  const prevMp = mp;
-
-  applyPotionEffect(p, true);
-  potionCounts[id]--;
-
-  if (p.type === POTION_TYPE_HP) {
-    const healed = hp - prevHp;
-    appendLog(`戦闘中に ${p.name} を使用した（HP ${prevHp} → ${hp}、+${healed}）`);
-  } else if (p.type === POTION_TYPE_MP) {
-    const healed = mp - prevMp;
-    appendLog(`戦闘中に ${p.name} を使用した（MP ${prevMp} → ${mp}、+${healed}）`);
-  } else if (p.type === POTION_TYPE_BOTH) {
-    const healedHp = hp - prevHp;
-    const healedMp = mp - prevMp;
-    appendLog(`戦闘中に ${p.name} を使用した（HP ${prevHp} → ${hp}、+${healedHp} / MP ${prevMp} → ${mp}、+${healedMp}）`);
   }
 
   refreshBattleItemSelect();
@@ -1157,7 +1296,7 @@ function tryUpgradeGatherBase(matKey) {
       const haveStar = intermediateMats["starShard"] || 0;
       lines.push(`- starShard: 必要 ${needStar} 個 / 所持 ${haveStar} 個`);
     }
-    appendLog(lines.join("\n"));
+    appendLog(lines.join("\\n"));
   })();
 
   // 所持チェック

@@ -3,14 +3,14 @@
 
 // 既存の inventory-core.js / craft-data.js / cook-data.js 前提
 // - carryPotions, carryFoods, carryDrinks, carryWeapons, carryArmors, carryTools
-// - potionCounts, weaponCounts, armorCounts, cookedFoods, cookedDrinks
+// - potionCounts, weaponCounts, armorCounts, cookedFoods, cookedDrinks, toolCounts
 // - potions, weapons, armors, COOKING_RECIPES
 // - movePotionToCarry / movePotionToWarehouse
 // - moveFoodToCarry / moveFoodToWarehouse
 // - moveDrinkToCarry / moveDrinkToWarehouse
 // - moveWeaponToCarry / moveWeaponToWarehouse
 // - moveArmorToCarry / moveArmorToWarehouse
-// - moveToolToCarry / moveToolToWarehouse（未実装ログのみ）
+// - moveToolToCarry / moveToolToWarehouse
 // - refreshCarryPotionSelects, refreshCarryFoodDrinkSelects
 
 // ★追加：直近に表示した料理レシピを保存するグローバル
@@ -68,6 +68,14 @@ function refreshWarehouseUI() {
     if (typeof COOKING_RECIPES === "undefined") return id;
     const r = COOKING_RECIPES.drink.find(x => x.id === id);
     return r ? r.name : id;
+  }
+  function getToolName(id) {
+    // とりあえずIDベース＋爆弾だけラベル補正
+    if (id === "bomb") return "爆弾";
+    if (id === "bomb_T1") return "爆弾T1";
+    if (id === "bomb_T2") return "爆弾T2";
+    if (id === "bomb_T3") return "爆弾T3";
+    return id;
   }
 
   // =======================
@@ -195,14 +203,14 @@ function refreshWarehouseUI() {
     Object.keys(carryTools).forEach(id => {
       const cnt = carryTools[id] || 0;
       if (cnt <= 0) return;
-      const name = id;
+      const name = getToolName(id);
       const row = createRow(name, cnt, [
         {
           label: "↓倉庫へ",
           onClick: () => {
-            // 現状はログだけ
-            moveToolToWarehouse(id, 1);
-            refreshWarehouseUI();
+            if (moveToolToWarehouse(id, 1)) {
+              refreshWarehouseUI();
+            }
           }
         }
       ]);
@@ -316,6 +324,14 @@ function refreshWarehouseUI() {
       const name = getWeaponName(id);
       const row = createRow(name, cnt, [
         {
+          label: "装備",
+          onClick: () => {
+            if (typeof equipWeaponFromWarehouse === "function") {
+              equipWeaponFromWarehouse(id);
+            }
+          }
+        },
+        {
           label: "↑手持ちへ",
           onClick: () => {
             if (moveWeaponToCarry(id, 1)) {
@@ -336,6 +352,14 @@ function refreshWarehouseUI() {
       const name = getArmorName(id);
       const row = createRow(name, cnt, [
         {
+          label: "装備",
+          onClick: () => {
+            if (typeof equipArmorFromWarehouse === "function") {
+              equipArmorFromWarehouse(id);
+            }
+          }
+        },
+        {
           label: "↑手持ちへ",
           onClick: () => {
             if (moveArmorToCarry(id, 1)) {
@@ -350,8 +374,25 @@ function refreshWarehouseUI() {
 
   if (whToolsBox) {
     whToolsBox.innerHTML = "";
-    // 道具は「存在する＝倉庫」扱い、今は個別counts未実装なので空のまま維持
-    // 将来、toolCounts 等を作ったらここで描画する
+    // 倉庫側の道具（toolCounts）を一覧表示し、手持ちへ移動可能にする
+    if (typeof toolCounts === "object") {
+      Object.keys(toolCounts).forEach(id => {
+        const cnt = toolCounts[id] || 0;
+        if (cnt <= 0) return;
+        const name = getToolName(id);
+        const row = createRow(name, cnt, [
+          {
+            label: "↑手持ちへ",
+            onClick: () => {
+              if (moveToolToCarry(id, 1)) {
+                refreshWarehouseUI();
+              }
+            }
+          }
+        ]);
+        whToolsBox.appendChild(row);
+      });
+    }
   }
 
   // =======================

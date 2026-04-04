@@ -665,6 +665,10 @@ function startBattleCommon(enemy, isBoss) {
   setBattleCommandVisible(true);
   setExploreUIVisible(false);
 
+if (typeof refreshBattleItemSelect === "function") {
+    refreshBattleItemSelect();
+  }
+
   updateEnemyStatusUI();
   if (typeof updateReturnTownButton === "function") {
     updateReturnTownButton();   // 戦闘中は帰還ボタン非表示

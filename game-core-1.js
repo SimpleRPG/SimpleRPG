@@ -525,3 +525,89 @@ function updateDisplay() {
 
   // ★ 素材ラベルは game-ui.js 側で更新するのでここでは触らない
 }
+
+// =======================
+// 倉庫からの直接装備ヘルパー
+// =======================
+
+function equipWeaponFromWarehouse(weaponId) {
+  if (window.isExploring || window.currentEnemy) {
+    if (typeof appendLog === "function") {
+      appendLog("探索中は装備を変更できない！");
+    }
+    return;
+  }
+  if (!weaponId) return;
+  if (!weaponCounts[weaponId] || weaponCounts[weaponId] <= 0) {
+    appendLog("その武器は倉庫にない！");
+    return;
+  }
+
+  // 旧装備を倉庫へ戻しつつ、手持ちからは減らす
+  if (equippedWeaponId) {
+    weaponCounts[equippedWeaponId] = (weaponCounts[equippedWeaponId] || 0) + 1;
+    if (typeof carryWeapons !== "undefined") {
+      if (carryWeapons[equippedWeaponId]) {
+        carryWeapons[equippedWeaponId] = Math.max(0, (carryWeapons[equippedWeaponId] || 0) - 1);
+        if (carryWeapons[equippedWeaponId] <= 0) {
+          delete carryWeapons[equippedWeaponId];
+        }
+      }
+    }
+  }
+
+  // 新しい武器を倉庫から1つ取り出して装備＋手持ちに1本持っている扱いにする
+  weaponCounts[weaponId] = Math.max(0, (weaponCounts[weaponId] || 0) - 1);
+  if (typeof carryWeapons !== "undefined") {
+    carryWeapons[weaponId] = (carryWeapons[weaponId] || 0) + 1;
+  }
+  equippedWeaponId = weaponId;
+
+  appendLog("武器を装備した。");
+  recalcStats();
+
+  if (typeof refreshWarehouseUI === "function") {
+    refreshWarehouseUI();
+  }
+}
+
+function equipArmorFromWarehouse(armorId) {
+  if (window.isExploring || window.currentEnemy) {
+    if (typeof appendLog === "function") {
+      appendLog("探索中は装備を変更できない！");
+    }
+    return;
+  }
+  if (!armorId) return;
+  if (!armorCounts[armorId] || armorCounts[armorId] <= 0) {
+    appendLog("その防具は倉庫にない！");
+    return;
+  }
+
+  // 旧装備を倉庫へ戻しつつ、手持ちからは減らす
+  if (equippedArmorId) {
+    armorCounts[equippedArmorId] = (armorCounts[equippedArmorId] || 0) + 1;
+    if (typeof carryArmors !== "undefined") {
+      if (carryArmors[equippedArmorId]) {
+        carryArmors[equippedArmorId] = Math.max(0, (carryArmors[equippedArmorId] || 0) - 1);
+        if (carryArmors[equippedArmorId] <= 0) {
+          delete carryArmors[equippedArmorId];
+        }
+      }
+    }
+  }
+
+  // 新しい防具を倉庫から1つ取り出して装備＋手持ちに1着持っている扱いにする
+  armorCounts[armorId] = Math.max(0, (armorCounts[armorId] || 0) - 1);
+  if (typeof carryArmors !== "undefined") {
+    carryArmors[armorId] = (carryArmors[armorId] || 0) + 1;
+  }
+  equippedArmorId = armorId;
+
+  appendLog("防具を装備した。");
+  recalcStats();
+
+  if (typeof refreshWarehouseUI === "function") {
+    refreshWarehouseUI();
+  }
+}

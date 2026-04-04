@@ -362,19 +362,23 @@ const CRAFT_RECIPES = {
     {
       id: "bomb_T1",
       name: "爆弾T1",
-      cost: { ore_T1: 3, herb_T1: 1 },
+      // ore_T1 / herb_T1 直消費 → 中間素材を消費する形に変更
+      // 例: T1鉄インゴット1＋T1調合用薬草1
+      cost: { ironIngot_T1: 1, mixHerb_T1: 1 },
       baseRate: 0.7
     },
     {
       id: "bomb_T2",
       name: "爆弾T2",
-      cost: { ore_T2: 4, herb_T2: 2 },
+      // 例: T2鉄インゴット1＋T2調合用薬草2
+      cost: { ironIngot_T2: 1, mixHerb_T2: 2 },
       baseRate: 0.65
     },
     {
       id: "bomb_T3",
       name: "爆弾T3",
-      cost: { ore_T3: 5, herb_T3: 3 },
+      // 例: T3鉄インゴット2＋T3調合用薬草2
+      cost: { ironIngot_T3: 2, mixHerb_T3: 2 },
       baseRate: 0.6
     }
   ]

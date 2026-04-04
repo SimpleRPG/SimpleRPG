@@ -13,7 +13,8 @@ const shopData = {
   item: [
     { id: "potionT1_shop", potionId: "potionT1", name: "ポーションT1",     price: 60,  desc: "HPを少し回復する基本の回復薬。" },
     { id: "manaT1_shop",   potionId: "manaT1",   name: "マナポーションT1", price: 80,  desc: "MPを少し回復する基本のマナ薬。" },
-    { id: "bomb_shop",     potionId: "bomb",     name: "爆弾",             price: 100, desc: "敵にダメージを与える攻撃アイテム。" }
+    // 爆弾は道具扱いにするため potionId は使わず、id だけで判別する
+    { id: "bomb_shop",     potionId: null,       name: "爆弾",             price: 100, desc: "敵にダメージを与える攻撃アイテム（道具）。" }
   ],
   service: [
     { id: "inn_hp",   name: "宿屋で休む(HP)",    price: 80,  desc: "HPを全回復します。",       type: "service", kind: "innHP" },
@@ -88,12 +89,25 @@ function buyShopItem(item) {
   money -= item.price;
 
   if (shopCurrentCategory === "item") {
-    const p = potions.find(x => x.id === item.potionId);
-    if (!p) {
-      appendLog("この商品はまだ実装されていない。");
+    // 通常ポーション
+    if (item.id !== "bomb_shop") {
+      const p = potions.find(x => x.id === item.potionId);
+      if (!p) {
+        appendLog("この商品はまだ実装されていない。");
+      } else {
+        potionCounts[p.id] = (potionCounts[p.id] || 0) + 1;
+        appendLog(`${item.name} を購入した。`);
+      }
     } else {
-      potionCounts[p.id] = (potionCounts[p.id] || 0) + 1;
-      appendLog(`${item.name} を購入した。`);
+      // 爆弾（道具）購入: 道具倉庫に追加
+      if (typeof toolCounts === "object") {
+        // ショップ品は T1 爆弾として扱う想定
+        const toolId = "bomb_T1";
+        toolCounts[toolId] = (toolCounts[toolId] || 0) + 1;
+        appendLog(`${item.name} を購入した（道具として倉庫に追加された）。`);
+      } else {
+        appendLog("道具の保管領域が未定義です（toolCounts）。");
+      }
     }
   } else if (shopCurrentCategory === "service") {
     if (item.kind === "innHP") {

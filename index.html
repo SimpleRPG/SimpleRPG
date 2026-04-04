@@ -12,7 +12,7 @@
 
     <div id="tabs">
       <button id="tabGather"    class="tab-button active">採取</button>
-      <button id="tabEquip"     class="tab-button">装備</button>
+      <!-- <button id="tabEquip"     class="tab-button">装備</button> -->
       <button id="tabExplore"   class="tab-button">探索</button>
       <button id="tabMagicDist" class="tab-button">魔巧区</button>
       <button id="tabWarehouse" class="tab-button">倉庫</button>
@@ -104,19 +104,20 @@
             <pre id="gatherMatDetail" style="display:none; font-size:11px; margin:2px 0 0;"></pre>
           </div>
 
-          <!-- 魔巧区（クラフト＋ショップ＋市場＋採取拠点） -->
+          <!-- 魔巧区（クラフト＋装備強化＋ショップ＋市場＋採取拠点） -->
           <div id="pageMagicDist" class="tab-page">
             <h2>魔巧区</h2>
 
             <!-- 魔巧区内サブタブ -->
             <div id="magicDistTabs" style="margin:4px 0;">
               <button class="magic-tab-button active" data-page="magic-craft">クラフト</button>
+              <button class="magic-tab-button" data-page="magic-enhance">装備強化</button>
               <button class="magic-tab-button" data-page="magic-shop">ショップ</button>
               <button class="magic-tab-button" data-page="magic-market">市場</button>
               <button class="magic-tab-button" data-page="magic-gather">採取拠点</button>
             </div>
 
-            <!-- サブページ: クラフト（元 pageCraft の中身をそのまま移植） -->
+            <!-- サブページ: クラフト -->
             <div id="magicPageCraft" class="magic-sub-page active">
               <h3>クラフト</h3>
 
@@ -229,7 +230,15 @@
               </div>
             </div>
 
-            <!-- サブページ: ショップ（元 pageShop） -->
+            <!-- サブページ: 装備強化 -->
+            <div id="magicPageEnhance" class="magic-sub-page" style="display:none;">
+              <h3>装備強化</h3>
+              <p>装備中の武器・防具を強化します。</p>
+              <button id="enhanceWeaponBtn">武器を強化</button>
+              <button id="enhanceArmorBtn">防具を強化</button>
+            </div>
+
+            <!-- サブページ: ショップ -->
             <div id="magicPageShop" class="magic-sub-page" style="display:none;">
               <h3>ショップ</h3>
               <p>消耗品やサービスを購入できます。</p>
@@ -251,7 +260,7 @@
               </div>
             </div>
 
-            <!-- サブページ: 市場（元 pageMarket） -->
+            <!-- サブページ: 市場 -->
             <div id="magicPageMarket" class="magic-sub-page" style="display:none;">
               <h3>市場</h3>
 
@@ -316,7 +325,6 @@
                     <button class="market-cat-tab" data-cat="armor">防具</button>
                     <button class="market-cat-tab" data-cat="potion">ポーション</button>
                     <button class="market-cat-tab" data-cat="material">素材</button>
-                    <!-- 必要なら購入側にも料理カテゴリを追加（今の仕様を変えたくないならこのままでもOK） -->
                     <!-- <button class="market-cat-tab" data-cat="cooking">料理</button> -->
                   </div>
 
@@ -349,7 +357,7 @@
               <p id="marketInfo" style="margin-top:8px; font-size:12px; color:#ccc;"></p>
             </div>
 
-            <!-- サブページ: 採取拠点（game-ui-2.js が埋める） -->
+            <!-- サブページ: 採取拠点 -->
             <div id="magicPageGather" class="magic-sub-page" style="display:none;">
               <h3>採取拠点</h3>
               <div id="gatherBaseStatus">
@@ -358,7 +366,8 @@
             </div>
           </div>
 
-          <!-- 装備 -->
+          <!-- 装備タブは一旦丸ごとコメントアウト -->
+          <!--
           <div id="pageEquip" class="tab-page">
             <h2>装備</h2>
 
@@ -375,6 +384,7 @@
             <button id="enhanceWeaponBtn">武器を強化</button>
             <button id="enhanceArmorBtn">防具を強化</button>
           </div>
+          -->
 
           <!-- 探索 / 戦闘 -->
           <div id="pageExplore" class="tab-page">
@@ -428,8 +438,13 @@
 
                   <div>
                     <label style="font-size:11px;">戦闘アイテム:</label><br>
-                    <select id="battleItemSelect"></select>
-                    <button id="useBattleItemBtn" class="btn-item">戦闘で使う</button>
+<select id="battleItemCategory" onchange="onBattleItemCategoryChanged()">
+  <option value="potion">ポーション</option>
+  <option value="tool">道具</option>
+</select>
+<br>
+<select id="battleItemSelect"></select>
+<button id="useBattleItemBtn" class="btn-item">戦闘で使う</button>
                   </div>
 
                   <button id="escapeBtn" style="margin-top:4px;">逃走する</button>
@@ -465,7 +480,6 @@
           <div id="pageWarehouse" class="tab-page">
             <h2>倉庫</h2>
 
-            <!-- ★ここから内側を #pageWarehouseInner でラップ -->
             <div id="pageWarehouseInner">
               <!-- 倉庫内サブタブ -->
               <div>
@@ -474,7 +488,7 @@
                   <button id="warehouseTabMaterials" class="warehouse-sub-tab">素材</button>
                 </div>
 
-                <!-- サブページ: 装備・アイテム（既存倉庫UI） -->
+                <!-- サブページ: 装備・アイテム -->
                 <div id="warehousePageItems" class="warehouse-sub-page active">
                   <div id="warehouseLists">
                     <!-- 手持ち側ボックス -->
@@ -577,7 +591,6 @@
                 </p>
               </aside>
             </div>
-            <!-- ★ここまで #pageWarehouseInner -->
           </div>
 
           <!-- ステータス -->

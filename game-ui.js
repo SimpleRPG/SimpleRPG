@@ -223,6 +223,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   const tabButtonsMap = {
     tabGather:    "pageGather",
+    // tabEquip は index.html 側でコメントアウト済みだが、ここはそのままでも害はない
     tabEquip:     "pageEquip",
     tabExplore:   "pageExplore",
     tabMagicDist: "pageMagicDist",
@@ -338,10 +339,11 @@ window.addEventListener("DOMContentLoaded", () => {
 
   const magicTabButtons = document.querySelectorAll(".magic-tab-button");
   const magicSubPages = {
-    "magic-craft":  document.getElementById("magicPageCraft"),
-    "magic-shop":   document.getElementById("magicPageShop"),
-    "magic-market": document.getElementById("magicPageMarket"),
-    "magic-gather": document.getElementById("magicPageGather")
+    "magic-craft":   document.getElementById("magicPageCraft"),
+    "magic-enhance": document.getElementById("magicPageEnhance"), // 追加
+    "magic-shop":    document.getElementById("magicPageShop"),
+    "magic-market":  document.getElementById("magicPageMarket"),
+    "magic-gather":  document.getElementById("magicPageGather")
   };
 
   function setMagicSubPage(key) {
@@ -392,6 +394,7 @@ window.addEventListener("DOMContentLoaded", () => {
         refreshWarehouseUI();
       }
     }
+    // magic-enhance は特別な初期処理なしでOK
   }
 
   magicTabButtons.forEach(btn => {
@@ -957,8 +960,7 @@ window.addEventListener("DOMContentLoaded", () => {
           infoEl.textContent = "必要素材：-";
         }
       } else if (activeCat === "cooking") {
-        // ★ここを強化：ティア変更で food/drink セレクトが作り直されるので
-        // アクティブなサブタブと新しいセレクトの value から必ず再表示する
+        // ティア変更時もアクティブな料理サブタブに合わせて再表示
         const activeSubTab = document.querySelector(".cook-sub-tab.active");
         const sub = activeSubTab ? activeSubTab.dataset.sub : "food";
         const foodSel  = document.getElementById("foodSelect");
@@ -1033,27 +1035,8 @@ window.addEventListener("DOMContentLoaded", () => {
   // 装備関連
   // =======================
 
-  const weaponEquipBtn = document.getElementById("equipWeaponBtn");
-  if (weaponEquipBtn && typeof equipWeapon === "function") {
-    weaponEquipBtn.addEventListener("click", () => {
-      if (window.isExploring || window.currentEnemy) {
-        appendLog("探索中は装備を変更できない！");
-        return;
-      }
-      equipWeapon();
-    });
-  }
-
-  const armorEquipBtn = document.getElementById("equipArmorBtn");
-  if (armorEquipBtn && typeof equipArmor === "function") {
-    armorEquipBtn.addEventListener("click", () => {
-      if (window.isExploring || window.currentEnemy) {
-        appendLog("探索中は装備を変更できない！");
-        return;
-      }
-      equipArmor();
-    });
-  }
+  // 装備タブはコメントアウトしたので、装備切替ボタンのリスナーは削除
+  // 強化ボタンのみ、魔巧区「装備強化」サブページで使用する
 
   const enhanceWeaponBtn = document.getElementById("enhanceWeaponBtn");
   if (enhanceWeaponBtn && typeof enhanceWeapon === "function") {

@@ -417,6 +417,9 @@ const ARMORS_INIT = [
 // =======================
 // ポーションマスタ（爆弾含む）
 // =======================
+//
+// クラフトは中間素材（mixHerb_Tx / distilledWater_Tx など）を想定。
+// ここでも cost を中間素材ベースに合わせる。
 
 const POTIONS_INIT = [
   {
@@ -425,7 +428,7 @@ const POTIONS_INIT = [
     type: POTION_TYPE_HP,
     power: 0.30,
     flat: 5,
-    cost: { herb: 2, water: 1 },
+    cost: { mixHerb_T1: 1, distilledWater_T1: 1 },
     rate: 0.8
   },
   {
@@ -434,7 +437,7 @@ const POTIONS_INIT = [
     type: POTION_TYPE_HP,
     power: 0.55,
     flat: 10,
-    cost: { herb: 3, water: 2 },
+    cost: { mixHerb_T2: 1, distilledWater_T2: 1 },
     rate: 0.7
   },
   {
@@ -443,7 +446,7 @@ const POTIONS_INIT = [
     type: POTION_TYPE_HP,
     power: 0.80,
     flat: 15,
-    cost: { herb: 4, water: 3 },
+    cost: { mixHerb_T3: 1, distilledWater_T3: 1 },
     rate: 0.6
   },
 
@@ -453,7 +456,7 @@ const POTIONS_INIT = [
     type: POTION_TYPE_MP,
     power: 0.30,
     flat: 5,
-    cost: { herb: 2, water: 2 },
+    cost: { mixHerb_T1: 1, distilledWater_T1: 2 },
     rate: 0.8
   },
   {
@@ -462,7 +465,7 @@ const POTIONS_INIT = [
     type: POTION_TYPE_MP,
     power: 0.55,
     flat: 10,
-    cost: { herb: 3, water: 3 },
+    cost: { mixHerb_T2: 1, distilledWater_T2: 2 },
     rate: 0.7
   },
   {
@@ -471,7 +474,7 @@ const POTIONS_INIT = [
     type: POTION_TYPE_MP,
     power: 0.80,
     flat: 15,
-    cost: { herb: 4, water: 4 },
+    cost: { mixHerb_T3: 1, distilledWater_T3: 2 },
     rate: 0.6
   },
 
@@ -481,18 +484,19 @@ const POTIONS_INIT = [
     type: POTION_TYPE_BOTH,
     power: 1.00,
     flat: 0,
-    cost: { herb: 5, water: 5, ore: 2 },
+    cost: { mixHerb_T3: 2, distilledWater_T3: 2, ironIngot_T3: 1 },
     rate: 0.5
   },
 
   // ショップ用・汎用爆弾（T1相当、少し弱め）
+  // ※爆弾自体は道具として扱うが、POTIONS_INIT には既存仕様に合わせて残す
   {
     id: "bomb",
     name: "爆弾",
     type: POTION_TYPE_DAMAGE,
     power: 7,         // 固定ダメージ
     flat: 0,
-    cost: { ore: 3, herb: 1 },
+    cost: { ironIngot_T1: 2, mixHerb_T1: 1 },
     rate: 0.7
   }
 ];

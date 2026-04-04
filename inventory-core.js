@@ -35,6 +35,15 @@ const carryArmors  = window.carryArmors;
 const carryTools   = window.carryTools;
 
 // =======================
+// 倉庫側道具インベントリ構造
+// =======================
+//
+// 爆弾などの道具を倉庫で管理するための counts。
+
+window.toolCounts = window.toolCounts || {}; // { toolId: count }
+const toolCounts  = window.toolCounts;
+
+// =======================
 // 合計数ヘルパー
 // =======================
 
@@ -48,7 +57,7 @@ function getCarryTotal(obj) {
 //
 // ・ポーション: potionCounts がそのまま倉庫。
 // ・武器/防具: weaponCounts / armorCounts が倉庫。
-// ・道具: 将来 potionCounts か別countsで管理するとして、ここでは倉庫側は「存在する＝倉庫」扱い。
+// ・道具: toolCounts が倉庫。
 // ・料理: cook-data.js で新しく cookedFoods / cookedDrinks を導入する前提。
 
 window.cookedFoods  = window.cookedFoods  || {}; // { foodId:  count }
@@ -117,7 +126,15 @@ function addItemToInventory(itemId, amount) {
     }
   }
 
-  // 6. その他（未分類）はログだけ
+  // 6. 道具（爆弾など） → toolCounts
+  //    bomb_T1 / bomb_T2 / bomb_T3 や "bomb" などを想定
+  if (typeof toolCounts !== "undefined" &&
+      (itemId === "bomb" || itemId.startsWith("bomb_"))) {
+    toolCounts[itemId] = (toolCounts[itemId] || 0) + amount;
+    return;
+  }
+
+  // 7. その他（未分類）はログだけ
   if (typeof appendLog === "function") {
     appendLog(`addItemToInventory: 未対応ID ${itemId} に${amount}追加しようとしました`);
   }
@@ -284,8 +301,19 @@ function moveArmorToWarehouse(id, amount) {
 // 道具（爆弾など）
 function moveToolToCarry(id, amount) {
   amount = Math.max(1, amount | 0);
-  appendLog("道具の倉庫管理は未実装です（後で実装）");
-  return false;
+  const have = toolCounts[id] || 0;
+  if (have < amount) {
+    appendLog("倉庫にその道具が足りない");
+    return false;
+  }
+  const totalCarry = getCarryTotal(carryTools);
+  if (totalCarry + amount > CARRY_LIMIT.tools) {
+    appendLog("これ以上道具を持ち歩けない（上限3個）");
+    return false;
+  }
+  toolCounts[id] -= amount;
+  carryTools[id] = (carryTools[id] || 0) + amount;
+  return true;
 }
 
 function moveToolToWarehouse(id, amount) {
@@ -297,16 +325,23 @@ function moveToolToWarehouse(id, amount) {
   }
   carryTools[id] -= amount;
   if (carryTools[id] <= 0) delete carryTools[id];
-  appendLog("道具を倉庫に戻す処理は未実装です（後で実装）");
+  toolCounts[id] = (toolCounts[id] || 0) + amount;
   return true;
 }
+
+// =======================
+// 戦闘アイテムカテゴリ選択の記憶
+// =======================
+
+window.lastBattleItemCategory = window.lastBattleItemCategory || "potion"; // "potion" or "tool"
+window.lastBattleItemId       = window.lastBattleItemId       || null;
 
 // =======================
 // 手持ちインベントリのUI更新フック
 // =======================
 //
 // ・フィールド用ポーションセレクト（useItemSelect）
-// ・戦闘アイテムセレクト（battleItemSelect）
+// ・戦闘アイテムセレクト（battleItemSelect, battleItemCategory）
 // ・フィールド料理セレクト（fieldFoodSelect）
 // ・フィールド飲み物セレクト（fieldDrinkSelect）
 
@@ -314,7 +349,7 @@ function refreshCarryPotionSelects() {
   const fieldSel  = document.getElementById("useItemSelect");
   const battleSel = document.getElementById("battleItemSelect");
 
-  function fill(sel) {
+  function fillField(sel) {
     if (!sel) return;
     const prev = sel.value;
     sel.innerHTML = "";
@@ -340,8 +375,100 @@ function refreshCarryPotionSelects() {
     }
   }
 
-  fill(fieldSel);
-  fill(battleSel);
+  fillField(fieldSel);
+
+  // 戦闘用はカテゴリ付き専用関数で更新する
+  if (battleSel) {
+    refreshBattleItemSelectWithCategory();
+  }
+}
+
+// 戦闘アイテム用セレクト更新（カテゴリ付き）
+function refreshBattleItemSelectWithCategory() {
+  const sel = document.getElementById("battleItemSelect");
+  if (!sel) return;
+
+  const categorySel = document.getElementById("battleItemCategory");
+  const category = categorySel ? (categorySel.value || window.lastBattleItemCategory || "potion")
+                               : (window.lastBattleItemCategory || "potion");
+
+  const prevId = window.lastBattleItemId || sel.value || null;
+
+  sel.innerHTML = "";
+
+  if (category === "potion") {
+    // 手持ちポーションのみ
+    Object.keys(carryPotions).forEach(id => {
+      const cnt = carryPotions[id] || 0;
+      if (cnt <= 0) return;
+      const p = potions.find(x => x.id === id);
+      const name = p ? p.name : id;
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = `${name}（${cnt}）`;
+      sel.appendChild(opt);
+    });
+
+    if (!sel.options.length) {
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = "手持ちポーションなし";
+      sel.appendChild(opt);
+    }
+  } else if (category === "tool") {
+    // 手持ち道具のみ（爆弾など）
+    Object.keys(carryTools).forEach(id => {
+      const cnt = carryTools[id] || 0;
+      if (cnt <= 0) return;
+      let label = id;
+      if (id === "bomb") {
+        label = "爆弾";
+      } else if (id.startsWith("bomb_T1")) {
+        label = "爆弾T1";
+      } else if (id.startsWith("bomb_T2")) {
+        label = "爆弾T2";
+      } else if (id.startsWith("bomb_T3")) {
+        label = "爆弾T3";
+      }
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = `${label}（${cnt}）`;
+      sel.appendChild(opt);
+    });
+
+    if (!sel.options.length) {
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.textContent = "手持ち道具なし";
+      sel.appendChild(opt);
+    }
+  } else {
+    // 未知カテゴリの場合はポーション扱い
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "アイテムなし";
+    sel.appendChild(opt);
+  }
+
+  // 前回選択を復元（なければ先頭）
+  if (prevId && Array.from(sel.options).some(o => o.value === prevId)) {
+    sel.value = prevId;
+  } else if (sel.options.length > 0) {
+    sel.selectedIndex = 0;
+  }
+
+  window.lastBattleItemCategory = category;
+  window.lastBattleItemId = sel.value || null;
+
+  // カテゴリセレクト側にも反映
+  if (categorySel) {
+    categorySel.value = category;
+  }
+}
+
+// カテゴリ変更時に呼ぶ想定
+function onBattleItemCategoryChanged() {
+  refreshBattleItemSelectWithCategory();
 }
 
 // 手持ち料理・飲み物セレクト更新

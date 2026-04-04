@@ -507,7 +507,6 @@ function gather(){
   if (typeof RARE_GATHER_DROP_RATE === "number" &&
       typeof RARE_GATHER_ITEM_ID === "string") {
     if (Math.random() < RARE_GATHER_DROP_RATE) {
-      // インベントリに追加（itemCounts か inventory 周りの実装に合わせて処理）
       if (typeof itemCounts === "object") {
         itemCounts[RARE_GATHER_ITEM_ID] = (itemCounts[RARE_GATHER_ITEM_ID] || 0) + 1;
       }

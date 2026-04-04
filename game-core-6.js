@@ -562,6 +562,11 @@ function craftTool(){
   consumeMaterials(recipe.cost);
   addCraftSkillExp("tool");
 
+  // ★ここがバグだった：成功時に倉庫へ入れていない
+  if (typeof addItemToInventory === "function") {
+    addItemToInventory(recipe.id, 1);
+  }
+
   appendLog(`${recipe.name} をクラフトした`);
 
   updateDisplay();
@@ -929,7 +934,7 @@ function refreshEquipSelects(){
     foodSel.innerHTML = "";
     if (COOKING_RECIPES && Array.isArray(COOKING_RECIPES.food)) {
       COOKING_RECIPES.food.forEach(r => {
-        // r.tier と craftTierSelect の値（"T1" 等）をそのまま比較（バグ修正済み）
+        // r.tier と craftTierSelect の値（"T1" 等）をそのまま比較
         if (tierFilter !== "all" && typeof r.tier !== "undefined") {
           const t = String(r.tier);
           if (t !== tierFilter) return;
