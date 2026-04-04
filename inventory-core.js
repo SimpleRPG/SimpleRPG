@@ -61,10 +61,16 @@ const cookedDrinks = window.cookedDrinks;
 // 汎用アイテム追加（クラフト・ドロップ用）
 // =======================
 
-const COOKING_DRINK_IDS = (typeof COOKING_RECIPES !== "undefined")
+// COOKING_RECIPES がまだ読み込まれていないケースでも落ちないようにガード
+const COOKING_DRINK_IDS = (typeof COOKING_RECIPES !== "undefined" &&
+                           COOKING_RECIPES &&
+                           Array.isArray(COOKING_RECIPES.drink))
   ? COOKING_RECIPES.drink.map(r => r.id)
   : [];
-const COOKING_FOOD_IDS = (typeof COOKING_RECIPES !== "undefined")
+
+const COOKING_FOOD_IDS = (typeof COOKING_RECIPES !== "undefined" &&
+                          COOKING_RECIPES &&
+                          Array.isArray(COOKING_RECIPES.food))
   ? COOKING_RECIPES.food.map(r => r.id)
   : [];
 

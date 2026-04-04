@@ -90,17 +90,62 @@ function removeItemForSell(category, itemId, amount){
     const have = potionCounts[itemId] || 0;
     if(have < amount) return false;
     potionCounts[itemId] = have - amount;
+  } else if(category === "materialBase"){
+    // 基本素材＋星屑: materials.xxx / itemCounts を利用
+    if (itemId === "wood" || itemId === "ore" || itemId === "herb" ||
+        itemId === "cloth" || itemId === "leather" || itemId === "water") {
+      if (!consumeMaterials(itemId, amount)) return false;
+    } else if (itemId === RARE_GATHER_ITEM_ID) {
+      if (typeof itemCounts !== "object") return false;
+      const have = itemCounts[itemId] || 0;
+      if (have < amount) return false;
+      itemCounts[itemId] = have - amount;
+    } else {
+      return false;
+    }
+  } else if(category === "materialInter"){
+    // 中間素材（intermediateMats）
+    if (typeof intermediateMats !== "object" || intermediateMats[itemId] == null) return false;
+    const have = intermediateMats[itemId] || 0;
+    if (have < amount) return false;
+    intermediateMats[itemId] = have - amount;
+  } else if(category === "cooking"){
+    // 料理（倉庫の cookedFoods / cookedDrinks）
+    if (typeof cookedFoods === "object" && cookedFoods[itemId]) {
+      const have = cookedFoods[itemId] || 0;
+      if (have < amount) return false;
+      cookedFoods[itemId] = have - amount;
+    } else if (typeof cookedDrinks === "object" && cookedDrinks[itemId]) {
+      const have = cookedDrinks[itemId] || 0;
+      if (have < amount) return false;
+      cookedDrinks[itemId] = have - amount;
+    } else {
+      return false;
+    }
   } else if(category === "material"){
-    // 基本素材: materials.xxx を利用
+    // 旧仕様との互換用（内部カテゴリとして来る可能性がある）
     if (itemId === "wood" || itemId === "ore" || itemId === "herb" ||
         itemId === "cloth" || itemId === "leather" || itemId === "water") {
       if (!consumeMaterials(itemId, amount)) return false;
     }
-    // 中間素材（intermediateMats を game-core 側で持っている前提）
+    else if (itemId === RARE_GATHER_ITEM_ID) {
+      if (typeof itemCounts !== "object") return false;
+      const have = itemCounts[itemId] || 0;
+      if (have < amount) return false;
+      itemCounts[itemId] = have - amount;
+    }
     else if (typeof intermediateMats === "object" && intermediateMats[itemId] != null) {
       const have = intermediateMats[itemId] || 0;
       if (have < amount) return false;
       intermediateMats[itemId] = have - amount;
+    } else if (typeof cookedFoods === "object" && cookedFoods[itemId]) {
+      const have = cookedFoods[itemId] || 0;
+      if (have < amount) return false;
+      cookedFoods[itemId] = have - amount;
+    } else if (typeof cookedDrinks === "object" && cookedDrinks[itemId]) {
+      const have = cookedDrinks[itemId] || 0;
+      if (have < amount) return false;
+      cookedDrinks[itemId] = have - amount;
     } else {
       return false;
     }
@@ -120,14 +165,40 @@ function getItemLabel(category, itemId){
   } else if(category === "potion"){
     const p = potions.find(x => x.id === itemId);
     return p ? p.name : itemId;
-  } else if(category === "material"){
+  } else if(category === "materialBase"){
     const baseNames = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
     if (baseNames[itemId]) return baseNames[itemId];
-
-    // 中間素材なら INTERMEDIATE_MATERIALS から表示名を拾う
+    if (itemId === RARE_GATHER_ITEM_ID) return RARE_GATHER_ITEM_NAME;
+    return itemId;
+  } else if(category === "materialInter"){
     if (Array.isArray(INTERMEDIATE_MATERIALS)) {
       const m = INTERMEDIATE_MATERIALS.find(m => m.id === itemId);
       if (m) return m.name;
+    }
+    return itemId;
+  } else if(category === "cooking"){
+    if (typeof COOKING_RECIPES !== "undefined") {
+      const fr = COOKING_RECIPES.food.find(r => r.id === itemId);
+      if (fr) return fr.name;
+      const dr = COOKING_RECIPES.drink.find(r => r.id === itemId);
+      if (dr) return dr.name;
+    }
+    return itemId;
+  } else if(category === "material"){
+    const baseNames = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
+    if (baseNames[itemId]) return baseNames[itemId];
+    if (itemId === RARE_GATHER_ITEM_ID) return RARE_GATHER_ITEM_NAME;
+
+    if (Array.isArray(INTERMEDIATE_MATERIALS)) {
+      const m = INTERMEDIATE_MATERIALS.find(m => m.id === itemId);
+      if (m) return m.name;
+    }
+
+    if (typeof COOKING_RECIPES !== "undefined") {
+      const fr = COOKING_RECIPES.food.find(r => r.id === itemId);
+      if (fr) return fr.name;
+      const dr = COOKING_RECIPES.drink.find(r => r.id === itemId);
+      if (dr) return dr.name;
     }
     return itemId;
   }
@@ -148,10 +219,10 @@ function doMarketSell(){
   const priceEl= document.getElementById("marketSellPrice");
   if(!catSel || !itemSel || !amtEl || !priceEl) return;
 
-  const category = catSel.value;
-  const itemId   = itemSel.value;
-  const amount   = parseInt(amtEl.value,10) || 0;
-  const price    = parseInt(priceEl.value,10) || 0;
+  const uiCategory = catSel.value; // weapon / armor / potion / materialBase / materialInter / cooking
+  const itemId     = itemSel.value;
+  const amount     = parseInt(amtEl.value,10) || 0;
+  const price      = parseInt(priceEl.value,10) || 0;
 
   if(!itemId){
     setLog("出品するアイテムを選んでください");
@@ -166,14 +237,20 @@ function doMarketSell(){
     return;
   }
 
-  if(!removeItemForSell(category, itemId, amount)){
+  // 市場内部カテゴリ（一覧表示・購入側のフィルタ用）
+  let categoryForMarket = uiCategory;
+  if (uiCategory === "materialBase" || uiCategory === "materialInter" || uiCategory === "cooking") {
+    categoryForMarket = "material";
+  }
+
+  if(!removeItemForSell(uiCategory, itemId, amount)){
     setLog("手持ちの個数が足りません");
     return;
   }
 
   const listing = {
     id: marketListingIdSeq++,
-    category,
+    category: categoryForMarket,
     itemId,
     price,       // 1個単価
     amount,      // 残り個数
@@ -181,7 +258,7 @@ function doMarketSell(){
   };
   marketListings.push(listing);
 
-  const label = getItemLabel(category, itemId);
+  const label = getItemLabel(uiCategory, itemId);
   setLog(`${label} を ${amount}個、1個${price}Gで出品した`);
   addMarketLog(`出品: ${label} x${amount} @${price}G`);
 
@@ -298,7 +375,6 @@ function addItemForBuy(category, itemId, amount){
   } else if(category === "armor"){
     armorCounts[itemId] = (armorCounts[itemId] || 0) + amount;
   } else if(category === "potion"){
-    // 修正: p.id ではなく itemId を利用（仕様そのままでバグだけ修正）
     potionCounts[itemId] = (potionCounts[itemId] || 0) + amount;
   } else if(category === "material"){
     // 基本素材は materials.xxx に追加
@@ -306,9 +382,25 @@ function addItemForBuy(category, itemId, amount){
         itemId === "cloth" || itemId === "leather" || itemId === "water") {
       addMaterials(itemId, amount);
     }
+    // 星屑の結晶
+    else if (itemId === RARE_GATHER_ITEM_ID) {
+      if (typeof itemCounts === "object") {
+        itemCounts[itemId] = (itemCounts[itemId] || 0) + amount;
+      }
+    }
     // 中間素材
     else if (typeof intermediateMats === "object" && intermediateMats[itemId] != null) {
       intermediateMats[itemId] = (intermediateMats[itemId] || 0) + amount;
+    }
+    // 料理（倉庫に入れる）
+    else if (typeof COOKING_RECIPES !== "undefined") {
+      const fr = COOKING_RECIPES.food.find(r => r.id === itemId);
+      const dr = COOKING_RECIPES.drink.find(r => r.id === itemId);
+      if (fr) {
+        window.cookedFoods[itemId] = (window.cookedFoods[itemId] || 0) + amount;
+      } else if (dr) {
+        window.cookedDrinks[itemId] = (window.cookedDrinks[itemId] || 0) + amount;
+      }
     }
   }
 }
@@ -445,10 +537,12 @@ function refreshMarketSellCandidates(){
 
   catSel.innerHTML = "";
   const cats = [
-    { value: "weapon",   label: "武器" },
-    { value: "armor",    label: "防具" },
-    { value: "potion",   label: "ポーション" },
-    { value: "material", label: "素材" }
+    { value: "weapon",       label: "武器" },
+    { value: "armor",        label: "防具" },
+    { value: "potion",       label: "ポーション" },
+    { value: "materialBase", label: "素材" },
+    { value: "materialInter",label: "中間素材" },
+    { value: "cooking",      label: "料理" }
   ];
   cats.forEach(c=>{
     const opt = document.createElement("option");
@@ -504,7 +598,7 @@ function refreshMarketSellItems(){
         appendOption(p.id, `${p.name}（所持${cnt}）`);
       }
     });
-  } else if (category === "material") {
+  } else if (category === "materialBase") {
     const mats = [
       { id:"wood",    name:"木",    count: getMatTotal("wood") },
       { id:"ore",     name:"鉱石",  count: getMatTotal("ore") },
@@ -514,22 +608,11 @@ function refreshMarketSellItems(){
       { id:"water",   name:"水",    count: getMatTotal("water") }
     ];
 
-    // 中間素材があれば追加
-    if (typeof intermediateMats === "object") {
-      if (Array.isArray(INTERMEDIATE_MATERIALS)) {
-        INTERMEDIATE_MATERIALS.forEach(m => {
-          const cnt = intermediateMats[m.id] || 0;
-          if (cnt > 0) {
-            mats.push({ id: m.id, name: m.name, count: cnt });
-          }
-        });
-      } else {
-        Object.keys(intermediateMats).forEach(id => {
-          const cnt = intermediateMats[id] || 0;
-          if (cnt > 0) {
-            mats.push({ id, name: getItemLabel("material", id), count: cnt });
-          }
-        });
+    // 星屑の結晶
+    if (typeof itemCounts === "object") {
+      const starCount = itemCounts[RARE_GATHER_ITEM_ID] || 0;
+      if (starCount > 0) {
+        mats.push({ id: RARE_GATHER_ITEM_ID, name: RARE_GATHER_ITEM_NAME, count: starCount });
       }
     }
 
@@ -538,6 +621,45 @@ function refreshMarketSellItems(){
         appendOption(m.id, `${m.name}（所持${m.count}）`);
       }
     });
+  } else if (category === "materialInter") {
+    if (typeof intermediateMats === "object") {
+      if (Array.isArray(INTERMEDIATE_MATERIALS)) {
+        INTERMEDIATE_MATERIALS.forEach(m => {
+          const cnt = intermediateMats[m.id] || 0;
+          if (cnt > 0) {
+            appendOption(m.id, `${m.name}（所持${cnt}）`);
+          }
+        });
+      } else {
+        Object.keys(intermediateMats).forEach(id => {
+          const cnt = intermediateMats[id] || 0;
+          if (cnt > 0) {
+            appendOption(id, `${getItemLabel("materialInter", id)}（所持${cnt}）`);
+          }
+        });
+      }
+    }
+  } else if (category === "cooking") {
+    if (typeof COOKING_RECIPES !== "undefined") {
+      const foods  = window.cookedFoods  || {};
+      const drinks = window.cookedDrinks || {};
+
+      // 食べ物（レシピ基準で走査）
+      COOKING_RECIPES.food.forEach(r => {
+        const id  = r.id;
+        const cnt = foods[id] || 0;
+        if (cnt <= 0) return;
+        appendOption(id, `${r.name}（所持${cnt}）`);
+      });
+
+      // 飲み物
+      COOKING_RECIPES.drink.forEach(r => {
+        const id  = r.id;
+        const cnt = drinks[id] || 0;
+        if (cnt <= 0) return;
+        appendOption(id, `${r.name}（所持${cnt}）`);
+      });
+    }
   }
 
   if (!itemSel.options.length) {
@@ -613,3 +735,29 @@ function filterMarketBuyListByCategory(cat){
   const filtered = marketBuyStacksCache.filter(st => st.category === cat);
   renderMarketBuyList(filtered);
 }
+
+// =======================
+// 市場タブ表示時の更新フック
+// =======================
+window.addEventListener("DOMContentLoaded", () => {
+  const tabSell = document.getElementById("marketTabSell");
+  const tabBuy  = document.getElementById("marketTabBuy");
+
+  if (tabSell) {
+    tabSell.addEventListener("click", () => {
+      // 出品タブを開いたときに候補を更新
+      if (typeof refreshMarketSellCandidates === "function") {
+        refreshMarketSellCandidates();
+      }
+    });
+  }
+
+  if (tabBuy) {
+    tabBuy.addEventListener("click", () => {
+      // 購入タブを開いたときに一覧を更新
+      if (typeof refreshMarketBuyList === "function") {
+        refreshMarketBuyList();
+      }
+    });
+  }
+});
