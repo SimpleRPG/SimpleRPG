@@ -49,14 +49,20 @@ function refreshWarehouseUI() {
     const p = potions.find(x => x.id === id);
     return p ? p.name : id;
   }
+  function getWeaponMaster(id) {
+    if (!Array.isArray(weapons)) return null;
+    return weapons.find(x => x.id === id) || null;
+  }
   function getWeaponName(id) {
-    if (!Array.isArray(weapons)) return id;
-    const w = weapons.find(x => x.id === id);
+    const w = getWeaponMaster(id);
     return w ? w.name : id;
   }
+  function getArmorMaster(id) {
+    if (!Array.isArray(armors)) return null;
+    return armors.find(x => x.id === id) || null;
+  }
   function getArmorName(id) {
-    if (!Array.isArray(armors)) return id;
-    const a = armors.find(x => x.id === id);
+    const a = getArmorMaster(id);
     return a ? a.name : id;
   }
   function getFoodName(id) {
@@ -76,6 +82,80 @@ function refreshWarehouseUI() {
     if (id === "bomb_T2") return "爆弾T2";
     if (id === "bomb_T3") return "爆弾T3";
     return id;
+  }
+
+  // インスタンス一覧から「そのIDの代表ラベル」を作る（品質/強化/耐久を反映）
+  function getWeaponInstanceLabel(id) {
+    if (!Array.isArray(window.weaponInstances)) {
+      return getWeaponName(id);
+    }
+    const base = getWeaponMaster(id);
+    const name = base ? base.name : id;
+
+    const insts = window.weaponInstances.filter(w => w.id === id);
+    if (!insts.length) return name;
+
+    // 今は代表として「最も良い1本」（quality→enhance→durability降順）を表示ラベルに使う
+    insts.sort((a, b) => {
+      const qa = a.quality || 0;
+      const qb = b.quality || 0;
+      if (qa !== qb) return qb - qa;
+      const ea = a.enhance || 0;
+      const eb = b.enhance || 0;
+      if (ea !== eb) return eb - ea;
+      const da = a.durability ?? MAX_DURABILITY;
+      const db = b.durability ?? MAX_DURABILITY;
+      return db - da;
+    });
+    const best = insts[0];
+
+    let qLabel = "";
+    if (best.quality === 2) qLabel = "【傑作】";
+    else if (best.quality === 1) qLabel = "【良品】";
+
+    const enh = best.enhance || 0;
+    const enhLabel = enh > 0 ? `+${enh}` : "";
+
+    const dur = best.durability ?? MAX_DURABILITY;
+    const durLabel = `耐久${dur}`;
+
+    return `${qLabel}${name}${enhLabel ? " " + enhLabel : ""} ${durLabel}`;
+  }
+
+  function getArmorInstanceLabel(id) {
+    if (!Array.isArray(window.armorInstances)) {
+      return getArmorName(id);
+    }
+    const base = getArmorMaster(id);
+    const name = base ? base.name : id;
+
+    const insts = window.armorInstances.filter(a => a.id === id);
+    if (!insts.length) return name;
+
+    insts.sort((a, b) => {
+      const qa = a.quality || 0;
+      const qb = b.quality || 0;
+      if (qa !== qb) return qb - qa;
+      const ea = a.enhance || 0;
+      const eb = b.enhance || 0;
+      if (ea !== eb) return eb - ea;
+      const da = a.durability ?? MAX_DURABILITY;
+      const db = b.durability ?? MAX_DURABILITY;
+      return db - da;
+    });
+    const best = insts[0];
+
+    let qLabel = "";
+    if (best.quality === 2) qLabel = "【傑作】";
+    else if (best.quality === 1) qLabel = "【良品】";
+
+    const enh = best.enhance || 0;
+    const enhLabel = enh > 0 ? `+${enh}` : "";
+
+    const dur = best.durability ?? MAX_DURABILITY;
+    const durLabel = `耐久${dur}`;
+
+    return `${qLabel}${name}${enhLabel ? " " + enhLabel : ""} ${durLabel}`;
   }
 
   // =======================
@@ -163,8 +243,34 @@ function refreshWarehouseUI() {
     Object.keys(carryWeapons).forEach(id => {
       const cnt = carryWeapons[id] || 0;
       if (cnt <= 0) return;
-      const name = getWeaponName(id);
-      const row = createRow(name, cnt, [
+
+      const label = getWeaponInstanceLabel(id);
+      const row = createRow(label, cnt, [
+        {
+          label: "装備",
+          onClick: () => {
+            // ★インスタンス方式での装備
+            if (Array.isArray(window.weaponInstances)) {
+              // そのIDの中でとりあえず最初の1本を装備（UIから個別選択するのは別実装）
+              const idx = window.weaponInstances.findIndex(w => w.id === id);
+              if (idx >= 0) {
+                window.equippedWeaponIndex = idx;
+                window.equippedWeaponId    = id;
+                appendLog("武器を装備した");
+                if (typeof recalcStats === "function") {
+                  recalcStats();
+                } else if (typeof updateDisplay === "function") {
+                  updateDisplay();
+                }
+              }
+            } else if (typeof equipWeapon === "function") {
+              // 旧仕様フォールバック
+              equippedWeaponId = id;
+              appendLog("武器を装備した");
+              if (typeof updateDisplay === "function") updateDisplay();
+            }
+          }
+        },
         {
           label: "↓倉庫へ",
           onClick: () => {
@@ -183,8 +289,32 @@ function refreshWarehouseUI() {
     Object.keys(carryArmors).forEach(id => {
       const cnt = carryArmors[id] || 0;
       if (cnt <= 0) return;
-      const name = getArmorName(id);
-      const row = createRow(name, cnt, [
+
+      const label = getArmorInstanceLabel(id);
+      const row = createRow(label, cnt, [
+        {
+          label: "装備",
+          onClick: () => {
+            if (Array.isArray(window.armorInstances)) {
+              const idx = window.armorInstances.findIndex(a => a.id === id);
+              if (idx >= 0) {
+                window.equippedArmorIndex = idx;
+                window.equippedArmorId    = id;
+                appendLog("防具を装備した");
+                if (typeof recalcStats === "function") {
+                  recalcStats();
+                } else if (typeof updateDisplay === "function") {
+                  updateDisplay();
+                }
+              }
+            } else if (typeof equipArmor === "function") {
+              // 旧仕様フォールバック
+              equippedArmorId = id;
+              appendLog("防具を装備した");
+              if (typeof updateDisplay === "function") updateDisplay();
+            }
+          }
+        },
         {
           label: "↓倉庫へ",
           onClick: () => {
@@ -321,13 +451,27 @@ function refreshWarehouseUI() {
     Object.keys(weaponCounts).forEach(id => {
       const cnt = weaponCounts[id] || 0;
       if (cnt <= 0) return;
-      const name = getWeaponName(id);
-      const row = createRow(name, cnt, [
+
+      const label = getWeaponInstanceLabel(id);
+      const row = createRow(label, cnt, [
         {
           label: "装備",
           onClick: () => {
             if (typeof equipWeaponFromWarehouse === "function") {
               equipWeaponFromWarehouse(id);
+            } else if (Array.isArray(window.weaponInstances)) {
+              // 簡易フォールバック：倉庫側からも代表1本を装備
+              const idx = window.weaponInstances.findIndex(w => w.id === id);
+              if (idx >= 0) {
+                window.equippedWeaponIndex = idx;
+                window.equippedWeaponId    = id;
+                appendLog("武器を装備した");
+                if (typeof recalcStats === "function") {
+                  recalcStats();
+                } else if (typeof updateDisplay === "function") {
+                  updateDisplay();
+                }
+              }
             }
           }
         },
@@ -349,13 +493,26 @@ function refreshWarehouseUI() {
     Object.keys(armorCounts).forEach(id => {
       const cnt = armorCounts[id] || 0;
       if (cnt <= 0) return;
-      const name = getArmorName(id);
-      const row = createRow(name, cnt, [
+
+      const label = getArmorInstanceLabel(id);
+      const row = createRow(label, cnt, [
         {
           label: "装備",
           onClick: () => {
             if (typeof equipArmorFromWarehouse === "function") {
               equipArmorFromWarehouse(id);
+            } else if (Array.isArray(window.armorInstances)) {
+              const idx = window.armorInstances.findIndex(a => a.id === id);
+              if (idx >= 0) {
+                window.equippedArmorIndex = idx;
+                window.equippedArmorId    = id;
+                appendLog("防具を装備した");
+                if (typeof recalcStats === "function") {
+                  recalcStats();
+                } else if (typeof updateDisplay === "function") {
+                  updateDisplay();
+                }
+              }
             }
           }
         },

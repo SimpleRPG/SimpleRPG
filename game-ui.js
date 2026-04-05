@@ -114,6 +114,23 @@ function updateCraftMatDetailText() {
   });
   area.textContent = lines.join("\n");
 
+  // ▼ ここから追加: 中間素材の在庫一覧も表示
+  if (typeof window.intermediateMats !== "undefined" &&
+      Array.isArray(window.INTERMEDIATE_MATERIALS || INTERMEDIATE_MATERIALS)) {
+
+    const mats = window.intermediateMats || {};
+    const src  = window.INTERMEDIATE_MATERIALS || INTERMEDIATE_MATERIALS;
+
+    const interLines = src.map(m => {
+      const have = mats[m.id] || 0;
+      return `${m.name}: ${have}`;
+    });
+
+    if (interLines.length > 0) {
+      area.textContent += "\n--- 中間素材 ---\n" + interLines.join("\n");
+    }
+  }
+
   let labelText = "所持素材：-";
 
   if (window.lastGatherInfo && window.lastGatherInfo.baseKey) {
@@ -204,6 +221,65 @@ function initMarketOrderItemSelect() {
       addOpt(`material:${r.id}`, `飲み物: ${r.name}`);
     });
   }
+}
+
+// ★ 追加: 今アクティブなクラフトカテゴリのコスト表示を更新する共通ヘルパ
+function refreshCurrentCraftCost() {
+  const infoEl = document.getElementById("craftCostInfo");
+  if (!infoEl) return;
+
+  const activeCatBtn = document.querySelector(".craft-cat-tab.active");
+  const cat = activeCatBtn ? activeCatBtn.dataset.cat : "weapon";
+
+  if (cat === "weapon") {
+    const sel = document.getElementById("weaponSelect");
+    if (sel && sel.value) {
+      updateCraftCostInfo("weapon", sel.value);
+      return;
+    }
+  } else if (cat === "armor") {
+    const sel = document.getElementById("armorSelect");
+    if (sel && sel.value) {
+      updateCraftCostInfo("armor", sel.value);
+      return;
+    }
+  } else if (cat === "potion") {
+    const sel = document.getElementById("potionSelect");
+    if (sel && sel.value) {
+      updateCraftCostInfo("potion", sel.value);
+      return;
+    }
+  } else if (cat === "tool") {
+    const sel = document.getElementById("toolSelect");
+    if (sel && sel.value) {
+      updateCraftCostInfo("tool", sel.value);
+      return;
+    }
+  } else if (cat === "material") {
+    const sel = document.getElementById("intermediateSelect");
+    if (sel && sel.value) {
+      updateCraftCostInfo("material", sel.value);
+      return;
+    }
+  } else if (cat === "cooking") {
+    const activeSubTab = document.querySelector(".cook-sub-tab.active");
+    const sub = activeSubTab ? activeSubTab.dataset.sub : "food";
+    const foodSel  = document.getElementById("foodSelect");
+    const drinkSel = document.getElementById("drinkSelect");
+    if (sub === "drink") {
+      if (drinkSel && drinkSel.value) {
+        updateCraftCostInfo("cookingDrink", drinkSel.value);
+        return;
+      }
+    } else {
+      if (foodSel && foodSel.value) {
+        updateCraftCostInfo("cookingFood", foodSel.value);
+        return;
+      }
+    }
+  }
+
+  infoEl.textContent = "必要素材：-";
 }
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -726,9 +802,13 @@ window.addEventListener("DOMContentLoaded", () => {
       if (!id) return;
       if (typeof craftIntermediate === "function") {
         craftIntermediate(id);
-        updateIntermediateInfo();
         updateGatherMatDetailText();
         updateCraftMatDetailText();
+        if (typeof refreshEquipSelects === "function") {
+          refreshEquipSelects();
+        }
+        // ★ 最後に必ず、現在のクラフトカテゴリに応じたコスト表示を上書き
+        refreshCurrentCraftCost();
       }
     });
   }
@@ -872,6 +952,7 @@ window.addEventListener("DOMContentLoaded", () => {
       craftWeapon();
       updateGatherMatDetailText();
       updateCraftMatDetailText();
+      refreshCurrentCraftCost();
     });
   }
 
@@ -885,6 +966,7 @@ window.addEventListener("DOMContentLoaded", () => {
       craftArmor();
       updateGatherMatDetailText();
       updateCraftMatDetailText();
+      refreshCurrentCraftCost();
     });
   }
 
@@ -898,6 +980,7 @@ window.addEventListener("DOMContentLoaded", () => {
       craftPotion();
       updateGatherMatDetailText();
       updateCraftMatDetailText();
+      refreshCurrentCraftCost();
     });
   }
 
@@ -911,6 +994,7 @@ window.addEventListener("DOMContentLoaded", () => {
       craftTool();
       updateGatherMatDetailText();
       updateCraftMatDetailText();
+      refreshCurrentCraftCost();
     });
   }
 
@@ -920,66 +1004,8 @@ window.addEventListener("DOMContentLoaded", () => {
       // ティア変更時に全セレクトを作り直す
       refreshEquipSelects();
 
-      const infoEl = document.getElementById("craftCostInfo");
-      const activeCatBtn = document.querySelector(".craft-cat-tab.active");
-      const activeCat = activeCatBtn ? activeCatBtn.dataset.cat : "weapon";
-
-      if (activeCat === "weapon") {
-        const sel = document.getElementById("weaponSelect");
-        if (sel && sel.value) {
-          updateCraftCostInfo("weapon", sel.value);
-        } else if (infoEl) {
-          infoEl.textContent = "必要素材：-";
-        }
-      } else if (activeCat === "armor") {
-        const sel = document.getElementById("armorSelect");
-        if (sel && sel.value) {
-          updateCraftCostInfo("armor", sel.value);
-        } else if (infoEl) {
-          infoEl.textContent = "必要素材：-";
-        }
-      } else if (activeCat === "potion") {
-        const sel = document.getElementById("potionSelect");
-        if (sel && sel.value) {
-          updateCraftCostInfo("potion", sel.value);
-        } else if (infoEl) {
-          infoEl.textContent = "必要素材：-";
-        }
-      } else if (activeCat === "tool") {
-        const sel = document.getElementById("toolSelect");
-        if (sel && sel.value) {
-          updateCraftCostInfo("tool", sel.value);
-        } else if (infoEl) {
-          infoEl.textContent = "必要素材：-";
-        }
-      } else if (activeCat === "material") {
-        const sel = document.getElementById("intermediateSelect");
-        if (sel && sel.value) {
-          updateCraftCostInfo("material", sel.value);
-        } else if (infoEl) {
-          infoEl.textContent = "必要素材：-";
-        }
-      } else if (activeCat === "cooking") {
-        // ティア変更時もアクティブな料理サブタブに合わせて再表示
-        const activeSubTab = document.querySelector(".cook-sub-tab.active");
-        const sub = activeSubTab ? activeSubTab.dataset.sub : "food";
-        const foodSel  = document.getElementById("foodSelect");
-        const drinkSel = document.getElementById("drinkSelect");
-
-        if (sub === "drink") {
-          if (drinkSel && drinkSel.value) {
-            updateCraftCostInfo("cookingDrink", drinkSel.value);
-          } else if (infoEl) {
-            infoEl.textContent = "必要素材：-";
-          }
-        } else {
-          if (foodSel && foodSel.value) {
-            updateCraftCostInfo("cookingFood", foodSel.value);
-          } else if (infoEl) {
-            infoEl.textContent = "必要素材：-";
-          }
-        }
-      }
+      // ティア変更後も、アクティブなカテゴリ＋選択レシピで表示を統一
+      refreshCurrentCraftCost();
     });
   }
 

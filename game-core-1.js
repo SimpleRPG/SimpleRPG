@@ -8,6 +8,9 @@
 // レベルアップ用経験値ベース（Lvごとの必要値は addExp/doRebirth 側で利用）
 const BASE_EXP_PER_LEVEL = 100;
 
+// ★ 装備耐久（武器・防具共通）
+const MAX_DURABILITY = 3;
+
 // =======================
 // 基本ステータス
 // =======================
@@ -93,14 +96,23 @@ let weaponCounts = {};
 let armorCounts  = {};
 let potionCounts = {};
 
+// ★ 1本ごとのインスタンス（品質/強化/耐久を持たせる）
+let weaponInstances = []; // { id, quality, enhance, durability }
+let armorInstances  = [];
+
+// 従来の「どのIDを装備しているか」は互換用に残す
 let equippedWeaponId = null;
 let equippedArmorId  = null;
+
+// ★ どのインスタンスを装備しているか（indexで保持）
+let equippedWeaponIndex = null; // weaponInstances の index
+let equippedArmorIndex  = null; // armorInstances の index
 
 // =======================
 // 素材・中間素材
 // =======================
 
-// ★ ティア付き基本素材（T1/T2/T3）
+// ★ ティア付き基本素材（T1/T3）
 let materials = {
   wood:    { t1: 0, t2: 0, t3: 0 },
   ore:     { t1: 0, t2: 0, t3: 0 },
@@ -118,7 +130,9 @@ function getMatTotal(key) {
 }
 
 // 中間素材
-let intermediateMats = {};
+// グローバル共有のため window 経由に統一
+window.intermediateMats = window.intermediateMats || {};
+let intermediateMats = window.intermediateMats;
 
 // =======================
 // 採取・クラフトスキル
@@ -190,40 +204,84 @@ function recalcStats() {
   let weaponScaleStr = 0;
   let weaponScaleInt = 0;
   let weaponEnhance = 0;
+  let weaponQuality = 0;   // ★ 追加: 武器品質
   let armorDef = 0;
   let armorScaleVit = 0;
   let armorBonusDex = 0;
   let armorEnhance = 0;
+  let armorQuality = 0;    // ★ 追加: 防具品質
 
-  if (equippedWeaponId) {
+  // ★ まずはインスタンス装備を優先して参照
+  if (equippedWeaponIndex != null) {
+    const inst = weaponInstances[equippedWeaponIndex];
+    if (inst) {
+      const w = weapons.find(x => x.id === inst.id);
+      if (w) {
+        weaponAtk       = w.atk || 0;
+        weaponScaleStr  = w.scaleStr || 0;
+        weaponScaleInt  = w.scaleInt || 0;
+        weaponEnhance   = inst.enhance != null ? inst.enhance : (w.enhance || 0);
+        weaponQuality   = inst.quality || 0; // ★ 追加
+      }
+    }
+  } else if (equippedWeaponId) {
+    // 互換用: まだインスタンスを使っていない装備は従来どおりIDから見る
     const w = weapons.find(x => x.id === equippedWeaponId);
     if (w) {
       weaponAtk       = w.atk || 0;
       weaponScaleStr  = w.scaleStr || 0;
       weaponScaleInt  = w.scaleInt || 0;
       weaponEnhance   = w.enhance || 0;
+      weaponQuality   = 0;        // ★ 旧仕様は品質なし（通常品扱い）
     }
   }
 
-  if (equippedArmorId) {
+  if (equippedArmorIndex != null) {
+    const inst = armorInstances[equippedArmorIndex];
+    if (inst) {
+      const a = armors.find(x => x.id === inst.id);
+      if (a) {
+        armorDef       = a.def || 0;
+        armorScaleVit  = a.scaleVit || 0;
+        armorBonusDex  = a.bonusDex || 0;
+        armorEnhance   = inst.enhance != null ? inst.enhance : (a.enhance || 0);
+        armorQuality   = inst.quality || 0; // ★ 追加
+      }
+    }
+  } else if (equippedArmorId) {
     const a = armors.find(x => x.id === equippedArmorId);
     if (a) {
       armorDef       = a.def || 0;
       armorScaleVit  = a.scaleVit || 0;
       armorBonusDex  = a.bonusDex || 0;
       armorEnhance   = a.enhance || 0;
+      armorQuality   = 0;        // ★ 旧仕様は品質なし
     }
   }
 
   // 強化補正（1段階あたり+5%想定）
-  const WEAPON_ENH_RATE = 0.05;
-  const ARMOR_ENH_RATE  = 0.05;
+  const WEAPON_ENH_RATE   = 0.05;
+  const ARMOR_ENH_RATE    = 0.05;
+
+  // ★ 品質補正（良品10% / 傑作20%）
+  const QUALITY_GOOD_RATE = 0.10; // quality=1
+  const QUALITY_EX_RATE   = 0.20; // quality=2
 
   const weaponEnhRate = 1 + weaponEnhance * WEAPON_ENH_RATE;
   const armorEnhRate  = 1 + armorEnhance * ARMOR_ENH_RATE;
 
-  const enhancedWeaponAtk = Math.floor(weaponAtk * weaponEnhRate);
-  const enhancedArmorDef  = Math.floor(armorDef * armorEnhRate);
+  // ★ 品質倍率を計算
+  let weaponQualityRate = 1.0;
+  if (weaponQuality === 1) weaponQualityRate += QUALITY_GOOD_RATE;
+  else if (weaponQuality === 2) weaponQualityRate += QUALITY_EX_RATE;
+
+  let armorQualityRate = 1.0;
+  if (armorQuality === 1) armorQualityRate += QUALITY_GOOD_RATE;
+  else if (armorQuality === 2) armorQualityRate += QUALITY_EX_RATE;
+
+  // 強化→品質の順で乗算（順序を入れ替えても結果は同じ）
+  const enhancedWeaponAtk = Math.floor(weaponAtk * weaponEnhRate * weaponQualityRate);
+  const enhancedArmorDef  = Math.floor(armorDef * armorEnhRate  * armorQualityRate);
 
   const atkFromStr = Math.floor(STR * 0.5);
   const atkFromDex = Math.floor(DEX_ * 0.3);
@@ -273,10 +331,19 @@ function initWeaponsAndArmors() {
 
   equippedWeaponId = null;
   equippedArmorId  = null;
+
+  // ★ インスタンスと装備インデックスも初期化
+  weaponInstances = [];
+  armorInstances  = [];
+  equippedWeaponIndex = null;
+  equippedArmorIndex  = null;
 }
 
 function initIntermediateMats() {
-  intermediateMats = {};
+  // window とローカル両方をクリアして同期させる
+  window.intermediateMats = {};
+  intermediateMats = window.intermediateMats;
+
   if (Array.isArray(INTERMEDIATE_MATERIALS)) {
     INTERMEDIATE_MATERIALS.forEach(m => {
       intermediateMats[m.id] = 0;
@@ -420,14 +487,41 @@ function updateDisplay() {
 
   if (jobNameEl) jobNameEl.textContent = getJobName();
 
+  // ★ 装備名表示もインスタンス優先（見た目仕様は変えない）
   if (eqWpnName) {
-    const w = weapons.find(x => x.id === equippedWeaponId);
-    eqWpnName.textContent = w ? w.name : "なし";
+    let nameText = "なし";
+    if (equippedWeaponIndex != null) {
+      const inst = weaponInstances[equippedWeaponIndex];
+      if (inst) {
+        const w = weapons.find(x => x.id === inst.id);
+        if (w) {
+          nameText = w.name;
+        }
+      }
+    } else if (equippedWeaponId) {
+      const w = weapons.find(x => x.id === equippedWeaponId);
+      if (w) nameText = w.name;
+    }
+    eqWpnName.textContent = nameText;
   }
+
   if (eqArmName) {
-    const a = armors.find(x => x.id === equippedArmorId);
-    eqArmName.textContent = a ? a.name : "なし";
+    let nameText = "なし";
+    if (equippedArmorIndex != null) {
+      const inst = armorInstances[equippedArmorIndex];
+      if (inst) {
+        const a = armors.find(x => x.id === inst.id);
+        if (a) {
+          nameText = a.name;
+        }
+      }
+    } else if (equippedArmorId) {
+      const a = armors.find(x => x.id === equippedArmorId);
+      if (a) nameText = a.name;
+    }
+    eqArmName.textContent = nameText;
   }
+
   if (atkTotalEl) atkTotalEl.textContent = atkTotal;
   if (defTotalEl) defTotalEl.textContent = defTotal;
 
@@ -563,6 +657,8 @@ function equipWeaponFromWarehouse(weaponId) {
   }
   equippedWeaponId = weaponId;
 
+  // ★ インスタンス装備は「どの1本か」を別UIで選ばせる想定なので、ここでは index は触らない
+
   appendLog("武器を装備した。");
   recalcStats();
 
@@ -603,6 +699,8 @@ function equipArmorFromWarehouse(armorId) {
     carryArmors[armorId] = (carryArmors[armorId] || 0) + 1;
   }
   equippedArmorId = armorId;
+
+  // ★ ここも index は触らない（どの1枚かは別UIで選ぶ）
 
   appendLog("防具を装備した。");
   recalcStats();

@@ -39,7 +39,8 @@ function getMatTotal(key) {
 }
 
 // 合計から指定量を減らす（T1→T2→T3 の順で消費）
-function consumeMaterials(key, amount) {
+// ※ゲーム全体の consumeMaterials(cost) と衝突しないように、市場専用の別名にする
+function consumeBaseMaterials(key, amount) {
   if (typeof materials !== "object") return false;
   const m = materials[key];
   if (!m) return false;
@@ -61,7 +62,7 @@ function consumeMaterials(key, amount) {
 }
 
 // 指定量を追加（基本は T1 に入れる）
-function addMaterials(key, amount) {
+function addBaseMaterials(key, amount) {
   if (typeof materials !== "object") return;
   const m = materials[key];
   if (!m) return;
@@ -94,7 +95,7 @@ function removeItemForSell(category, itemId, amount){
     // 基本素材＋星屑: materials.xxx / itemCounts を利用
     if (itemId === "wood" || itemId === "ore" || itemId === "herb" ||
         itemId === "cloth" || itemId === "leather" || itemId === "water") {
-      if (!consumeMaterials(itemId, amount)) return false;
+      if (!consumeBaseMaterials(itemId, amount)) return false;
     } else if (itemId === RARE_GATHER_ITEM_ID) {
       if (typeof itemCounts !== "object") return false;
       const have = itemCounts[itemId] || 0;
@@ -126,7 +127,7 @@ function removeItemForSell(category, itemId, amount){
     // 旧仕様との互換用（内部カテゴリとして来る可能性がある）
     if (itemId === "wood" || itemId === "ore" || itemId === "herb" ||
         itemId === "cloth" || itemId === "leather" || itemId === "water") {
-      if (!consumeMaterials(itemId, amount)) return false;
+      if (!consumeBaseMaterials(itemId, amount)) return false;
     }
     else if (itemId === RARE_GATHER_ITEM_ID) {
       if (typeof itemCounts !== "object") return false;
@@ -380,7 +381,7 @@ function addItemForBuy(category, itemId, amount){
     // 基本素材は materials.xxx に追加
     if (itemId === "wood" || itemId === "ore" || itemId === "herb" ||
         itemId === "cloth" || itemId === "leather" || itemId === "water") {
-      addMaterials(itemId, amount);
+      addBaseMaterials(itemId, amount);
     }
     // 星屑の結晶
     else if (itemId === RARE_GATHER_ITEM_ID) {

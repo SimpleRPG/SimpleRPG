@@ -23,7 +23,7 @@ const CARRY_LIMIT = {
 window.carryPotions = window.carryPotions || {}; // { potionId: count }
 window.carryFoods   = window.carryFoods   || {}; // { foodId:   count }
 window.carryDrinks  = window.carryDrinks  || {}; // { drinkId:  count }
-window.carryWeapons = window.carryWeapons || {}; // { weaponId: count }
+window.carryWeapons = window.carryWeapons || {}; // { weaponId: count } // ★ IDごとの本数カウンタ（インスタンスとは別）
 window.carryArmors  = window.carryArmors  || {}; // { armorId:  count }
 window.carryTools   = window.carryTools   || {}; // { toolId:   count } // 現状は bomb_T1 などを想定
 
@@ -108,20 +108,44 @@ function addItemToInventory(itemId, amount) {
     }
   }
 
-  // 4. 武器 → weaponCounts
+  // 4. 武器 → weaponCounts + weaponInstances（品質・強化・耐久初期値で追加）
   if (typeof weaponCounts !== "undefined" && Array.isArray(weapons)) {
     const w = weapons.find(x => x.id === itemId);
     if (w) {
+      // 既存仕様: 倉庫本数カウンタ
       weaponCounts[itemId] = (weaponCounts[itemId] || 0) + amount;
+      // 新仕様: インスタンスも追加（品質0, 強化はマスタ基準, 耐久MAX）
+      if (Array.isArray(window.weaponInstances) && typeof MAX_DURABILITY !== "undefined") {
+        const baseEnh = w.enhance || 0;
+        for (let i = 0; i < amount; i++) {
+          window.weaponInstances.push({
+            id: itemId,
+            quality: 0,
+            enhance: baseEnh,
+            durability: MAX_DURABILITY
+          });
+        }
+      }
       return;
     }
   }
 
-  // 5. 防具 → armorCounts
+  // 5. 防具 → armorCounts + armorInstances
   if (typeof armorCounts !== "undefined" && Array.isArray(armors)) {
     const a = armors.find(x => x.id === itemId);
     if (a) {
       armorCounts[itemId] = (armorCounts[itemId] || 0) + amount;
+      if (Array.isArray(window.armorInstances) && typeof MAX_DURABILITY !== "undefined") {
+        const baseEnh = a.enhance || 0;
+        for (let i = 0; i < amount; i++) {
+          window.armorInstances.push({
+            id: itemId,
+            quality: 0,
+            enhance: baseEnh,
+            durability: MAX_DURABILITY
+          });
+        }
+      }
       return;
     }
   }
@@ -237,6 +261,8 @@ function moveDrinkToWarehouse(id, amount) {
 }
 
 // 武器
+// ★ ここからは weaponInstances / armorInstances を壊さないように、
+//    IDごとの本数カウンタだけを動かす（インスタンスの「持ち歩き状態」は別管理 or 今は区別しない）。
 function moveWeaponToCarry(id, amount) {
   amount = Math.max(1, amount | 0);
   const have = weaponCounts[id] || 0;

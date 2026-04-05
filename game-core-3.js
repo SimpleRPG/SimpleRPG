@@ -665,7 +665,7 @@ function startBattleCommon(enemy, isBoss) {
   setBattleCommandVisible(true);
   setExploreUIVisible(false);
 
-if (typeof refreshBattleItemSelect === "function") {
+  if (typeof refreshBattleItemSelect === "function") {
     refreshBattleItemSelect();
   }
 
@@ -800,20 +800,71 @@ function enemyTurn() {
       hp = 0;
       appendLog("あなたは倒れてしまった…");
 
+      // =======================
+      // 死亡時処理（耐久3＆0で消滅）
+      // =======================
+
       window.isExploring   = false;
       window.exploringArea = "field";
 
+      // HP/MP/SP/ペットを全回復
       hp    = hpMax;
       mp    = mpMax;
       sp    = spMax;
       petHp = petHpMax;
 
+      // 所持ゴールド半減
       money = Math.floor(money / 2);
 
       let brokeSomething = false;
 
       function reduceDurabilityOnEquip() {
-        if (equippedWeaponId && Array.isArray(weapons)) {
+        // 武器インスタンス側
+        if (typeof equippedWeaponIndex === "number" &&
+            Array.isArray(window.weaponInstances)) {
+          const idx = equippedWeaponIndex;
+          const inst = window.weaponInstances[idx];
+          if (inst) {
+            inst.durability = Math.max(0, (inst.durability ?? MAX_DURABILITY) - 1);
+            if (inst.durability <= 0) {
+              const wName = (weapons.find(w => w.id === inst.id)?.name) || inst.id;
+              appendLog(`${wName} は壊れて消滅した…`);
+              const cnt = weaponCounts[inst.id] || 0;
+              weaponCounts[inst.id] = Math.max(0, cnt - 1);
+              window.weaponInstances.splice(idx, 1);
+              equippedWeaponIndex = null;
+              equippedWeaponId    = null;
+              brokeSomething = true;
+            } else {
+              brokeSomething = true;
+            }
+          }
+        }
+
+        // 防具インスタンス側
+        if (typeof equippedArmorIndex === "number" &&
+            Array.isArray(window.armorInstances)) {
+          const idx = equippedArmorIndex;
+          const inst = window.armorInstances[idx];
+          if (inst) {
+            inst.durability = Math.max(0, (inst.durability ?? MAX_DURABILITY) - 1);
+            if (inst.durability <= 0) {
+              const aName = (armors.find(a => a.id === inst.id)?.name) || inst.id;
+              appendLog(`${aName} は壊れて消滅した…`);
+              const cnt = armorCounts[inst.id] || 0;
+              armorCounts[inst.id] = Math.max(0, cnt - 1);
+              window.armorInstances.splice(idx, 1);
+              equippedArmorIndex = null;
+              equippedArmorId    = null;
+              brokeSomething = true;
+            } else {
+              brokeSomething = true;
+            }
+          }
+        }
+
+        // 旧仕様で durability をマスタに持っていた場合へのフォールバック
+        if (!Array.isArray(window.weaponInstances) && equippedWeaponId && Array.isArray(weapons)) {
           const w = weapons.find(x => x.id === equippedWeaponId);
           if (w && typeof w.durability === "number") {
             w.durability = Math.max(0, w.durability - 1);
@@ -831,7 +882,7 @@ function enemyTurn() {
           }
         }
 
-        if (equippedArmorId && Array.isArray(armors)) {
+        if (!Array.isArray(window.armorInstances) && equippedArmorId && Array.isArray(armors)) {
           const a = armors.find(x => x.id === equippedArmorId);
           if (a && typeof a.durability === "number") {
             a.durability = Math.max(0, a.durability - 1);
@@ -852,7 +903,13 @@ function enemyTurn() {
         if (typeof refreshEquipSelects === "function") {
           refreshEquipSelects();
         }
+        if (typeof recalcStats === "function") {
+          recalcStats();
+        } else {
+          updateDisplay();
+        }
       }
+
       reduceDurabilityOnEquip();
 
       if (brokeSomething) {
@@ -947,7 +1004,7 @@ function onBossDefeated() {
 }
 
 // =======================
-//逃走
+// 逃走
 // =======================
 
 function tryEscape() {
