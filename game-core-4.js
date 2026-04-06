@@ -10,7 +10,7 @@ const GATHER_FIELDS = [
   { id: "field1", name: "近郊の原っぱ" },
   { id: "field2", name: "星降りの丘" },
   { id: "field3", name: "翠風の谷" },
-  { id: "cook",   name: "食材調達" }
+  { id: "cook",   name: "食材調達" } // 料理用フィールド
 ];
 
 // 採取スキルレベルによるフィールド解放条件
@@ -20,14 +20,13 @@ const GATHER_FIELD_REQUIRE_LV = {
   field1: { wood: 0,  ore: 0,  herb: 0,  cloth: 0,  leather: 0,  water: 0 },
   field2: { wood: 20, ore: 20, herb: 20, cloth: 20, leather: 20, water: 20 },
   field3: { wood: 40, ore: 40, herb: 40, cloth: 40, leather: 40, water: 40 }
-  // cook は制限なし
+  // cook は制限なし（通常素材ターゲットはそもそも使わない）
 };
 
 // 「星屑の結晶」強化用定数（他ファイルで上書きしてもOK）
-// 自己参照すると「Cannot access 'STAR_SHARD_ITEM_ID' before initialization」になるため素直な定義にする
-const STAR_SHARD_ITEM_ID = "starShard";   // itemCounts で使うキー名
-const STAR_SHARD_NEED_LV = 5;             // この強化段階（現在値）以上から星屑要求
-const STAR_SHARD_NEED_NUM = 1;            // 1回の強化で必要な個数
+const STAR_SHARD_ITEM_ID  = "starShard"; // itemCounts で使うキー名
+const STAR_SHARD_NEED_LV  = 5;           // この強化段階（現在値）以上から星屑要求
+const STAR_SHARD_NEED_NUM = 1;           // 1回の強化で必要な個数
 
 // 採取スキルでフィールド解放をチェックするフック
 function checkGatherAreaUnlockBySkill(resourceKey) {
@@ -59,14 +58,15 @@ function refreshGatherTargetSelect() {
   targetSel.innerHTML = "";
 
   // =======================
-  // 料理素材の採取地
+  // 料理素材の採取地（食材調達）
   // =======================
   if (field === "cook") {
-    // 料理採取時は「狩猟 / 釣り / 畑」をターゲットとして出す
+    // 狩猟 / 釣り / 畑 / 菜園 の4モード
     const modes = [
-      { id: "hunt", name: "狩猟" },
-      { id: "fish", name: "釣り" },
-      { id: "farm", name: "畑・菜園" }
+      { id: "hunt",   name: "狩猟" },
+      { id: "fish",   name: "釣り" },
+      { id: "farm",   name: "畑" },
+      { id: "garden", name: "菜園" }
     ];
     modes.forEach(m => {
       const opt = document.createElement("option");
@@ -99,11 +99,9 @@ function refreshGatherTargetSelect() {
     const s  = gatherSkills[t.id];
     const lv = s ? s.lv : 0;
 
-    // フィールド × target ごとの必要Lv
     const table = GATHER_FIELD_REQUIRE_LV[field] || {};
     const needLv = table[t.id] ?? 0;
 
-    // 今のスキルLvでこのフィールドで採れる素材だけ出す
     if (lv < needLv) return;
 
     const opt = document.createElement("option");
@@ -138,8 +136,7 @@ function canEnterGatherFieldForTarget(fieldId, target) {
   return lv >= needLv;
 }
 
-// 採取場所セレクトを更新（game-ui.js からも呼ばれる）
-// 「今選んでいる target で行けるエリアだけ」を表示する
+// 採取場所セレクトを更新
 function refreshGatherFieldSelect() {
   const sel = document.getElementById("gatherField");
   if (!sel) return;
@@ -151,7 +148,7 @@ function refreshGatherFieldSelect() {
 
   const unlocked = [];
 
-  // ★ 全採取スキルが Lv0 かどうかチェック
+  // 全採取スキルが Lv0 かどうかチェック
   const allGatherLv0 =
     gatherSkills.wood.lv    === 0 &&
     gatherSkills.ore.lv     === 0 &&
@@ -179,7 +176,7 @@ function refreshGatherFieldSelect() {
       return;
     }
 
-    // ★ target が null（＝まだ何も選んでない）ときは field1 だけ出す
+    // target が null（＝まだ何も選んでない）ときは field1 だけ出す
     if (!currentTarget) {
       if (f.id === "field1") {
         const opt = document.createElement("option");
@@ -210,7 +207,6 @@ function refreshGatherFieldSelect() {
     sel.value = "";
   }
 
-  // フィールド変更に合わせてターゲットも更新
   refreshGatherTargetSelect();
 }
 
@@ -228,10 +224,8 @@ function addGatherSkillExp(resourceKey){
     s.expToNext = Math.floor(s.expToNext * 1.3) + 1;
     appendLog(`${resourceKey} 採取スキルがLv${s.lv}になった！`);
   }
-  // 採取スキルLvが上がったら、行けるフィールド一覧を更新
   refreshGatherFieldSelect();
 
-  // ステータス画面の採取スキル欄も更新
   if (typeof updateDisplay === "function") {
     updateDisplay();
   }
@@ -248,7 +242,6 @@ function calcGatherAmount(resourceKey){
   if(Math.random() < extraChance){
     total += 1;
   }
-  // 最低1個は欲しければここで保証（通常素材・料理素材で共通）
   return Math.max(1, total);
 }
 
@@ -282,22 +275,98 @@ const COOKING_MAT_NAMES = {
   spice_secret: "秘伝スパイス"
 };
 
-// ★ 直近の通常素材採取のティア内訳を記録する（game-core-1 から参照用）
+// 直近の通常素材採取情報
 window.lastGatherInfo = null;
-// 形式: { baseKey: "wood", field: "field1", tiers: { t1: 数, t2: 数, t3: 数 } }
+
+// =======================
+// 採取装備ボーナス判定
+// =======================
+
+// 現在装備中の採取用武器/防具が target に対応しているかを判定して
+// 「+1個ボーナス抽選」の確率を返す。
+// セット時: T1=20% / T2=40% / T3=60%
+// 片方だけ: T1=5% / T2=15% / T3=25%
+function getGatherBonusChance(target) {
+  // 装備情報が無ければボーナス無し
+  const weapon = window.currentWeapon || null;
+  const armor  = window.currentArmor || null;
+  const weaponId = weapon && weapon.id ? weapon.id : (weapon && weapon.itemId ? weapon.itemId : null);
+  const armorId  = armor  && armor.id  ? armor.id  : (armor  && armor.itemId  ? armor.itemId  : null);
+
+  // 対応する採取武器IDの prefix
+  const weaponPrefixMap = {
+    wood:    "gatherAxe",
+    ore:     "gatherPick",
+    herb:    "gatherKnife",
+    cloth:   "gatherShears",
+    leather: "gatherDagger",
+    water:   "gatherFlask"
+  };
+
+  // 対応する採取防具IDの prefix
+  const armorPrefixMap = {
+    wood:    "gatherArmorWood",
+    ore:     "gatherArmorOre",
+    herb:    "gatherArmorHerb",
+    cloth:   "gatherArmorCloth",
+    leather: "gatherArmorLeather",
+    water:   "gatherArmorWater"
+  };
+
+  const wPrefix = weaponPrefixMap[target];
+  const aPrefix = armorPrefixMap[target];
+  if (!wPrefix && !aPrefix) return 0;
+
+  const hasWeapon = weaponId && weaponId.startsWith(wPrefix);
+  const hasArmor  = armorId  && armorId.startsWith(aPrefix);
+  if (!hasWeapon && !hasArmor) return 0;
+
+  // ティア判定（ID末尾の _T1/_T2/_T3）
+  const getTier = (id) => {
+    if (!id) return null;
+    if (id.endsWith("_T3")) return "T3";
+    if (id.endsWith("_T2")) return "T2";
+    if (id.endsWith("_T1")) return "T1";
+    return null;
+  };
+
+  const wTier = hasWeapon ? getTier(weaponId) : null;
+  const aTier = hasArmor  ? getTier(armorId)  : null;
+
+  // 両方装備している場合は「低い方のティア」をセットティアとして採用
+  const pairTier = (wTier && aTier)
+    ? (wTier === "T1" || aTier === "T1" ? "T1"
+      : (wTier === "T2" || aTier === "T2" ? "T2" : "T3"))
+    : null;
+
+  let chance = 0;
+
+  if (hasWeapon && hasArmor && pairTier) {
+    // セット装備時
+    if (pairTier === "T1") chance = 0.20;
+    else if (pairTier === "T2") chance = 0.40;
+    else if (pairTier === "T3") chance = 0.60;
+  } else {
+    // 片方だけ装備時（弱め）
+    const singleTier = wTier || aTier;
+    if (singleTier === "T1") chance = 0.05;
+    else if (singleTier === "T2") chance = 0.15;
+    else if (singleTier === "T3") chance = 0.25;
+  }
+
+  return chance;
+}
 
 function gather(){
-  // 採取対象セレクト
   const targetSel = document.getElementById("gatherTarget");
   if (!targetSel) return;
-  const target = targetSel.value; // wood / ore / herb / cloth / leather / water or "hunt/fish/farm"
+  const target = targetSel.value; // wood / ore / herb / cloth / leather / water or "hunt/fish/farm/garden"
 
-  // フィールドセレクト
   const fieldSel = document.getElementById("gatherField");
   const field = fieldSel ? fieldSel.value : "field1";
 
   // =======================
-  // 料理採取モード
+  // 料理採取モード（食材調達）
   // =======================
   if (field === "cook") {
     const cookModeSel = document.getElementById("gatherTarget");
@@ -305,12 +374,12 @@ function gather(){
       appendLog("料理採取モードの設定が見つかりません");
       return;
     }
-    const mode = cookModeSel.value; // "hunt" / "fish" / "farm"
+    const mode = cookModeSel.value; // "hunt" / "fish" / "farm" / "garden"
 
     // 対応する採取スキルで量を計算
-    const added = calcGatherAmount(mode);
+    const skillKey = (mode === "hunt" || mode === "fish") ? mode : "farm";
+    const added = calcGatherAmount(skillKey);
 
-    // 料理素材プール（カテゴリ均一）
     const GATHER_COOK_HUNT = [
       "meat_hard",
       "meat_soft",
@@ -325,19 +394,21 @@ function gather(){
       "fish_big",
       "fish_deep"
     ];
-    const GATHER_COOK_FARM = [
+    const GATHER_COOK_FARM_FIELD = [
       "veg_root_rough",
       "veg_leaf_crisp",
-      "veg_mushroom_aroma",
-      "veg_spice",
-      "veg_herb_aroma",
       "veg_premium",
+      "veg_mushroom_aroma",
       "veg_mountain",
-      "veg_dried",
+      "grain_mochi",
       "grain_coarse",
       "grain_refined",
-      "grain_mochi",
-      "grain_ancient",
+      "grain_ancient"
+    ];
+    const GATHER_COOK_GARDEN_FIELD = [
+      "veg_herb_aroma",
+      "veg_spice",
+      "veg_dried",
       "spice_salt_rock",
       "spice_pepper",
       "spice_premium",
@@ -349,8 +420,10 @@ function gather(){
       pool = GATHER_COOK_HUNT;
     } else if (mode === "fish") {
       pool = GATHER_COOK_FISH;
+    } else if (mode === "farm") {
+      pool = GATHER_COOK_FARM_FIELD;
     } else {
-      pool = GATHER_COOK_FARM;
+      pool = GATHER_COOK_GARDEN_FIELD;
     }
 
     if (!pool.length) {
@@ -363,7 +436,6 @@ function gather(){
       return;
     }
 
-    // 何を何個拾ったか集計
     let gained = {};
     for (let i = 0; i < added; i++) {
       const id = pool[Math.floor(Math.random() * pool.length)];
@@ -371,12 +443,13 @@ function gather(){
       gained[id] = (gained[id] || 0) + 1;
     }
 
-    addGatherSkillExp(mode);
+    addGatherSkillExp(skillKey);
 
     const modeLabel =
-      (mode === "hunt") ? "狩猟" :
-      (mode === "fish") ? "釣り" :
-      "畑";
+      (mode === "hunt")   ? "狩猟" :
+      (mode === "fish")   ? "釣り" :
+      (mode === "farm")   ? "畑"   :
+                            "菜園";
 
     const parts = Object.keys(gained).map(id => {
       const name = COOKING_MAT_NAMES[id] || id;
@@ -386,13 +459,11 @@ function gather(){
 
     appendLog(`【${modeLabel}】で ${gainedText} を採取した`);
 
-    // ★ 直近の料理素材採取情報を記録（UI表示用）
     lastGatherInfo = {
       kind: "cooking",
-      gained: gained   // { id: 個数, ... }
+      gained: gained
     };
 
-    // ★ 料理採取でもレア素材（星屑の結晶）の超低確率ドロップ
     if (typeof RARE_GATHER_DROP_RATE === "number" &&
         typeof RARE_GATHER_ITEM_ID === "string") {
       if (Math.random() < RARE_GATHER_DROP_RATE) {
@@ -403,12 +474,10 @@ function gather(){
       }
     }
 
-    // 採取も行動として空腹・水分を進行させる
     if (typeof handleHungerThirstOnAction === "function") {
       handleHungerThirstOnAction("gather");
     }
 
-    // ★ 料理クラフト画面の必要素材表示を更新
     if (typeof COOKING_RECIPES !== "undefined" &&
         typeof updateCookingCostInfo === "function") {
       const foodSelect  = document.getElementById("foodSelect");
@@ -435,7 +504,6 @@ function gather(){
 
   checkGatherAreaUnlockBySkill(target);
 
-  // フィールド × target ごとの必要Lvを参照
   const table = GATHER_FIELD_REQUIRE_LV[field] || {};
   const needLv = table[target] ?? 0;
   if (lv < needLv) {
@@ -471,6 +539,12 @@ function gather(){
     return;
   }
 
+  // 採取装備ボーナス（+1個抽選）
+  const bonusChance = getGatherBonusChance(target);
+  if (bonusChance > 0 && Math.random() < bonusChance) {
+    added += 1;
+  }
+
   let t1 = 0, t2 = 0, t3 = 0;
 
   if (field === "field1") {
@@ -503,7 +577,6 @@ function gather(){
   if (t2 > 0) appendLog(`T2${names[target]}を${t2}つ採取した！`);
   if (t3 > 0) appendLog(`T3${names[target]}を${t3}つ採取した！`);
 
-  // ★ レア素材（星屑の結晶）の超低確率ドロップ
   if (typeof RARE_GATHER_DROP_RATE === "number" &&
       typeof RARE_GATHER_ITEM_ID === "string") {
     if (Math.random() < RARE_GATHER_DROP_RATE) {
@@ -514,18 +587,12 @@ function gather(){
     }
   }
 
-  // ★ 直近の通常素材採取情報を記録（game-core-1 側の表示用）
   lastGatherInfo = {
-    baseKey: target,   // "wood" など
-    field: field,      // "field1" など
-    tiers: {
-      t1: t1,
-      t2: t2,
-      t3: t3
-    }
+    baseKey: target,
+    field: field,
+    tiers: { t1, t2, t3 }
   };
 
-  // 採取も行動として空腹・水分を進行させる
   if (typeof handleHungerThirstOnAction === "function") {
     handleHungerThirstOnAction("gather");
   }

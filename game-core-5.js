@@ -160,12 +160,10 @@ function setBattleCommandVisible(visible) {
   const escapeBtn = document.getElementById("escapeBtn");
   const itemBtn   = document.getElementById("useBattleItemBtn");
 
-  // 親コンテナの表示/非表示
   if (area) {
     area.style.display = visible ? "block" : "none";
   }
 
-  // 個別ボタン
   const show = visible ? "inline-block" : "none";
   if (attackBtn) attackBtn.style.display = show;
   if (escapeBtn) escapeBtn.style.display = show;
@@ -176,11 +174,6 @@ function setBattleCommandVisible(visible) {
 // 敵生成系
 // =======================
 
-/**
- * エリアの出現テーブルからランダムに敵IDを1つ選ぶ
- * @param {string} areaId - "field" / "forest" / "cave" / "mine"
- * @returns {string|null}
- */
 function pickRandomEnemyId(areaId) {
   const table = AREA_ENEMY_TABLE[areaId];
   if (!table || table.length === 0) return null;
@@ -188,12 +181,6 @@ function pickRandomEnemyId(areaId) {
   return table[idx];
 }
 
-/**
- * マスターデータから戦闘用の敵インスタンスを生成
- * @param {string} enemyId
- * @param {boolean} forceBossFlag - 強制的にボス扱いにしたいとき true
- * @returns {object|null}
- */
 function createEnemyInstance(enemyId, forceBossFlag = false) {
   const master = ENEMIES[enemyId];
   if (!master) return null;
@@ -211,10 +198,6 @@ function createEnemyInstance(enemyId, forceBossFlag = false) {
   };
 }
 
-/**
- * 現在選択中エリアから通常敵を1体生成して戦闘開始
- * （探索イベントから呼ぶ想定）
- */
 function startRandomEncounter() {
   const areaId = getCurrentArea();
   const enemyId = pickRandomEnemyId(areaId);
@@ -354,7 +337,49 @@ function doExploreRandomEvent(area) {
       let brokeSomething = false;
 
       function reduceDurabilityOnEquipTrap() {
-        if (equippedWeaponId && Array.isArray(weapons)) {
+        if (typeof equippedWeaponIndex === "number" &&
+            Array.isArray(window.weaponInstances)) {
+          const idx = equippedWeaponIndex;
+          const inst = window.weaponInstances[idx];
+          if (inst) {
+            inst.durability = Math.max(0, (inst.durability ?? MAX_DURABILITY) - 1);
+            if (inst.durability <= 0) {
+              const wName = (weapons.find(w => w.id === inst.id)?.name) || inst.id;
+              appendLog(`${wName} は壊れて消滅した…`);
+              const cnt = weaponCounts[inst.id] || 0;
+              weaponCounts[inst.id] = Math.max(0, cnt - 1);
+              window.weaponInstances.splice(idx, 1);
+              equippedWeaponIndex = null;
+              equippedWeaponId    = null;
+              brokeSomething = true;
+            } else {
+              brokeSomething = true;
+            }
+          }
+        }
+
+        if (typeof equippedArmorIndex === "number" &&
+            Array.isArray(window.armorInstances)) {
+          const idx = equippedArmorIndex;
+          const inst = window.armorInstances[idx];
+          if (inst) {
+            inst.durability = Math.max(0, (inst.durability ?? MAX_DURABILITY) - 1);
+            if (inst.durability <= 0) {
+              const aName = (armors.find(a => a.id === inst.id)?.name) || inst.id;
+              appendLog(`${aName} は壊れて消滅した…`);
+              const cnt = armorCounts[inst.id] || 0;
+              armorCounts[inst.id] = Math.max(0, cnt - 1);
+              window.armorInstances.splice(idx, 1);
+              equippedArmorIndex = null;
+              equippedArmorId    = null;
+              brokeSomething = true;
+            } else {
+              brokeSomething = true;
+            }
+          }
+        }
+
+        if (!Array.isArray(window.weaponInstances) && equippedWeaponId && Array.isArray(weapons)) {
           const w = weapons.find(x => x.id === equippedWeaponId);
           if (w && typeof w.durability === "number") {
             w.durability = Math.max(0, w.durability - 1);
@@ -372,7 +397,7 @@ function doExploreRandomEvent(area) {
           }
         }
 
-        if (equippedArmorId && Array.isArray(armors)) {
+        if (!Array.isArray(window.armorInstances) && equippedArmorId && Array.isArray(armors)) {
           const a = armors.find(x => x.id === equippedArmorId);
           if (a && typeof a.durability === "number") {
             a.durability = Math.max(0, a.durability - 1);
@@ -448,10 +473,11 @@ function doExploreRandomEvent(area) {
       } else if (area === "cave") {
         const r = Math.random();
         if      (r < 0.1) tier = "t2";
-        else if (r < 0.9) tier = "t3";
-        else              tier = "t4";
+        else              tier = "t3"; // t4 は出さない
       } else if (area === "mine") {
-        tier = (Math.random() < 0.8) ? "t4" : "t3";
+        const r = Math.random();
+        if      (r < 0.2) tier = "t2";
+        else              tier = "t3";
       }
 
       m[tier] = (m[tier] || 0) + 1;
@@ -521,9 +547,6 @@ function startBossBattleForArea(areaId) {
   );
 }
 
-/**
- * UIのボスボタンから呼ぶ入口
- */
 function startBossBattleFromUI() {
   const area = window.isExploring
     ? (window.exploringArea || getCurrentArea())
@@ -535,10 +558,6 @@ function startBossBattleFromUI() {
 // 撃破処理（経験値・お金・ボスフラグ）
 // =======================
 
-/**
- * 敵撃破時に共通で呼ぶ処理
- * @param {object} enemyInst - currentEnemy を想定
- */
 function onEnemyDefeatedCore(enemyInst) {
   if (!enemyInst) return;
 
@@ -573,6 +592,46 @@ function onEnemyDefeatedCore(enemyInst) {
 }
 
 // =======================
+// ポーション効果適用（フィールド / 戦闘共通）
+// =======================
+
+function applyPotionEffect(p, inBattle) {
+  if (!p) return;
+
+  // HP 回復
+  if ((p.type === POTION_TYPE_HP || p.type === POTION_TYPE_BOTH) && typeof hp !== "undefined") {
+    const max = typeof hpMax === "number" ? hpMax : hp;
+    const val = Math.floor((max * (p.power || 0)) + (p.flat || 0));
+    if (val > 0) {
+      hp = Math.max(0, Math.min(max, hp + val));
+    }
+  }
+
+  // MP 回復
+  if ((p.type === POTION_TYPE_MP || p.type === POTION_TYPE_BOTH) && typeof mp !== "undefined") {
+    const max = typeof mpMax === "number" ? mpMax : mp;
+    const val = Math.floor((max * (p.power || 0)) + (p.flat || 0));
+    if (val > 0) {
+      mp = Math.max(0, Math.min(max, mp + val));
+    }
+  }
+
+  // ダメージポーション（敵に投げる系）が定義されている場合の簡易対応
+  if (p.type === POTION_TYPE_DAMAGE && inBattle && currentEnemy) {
+    const dmg = typeof p.damage === "number" ? p.damage : (p.value || 0);
+    if (dmg > 0) {
+      const beforeHp = enemyHp;
+      enemyHp = Math.max(0, enemyHp - dmg);
+      appendLog(`${p.name} を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
+      if (enemyHp <= 0) {
+        enemyHp = 0;
+        winBattle();
+      }
+    }
+  }
+}
+
+// =======================
 // アイテム用セレクト再描画（ポーション＋道具）
 // =======================
 
@@ -600,8 +659,6 @@ function refreshUseItemSelect() {
   lastSelectedFieldPotionId = sel.value || null;
 }
 
-// 戦闘用アイテムセレクト（ポーション or 道具）
-// battleItemCategory セレクト（"potion" / "tool"）と連動し、最後に選んだカテゴリとアイテムを記憶する
 function refreshBattleItemSelect() {
   const sel = document.getElementById("battleItemSelect");
   if (!sel) return;
@@ -615,7 +672,6 @@ function refreshBattleItemSelect() {
   sel.innerHTML = "";
 
   if (category === "potion") {
-    // 手持ちポーションのみ（carryPotions ベース）
     if (typeof carryPotions !== "undefined" && Array.isArray(potions)) {
       Object.keys(carryPotions).forEach(id => {
         const cnt = carryPotions[id] || 0;
@@ -636,7 +692,6 @@ function refreshBattleItemSelect() {
       sel.appendChild(opt);
     }
   } else if (category === "tool") {
-    // 手持ち道具のみ（carryTools ベース、爆弾など）
     if (typeof carryTools !== "undefined") {
       Object.keys(carryTools).forEach(id => {
         const cnt = carryTools[id] || 0;
@@ -665,7 +720,6 @@ function refreshBattleItemSelect() {
       sel.appendChild(opt);
     }
   } else {
-    // 未知カテゴリ
     const opt = document.createElement("option");
     opt.value = "";
     opt.textContent = "アイテムなし";
@@ -686,7 +740,6 @@ function refreshBattleItemSelect() {
   }
 }
 
-// カテゴリ変更時に呼ぶ想定（HTML側で onchange="onBattleItemCategoryChanged()"）
 function onBattleItemCategoryChanged() {
   refreshBattleItemSelect();
 }
@@ -750,7 +803,6 @@ function useBattleItem() {
   window.lastBattleItemCategory = category;
 
   if (category === "potion") {
-    // 手持ちポーション使用（carryPotions）
     if (typeof carryPotions === "undefined") {
       appendLog("ポーション所持データが見つからない");
       refreshBattleItemSelect();
@@ -793,7 +845,6 @@ function useBattleItem() {
     }
 
   } else if (category === "tool") {
-    // 手持ち道具使用（爆弾など）
     if (typeof carryTools === "undefined") {
       appendLog("道具所持データが見つからない");
       refreshBattleItemSelect();
@@ -806,7 +857,6 @@ function useBattleItem() {
       return;
     }
 
-    // 爆弾ダメージテーブル
     const BOMB_DAMAGE_TABLE = {
       bomb:    7,
       bomb_T1: 15,
@@ -827,12 +877,8 @@ function useBattleItem() {
       enemyHp = Math.max(0, enemyHp - dmg);
       appendLog(`爆弾を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
       if (enemyHp <= 0) {
-        if (typeof onEnemyDefeatedCore === "function") {
-          onEnemyDefeatedCore(currentEnemy);
-        } else {
-          endBattleCommon();
-        }
-        updateDisplay();
+        enemyHp = 0;
+        winBattle();
         return;
       }
     }
@@ -857,19 +903,16 @@ function useBattleItem() {
 function applyFoodEffect(effect, foodId) {
   if (!effect) return;
 
-  // バフ（攻撃・防御など）は既存のステータスシステムに委譲
   if (effect.statusId && typeof addFoodStatusToPlayer === "function") {
     addFoodStatusToPlayer(effect.statusId, effect.durationTurns);
   }
 
-  // 空腹・喉回復
   if (typeof restoreHungerThirst === "function") {
     const h = effect.hungerRecover || 0;
     const t = effect.thirstRecover || 0;
     restoreHungerThirst(h, t);
   }
 
-  // 直接回復系があれば HP/MP/SP に反映（あまり大きくない値なのでここで直書きしても影響少なめ）
   if (typeof hp !== "undefined" && typeof hpMax !== "undefined" &&
       typeof effect.hpRegen === "number") {
     hp = Math.min(hpMax, hp + effect.hpRegen);
@@ -999,10 +1042,8 @@ function drinkInField() {
 // 採取拠点・自動採取
 // =======================
 
-// 対応素材キー
 const GATHER_BASE_MATERIAL_KEYS = ["wood","ore","herb","cloth","leather","water"];
 
-// 素材名の日本語ラベル
 const GATHER_SKILL_LABEL_JA = {
   wood:   "木",
   ore:    "鉱石",
@@ -1015,13 +1056,12 @@ function getGatherSkillLabel(matKey) {
   return GATHER_SKILL_LABEL_JA[matKey] || matKey;
 }
 
-// 素材ごとの拠点レベル（0=拠点なし, 1〜3）
 const gatherBases = {};
 GATHER_BASE_MATERIAL_KEYS.forEach(k => {
-  gatherBases[k] = { level: 0 };
+  // mode: "normal" | "quantity" | "quality"
+  gatherBases[k] = { level: 0, mode: "normal" };
 });
 
-// 共通テンプレ：レベルごとの失敗率・T1/T2出力
 const GATHER_BASE_LEVEL_TABLE = {
   1: {
     failRate: 0.5,
@@ -1046,35 +1086,42 @@ const GATHER_BASE_LEVEL_TABLE = {
   }
 };
 
-/**
- * 拠点レベルを取得
- * @param {string} matKey - "wood" など
- * @returns {number}
- */
 function getGatherBaseLevel(matKey) {
   const base = gatherBases[matKey];
   return base ? (base.level || 0) : 0;
 }
 
-/**
- * 拠点レベルを設定
- * @param {string} matKey
- * @param {number} level - 0〜3
- */
 function setGatherBaseLevel(matKey, level) {
   if (!GATHER_BASE_MATERIAL_KEYS.includes(matKey)) return;
   const lv = Math.max(0, Math.min(3, level | 0));
   gatherBases[matKey] = gatherBases[matKey] || {};
   gatherBases[matKey].level = lv;
+  if (!gatherBases[matKey].mode) {
+    gatherBases[matKey].mode = "normal";
+  }
 }
 
-/**
- * 拠点強化用コスト・条件テーブル
- * - nextLevel: 上げ先レベル
- * - reqGatherLv: 必要採取スキルレベル
- * - costs.intermediate: 中間素材コスト { id: 個数 }
- * - costs.starShard: 星屑の結晶必要数（T3 Lv3 のみ 1）
- */
+// 拠点モード取得・設定（normal / quantity / quality）
+function getGatherBaseMode(matKey) {
+  const base = gatherBases[matKey];
+  return base && base.mode ? base.mode : "normal";
+}
+
+function setGatherBaseMode(matKey, mode) {
+  if (!GATHER_BASE_MATERIAL_KEYS.includes(matKey)) return;
+  if (mode !== "normal" && mode !== "quantity" && mode !== "quality") return;
+  gatherBases[matKey] = gatherBases[matKey] || { level: 0 };
+  gatherBases[matKey].mode = mode;
+  const label = getGatherSkillLabel(matKey);
+  if (mode === "normal") {
+    appendLog(`採取拠点(${label})の方針をノーマルに戻した。`);
+  } else if (mode === "quantity") {
+    appendLog(`採取拠点(${label})の方針を量特化に変更した。`);
+  } else if (mode === "quality") {
+    appendLog(`採取拠点(${label})の方針を質特化に変更した。`);
+  }
+}
+
 const GATHER_BASE_UPGRADE_DATA = {
   wood: {
     1: {
@@ -1234,10 +1281,6 @@ const GATHER_BASE_UPGRADE_DATA = {
   }
 };
 
-/**
- * 拠点強化を試みる（UI から Lv+1 ボタンで呼ぶ想定）
- * @param {string} matKey - "wood" など
- */
 function tryUpgradeGatherBase(matKey) {
   if (!GATHER_BASE_MATERIAL_KEYS.includes(matKey)) {
     appendLog("この素材には採取拠点はない。");
@@ -1261,7 +1304,6 @@ function tryUpgradeGatherBase(matKey) {
     return;
   }
 
-  // 採取スキルレベルチェック
   if (!gatherSkills || !gatherSkills[matKey]) {
     appendLog("採取スキルデータが見つからない。");
     return;
@@ -1273,7 +1315,6 @@ function tryUpgradeGatherBase(matKey) {
     return;
   }
 
-  // 中間素材・星屑の結晶所持チェック
   const needInter = def.costs.intermediate || {};
   const needStar  = def.costs.starShard || 0;
 
@@ -1282,7 +1323,6 @@ function tryUpgradeGatherBase(matKey) {
     return;
   }
 
-  // 必要素材一覧を先に表示
   (function showRequiredMats() {
     let lines = [];
     const label = getGatherSkillLabel(matKey);
@@ -1299,7 +1339,6 @@ function tryUpgradeGatherBase(matKey) {
     appendLog(lines.join("\\n"));
   })();
 
-  // 所持チェック
   for (const iid in needInter) {
     const need = needInter[iid] || 0;
     const have = intermediateMats[iid] || 0;
@@ -1317,7 +1356,6 @@ function tryUpgradeGatherBase(matKey) {
     }
   }
 
-  // 消費
   for (const iid in needInter) {
     const need = needInter[iid] || 0;
     intermediateMats[iid] = (intermediateMats[iid] || 0) - need;
@@ -1344,38 +1382,22 @@ function tryUpgradeGatherBase(matKey) {
 // 自動採取ストック（6時間=72tick 上限）
 // =======================
 
-// 現在ストックされている tick 数（5分で1増える想定）
 let gatherBaseStockTicks = 0;
-// 6時間分: 5分 × 72 = 360分
 const GATHER_BASE_STOCK_MAX_TICKS = 72;
 
-/**
- * ストックを1消費して1tickぶん自動採取を行う
- */
 function consumeGatherBaseStockTick() {
   if (gatherBaseStockTicks <= 0) return;
   gatherBaseStockTicks--;
   tickGatherBasesOnce();
 }
 
-/**
- * 5分ごとに呼ばれる、全拠点の自動採取処理（ストック加算のみ）
- * - オンライン中は「ストック +1 ➜ すぐ1つ消費」して実行
- * - 将来オフライン対応する場合は、Stock だけ増やして復帰時にまとめ消費でも良い
- */
 function tickGatherBasesOnceStocked() {
   if (gatherBaseStockTicks < GATHER_BASE_STOCK_MAX_TICKS) {
     gatherBaseStockTicks++;
   }
-  // 今はオンライン専用なので、その場で1tick消費して動かす
   consumeGatherBaseStockTick();
 }
 
-/**
- * 実際の1tickぶんの処理（元の tickGatherBasesOnce の中身）
- * - 失敗時は何も起きない
- * - 成功時は materials[matKey] の t1/t2 に直接加算
- */
 function tickGatherBasesOnce() {
   if (!materials) return;
 
@@ -1386,38 +1408,50 @@ function tickGatherBasesOnce() {
     const conf = GATHER_BASE_LEVEL_TABLE[lv];
     if (!conf) return;
 
-    // 失敗判定
-    if (Math.random() < conf.failRate) {
-      // 失敗ログは基本出さない（ログがうるさいので）
+    const baseFail    = conf.failRate;
+    let t1Min         = conf.t1Min;
+    let t1Max         = conf.t1Max;
+    let t2Chance      = conf.t2Chance;
+    const t2Amount    = conf.t2Amount;
+
+    const base = gatherBases[matKey] || {};
+    const mode = base.mode || "normal";
+
+    // モード別補正（normal は補正なし）
+    if (mode === "quantity") {
+      // 量特化: t1 +1（最低1確保）、t2Chance 少し下げる
+      t1Min = Math.max(0, t1Min + 1);
+      t1Max = t1Max + 1;
+      t2Chance = Math.max(0, t2Chance - 0.03);
+    } else if (mode === "quality") {
+      // 質特化: t1 -1（0未満は0）、t2Chance 少し上げる
+      t1Min = Math.max(0, t1Min - 1);
+      t1Max = Math.max(t1Min, t1Max - 1);
+      t2Chance = Math.min(1, t2Chance + 0.05);
+    }
+
+    if (Math.random() < baseFail) {
       return;
     }
 
     const mat = materials[matKey];
     if (!mat) return;
 
-    // T1量
-    const t1Amount = conf.t1Min + Math.floor(Math.random() * (conf.t1Max - conf.t1Min + 1));
+    const t1Amount = t1Min + Math.floor(Math.random() * (t1Max - t1Min + 1));
     if (t1Amount > 0) {
       mat.t1 = (mat.t1 || 0) + t1Amount;
     }
 
-    // T2抽選
-    if (conf.t2Chance > 0 && Math.random() < conf.t2Chance && conf.t2Amount > 0) {
-      mat.t2 = (mat.t2 || 0) + conf.t2Amount;
+    if (t2Chance > 0 && Math.random() < t2Chance && t2Amount > 0) {
+      mat.t2 = (mat.t2 || 0) + t2Amount;
     }
   });
 
-  // 供給が変わったので、必要なら表示更新
   if (typeof updateDisplay === "function") {
     updateDisplay();
   }
 }
 
-/**
- * 自動採取のタイマーを開始
- * - 5分ごとに tickGatherBasesOnceStocked を呼ぶ
- * - すでに開始済みなら何もしない
- */
 let _gatherBaseTimerStarted = false;
 function startGatherBaseTimerIfNeeded() {
   if (_gatherBaseTimerStarted) return;
@@ -1430,5 +1464,4 @@ function startGatherBaseTimerIfNeeded() {
   }, FIVE_MIN_MS);
 }
 
-// 起動時にタイマーを起動しておく
 startGatherBaseTimerIfNeeded();

@@ -75,7 +75,6 @@ function updateCraftCostInfo(category, recipeId){
   } else if (category === "tool") {
     recipe = CRAFT_RECIPES.tool.find(r => r.id === recipeId);
   } else if (category === "material") {
-    // 中間素材クラフト用：def.from からベース素材＋ティアを表示
     if (!Array.isArray(INTERMEDIATE_MATERIALS)) {
       infoEl.textContent = "必要素材：-";
       return;
@@ -97,13 +96,13 @@ function updateCraftCostInfo(category, recipeId){
 
     const parts = [];
     Object.keys(def.from).forEach(baseKey => {
-      const tierInfo = def.from[baseKey]; // 例: { t1: 3 }
-      const m = materials[baseKey];       // wood / ore / ...
+      const tierInfo = def.from[baseKey];
+      const m = materials[baseKey];
       Object.keys(tierInfo).forEach(tierKey => {
         const need = tierInfo[tierKey] || 0;
         if (!need) return;
         const have = m ? (m[tierKey] || 0) : 0;
-        const tierLabel = tierKey.toUpperCase(); // "T1"
+        const tierLabel = tierKey.toUpperCase();
         const name = baseNames[baseKey] || baseKey;
         parts.push(`${tierLabel}${name} ${have}/${need}`);
       });
@@ -112,7 +111,6 @@ function updateCraftCostInfo(category, recipeId){
     infoEl.textContent = "必要素材：" + (parts.length ? parts.join("、") : "-");
     return;
   } else if (category === "cookingFood" || category === "cookingDrink") {
-    // 料理の必要素材表示（COOKING_RECIPES の requires を利用）
     if (!COOKING_RECIPES) {
       infoEl.textContent = "必要素材：-";
       return;
@@ -145,7 +143,6 @@ function updateCraftCostInfo(category, recipeId){
     return;
   }
 
-  // 基本素材の日本語名
   const baseNames = {
     wood:   "木",
     ore:    "鉱石",
@@ -155,7 +152,6 @@ function updateCraftCostInfo(category, recipeId){
     water:  "水"
   };
 
-  // 中間素材の日本語名
   const interNames = {
     woodPlank_T1:      "T1板材",
     woodPlank_T2:      "T2板材",
@@ -167,8 +163,8 @@ function updateCraftCostInfo(category, recipeId){
     clothBolt_T2:      "T2布束",
     clothBolt_T3:      "T3布束",
     toughLeather_T1:   "T1強化皮",
-    toughLeather_T2:   "T2強化皮",
-    toughLeather_T3:   "T3強化皮",
+    toughLeather_T2:   "T1強化皮",
+    toughLeather_T3:   "T1強化皮",
     mixHerb_T1:        "T1調合用薬草",
     mixHerb_T2:        "T2調合用薬草",
     mixHerb_T3:        "T3調合用薬草",
@@ -177,7 +173,6 @@ function updateCraftCostInfo(category, recipeId){
     distilledWater_T3: "T3蒸留水"
   };
 
-  // ティア付き基本素材の日本語名
   const tierMatNames = {
     herb_T1:   "T1草",
     herb_T2:   "T2草",
@@ -195,8 +190,8 @@ function updateCraftCostInfo(category, recipeId){
     cloth_T2:  "T2布",
     cloth_T3:  "T3布",
     leather_T1:"T1皮",
-    leather_T2:"T2皮",
-    leather_T3:"T3皮"
+    leather_T2:"T1皮",
+    leather_T3:"T1皮"
   };
 
   Object.keys(recipe.cost).forEach(k => {
@@ -204,17 +199,14 @@ function updateCraftCostInfo(category, recipeId){
     let have = 0;
     let label;
 
-    // 1. ティア付き基本素材（herb_T1 など）
     if (k in tierMatNames) {
-      const [base, tier] = k.split("_"); // 例: "ore", "T1"
+      const [base, tier] = k.split("_");
       const m = materials[base];
       if (m) {
-        const tierKey = tier.toLowerCase(); // "t1"
+        const tierKey = tier.toLowerCase();
         have = m[tierKey] || 0;
       }
       label = tierMatNames[k];
-
-    // 2. 中間素材
     } else if (k in interNames) {
       if (typeof intermediateMats === "object") {
         have = intermediateMats[k] || 0;
@@ -222,13 +214,9 @@ function updateCraftCostInfo(category, recipeId){
         have = 0;
       }
       label = interNames[k];
-
-    // 3. 基本素材（wood / ore など、ティア混在で合計）
     } else if (k in materials) {
       have = getMatTotal(k);
       label = baseNames[k] || k;
-
-    // 4. それ以外（将来の拡張用）
     } else {
       label = k;
       have = 0;
@@ -240,7 +228,6 @@ function updateCraftCostInfo(category, recipeId){
   infoEl.textContent = "必要素材：" + (list.length ? list.join("、") : "-");
 }
 
-// 素材チェック（武器・防具・ポーション・道具・中間素材用）
 function hasMaterials(cost){
   if(cost.wood && getMatTotal("wood") < cost.wood) return false;
   if(cost.ore && getMatTotal("ore") < cost.ore) return false;
@@ -256,7 +243,6 @@ function hasMaterials(cost){
     return (m[tierKey] || 0) >= amount;
   };
 
-  // 草・水
   if (!checkTier("herb",  "t1", cost.herb_T1)) return false;
   if (!checkTier("herb",  "t2", cost.herb_T2)) return false;
   if (!checkTier("herb",  "t3", cost.herb_T3)) return false;
@@ -264,7 +250,6 @@ function hasMaterials(cost){
   if (!checkTier("water", "t2", cost.water_T2)) return false;
   if (!checkTier("water", "t3", cost.water_T3)) return false;
 
-  // 木・鉱石・布・皮のティア素材
   if (!checkTier("wood",   "t1", cost.wood_T1))   return false;
   if (!checkTier("wood",   "t2", cost.wood_T2))   return false;
   if (!checkTier("wood",   "t3", cost.wood_T3))   return false;
@@ -278,7 +263,6 @@ function hasMaterials(cost){
   if (!checkTier("leather","t2", cost.leather_T2))return false;
   if (!checkTier("leather","t3", cost.leather_T3))return false;
 
-  // 中間素材
   if (typeof intermediateMats === "object") {
     if (cost.woodPlank_T1      && (intermediateMats.woodPlank_T1      || 0) < cost.woodPlank_T1)      return false;
     if (cost.woodPlank_T2      && (intermediateMats.woodPlank_T2      || 0) < cost.woodPlank_T2)      return false;
@@ -302,7 +286,6 @@ function hasMaterials(cost){
   return true;
 }
 
-// 料理素材チェック（cost 形式）
 function hasCookingMaterials(cost){
   if (!cost || !cookingMats) return false;
   return Object.keys(cost).every(k => {
@@ -312,7 +295,6 @@ function hasCookingMaterials(cost){
   });
 }
 
-// 料理素材消費（cost 形式）
 function consumeCookingMaterials(cost){
   if (!cost || !cookingMats) return;
   Object.keys(cost).forEach(k => {
@@ -323,7 +305,6 @@ function consumeCookingMaterials(cost){
   });
 }
 
-// requires 形式用のチェック＆消費（COOKING_RECIPES が requires を持っている場合用）
 function hasCookingMaterialsByRequires(recipe){
   if (!recipe || !Array.isArray(recipe.requires)) return false;
   const mats = window.cookingMats || {};
@@ -358,7 +339,6 @@ function consumeOneMatTier(key, need){
   }
 }
 
-// ★ 素材消費本体：ここだけを通す
 function consumeMaterials(cost){
   if(cost.wood)   consumeOneMatTier("wood",   cost.wood);
   if(cost.ore)    consumeOneMatTier("ore",    cost.ore);
@@ -374,7 +354,6 @@ function consumeMaterials(cost){
     m[tierKey] = Math.max(0, (m[tierKey] || 0) - amount);
   };
 
-  // 草・水
   decTier("herb",  "t1", cost.herb_T1);
   decTier("herb",  "t2", cost.herb_T2);
   decTier("herb",  "t3", cost.herb_T3);
@@ -382,7 +361,6 @@ function consumeMaterials(cost){
   decTier("water", "t2", cost.water_T2);
   decTier("water", "t3", cost.water_T3);
 
-  // 木・鉱石・布・皮
   decTier("wood",   "t1", cost.wood_T1);
   decTier("wood",   "t2", cost.wood_T2);
   decTier("wood",   "t3", cost.wood_T3);
@@ -396,7 +374,6 @@ function consumeMaterials(cost){
   decTier("leather","t2", cost.leather_T2);
   decTier("leather","t3", cost.leather_T3);
 
-  // 中間素材
   if (typeof intermediateMats === "object") {
     const dec = (k, n) => {
       if (!n) return;
@@ -424,10 +401,6 @@ function consumeMaterials(cost){
   }
 }
 
-// =======================
-// 各種クラフト
-// =======================
-
 function craftWeapon(){
   const sel = document.getElementById("weaponSelect");
   if(!sel || !sel.value) return;
@@ -441,7 +414,6 @@ function craftWeapon(){
   const skillLv = getCraftSkillLevel("weapon");
   const successRate = calcCraftSuccessRate(recipe.baseRate, skillLv);
 
-  // 成功・失敗に関わらず素材は必ず消費
   consumeMaterials(recipe.cost);
   addCraftSkillExp("weapon");
 
@@ -454,7 +426,6 @@ function craftWeapon(){
   const q = rollQualityBySkillLv(skillLv);
   const qName = QUALITY_NAMES[q];
 
-  // ★ インスタンスを追加（強化0・耐久MAXで1本）
   const master = weapons.find(w => w.id === recipe.id);
   const baseEnh = master ? (master.enhance || 0) : 0;
   addWeaponInstance(recipe.id, q, baseEnh);
@@ -600,7 +571,6 @@ function craftTool(){
   }
 }
 
-// 中間素材クラフト
 function craftIntermediate(interId){
   if (!Array.isArray(INTERMEDIATE_MATERIALS)) return;
   const def = INTERMEDIATE_MATERIALS.find(m => m.id === interId);
@@ -609,14 +579,13 @@ function craftIntermediate(interId){
     return;
   }
 
-  // def.from 形式のコストを、consumeMaterials/hasMaterials 互換の cost に変換
   const cost = {};
   Object.keys(def.from).forEach(baseKey => {
-    const tierInfo = def.from[baseKey]; // 例: { t1: 3 }
+    const tierInfo = def.from[baseKey];
     Object.keys(tierInfo).forEach(tierKey => {
       const need = tierInfo[tierKey] || 0;
       if (!need) return;
-      const keyName = `${baseKey}_${tierKey.toUpperCase()}`; // wood_t1 → wood_T1
+      const keyName = `${baseKey}_${tierKey.toUpperCase()}`;
       cost[keyName] = (cost[keyName] || 0) + need;
     });
   });
@@ -636,7 +605,6 @@ function craftIntermediate(interId){
   updateDisplay();
 }
 
-// 料理クラフト（食べ物）
 function craftFood(){
   const sel = document.getElementById("foodSelect");
   if (!sel || !sel.value) return;
@@ -701,7 +669,6 @@ function craftFood(){
   }
 }
 
-// 料理クラフト（飲み物）
 function craftDrink(){
   const sel = document.getElementById("drinkSelect");
   if (!sel || !sel.value) return;
@@ -770,8 +737,6 @@ function craftDrink(){
 // 装備・強化
 // =======================
 
-// 直前にどのクラフトカテゴリを見ていたか覚えておく
-// "weapon" / "armor" / "potion" / "tool" / "material" / "cookingFood" / "cookingDrink"
 let lastCraftCategory = "weapon";
 
 function refreshEquipSelects(){
@@ -792,7 +757,10 @@ function refreshEquipSelects(){
   const tierSel   = document.getElementById("craftTierSelect");
   const tierFilter= tierSel ? tierSel.value : "all";
 
-  // 直前の選択値を退避（カテゴリ別）
+  // ★ 装備種別フィルタ（戦闘用 / 採取用）
+  const kindSel    = document.getElementById("craftKindSelect");
+  const kindFilter = kindSel ? kindSel.value : "all"; // all | normal | gather
+
   const prevWeaponId  = wCraftSel ? wCraftSel.value : null;
   const prevArmorId   = aCraftSel ? aCraftSel.value : null;
   const prevPotionId  = pCraftSel ? pCraftSel.value : null;
@@ -801,7 +769,6 @@ function refreshEquipSelects(){
   const prevFoodId    = foodSel   ? foodSel.value   : null;
   const prevDrinkId   = drinkSel  ? drinkSel.value  : null;
 
-  // 所持装備セレクト（ID単位カウント表示は従来仕様のまま）
   if(wSel){
     wSel.innerHTML="";
     weapons.forEach(w=>{
@@ -829,13 +796,18 @@ function refreshEquipSelects(){
     });
   }
 
-  // クラフト用セレクト（武器）
+  // 武器クラフトセレクト
   if(wCraftSel){
     wCraftSel.innerHTML="";
     CRAFT_RECIPES.weapon.forEach(r=>{
+      // ティアフィルタ
       if (tierFilter !== "all") {
-        if (!r.id.includes("_" + tierFilter)) return;   // 例: dagger_T1
+        if (!r.id.includes("_" + tierFilter)) return;
       }
+      // kind フィルタ（未指定は normal 扱い）
+      const k = r.kind || "normal";
+      if (kindFilter !== "all" && k !== kindFilter) return;
+
       const opt=document.createElement("option");
       opt.value = r.id;
       const m = r.id.match(/_T(\d)/);
@@ -849,16 +821,23 @@ function refreshEquipSelects(){
     if (prevWeaponId &&
         Array.from(wCraftSel.options).some(o => o.value === prevWeaponId)) {
       wCraftSel.value = prevWeaponId;
+    } else if (!wCraftSel.value && wCraftSel.options.length > 0) {
+      wCraftSel.selectedIndex = 0;
     }
   }
 
-  // クラフト用セレクト（防具）
+  // 防具クラフトセレクト
   if(aCraftSel){
     aCraftSel.innerHTML="";
     CRAFT_RECIPES.armor.forEach(r=>{
+      // ティアフィルタ
       if (tierFilter !== "all") {
         if (!r.id.includes("_" + tierFilter)) return;
       }
+      // kind フィルタ（未指定は normal 扱い）
+      const k = r.kind || "normal";
+      if (kindFilter !== "all" && k !== kindFilter) return;
+
       const opt=document.createElement("option");
       opt.value = r.id;
       const m = r.id.match(/_T(\d)/);
@@ -872,15 +851,16 @@ function refreshEquipSelects(){
     if (prevArmorId &&
         Array.from(aCraftSel.options).some(o => o.value === prevArmorId)) {
       aCraftSel.value = prevArmorId;
+    } else if (!aCraftSel.value && aCraftSel.options.length > 0) {
+      aCraftSel.selectedIndex = 0;
     }
   }
 
-  // クラフト用セレクト（ポーション）
   if(pCraftSel){
     pCraftSel.innerHTML="";
     CRAFT_RECIPES.potion.forEach(r=>{
       if (tierFilter !== "all") {
-        if (!r.id.includes(tierFilter)) return;  // potionT1 など
+        if (!r.id.includes(tierFilter)) return;
       }
       const opt=document.createElement("option");
       opt.value = r.id;
@@ -898,12 +878,11 @@ function refreshEquipSelects(){
     }
   }
 
-  // クラフト用セレクト（道具）
   if(tCraftSel){
     tCraftSel.innerHTML="";
     CRAFT_RECIPES.tool.forEach(r=>{
       if (tierFilter !== "all") {
-        if (!r.id.includes("_" + tierFilter)) return;  // bomb_T1 など
+        if (!r.id.includes("_" + tierFilter)) return;
       }
       const opt=document.createElement("option");
       opt.value = r.id;
@@ -919,7 +898,6 @@ function refreshEquipSelects(){
     }
   }
 
-  // クラフト用セレクト（中間素材）
   if (interSel) {
     interSel.innerHTML = "";
     if (Array.isArray(INTERMEDIATE_MATERIALS)) {
@@ -939,7 +917,6 @@ function refreshEquipSelects(){
     }
   }
 
-  // クラフト用セレクト（料理：食べ物）
   if (foodSel) {
     foodSel.innerHTML = "";
     if (COOKING_RECIPES && Array.isArray(COOKING_RECIPES.food)) {
@@ -965,7 +942,6 @@ function refreshEquipSelects(){
     }
   }
 
-  // クラフト用セレクト（料理：飲み物）
   if (drinkSel) {
     drinkSel.innerHTML = "";
     if (COOKING_RECIPES && Array.isArray(COOKING_RECIPES.drink)) {
@@ -1049,10 +1025,6 @@ function refreshEquipSelects(){
   }
 }
 
-// ★ ここはまだ「ID単位装備」のまま（インスタンス選択UIは別セレクトで増やす想定）
-// 「勝手に装備させないでね」という条件に合わせて、どのインスタンスを装備するかは
-// 別の UI / 関数で index を明示的に指定してもらう形にする。
-
 function equipWeapon(){
   const sel=document.getElementById("weaponEquipSelect");
   if(!sel||!sel.value){ appendLog("装備する武器がない"); return; }
@@ -1071,18 +1043,43 @@ function equipArmor(){
   updateDisplay();
 }
 
-function consumeOneSameWeaponAsMaterial(weaponId){
-  const owned = weaponCounts[weaponId] || 0;
-  if(owned <= 1) return false;
-  weaponCounts[weaponId] = owned - 1;
-  return true;
+// ここからが変更ポイント：インスタンスを1本消費＋警告ログ
+function consumeOneWeaponInstanceAsMaterial(weaponId){
+  let usedQuality = 0;
+  let usedEnh = 0;
+  for (let i = 0; i < weaponInstances.length; i++) {
+    const inst = weaponInstances[i];
+    if (!inst || inst.id !== weaponId) continue;
+    if (typeof equippedWeaponIndex === "number" && equippedWeaponIndex === i) continue;
+    usedQuality = inst.quality || 0;
+    usedEnh = inst.enhance || 0;
+    weaponInstances.splice(i, 1);
+    weaponCounts[weaponId] = Math.max(0, (weaponCounts[weaponId] || 0) - 1);
+    if (usedQuality > 0 || usedEnh > 0) {
+      appendLog("※良品/傑作/強化済みの武器を素材として消費した");
+    }
+    return true;
+  }
+  return false;
 }
 
-function consumeOneSameArmorAsMaterial(armorId){
-  const owned = armorCounts[armorId] || 0;
-  if(owned <= 1) return false;
-  armorCounts[armorId] = owned - 1;
-  return true;
+function consumeOneArmorInstanceAsMaterial(armorId){
+  let usedQuality = 0;
+  let usedEnh = 0;
+  for (let i = 0; i < armorInstances.length; i++) {
+    const inst = armorInstances[i];
+    if (!inst || inst.id !== armorId) continue;
+    if (typeof equippedArmorIndex === "number" && equippedArmorIndex === i) continue;
+    usedQuality = inst.quality || 0;
+    usedEnh = inst.enhance || 0;
+    armorInstances.splice(i, 1);
+    armorCounts[armorId] = Math.max(0, (armorCounts[armorId] || 0) - 1);
+    if (usedQuality > 0 || usedEnh > 0) {
+      appendLog("※良品/傑作/強化済みの防具を素材として消費した");
+    }
+    return true;
+  }
+  return false;
 }
 
 function enhanceWeapon(){
@@ -1110,7 +1107,7 @@ function enhanceWeapon(){
     }
   }
 
-  if(!consumeOneSameWeaponAsMaterial(w.id)){
+  if(!consumeOneWeaponInstanceAsMaterial(w.id)){
     appendLog("同じ武器がもう1本必要です");
     return;
   }
@@ -1165,7 +1162,7 @@ function enhanceArmor(){
     }
   }
 
-  if(!consumeOneSameArmorAsMaterial(a.id)){
+  if(!consumeOneArmorInstanceAsMaterial(a.id)){
     appendLog("同じ防具がもう1つ必要です");
     return;
   }

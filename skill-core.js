@@ -100,7 +100,6 @@ function refreshSkillUIs() {
 
   const jobSkills = JOB_SKILLS[jobId] || { phys: [], magic: [] };
 
-  // 魔法セレクト
   {
     const optNone = document.createElement("option");
     optNone.value = "";
@@ -115,7 +114,6 @@ function refreshSkillUIs() {
     });
   }
 
-  // 物理スキルセレクト
   {
     const optNone = document.createElement("option");
     optNone.value = "";
@@ -138,11 +136,9 @@ function refreshSkillUIs() {
 let braveChargeTurnRemain = 0;
 let braveChargeRate       = 0.3;  // 攻撃+30%
 
-// ペット火力バフ（アニマルリンク用）
 let petBuffTurnRemain = 0;
-// petBuffRate は game-core 側で宣言済み（ここでは宣言しないで使う）
+// petBuffRate は game-core 側で宣言済み
 
-// game-core 側のダメージ計算に組み込む用ヘルパ
 function getCurrentAtkForSkill() {
   let base = atkTotal;
   if (braveChargeTurnRemain > 0) {
@@ -151,7 +147,6 @@ function getCurrentAtkForSkill() {
   return base;
 }
 
-// 魔法用 INT＋バフ適用ヘルパ（料理バフなどを反映）
 function getEffectiveIntForMagic() {
   let base = INT_;
   if (typeof applyMagicAttackBuffsForPlayer === "function") {
@@ -160,12 +155,10 @@ function getEffectiveIntForMagic() {
   return base;
 }
 
-// ターン終了時に呼ぶ想定（enemyTurn の最後など）
 function tickSkillBuffTurns() {
   if (braveChargeTurnRemain > 0) {
     braveChargeTurnRemain--;
   }
-  // シールドブロウのガードは game-core 側のグローバル shieldBlowGuardTurnRemain を使用
   if (petBuffTurnRemain > 0) {
     petBuffTurnRemain--;
     if (petBuffTurnRemain <= 0) {
@@ -178,47 +171,35 @@ function tickSkillBuffTurns() {
 // ペット攻撃ロジック
 // =======================
 
-// ペットの基礎攻撃力を算出（レベル＆基礎ATKから）
 function getPetBaseAtk() {
-  // ベース＋レベルに応じて少し伸びる
   const levelBonus = Math.floor(petLevel * 0.5);
   return Math.max(1, petAtkBase + levelBonus);
 }
 
-// ペットの1ヒットダメージ（揺らぎ込み）
 function calcPetDamage() {
   const base = getPetBaseAtk() * petBuffRate;
-  const variance = Math.floor(base * 0.2); // ±20%
+  const variance = Math.floor(base * 0.2);
   const roll = base + (Math.floor(Math.random() * (variance * 2 + 1)) - variance);
   return Math.max(1, Math.floor(roll));
 }
 
-// ペットターン：毎ターン自動で行動（動物使い時のみ）
-// ・基本は通常攻撃
-// ・30%でスキル（powerBite / taunt / selfHeal）をランダム発動
-// ・プレイヤー総ダメージの3〜4倍くらいになる想定
 function doPetTurn() {
-  if (jobId !== 2) return;        // 動物使い以外は何もしない
-  if (!currentEnemy) return;      // 敵がいなければ何もしない
-  if (petHp <= 0) return;         // ペットが倒れている場合は行動不能
+  if (jobId !== 2) return;
+  if (!currentEnemy) return;
+  if (petHp <= 0) return;
 
-  // --- スキル発動判定 ---
-  // petSkills と PET_SKILL_TRY_RATE は game-core 側で定義済み
   let usedSkill = false;
   if (petSkills && Math.random() < PET_SKILL_TRY_RATE) {
     const s = petSkills[Math.floor(Math.random() * petSkills.length)];
     if (s && s.id === "powerBite") {
-      // 高倍率の噛みつき
       let base = calcPetDamage();
       let dmg = Math.floor(base * (s.powerRate || 1.6));
       enemyHp = Math.max(0, enemyHp - dmg);
       appendLog(`ペットの${s.name}！ ${currentEnemy.name}に${dmg}ダメージ！`);
       usedSkill = true;
     } else if (s && s.id === "taunt") {
-      // 次のターンはほぼ確実にペットに攻撃を集める（簡易タゲ取り）
       appendLog(`ペットの${s.name}！ 敵の注意を引きつけた！`);
-      // 次の enemyTurn で 100% ペットを狙うフラグ
-      petBuffTurnRemain = Math.max(petBuffTurnRemain, 1); // 流用
+      petBuffTurnRemain = Math.max(petBuffTurnRemain, 1);
       usedSkill = true;
     } else if (s && s.id === "selfHeal") {
       const heal = Math.floor(petHpMax * (s.healRate || 0.3)) + 3;
@@ -229,10 +210,8 @@ function doPetTurn() {
   }
 
   if (!usedSkill) {
-    // --- 通常攻撃 ---
     let dmg = calcPetDamage();
 
-    // 20% でクリティカル気味の一撃
     if (Math.random() < 0.2) {
       const critBonus = 1.5;
       dmg = Math.floor(dmg * critBonus);
@@ -244,11 +223,12 @@ function doPetTurn() {
     }
   }
 
-  // 勝敗判定のみ。敵ターンはプレイヤー行動側で呼ぶ。
   if (enemyHp <= 0) {
     winBattle();
   } else {
-    updateDisplay();
+    if (typeof updateDisplay === "function") {
+      updateDisplay();
+    }
   }
 }
 
@@ -275,9 +255,24 @@ function castMagicFromUI() {
     return;
   }
 
+  // ビーストヒール以外は敵必須
   if (!currentEnemy && skillId !== "beastHeal") {
     setLog("敵がいない");
     return;
+  }
+
+  // プレイヤー行動前の状態異常チェック
+  if (typeof beforeActionPlayer === "function") {
+    const pre = beforeActionPlayer();
+    if (!pre || !pre.canAct) {
+      if (typeof updateEnemyStatusUI === "function") {
+        updateEnemyStatusUI();
+      }
+      if (typeof updateDisplay === "function") {
+        updateDisplay();
+      }
+      return;
+    }
   }
 
   const mpCost = skill.mpCost || 0;
@@ -287,19 +282,23 @@ function castMagicFromUI() {
   }
   mp -= mpCost;
 
+  let didDamage = false;
+
   if (skillId === "fireBolt") {
     const baseInt = getEffectiveIntForMagic();
     const dmg = 10 + baseInt * 2;
     enemyHp = Math.max(0, enemyHp - dmg);
     setLog(`ファイアボルト！ ${currentEnemy.name} に${dmg}ダメージ`);
+    didDamage = true;
   } else if (skillId === "iceLance") {
     const baseInt = getEffectiveIntForMagic();
     const dmg = 8 + Math.floor(baseInt * 1.8);
     enemyHp = Math.max(0, enemyHp - dmg);
     setLog(`アイスランス！ ${currentEnemy.name} に${dmg}ダメージ（防御が下がった気がする）`);
+    didDamage = true;
   } else if (skillId === "chainLightning") {
     const baseInt = getEffectiveIntForMagic();
-    const hits = 2 + Math.floor(Math.random() * 2); // 2〜3Hit
+    const hits = 2 + Math.floor(Math.random() * 2);
     let total = 0;
     for (let i = 0; i < hits; i++) {
       const one = 6 + Math.floor(baseInt * 1.3);
@@ -307,6 +306,7 @@ function castMagicFromUI() {
     }
     enemyHp = Math.max(0, enemyHp - total);
     setLog(`チェインライトニング！ ${currentEnemy.name} に${hits}ヒット合計${total}ダメージ`);
+    didDamage = true;
   } else if (skillId === "beastHeal") {
     if (jobId !== 2) {
       setLog("この魔法は動物使い専用だ");
@@ -317,16 +317,54 @@ function castMagicFromUI() {
     }
   }
 
-  // ダメージ系魔法のときだけペットターン＋敵ターン
-  if (skillId !== "beastHeal") {
-    // 先にペット行動（倒しきれば敵ターンは来ない）
+  // ここからターン進行
+  if (!currentEnemy) {
+    // 非戦闘時: ヒールだけして終了（敵・ペットターンは進めない）
+    if (typeof updateDisplay === "function") {
+      updateDisplay();
+    }
+    return;
+  }
+
+  if (didDamage) {
+    if (enemyHp <= 0) {
+      winBattle();
+      if (typeof updateEnemyStatusUI === "function") {
+        updateEnemyStatusUI();
+      }
+      if (typeof updateDisplay === "function") {
+        updateDisplay();
+      }
+      return;
+    }
+
     doPetTurn();
     if (enemyHp > 0) {
       enemyTurn();
+      if (typeof tickStatusesTurnEndForBoth === "function") {
+        tickStatusesTurnEndForBoth();
+      }
+      if (typeof updateEnemyStatusUI === "function") {
+        updateEnemyStatusUI();
+      }
+    }
+  } else {
+    // ダメージを与えない魔法（beastHeal など）: 戦闘中のみターン進行
+    doPetTurn();
+    if (enemyHp > 0) {
+      enemyTurn();
+      if (typeof tickStatusesTurnEndForBoth === "function") {
+        tickStatusesTurnEndForBoth();
+      }
+      if (typeof updateEnemyStatusUI === "function") {
+        updateEnemyStatusUI();
+      }
     }
   }
 
-  updateDisplay();
+  if (typeof updateDisplay === "function") {
+    updateDisplay();
+  }
 }
 
 // =======================
@@ -357,6 +395,20 @@ function useSkillFromUI() {
     return;
   }
 
+  // プレイヤー行動前の状態異常チェック
+  if (typeof beforeActionPlayer === "function") {
+    const pre = beforeActionPlayer();
+    if (!pre || !pre.canAct) {
+      if (typeof updateEnemyStatusUI === "function") {
+        updateEnemyStatusUI();
+      }
+      if (typeof updateDisplay === "function") {
+        updateDisplay();
+      }
+      return;
+    }
+  }
+
   const spCost = skill.spCost || 0;
   if (sp < spCost) {
     setLog("SPが足りない");
@@ -364,16 +416,19 @@ function useSkillFromUI() {
   }
   sp -= spCost;
 
+  let didDamage = false;
+
   if (skillId === "powerSlash") {
     const dmg = Math.floor(getCurrentAtkForSkill() * 1.5);
     enemyHp = Math.max(0, enemyHp - dmg);
     setLog(`パワースラッシュ！ ${currentEnemy.name} に${dmg}ダメージ`);
+    didDamage = true;
   } else if (skillId === "shieldBlow") {
     const dmg = Math.floor(getCurrentAtkForSkill() * 1.2);
     enemyHp = Math.max(0, enemyHp - dmg);
-    // ガードフラグは game-core-3.js 側のグローバルを使用
     shieldBlowGuardTurnRemain = 1;
     setLog(`シールドブロウ！ ${currentEnemy.name} に${dmg}ダメージ（次の被ダメージ軽減）`);
+    didDamage = true;
   } else if (skillId === "braveCharge") {
     braveChargeTurnRemain = 2;
     setLog("ブレイブチャージ！ しばらく攻撃力が上がった");
@@ -381,6 +436,7 @@ function useSkillFromUI() {
     const dmg = Math.floor(getCurrentAtkForSkill() * 1.3);
     enemyHp = Math.max(0, enemyHp - dmg);
     setLog(`ビーストスラッシュ！ ${currentEnemy.name} に${dmg}ダメージ`);
+    didDamage = true;
   } else if (skillId === "animalLink") {
     if (jobId !== 2) {
       setLog("アニマルリンクは動物使い専用だ");
@@ -391,29 +447,48 @@ function useSkillFromUI() {
     }
   }
 
-  // アニマルリンク（純バフ）のときは敵ターンだけ、他はペット→敵ターン
-  if (skillId === "animalLink") {
+  if (skillId === "animalLink" || skillId === "braveCharge") {
+    // 純バフ系スキルもターンを消費して敵ターンへ
     enemyTurn();
-  } else {
+    if (typeof tickStatusesTurnEndForBoth === "function") {
+      tickStatusesTurnEndForBoth();
+    }
+    if (typeof updateEnemyStatusUI === "function") {
+      updateEnemyStatusUI();
+    }
+  } else if (didDamage) {
     if (enemyHp <= 0) {
       winBattle();
-    } else {
-      // 先にペット行動（倒せば敵ターンなし）
-      doPetTurn();
-      if (enemyHp > 0) {
-        enemyTurn();
+      if (typeof updateEnemyStatusUI === "function") {
+        updateEnemyStatusUI();
+      }
+      if (typeof updateDisplay === "function") {
+        updateDisplay();
+      }
+      return;
+    }
+
+    doPetTurn();
+    if (enemyHp > 0) {
+      enemyTurn();
+      if (typeof tickStatusesTurnEndForBoth === "function") {
+        tickStatusesTurnEndForBoth();
+      }
+      if (typeof updateEnemyStatusUI === "function") {
+        updateEnemyStatusUI();
       }
     }
   }
 
-  updateDisplay();
+  if (typeof updateDisplay === "function") {
+    updateDisplay();
+  }
 }
 
 // =======================
 // game-ui.js から呼ばれるラッパー
 // =======================
 
-// セレクトの中身更新
 function refreshMagicSelect() {
   refreshSkillUIs();
 }
@@ -421,7 +496,6 @@ function refreshSkillSelect() {
   refreshSkillUIs();
 }
 
-// 実行
 function castSelectedMagic() {
   castMagicFromUI();
 }
@@ -441,19 +515,16 @@ function updateBattleSkillUIByJob() {
   if (!magicBlock || !skillBlock || !magicBtn || !skillBtn) return;
 
   if (jobId === 0) {
-    // 戦士: 武技だけ
     magicBlock.style.display = "none";
     magicBtn.style.display   = "none";
     skillBlock.style.display = "";
     skillBtn.style.display   = "";
   } else if (jobId === 1) {
-    // 魔法使い: 魔法だけ
     magicBlock.style.display = "";
     magicBtn.style.display   = "";
     skillBlock.style.display = "none";
     skillBtn.style.display   = "none";
   } else if (jobId === 2) {
-    // 動物使い: 両方表示
     magicBlock.style.display = "";
     magicBtn.style.display   = "";
     skillBlock.style.display = "";
@@ -466,17 +537,14 @@ function updateBattleSkillUIByJob() {
   }
 }
 
-// 職業に応じて戦闘スキルUIを切り替える
 function updateSkillButtonsByJob() {
-  const magicBlock = document.getElementById("magicBlock"); // 魔法UIブロック
-  const skillBlock = document.getElementById("skillBlock"); // 武技UIブロック
+  const magicBlock = document.getElementById("magicBlock");
+  const skillBlock = document.getElementById("skillBlock");
 
-  // 魔法ブロック: 魔法使いのみ表示
   if (magicBlock) {
     magicBlock.style.display = (jobId === 1) ? "" : "none";
   }
 
-  // 武技ブロック: 戦士・動物使いのみ表示
   if (skillBlock) {
     skillBlock.style.display = (jobId === 0 || jobId === 2) ? "" : "none";
   }

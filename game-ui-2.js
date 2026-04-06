@@ -761,6 +761,9 @@ function refreshWarehouseUI() {
 
       materialDefs.forEach(def => {
         const level = getGatherBaseLevel(def.key);
+        const mode  = (typeof getGatherBaseMode === "function")
+          ? getGatherBaseMode(def.key)
+          : "normal";
 
         const row = document.createElement("div");
         row.style.display = "flex";
@@ -771,6 +774,14 @@ function refreshWarehouseUI() {
         labelSpan.textContent = `${def.label} Lv${level}`;
         row.appendChild(labelSpan);
 
+        // モード表示ラベル
+        const modeLabel = document.createElement("span");
+        let modeText = "ノーマル";
+        if (mode === "quantity") modeText = "量特化";
+        else if (mode === "quality") modeText = "質特化";
+        modeLabel.textContent = `（${modeText}）`;
+        row.appendChild(modeLabel);
+
         const upBtn = document.createElement("button");
         upBtn.textContent = "Lv+1";
         upBtn.style.fontSize = "10px";
@@ -779,6 +790,36 @@ function refreshWarehouseUI() {
           refreshWarehouseUI();
         });
         row.appendChild(upBtn);
+
+        // モード切り替えボタン（ノーマル / 量 / 質）
+        if (typeof setGatherBaseMode === "function") {
+          const normalBtn = document.createElement("button");
+          normalBtn.textContent = "ノーマル";
+          normalBtn.style.fontSize = "10px";
+          normalBtn.addEventListener("click", () => {
+            setGatherBaseMode(def.key, "normal");
+            refreshWarehouseUI();
+          });
+          row.appendChild(normalBtn);
+
+          const quantityBtn = document.createElement("button");
+          quantityBtn.textContent = "量特化";
+          quantityBtn.style.fontSize = "10px";
+          quantityBtn.addEventListener("click", () => {
+            setGatherBaseMode(def.key, "quantity");
+            refreshWarehouseUI();
+          });
+          row.appendChild(quantityBtn);
+
+          const qualityBtn = document.createElement("button");
+          qualityBtn.textContent = "質特化";
+          qualityBtn.style.fontSize = "10px";
+          qualityBtn.addEventListener("click", () => {
+            setGatherBaseMode(def.key, "quality");
+            refreshWarehouseUI();
+          });
+          row.appendChild(qualityBtn);
+        }
 
         container.appendChild(row);
       });
@@ -950,12 +991,6 @@ window.addEventListener("DOMContentLoaded", () => {
   if (typeof initShop === "function") {
     initShop();
   }
-
-  document.getElementById("shopBuyPotion")  ?.addEventListener("click", () => buyPotionInShop("potion", 60));
-  document.getElementById("shopBuyHiPotion")?.addEventListener("click", () => buyPotionInShop("hiPotion", 100));
-  document.getElementById("shopBuyMana")    ?.addEventListener("click", () => buyPotionInShop("manaPotion", 80));
-  document.getElementById("shopBuyHiMana")  ?.addEventListener("click", () => buyPotionInShop("hiManaPotion", 120));
-  document.getElementById("shopBuyBomb")    ?.addEventListener("click", () => buyPotionInShop("bomb", 100));
 
   const shopHealHP = document.getElementById("shopHealHP");
   if (shopHealHP) {

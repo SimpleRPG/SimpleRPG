@@ -332,7 +332,7 @@ const STATUS_EFFECTS = {
     }
   },
 
-  // 飲み物バフ（既存仕様を崩さず軽め）
+  // 飲み物バフ
   drink_mp_regen_T1: {
     id: "drink_mp_regen_T1",
     name: "飲み物:回復T1",
@@ -453,6 +453,22 @@ function addFoodStatusToPlayer(id, durationOverride) {
     ex.remain = Math.max(ex.remain, baseDur);
   } else {
     playerStatuses.push({ id, remain: baseDur, source: BUFF_SOURCE_FOOD });
+  }
+}
+
+// 飲み物バフ専用
+function addDrinkStatusToPlayer(id, durationOverride) {
+  const def = STATUS_EFFECTS[id];
+  if (!def) return;
+  const baseDur = (typeof durationOverride === "number" && durationOverride > 0)
+    ? durationOverride
+    : (def.baseDuration || 0);
+
+  const ex = playerStatuses.find(s => s.id === id && s.source === BUFF_SOURCE_DRINK);
+  if (ex) {
+    ex.remain = Math.max(ex.remain, baseDur);
+  } else {
+    playerStatuses.push({ id, remain: baseDur, source: BUFF_SOURCE_DRINK });
   }
 }
 
@@ -626,6 +642,40 @@ function tickStatusesTurnEndForBoth() {
 }
 
 // =======================
+// 状態アイコン描画（プレイヤー＆敵）
+// =======================
+
+function renderPlayerStatusIcons() {
+  const row = document.getElementById("statusEffectPlayer");
+  if (!row) return;
+  row.innerHTML = "";
+  if (!playerStatuses.length) return;
+  for (const inst of playerStatuses) {
+    if (inst.remain <= 0) continue;
+    const def = STATUS_EFFECTS[inst.id];
+    const span = document.createElement("span");
+    span.className = "status-effect-badge";
+    span.textContent = `${def ? def.name : inst.id}(${inst.remain})`;
+    row.appendChild(span);
+  }
+}
+
+function renderEnemyStatusIcons() {
+  const row = document.getElementById("statusEffectEnemy");
+  if (!row) return;
+  row.innerHTML = "";
+  if (!enemyStatuses.length) return;
+  for (const inst of enemyStatuses) {
+    if (inst.remain <= 0) continue;
+    const def = STATUS_EFFECTS[inst.id];
+    const span = document.createElement("span");
+    span.className = "status-effect-badge";
+    span.textContent = `${def ? def.name : inst.id}(${inst.remain})`;
+    row.appendChild(span);
+  }
+}
+
+// =======================
 // 敵ステータス UI
 // =======================
 
@@ -648,6 +698,9 @@ function updateEnemyStatusUI() {
     hpEl.textContent    = "0";
     hpMaxEl.textContent = "0";
   }
+
+  // 敵の状態アイコンもここで更新
+  renderEnemyStatusIcons();
 }
 
 // =======================
@@ -669,15 +722,16 @@ function startBattleCommon(enemy, isBoss) {
     refreshBattleItemSelect();
   }
 
+  // 開始時に状態表示もリフレッシュ
+  renderPlayerStatusIcons();
   updateEnemyStatusUI();
   if (typeof updateReturnTownButton === "function") {
-    updateReturnTownButton();   // 戦闘中は帰還ボタン非表示
+    updateReturnTownButton();
   }
   updateDisplay();
 }
 
 function endBattleCommon() {
-  // 敵側は全リセット
   currentEnemy = null;
   enemyHp = 0;
   enemyHpMax = 0;
@@ -693,9 +747,10 @@ function endBattleCommon() {
   setBattleCommandVisible(false);
   setExploreUIVisible(true);
 
+  renderPlayerStatusIcons();
   updateEnemyStatusUI();
   if (typeof updateReturnTownButton === "function") {
-    updateReturnTownButton();   // 探索中なら帰還ボタン表示
+    updateReturnTownButton();
   }
   updateDisplay();
 }
@@ -718,6 +773,7 @@ function playerAttack() {
   if (!pre.canAct) {
     enemyTurn();
     tickStatusesTurnEndForBoth();
+    renderPlayerStatusIcons();
     updateEnemyStatusUI();
     updateDisplay();
     return;
@@ -729,6 +785,7 @@ function playerAttack() {
     appendLog("あなたの攻撃は外れた！");
     enemyTurn();
     tickStatusesTurnEndForBoth();
+    renderPlayerStatusIcons();
     updateEnemyStatusUI();
     updateDisplay();
     return;
@@ -744,22 +801,20 @@ function playerAttack() {
 
   if (enemyHp <= 0) {
     enemyHp = 0;
-
-    if (typeof onEnemyDefeatedCore === "function") {
-      onEnemyDefeatedCore(currentEnemy);
-    } else {
-      endBattleCommon();
-    }
+    winBattle();
     return;
   }
 
   doPetTurn();
   if (enemyHp <= 0) {
+    enemyHp = 0;
+    winBattle();
     return;
   }
 
   enemyTurn();
   tickStatusesTurnEndForBoth();
+  renderPlayerStatusIcons();
   updateEnemyStatusUI();
   updateDisplay();
 }
@@ -769,6 +824,7 @@ function enemyTurn() {
 
   const pre = beforeActionEnemy();
   if (!pre.canAct) {
+    renderPlayerStatusIcons();
     updateEnemyStatusUI();
     updateDisplay();
     return;
@@ -800,26 +856,19 @@ function enemyTurn() {
       hp = 0;
       appendLog("あなたは倒れてしまった…");
 
-      // =======================
-      // 死亡時処理（耐久3＆0で消滅）
-      // =======================
-
       window.isExploring   = false;
       window.exploringArea = "field";
 
-      // HP/MP/SP/ペットを全回復
       hp    = hpMax;
       mp    = mpMax;
       sp    = spMax;
       petHp = petHpMax;
 
-      // 所持ゴールド半減
       money = Math.floor(money / 2);
 
       let brokeSomething = false;
 
       function reduceDurabilityOnEquip() {
-        // 武器インスタンス側
         if (typeof equippedWeaponIndex === "number" &&
             Array.isArray(window.weaponInstances)) {
           const idx = equippedWeaponIndex;
@@ -841,7 +890,6 @@ function enemyTurn() {
           }
         }
 
-        // 防具インスタンス側
         if (typeof equippedArmorIndex === "number" &&
             Array.isArray(window.armorInstances)) {
           const idx = equippedArmorIndex;
@@ -863,7 +911,6 @@ function enemyTurn() {
           }
         }
 
-        // 旧仕様で durability をマスタに持っていた場合へのフォールバック
         if (!Array.isArray(window.weaponInstances) && equippedWeaponId && Array.isArray(weapons)) {
           const w = weapons.find(x => x.id === equippedWeaponId);
           if (w && typeof w.durability === "number") {
@@ -921,6 +968,7 @@ function enemyTurn() {
       endBattleCommon();
     } else {
       tickSkillBuffTurns();
+      renderPlayerStatusIcons();
       updateEnemyStatusUI();
       updateDisplay();
     }
@@ -939,6 +987,7 @@ function enemyTurn() {
     }
 
     tickSkillBuffTurns();
+    renderPlayerStatusIcons();
     updateEnemyStatusUI();
     updateDisplay();
   }
@@ -1024,6 +1073,7 @@ function tryEscape() {
     escapeFailBonus += 0.1;
     enemyTurn();
     tickStatusesTurnEndForBoth();
+    renderPlayerStatusIcons();
     updateEnemyStatusUI();
     updateDisplay();
   }
@@ -1032,16 +1082,16 @@ function tryEscape() {
 // =======================
 // 戦闘勝利共通処理
 // =======================
+
 function winBattle() {
-  // 経験値・ドロップなどの処理
   if (typeof onEnemyDefeatedCore === "function") {
     if (currentEnemy) {
       onEnemyDefeatedCore(currentEnemy);
     } else {
       onEnemyDefeatedCore();
     }
+  } else {
+    // 保険として、敵撃破時に戦闘を終了
+    endBattleCommon();
   }
-
-  // 敵情報クリアと探索UI復帰は共通処理に委譲
-  endBattleCommon();
 }

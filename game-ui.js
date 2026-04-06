@@ -42,7 +42,7 @@ function updateGatherMatDetailText() {
     const t3 = m.t3 || 0;
     return `${names[k]}: ${t1}/${t2}/${t3}`;
   });
-  area.textContent = lines.join("\n");
+  area.textContent = lines.join("\\n");
 
   let labelText = "所持素材：-";
 
@@ -112,7 +112,7 @@ function updateCraftMatDetailText() {
     const m = window.materials[k] || {};
     return `${names[k]}: ${formatTierNums(m)}`;
   });
-  area.textContent = lines.join("\n");
+  area.textContent = lines.join("\\n");
 
   // ▼ ここから追加: 中間素材の在庫一覧も表示
   if (typeof window.intermediateMats !== "undefined" &&
@@ -127,7 +127,7 @@ function updateCraftMatDetailText() {
     });
 
     if (interLines.length > 0) {
-      area.textContent += "\n--- 中間素材 ---\n" + interLines.join("\n");
+      area.textContent += "\\n--- 中間素材 ---\\n" + interLines.join("\\n");
     }
   }
 
@@ -998,6 +998,17 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // ★ 追加: 戦闘用 / 採取用 切り替えセレクト
+  const craftKindSelect = document.getElementById("craftKindSelect");
+  if (craftKindSelect && typeof refreshEquipSelects === "function") {
+    craftKindSelect.addEventListener("change", () => {
+      // 種別変更時にクラフト用セレクトを作り直す
+      refreshEquipSelects();
+      // 変更後の現在カテゴリ＋選択レシピで必要素材表示を更新
+      refreshCurrentCraftCost();
+    });
+  }
+
   const craftTierSelect = document.getElementById("craftTierSelect");
   if (craftTierSelect && typeof refreshEquipSelects === "function") {
     craftTierSelect.addEventListener("change", () => {
@@ -1138,7 +1149,11 @@ window.addEventListener("DOMContentLoaded", () => {
           appendLog("動物使いのみ変更できます");
           return;
         }
+        // 仕様はそのままに、ロジック側の petGrowthType と同じ変数を更新する
         window.petGrowthType = val;
+        if (typeof petGrowthType !== "undefined") {
+          petGrowthType = val;
+        }
         appendLog("ペット成長タイプを変更した");
         if (typeof updateDisplay === "function") updateDisplay();
         petGrowthModal.style.display = "none";

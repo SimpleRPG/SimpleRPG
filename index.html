@@ -58,6 +58,9 @@
         <button id="toggleDetailBtn">▼詳細</button>
       </div>
 
+      <!-- プレイヤー状態異常（バフ・デバフ）表示行 -->
+      <div id="statusEffectPlayer" class="status-effect-row"></div>
+
       <!-- 空腹・水分ステータスバー -->
       <div id="hungerThirstBar">
         <div class="ht-row">
@@ -77,6 +80,12 @@
         </div>
       </div>
 
+ <!-- ペットの簡易ステータス（常時表示用） -->
+      <div id="petInfoMini" class="pet-only">
+        ペットLv: <span id="petLevelMini">1</span>
+        / HP: <span id="petHpMini">10</span> / <span id="petHpMaxMini">10</span>
+      </div>
+      
       <!-- 左カラム: メインタブ（ゲーム画面） -->
       <div id="mainColumn">
         <div id="mainArea">
@@ -150,6 +159,16 @@
                   <option value="T1">T1</option>
                   <option value="T2">T2</option>
                   <option value="T3">T3</option>
+                </select>
+              </div>
+
+              <!-- ★追加: 装備種別フィルタ -->
+              <div id="craftKindRow" style="margin:4px 0;">
+                <label style="font-size:12px;">装備種別:</label>
+                <select id="craftKindSelect">
+                  <option value="all">すべて</option>
+                  <option value="normal">戦闘用</option>
+                  <option value="gather">採取用</option>
                 </select>
               </div>
 
@@ -397,6 +416,8 @@
             <div id="enemyStatusArea" style="display:none;">
               敵：<span id="enemyNameText">-</span>
               HP：<span id="enemyHpText">0</span> / <span id="enemyHpMaxText">0</span>
+              <!-- 敵の状態異常（バフ・デバフ）表示行 -->
+              <div id="statusEffectEnemy" class="status-effect-row"></div>
             </div>
 
             <div class="explore-header-row">
@@ -673,14 +694,6 @@
           装備中防具: <span id="equippedArmorName">なし</span><br>
           攻撃力: <span id="atkTotal">0</span>,
           防御力: <span id="defTotal">0</span><br>
-        </div>
-
-        <div id="petInfo" class="pet-only">
-          <hr>
-          <p>
-            ペットLv: <span id="petLevel">1</span>
-            / HP: <span id="petHp">10</span> / <span id="petHpMax">10</span>
-          </p>
         </div>
 
         <div id="log"></div>

@@ -122,6 +122,7 @@ let materials = {
   water:   { t1: 0, t2: 0, t3: 0 }
 };
 window.materials = materials;
+
 // 合計値を返すヘルパー
 function getMatTotal(key) {
   const m = materials[key];
@@ -153,6 +154,7 @@ let enemyHp        = 0;
 let enemyHpMax     = 0;
 let isBossBattle   = false;
 let escapeFailBonus = 0;
+
 // エリア別ボス撃破フラグ
 let areaBossCleared = {
   field:  false,
@@ -187,16 +189,19 @@ function getJobName() {
 // =======================
 
 function recalcStats() {
+  // 最大値の下限を維持
   if (hpMax < hpMaxBase) {
     hpMax = hpMaxBase;
   }
   mpMax = mpMaxBase;
   spMax = spMaxBase;
 
+  // 現在値を最大値に丸め込み
   hp = Math.min(hp, hpMax);
   mp = Math.min(mp, mpMax);
   sp = Math.min(sp, spMax);
 
+  // 基本攻撃・防御
   const baseAtk = STR + Math.floor(level * 0.5);
   const baseDef = VIT + Math.floor(level * 0.5);
 
@@ -204,14 +209,15 @@ function recalcStats() {
   let weaponScaleStr = 0;
   let weaponScaleInt = 0;
   let weaponEnhance = 0;
-  let weaponQuality = 0;   // ★ 追加: 武器品質
+  let weaponQuality = 0;   // 品質（0:通常,1:良品,2:傑作）
+
   let armorDef = 0;
   let armorScaleVit = 0;
   let armorBonusDex = 0;
   let armorEnhance = 0;
-  let armorQuality = 0;    // ★ 追加: 防具品質
+  let armorQuality = 0;
 
-  // ★ まずはインスタンス装備を優先して参照
+  // ★ 武器は「装備中インスタンス」を最優先、なければID装備を見る
   if (equippedWeaponIndex != null) {
     const inst = weaponInstances[equippedWeaponIndex];
     if (inst) {
@@ -220,22 +226,22 @@ function recalcStats() {
         weaponAtk       = w.atk || 0;
         weaponScaleStr  = w.scaleStr || 0;
         weaponScaleInt  = w.scaleInt || 0;
-        weaponEnhance   = inst.enhance != null ? inst.enhance : (w.enhance || 0);
-        weaponQuality   = inst.quality || 0; // ★ 追加
+        weaponEnhance   = (inst.enhance != null ? inst.enhance : (w.enhance || 0));
+        weaponQuality   = inst.quality || 0;
       }
     }
   } else if (equippedWeaponId) {
-    // 互換用: まだインスタンスを使っていない装備は従来どおりIDから見る
     const w = weapons.find(x => x.id === equippedWeaponId);
     if (w) {
       weaponAtk       = w.atk || 0;
       weaponScaleStr  = w.scaleStr || 0;
       weaponScaleInt  = w.scaleInt || 0;
       weaponEnhance   = w.enhance || 0;
-      weaponQuality   = 0;        // ★ 旧仕様は品質なし（通常品扱い）
+      weaponQuality   = 0; // 旧仕様は品質なし（通常品）
     }
   }
 
+  // ★ 防具も同様にインスタンス優先
   if (equippedArmorIndex != null) {
     const inst = armorInstances[equippedArmorIndex];
     if (inst) {
@@ -244,8 +250,8 @@ function recalcStats() {
         armorDef       = a.def || 0;
         armorScaleVit  = a.scaleVit || 0;
         armorBonusDex  = a.bonusDex || 0;
-        armorEnhance   = inst.enhance != null ? inst.enhance : (a.enhance || 0);
-        armorQuality   = inst.quality || 0; // ★ 追加
+        armorEnhance   = (inst.enhance != null ? inst.enhance : (a.enhance || 0));
+        armorQuality   = inst.quality || 0;
       }
     }
   } else if (equippedArmorId) {
@@ -255,7 +261,7 @@ function recalcStats() {
       armorScaleVit  = a.scaleVit || 0;
       armorBonusDex  = a.bonusDex || 0;
       armorEnhance   = a.enhance || 0;
-      armorQuality   = 0;        // ★ 旧仕様は品質なし
+      armorQuality   = 0;
     }
   }
 
@@ -263,14 +269,13 @@ function recalcStats() {
   const WEAPON_ENH_RATE   = 0.05;
   const ARMOR_ENH_RATE    = 0.05;
 
-  // ★ 品質補正（良品10% / 傑作20%）
+  // 品質補正（良品10% / 傑作20%）※クラフト側の QUALITY_RATE と整合
   const QUALITY_GOOD_RATE = 0.10; // quality=1
   const QUALITY_EX_RATE   = 0.20; // quality=2
 
   const weaponEnhRate = 1 + weaponEnhance * WEAPON_ENH_RATE;
   const armorEnhRate  = 1 + armorEnhance * ARMOR_ENH_RATE;
 
-  // ★ 品質倍率を計算
   let weaponQualityRate = 1.0;
   if (weaponQuality === 1) weaponQualityRate += QUALITY_GOOD_RATE;
   else if (weaponQuality === 2) weaponQualityRate += QUALITY_EX_RATE;
@@ -279,10 +284,11 @@ function recalcStats() {
   if (armorQuality === 1) armorQualityRate += QUALITY_GOOD_RATE;
   else if (armorQuality === 2) armorQualityRate += QUALITY_EX_RATE;
 
-  // 強化→品質の順で乗算（順序を入れ替えても結果は同じ）
+  // 強化→品質の順で乗算（掛け算なので順序は見た目上は同じ）
   const enhancedWeaponAtk = Math.floor(weaponAtk * weaponEnhRate * weaponQualityRate);
   const enhancedArmorDef  = Math.floor(armorDef * armorEnhRate  * armorQualityRate);
 
+  // ステータス由来の攻撃
   const atkFromStr = Math.floor(STR * 0.5);
   const atkFromDex = Math.floor(DEX_ * 0.3);
   const atkFromWeaponStr = Math.floor(STR * weaponScaleStr);
@@ -296,6 +302,7 @@ function recalcStats() {
     atkFromWeaponStr +
     atkFromWeaponInt;
 
+  // ステータス由来の防御
   const defFromVit = Math.floor(VIT * 0.7);
   const defFromDex = Math.floor(DEX_ * 0.2);
   const defFromArmorVit = Math.floor(VIT * armorScaleVit);
@@ -487,7 +494,7 @@ function updateDisplay() {
 
   if (jobNameEl) jobNameEl.textContent = getJobName();
 
-  // ★ 装備名表示もインスタンス優先（見た目仕様は変えない）
+  // ★ 装備名表示もインスタンス優先（見た目仕様は従来どおり）
   if (eqWpnName) {
     let nameText = "なし";
     if (equippedWeaponIndex != null) {
