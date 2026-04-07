@@ -1,563 +1,261 @@
-// inventory-core.js
-// 倉庫・手持ちインベントリ管理
+// save-system.js 
+// セーブデータ関係
 
-// =======================
-// 手持ち上限
-// =======================
+const SAVE_VERSION = 1;
+const SAVE_KEY = "myGatherGameSave_v1";
 
-const CARRY_LIMIT = {
-  potions: 10,   // 全ポーション合計本数
-  foods:   3,    // 食べ物合計数
-  drinks:  3,    // 飲み物合計数
-  weapons: 2,    // 手持ち武器本数
-  armors:  2,    // 手持ち防具枚数
-  tools:   3     // 手持ち道具数（爆弾など）
-};
+// ==============================
+// ゲーム状態 → プレーンオブジェクトへ
+// ==============================
+function makeSaveData() {
+  return {
+    version: SAVE_VERSION,
 
-// =======================
-// 手持ちインベントリ構造
-// =======================
-//
-// 他ファイルやコンソールから参照できるように window 配下に出す。
+    // 基本プレイヤー情報
+    player: {
+      name,
+      level,
+      exp,
+      expToNext,   // レベル必要経験値
+      hp,
+      hpMax,
+      mp,
+      mpMax,
+      sp,
+      spMax,
+      jobId,
+      STR_,
+      VIT_,
+      INT_,
+      DEX_,
+      LUK_,
+      money,
+      rebirthCount,
+      growthType
+    },
 
-window.carryPotions = window.carryPotions || {}; // { potionId: count }
-window.carryFoods   = window.carryFoods   || {}; // { foodId:   count }
-window.carryDrinks  = window.carryDrinks  || {}; // { drinkId:  count }
-window.carryWeapons = window.carryWeapons || {}; // { weaponId: count } // ★ IDごとの本数カウンタ（インスタンスとは別）
-window.carryArmors  = window.carryArmors  || {}; // { armorId:  count }
-window.carryTools   = window.carryTools   || {}; // { toolId:   count } // 現状は bomb_T1 などを想定
+    // 採取・クラフト関連
+    materials,        // wood/ore/herb/cloth/leather/water の T1〜T3
+    gatherSkills,     // 採取スキル
+    craftSkills,      // クラフトスキル（存在する前提）
+    intermediateMats, // 中間素材
+    cookingMats,      // 料理素材
 
-const carryPotions = window.carryPotions;
-const carryFoods   = window.carryFoods;
-const carryDrinks  = window.carryDrinks;
-const carryWeapons = window.carryWeapons;
-const carryArmors  = window.carryArmors;
-const carryTools   = window.carryTools;
+    // 汎用アイテム所持（個数カウンタ系）
+    itemCounts,       // 素材・アイテム共通カウンタ
+    potionCounts,     // 倉庫側ポーション本数
+    weaponCounts,     // 倉庫側武器本数
+    armorCounts,      // 倉庫側防具枚数
+    toolCounts,       // 倉庫側道具数（爆弾など）
+    cookedFoods,      // 倉庫側料理（食べ物）
+    cookedDrinks,     // 倉庫側料理（飲み物）
 
-// =======================
-// 倉庫側道具インベントリ構造
-// =======================
-//
-// 爆弾などの道具を倉庫で管理するための counts。
+    // 手持ちインベントリ（inventory-core.js）
+    carryPotions,
+    carryFoods,
+    carryDrinks,
+    carryWeapons,
+    carryArmors,
+    carryTools,
 
-window.toolCounts = window.toolCounts || {}; // { toolId: count }
-const toolCounts  = window.toolCounts;
+    // 装備インスタンス・装備中
+    weaponInstances,
+    armorInstances,
+    currentWeapon,
+    currentArmor,
 
-// =======================
-// 合計数ヘルパー
-// =======================
+    // 戦闘アイテム選択の記憶
+    lastBattleItemCategory,
+    lastBattleItemId,
 
-function getCarryTotal(obj) {
-  return Object.values(obj).reduce((a, b) => a + (b || 0), 0);
+    // ペット関連（存在する前提で保存）
+    petLevel,
+    petExp,
+    petExpToNext,
+    petRebirthCount,
+    petGrowthType,
+    petHp,
+    petHpMax
+  };
 }
 
-// =======================
-// 倉庫＝既存データの扱い
-// =======================
-//
-// ・ポーション: potionCounts がそのまま倉庫。
-// ・武器/防具: weaponCounts / armorCounts が倉庫。
-// ・道具: toolCounts が倉庫。
-// ・料理: cook-data.js で新しく cookedFoods / cookedDrinks を導入する前提。
+// ==============================
+// セーブデータ → ゲーム状態へ反映
+// ==============================
+function applySaveData(data) {
+  // 将来バージョン違いを考えるならここで version を見てマイグレーション
+  // const v = data.version || 1;
 
-window.cookedFoods  = window.cookedFoods  || {}; // { foodId:  count }
-window.cookedDrinks = window.cookedDrinks || {}; // { drinkId: count }
-
-const cookedFoods  = window.cookedFoods;
-const cookedDrinks = window.cookedDrinks;
-
-// =======================
-// 汎用アイテム追加（クラフト・ドロップ用）
-// =======================
-
-// COOKING_RECIPES がまだ読み込まれていないケースでも落ちないようにガード
-const COOKING_DRINK_IDS = (typeof COOKING_RECIPES !== "undefined" &&
-                           COOKING_RECIPES &&
-                           Array.isArray(COOKING_RECIPES.drink))
-  ? COOKING_RECIPES.drink.map(r => r.id)
-  : [];
-
-const COOKING_FOOD_IDS = (typeof COOKING_RECIPES !== "undefined" &&
-                          COOKING_RECIPES &&
-                          Array.isArray(COOKING_RECIPES.food))
-  ? COOKING_RECIPES.food.map(r => r.id)
-  : [];
-
-// クラフト結果や将来のドロップを倉庫側に入れる
-function addItemToInventory(itemId, amount) {
-  amount = Math.max(1, amount | 0);
-
-  // 1. 料理（飲み物） → cookedDrinks
-  if (COOKING_DRINK_IDS.includes(itemId)) {
-    window.cookedDrinks[itemId] = (window.cookedDrinks[itemId] || 0) + amount;
-    return;
+  // プレイヤー
+  if (data.player) {
+    if ("name" in data.player)       name       = data.player.name;
+    if ("level" in data.player)      level      = data.player.level;
+    if ("exp" in data.player)        exp        = data.player.exp;
+    if ("expToNext" in data.player)  expToNext  = data.player.expToNext;
+    if ("hp" in data.player)         hp         = data.player.hp;
+    if ("hpMax" in data.player)      hpMax      = data.player.hpMax;
+    if ("mp" in data.player)         mp         = data.player.mp;
+    if ("mpMax" in data.player)      mpMax      = data.player.mpMax;
+    if ("sp" in data.player)         sp         = data.player.sp;
+    if ("spMax" in data.player)      spMax      = data.player.spMax;
+    if ("jobId" in data.player)      jobId      = data.player.jobId;
+    if ("STR_" in data.player)       STR_       = data.player.STR_;
+    if ("VIT_" in data.player)       VIT_       = data.player.VIT_;
+    if ("INT_" in data.player)       INT_       = data.player.INT_;
+    if ("DEX_" in data.player)       DEX_       = data.player.DEX_;
+    if ("LUK_" in data.player)       LUK_       = data.player.LUK_;
+    if ("money" in data.player)      money      = data.player.money;
+    if ("rebirthCount" in data.player) rebirthCount = data.player.rebirthCount;
+    if ("growthType" in data.player)   growthType   = data.player.growthType;
   }
 
-  // 2. 料理（食べ物） → cookedFoods
-  if (COOKING_FOOD_IDS.includes(itemId)) {
-    window.cookedFoods[itemId] = (window.cookedFoods[itemId] || 0) + amount;
-    return;
+  // 採取・クラフト
+  if (data.materials)        materials        = data.materials;
+  if (data.gatherSkills)     gatherSkills     = data.gatherSkills;
+  if (data.craftSkills)      craftSkills      = data.craftSkills;
+  if (data.intermediateMats) intermediateMats = data.intermediateMats;
+  if (data.cookingMats)      cookingMats      = data.cookingMats;
+
+  // 倉庫側カウンタ
+  if (data.itemCounts)   itemCounts   = data.itemCounts;
+  if (data.potionCounts) potionCounts = data.potionCounts;
+  if (data.weaponCounts) weaponCounts = data.weaponCounts;
+  if (data.armorCounts)  armorCounts  = data.armorCounts;
+  if (data.toolCounts)   toolCounts   = data.toolCounts;
+  if (data.cookedFoods)  cookedFoods  = data.cookedFoods;
+  if (data.cookedDrinks) cookedDrinks = data.cookedDrinks;
+
+  // 手持ちインベントリ
+  if (data.carryPotions) carryPotions = data.carryPotions;
+  if (data.carryFoods)   carryFoods   = data.carryFoods;
+  if (data.carryDrinks)  carryDrinks  = data.carryDrinks;
+  if (data.carryWeapons) carryWeapons = data.carryWeapons;
+  if (data.carryArmors)  carryArmors  = data.carryArmors;
+  if (data.carryTools)   carryTools   = data.carryTools;
+
+  // 装備インスタンス・装備中
+  if (data.weaponInstances) weaponInstances = data.weaponInstances;
+  if (data.armorInstances)  armorInstances  = data.armorInstances;
+  if ("currentWeapon" in data) currentWeapon = data.currentWeapon;
+  if ("currentArmor" in data)  currentArmor  = data.currentArmor;
+
+  // 戦闘アイテム選択
+  if ("lastBattleItemCategory" in data) {
+    window.lastBattleItemCategory = data.lastBattleItemCategory;
+  }
+  if ("lastBattleItemId" in data) {
+    window.lastBattleItemId = data.lastBattleItemId;
   }
 
-  // 3. ポーション → potionCounts
-  if (typeof potionCounts !== "undefined" && Array.isArray(potions)) {
-    const p = potions.find(x => x.id === itemId);
-    if (p) {
-      potionCounts[itemId] = (potionCounts[itemId] || 0) + amount;
-      return;
+  // ペット
+  if ("petLevel" in data)        petLevel        = data.petLevel;
+  if ("petExp" in data)          petExp          = data.petExp;
+  if ("petExpToNext" in data)    petExpToNext    = data.petExpToNext;
+  if ("petRebirthCount" in data) petRebirthCount = data.petRebirthCount;
+  if ("petGrowthType" in data)   petGrowthType   = data.petGrowthType;
+  if ("petHp" in data)           petHp           = data.petHp;
+  if ("petHpMax" in data)        petHpMax        = data.petHpMax;
+}
+
+// ==============================
+// ローカルストレージにセーブ
+// ==============================
+function saveToLocal() {
+  try {
+    const data = makeSaveData();
+    const json = JSON.stringify(data);
+    localStorage.setItem(SAVE_KEY, json);
+    if (typeof appendLog === "function") {
+      appendLog("ゲームデータをローカルに保存しました");
+    }
+  } catch (e) {
+    console.error(e);
+    if (typeof appendLog === "function") {
+      appendLog("ローカル保存に失敗しました");
     }
   }
+}
 
-  // 4. 武器 → weaponCounts + weaponInstances（品質・強化・耐久初期値で追加）
-  if (typeof weaponCounts !== "undefined" && Array.isArray(weapons)) {
-    const w = weapons.find(x => x.id === itemId);
-    if (w) {
-      // 既存仕様: 倉庫本数カウンタ
-      weaponCounts[itemId] = (weaponCounts[itemId] || 0) + amount;
-      // 新仕様: インスタンスも追加（品質0, 強化はマスタ基準, 耐久MAX）
-      if (Array.isArray(window.weaponInstances) && typeof MAX_DURABILITY !== "undefined") {
-        const baseEnh = w.enhance || 0;
-        for (let i = 0; i < amount; i++) {
-          window.weaponInstances.push({
-            id: itemId,
-            quality: 0,
-            enhance: baseEnh,
-            durability: MAX_DURABILITY
-          });
-        }
+// ==============================
+// ローカルストレージからロード
+// ==============================
+function loadFromLocal() {
+  try {
+    const json = localStorage.getItem(SAVE_KEY);
+    if (!json) {
+      if (typeof appendLog === "function") {
+        appendLog("ローカルにセーブデータがありません");
       }
       return;
     }
+    const data = JSON.parse(json);
+    applySaveData(data);
+    if (typeof appendLog === "function") {
+      appendLog("ローカルのセーブデータを読み込みました");
+    }
+    if (typeof updateDisplay === "function") updateDisplay();
+  } catch (e) {
+    console.error(e);
+    if (typeof appendLog === "function") {
+      appendLog("ローカルのセーブデータ読み込みに失敗しました");
+    }
   }
+}
 
-  // 5. 防具 → armorCounts + armorInstances
-  if (typeof armorCounts !== "undefined" && Array.isArray(armors)) {
-    const a = armors.find(x => x.id === itemId);
-    if (a) {
-      armorCounts[itemId] = (armorCounts[itemId] || 0) + amount;
-      if (Array.isArray(window.armorInstances) && typeof MAX_DURABILITY !== "undefined") {
-        const baseEnh = a.enhance || 0;
-        for (let i = 0; i < amount; i++) {
-          window.armorInstances.push({
-            id: itemId,
-            quality: 0,
-            enhance: baseEnh,
-            durability: MAX_DURABILITY
-          });
-        }
+// ==============================
+// エクスポート（プレイヤーがコピーする文字列）
+// ==============================
+function exportSaveData() {
+  try {
+    const data = makeSaveData();
+    const json = JSON.stringify(data);
+    const textarea = document.getElementById("exportSaveText");
+    if (textarea) {
+      textarea.value = json;
+      textarea.select();
+    }
+    if (typeof appendLog === "function") {
+      appendLog("セーブデータをエクスポート用テキストに出力しました（コピーして保存してください）");
+    }
+  } catch (e) {
+    console.error(e);
+    if (typeof appendLog === "function") {
+      appendLog("エクスポートに失敗しました");
+    }
+  }
+}
+
+// ==============================
+// インポート（貼り付け文字列から読み込み）
+// ==============================
+function importSaveData() {
+  try {
+    const textarea = document.getElementById("importSaveText");
+    if (!textarea) {
+      if (typeof appendLog === "function") {
+        appendLog("インポート用テキストエリアが見つかりません");
       }
       return;
     }
-  }
-
-  // 6. 道具（爆弾など） → toolCounts
-  //    bomb_T1 / bomb_T2 / bomb_T3 や "bomb" などを想定
-  if (typeof toolCounts !== "undefined" &&
-      (itemId === "bomb" || itemId.startsWith("bomb_"))) {
-    toolCounts[itemId] = (toolCounts[itemId] || 0) + amount;
-    return;
-  }
-
-  // 7. その他（未分類）はログだけ
-  if (typeof appendLog === "function") {
-    appendLog(`addItemToInventory: 未対応ID ${itemId} に${amount}追加しようとしました`);
-  }
-}
-
-// =======================
-// 手持ち←→倉庫 移動ロジック
-// =======================
-
-function movePotionToCarry(id, amount) {
-  amount = Math.max(1, amount | 0);
-  const have = potionCounts[id] || 0;
-  if (have < amount) {
-    appendLog("倉庫にそのポーションが足りない");
-    return false;
-  }
-  const totalCarry = getCarryTotal(carryPotions);
-  if (totalCarry + amount > CARRY_LIMIT.potions) {
-    appendLog("これ以上ポーションを持ち歩けない（上限10本）");
-    return false;
-  }
-  potionCounts[id] -= amount;
-  carryPotions[id] = (carryPotions[id] || 0) + amount;
-  return true;
-}
-
-function movePotionToWarehouse(id, amount) {
-  amount = Math.max(1, amount | 0);
-  const have = carryPotions[id] || 0;
-  if (have < amount) {
-    appendLog("手持ちのそのポーションが足りない");
-    return false;
-  }
-  carryPotions[id] -= amount;
-  if (carryPotions[id] <= 0) delete carryPotions[id];
-  potionCounts[id] = (potionCounts[id] || 0) + amount;
-  return true;
-}
-
-// 料理（食べ物）
-function moveFoodToCarry(id, amount) {
-  amount = Math.max(1, amount | 0);
-  const have = cookedFoods[id] || 0;
-  if (have < amount) {
-    appendLog("倉庫にその料理が足りない");
-    return false;
-  }
-  const totalCarry = getCarryTotal(carryFoods);
-  if (totalCarry + amount > CARRY_LIMIT.foods) {
-    appendLog("これ以上食べ物を持ち歩けない（上限3品）");
-    return false;
-  }
-  cookedFoods[id] -= amount;
-  carryFoods[id] = (carryFoods[id] || 0) + amount;
-  return true;
-}
-
-function moveFoodToWarehouse(id, amount) {
-  amount = Math.max(1, amount | 0);
-  const have = carryFoods[id] || 0;
-  if (have < amount) {
-    appendLog("手持ちのその料理が足りない");
-    return false;
-  }
-  carryFoods[id] -= amount;
-  if (carryFoods[id] <= 0) delete carryFoods[id];
-  cookedFoods[id] = (cookedFoods[id] || 0) + amount;
-  return true;
-}
-
-// 料理（飲み物）
-function moveDrinkToCarry(id, amount) {
-  amount = Math.max(1, amount | 0);
-  const have = cookedDrinks[id] || 0;
-  if (have < amount) {
-    appendLog("倉庫にその飲み物が足りない");
-    return false;
-  }
-  const totalCarry = getCarryTotal(carryDrinks);
-  if (totalCarry + amount > CARRY_LIMIT.drinks) {
-    appendLog("これ以上飲み物を持ち歩けない（上限3杯）");
-    return false;
-  }
-  cookedDrinks[id] -= amount;
-  carryDrinks[id] = (carryDrinks[id] || 0) + amount;
-  return true;
-}
-
-function moveDrinkToWarehouse(id, amount) {
-  amount = Math.max(1, amount | 0);
-  const have = carryDrinks[id] || 0;
-  if (have < amount) {
-    appendLog("手持ちのその飲み物が足りない");
-    return false;
-  }
-  carryDrinks[id] -= amount;
-  if (carryDrinks[id] <= 0) delete carryDrinks[id];
-  cookedDrinks[id] = (cookedDrinks[id] || 0) + amount;
-  return true;
-}
-
-// 武器
-// ★ ここからは weaponInstances / armorInstances を壊さないように、
-//    IDごとの本数カウンタだけを動かす（インスタンスの「持ち歩き状態」は別管理 or 今は区別しない）。
-function moveWeaponToCarry(id, amount) {
-  amount = Math.max(1, amount | 0);
-  const have = weaponCounts[id] || 0;
-  if (have < amount) {
-    appendLog("倉庫にその武器が足りない");
-    return false;
-  }
-  const totalCarry = getCarryTotal(carryWeapons);
-  if (totalCarry + amount > CARRY_LIMIT.weapons) {
-    appendLog("これ以上武器を持ち歩けない（上限2本）");
-    return false;
-  }
-  weaponCounts[id] -= amount;
-  carryWeapons[id] = (carryWeapons[id] || 0) + amount;
-  return true;
-}
-
-function moveWeaponToWarehouse(id, amount) {
-  amount = Math.max(1, amount | 0);
-  const have = carryWeapons[id] || 0;
-  if (have < amount) {
-    appendLog("手持ちのその武器が足りない");
-    return false;
-  }
-  carryWeapons[id] -= amount;
-  if (carryWeapons[id] <= 0) delete carryWeapons[id];
-  weaponCounts[id] = (weaponCounts[id] || 0) + amount;
-  return true;
-}
-
-// 防具
-function moveArmorToCarry(id, amount) {
-  amount = Math.max(1, amount | 0);
-  const have = armorCounts[id] || 0;
-  if (have < amount) {
-    appendLog("倉庫にその防具が足りない");
-    return false;
-  }
-  const totalCarry = getCarryTotal(carryArmors);
-  if (totalCarry + amount > CARRY_LIMIT.armors) {
-    appendLog("これ以上防具を持ち歩けない（上限2着）");
-    return false;
-  }
-  armorCounts[id] -= amount;
-  carryArmors[id] = (carryArmors[id] || 0) + amount;
-  return true;
-}
-
-function moveArmorToWarehouse(id, amount) {
-  amount = Math.max(1, amount | 0);
-  const have = carryArmors[id] || 0;
-  if (have < amount) {
-    appendLog("手持ちのその防具が足りない");
-    return false;
-  }
-  carryArmors[id] -= amount;
-  if (carryArmors[id] <= 0) delete carryArmors[id];
-  armorCounts[id] = (armorCounts[id] || 0) + amount;
-  return true;
-}
-
-// 道具（爆弾など）
-function moveToolToCarry(id, amount) {
-  amount = Math.max(1, amount | 0);
-  const have = toolCounts[id] || 0;
-  if (have < amount) {
-    appendLog("倉庫にその道具が足りない");
-    return false;
-  }
-  const totalCarry = getCarryTotal(carryTools);
-  if (totalCarry + amount > CARRY_LIMIT.tools) {
-    appendLog("これ以上道具を持ち歩けない（上限3個）");
-    return false;
-  }
-  toolCounts[id] -= amount;
-  carryTools[id] = (carryTools[id] || 0) + amount;
-  return true;
-}
-
-function moveToolToWarehouse(id, amount) {
-  amount = Math.max(1, amount | 0);
-  const have = carryTools[id] || 0;
-  if (have < amount) {
-    appendLog("手持ちのその道具が足りない");
-    return false;
-  }
-  carryTools[id] -= amount;
-  if (carryTools[id] <= 0) delete carryTools[id];
-  toolCounts[id] = (toolCounts[id] || 0) + amount;
-  return true;
-}
-
-// =======================
-// 戦闘アイテムカテゴリ選択の記憶
-// =======================
-
-window.lastBattleItemCategory = window.lastBattleItemCategory || "potion"; // "potion" or "tool"
-window.lastBattleItemId       = window.lastBattleItemId       || null;
-
-// =======================
-// 手持ちインベントリのUI更新フック
-// =======================
-//
-// ・フィールド用ポーションセレクト（useItemSelect）
-// ・戦闘アイテムセレクト（battleItemSelect, battleItemCategory）
-// ・フィールド料理セレクト（fieldFoodSelect）
-// ・フィールド飲み物セレクト（fieldDrinkSelect）
-
-function refreshCarryPotionSelects() {
-  const fieldSel  = document.getElementById("useItemSelect");
-  const battleSel = document.getElementById("battleItemSelect");
-
-  function fillField(sel) {
-    if (!sel) return;
-    const prev = sel.value;
-    sel.innerHTML = "";
-
-    Object.keys(carryPotions).forEach(id => {
-      const cnt = carryPotions[id] || 0;
-      if (cnt <= 0) return;
-      const p = potions.find(x => x.id === id);
-      const name = p ? p.name : id;
-      const opt = document.createElement("option");
-      opt.value = id;
-      opt.textContent = `${name}（${cnt}）`;
-      sel.appendChild(opt);
-    });
-
-    if (!sel.options.length) {
-      const opt = document.createElement("option");
-      opt.value = "";
-      opt.textContent = "手持ちポーションなし";
-      sel.appendChild(opt);
-    } else if (prev && Array.from(sel.options).some(o => o.value === prev)) {
-      sel.value = prev;
-    }
-  }
-
-  fillField(fieldSel);
-
-  // 戦闘用はカテゴリ付き専用関数で更新する
-  if (battleSel) {
-    refreshBattleItemSelectWithCategory();
-  }
-}
-
-// 戦闘アイテム用セレクト更新（カテゴリ付き）
-function refreshBattleItemSelectWithCategory() {
-  const sel = document.getElementById("battleItemSelect");
-  if (!sel) return;
-
-  const categorySel = document.getElementById("battleItemCategory");
-  const category = categorySel ? (categorySel.value || window.lastBattleItemCategory || "potion")
-                               : (window.lastBattleItemCategory || "potion");
-
-  const prevId = window.lastBattleItemId || sel.value || null;
-
-  sel.innerHTML = "";
-
-  if (category === "potion") {
-    // 手持ちポーションのみ
-    Object.keys(carryPotions).forEach(id => {
-      const cnt = carryPotions[id] || 0;
-      if (cnt <= 0) return;
-      const p = potions.find(x => x.id === id);
-      const name = p ? p.name : id;
-      const opt = document.createElement("option");
-      opt.value = id;
-      opt.textContent = `${name}（${cnt}）`;
-      sel.appendChild(opt);
-    });
-
-    if (!sel.options.length) {
-      const opt = document.createElement("option");
-      opt.value = "";
-      opt.textContent = "手持ちポーションなし";
-      sel.appendChild(opt);
-    }
-  } else if (category === "tool") {
-    // 手持ち道具のみ（爆弾など）
-    Object.keys(carryTools).forEach(id => {
-      const cnt = carryTools[id] || 0;
-      if (cnt <= 0) return;
-      let label = id;
-      if (id === "bomb") {
-        label = "爆弾";
-      } else if (id.startsWith("bomb_T1")) {
-        label = "爆弾T1";
-      } else if (id.startsWith("bomb_T2")) {
-        label = "爆弾T2";
-      } else if (id.startsWith("bomb_T3")) {
-        label = "爆弾T3";
+    const json = textarea.value.trim();
+    if (!json) {
+      if (typeof appendLog === "function") {
+        appendLog("インポートするテキストが空です");
       }
-      const opt = document.createElement("option");
-      opt.value = id;
-      opt.textContent = `${label}（${cnt}）`;
-      sel.appendChild(opt);
-    });
-
-    if (!sel.options.length) {
-      const opt = document.createElement("option");
-      opt.value = "";
-      opt.textContent = "手持ち道具なし";
-      sel.appendChild(opt);
+      return;
     }
-  } else {
-    // 未知カテゴリの場合はポーション扱い
-    const opt = document.createElement("option");
-    opt.value = "";
-    opt.textContent = "アイテムなし";
-    sel.appendChild(opt);
-  }
-
-  // 前回選択を復元（なければ先頭）
-  if (prevId && Array.from(sel.options).some(o => o.value === prevId)) {
-    sel.value = prevId;
-  } else if (sel.options.length > 0) {
-    sel.selectedIndex = 0;
-  }
-
-  window.lastBattleItemCategory = category;
-  window.lastBattleItemId = sel.value || null;
-
-  // カテゴリセレクト側にも反映
-  if (categorySel) {
-    categorySel.value = category;
-  }
-}
-
-// カテゴリ変更時に呼ぶ想定
-function onBattleItemCategoryChanged() {
-  refreshBattleItemSelectWithCategory();
-}
-
-// 手持ち料理・飲み物セレクト更新
-function refreshCarryFoodDrinkSelects() {
-  const foodSel  = document.getElementById("fieldFoodSelect");
-  const drinkSel = document.getElementById("fieldDrinkSelect");
-
-  function fillFood(sel) {
-    if (!sel) return;
-    const prev = sel.value;
-    sel.innerHTML = "";
-
-    Object.keys(carryFoods).forEach(id => {
-      const cnt = carryFoods[id] || 0;
-      if (cnt <= 0) return;
-      const recipe = (typeof COOKING_RECIPES !== "undefined")
-        ? COOKING_RECIPES.food.find(r => r.id === id)
-        : null;
-      const name = recipe ? recipe.name : id;
-      const opt  = document.createElement("option");
-      opt.value = id;
-      opt.textContent = `${name}（${cnt}）`;
-      sel.appendChild(opt);
-    });
-
-    if (!sel.options.length) {
-      const opt = document.createElement("option");
-      opt.value = "";
-      opt.textContent = "手持ち料理なし";
-      sel.appendChild(opt);
-    } else if (prev && Array.from(sel.options).some(o => o.value === prev)) {
-      sel.value = prev;
+    const data = JSON.parse(json);
+    applySaveData(data);
+    // 読み込んだらローカルにも保存しておく
+    localStorage.setItem(SAVE_KEY, json);
+    if (typeof appendLog === "function") {
+      appendLog("インポートしたセーブデータを読み込みました");
+    }
+    if (typeof updateDisplay === "function") updateDisplay();
+  } catch (e) {
+    console.error(e);
+    if (typeof appendLog === "function") {
+      appendLog("インポートに失敗しました（テキストが壊れている可能性があります）");
     }
   }
-
-  function fillDrink(sel) {
-    if (!sel) return;
-    const prev = sel.value;
-    sel.innerHTML = "";
-
-    Object.keys(carryDrinks).forEach(id => {
-      const cnt = carryDrinks[id] || 0;
-      if (cnt <= 0) return;
-      const recipe = (typeof COOKING_RECIPES !== "undefined")
-        ? COOKING_RECIPES.drink.find(r => r.id === id)
-        : null;
-      const name = recipe ? recipe.name : id;
-      const opt  = document.createElement("option");
-      opt.value = id;
-      opt.textContent = `${name}（${cnt}）`;
-      sel.appendChild(opt);
-    });
-
-    if (!sel.options.length) {
-      const opt = document.createElement("option");
-      opt.value = "";
-      opt.textContent = "手持ち飲み物なし";
-      sel.appendChild(opt);
-    } else if (prev && Array.from(sel.options).some(o => o.value === prev)) {
-      sel.value = prev;
-    }
-  }
-
-  fillFood(foodSel);
-  fillDrink(drinkSel);
 }

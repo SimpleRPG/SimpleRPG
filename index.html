@@ -80,7 +80,7 @@
         </div>
       </div>
 
- <!-- ペットの簡易ステータス（常時表示用） -->
+      <!-- ペットの簡易ステータス（常時表示用） -->
       <div id="petInfoMini" class="pet-only">
         ペットLv: <span id="petLevelMini">1</span>
         / HP: <span id="petHpMini">10</span> / <span id="petHpMaxMini">10</span>
@@ -385,26 +385,6 @@
             </div>
           </div>
 
-          <!-- 装備タブは一旦丸ごとコメントアウト -->
-          <!--
-          <div id="pageEquip" class="tab-page">
-            <h2>装備</h2>
-
-            <h3>武器を装備</h3>
-            <select id="weaponEquipSelect"></select>
-            <button id="equipWeaponBtn">装備</button>
-
-            <h3>防具を装備</h3>
-            <select id="armorEquipSelect"></select>
-            <button id="equipArmorBtn">装備</button>
-
-            <h3>装備強化</h3>
-            <p id="enhanceInfo">装備中の武器・防具を強化します。</p>
-            <button id="enhanceWeaponBtn">武器を強化</button>
-            <button id="enhanceArmorBtn">防具を強化</button>
-          </div>
-          -->
-
           <!-- 探索 / 戦闘 -->
           <div id="pageExplore" class="tab-page">
             <h2>探索 / 戦闘</h2>
@@ -459,13 +439,13 @@
 
                   <div>
                     <label style="font-size:11px;">戦闘アイテム:</label><br>
-<select id="battleItemCategory" onchange="onBattleItemCategoryChanged()">
-  <option value="potion">ポーション</option>
-  <option value="tool">道具</option>
-</select>
-<br>
-<select id="battleItemSelect"></select>
-<button id="useBattleItemBtn" class="btn-item">戦闘で使う</button>
+                    <select id="battleItemCategory" onchange="onBattleItemCategoryChanged()">
+                      <option value="potion">ポーション</option>
+                      <option value="tool">道具</option>
+                    </select>
+                    <br>
+                    <select id="battleItemSelect"></select>
+                    <button id="useBattleItemBtn" class="btn-item">戦闘で使う</button>
                   </div>
 
                   <button id="escapeBtn" style="margin-top:4px;">逃走する</button>
@@ -682,6 +662,24 @@
             <div class="status-block">
               <button id="changePetGrowthBtn" class="pet-only">ペット成長タイプを変更</button>
             </div>
+
+            <!-- ★ セーブ/ロード + エクスポート/インポートUI -->
+            <h3>セーブ / ロード</h3>
+            <div class="status-block">
+              <button onclick="saveToLocal()">ローカルにセーブ</button>
+              <button onclick="loadFromLocal()">ローカルからロード</button>
+              <p style="font-size:11px; color:#ccc;">
+                ※通常は自動セーブされますが、ブラウザのデータ削除で消える場合があります。
+              </p>
+
+              <h4 style="margin-top:8px;">エクスポート（バックアップ用）</h4>
+              <button onclick="exportSaveData()">セーブデータをテキストに出力</button><br>
+              <textarea id="exportSaveText" rows="4" cols="60" placeholder="ここにセーブデータが出力されます（コピーしてメモ帳などに保存してください）"></textarea>
+
+              <h4 style="margin-top:8px;">インポート（復元）</h4>
+              <textarea id="importSaveText" rows="4" cols="60" placeholder="保存しておいたセーブデータをここに貼り付けてください"></textarea><br>
+              <button onclick="importSaveData()">貼り付けたデータを読み込む</button>
+            </div>
           </div>
         </div><!-- /#mainArea -->
       </div><!-- /#mainColumn -->
@@ -753,6 +751,10 @@
 
   <script src="skill-core.js"></script>
   <script src="market-core.js"></script>
+
+  <!-- ★ セーブシステム（saveToLocal / loadFromLocal / exportSaveData / importSaveData を定義するファイル） -->
+  <script src="save-system.js"></script>
+
   <script src="game-ui.js"></script>
   <script src="game-ui-2.js"></script>
 </body>
