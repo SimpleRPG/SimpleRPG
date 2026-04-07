@@ -533,7 +533,7 @@ function updateDisplay() {
   if (atkTotalEl) atkTotalEl.textContent = atkTotal;
   if (defTotalEl) defTotalEl.textContent = defTotal;
 
-  // ペット表示
+  // ペット表示（メインパネル）
   let petInfoBox = document.getElementById("petInfo");
   let petLevelEl = document.getElementById("petLevel");
   let petHpEl    = document.getElementById("petHp");
@@ -546,6 +546,12 @@ function updateDisplay() {
   if (petLevelEl) petLevelEl.textContent = petLevel;
   if (petHpEl)    petHpEl.textContent    = petHp;
   if (petHpMaxEl) petHpMaxEl.textContent = petHpMax;
+
+  // ★ 上部簡易ステータスバー用 ペットLv/HP 表示（存在する場合のみ）
+  let headerPetLevelEl = document.getElementById("headerPetLevel");
+  let headerPetHpEl    = document.getElementById("headerPetHp");
+  if (headerPetLevelEl) headerPetLevelEl.textContent = petLevel;
+  if (headerPetHpEl)    headerPetHpEl.textContent    = `${petHp} / ${petHpMax}`;
 
   // ペット用ステータスページ
   let stPetLevel = document.getElementById("stPetLevel");
