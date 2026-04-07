@@ -594,26 +594,28 @@ function updateDisplay() {
   }
 
   // 採取スキル表示
-  let skWood   = document.getElementById("skGatherWoodLv");
-  let skOre    = document.getElementById("skGatherOreLv");
-  let skHerb   = document.getElementById("skGatherHerbLv");
-  let skCloth  = document.getElementById("skGatherClothLv");
-  let skLeather= document.getElementById("skGatherLeatherLv");
-  let skWater  = document.getElementById("skGatherWaterLv");
-  let skHunt   = document.getElementById("skGatherHuntLv");
-  let skFish   = document.getElementById("skGatherFishLv");
-  let skFarm   = document.getElementById("skGatherFarmLv");
+  let skWood    = document.getElementById("skGatherWoodLv");
+  let skOre     = document.getElementById("skGatherOreLv");
+  let skHerb    = document.getElementById("skGatherHerbLv");
+  let skCloth   = document.getElementById("skGatherClothLv");
+  let skLeather = document.getElementById("skGatherLeatherLv");
+  let skWater   = document.getElementById("skGatherWaterLv");
+  let skHunt    = document.getElementById("skGatherHuntLv");
+  let skFish    = document.getElementById("skGatherFishLv");
+  let skFarm    = document.getElementById("skGatherFarmLv");   // 畑
+  let skGarden  = document.getElementById("skGatherGardenLv"); // 菜園（★要: index.html 側に span 追加）
 
-  if (skWood  && gatherSkills.wood)    skWood.textContent    = gatherSkills.wood.lv;
-  if (skOre   && gatherSkills.ore)     skOre.textContent     = gatherSkills.ore.lv;
-  if (skHerb  && gatherSkills.herb)    skHerb.textContent    = gatherSkills.herb.lv;
-  if (skCloth && gatherSkills.cloth)   skCloth.textContent   = gatherSkills.cloth.lv;
+  if (skWood  && gatherSkills.wood)      skWood.textContent    = gatherSkills.wood.lv;
+  if (skOre   && gatherSkills.ore)       skOre.textContent     = gatherSkills.ore.lv;
+  if (skHerb  && gatherSkills.herb)      skHerb.textContent    = gatherSkills.herb.lv;
+  if (skCloth && gatherSkills.cloth)     skCloth.textContent   = gatherSkills.cloth.lv;
   if (skLeather && gatherSkills.leather) skLeather.textContent = gatherSkills.leather.lv;
-  if (skWater && gatherSkills.water)   skWater.textContent   = gatherSkills.water.lv;
-  if (skHunt  && gatherSkills.hunt)    skHunt.textContent    = gatherSkills.hunt.lv;
-  if (skFish  && gatherSkills.fish)    skFish.textContent    = gatherSkills.fish.lv;
-  if (skFarm  && gatherSkills.farm)    skFarm.textContent    = gatherSkills.farm.lv;
-  
+  if (skWater && gatherSkills.water)     skWater.textContent   = gatherSkills.water.lv;
+  if (skHunt  && gatherSkills.hunt)      skHunt.textContent    = gatherSkills.hunt.lv;
+  if (skFish  && gatherSkills.fish)      skFish.textContent    = gatherSkills.fish.lv;
+  if (skFarm  && gatherSkills.fieldFarm) skFarm.textContent    = gatherSkills.fieldFarm.lv;
+  if (skGarden && gatherSkills.garden)   skGarden.textContent  = gatherSkills.garden.lv;
+
   let skCraftWeapon = document.getElementById("skCraftWeaponLv");
   let skCraftArmor  = document.getElementById("skCraftArmorLv");
   let skCraftPotion = document.getElementById("skCraftPotionLv");
