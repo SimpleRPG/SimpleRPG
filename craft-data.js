@@ -9,11 +9,12 @@
 const CRAFT_SKILL_MAX_LV = 100;
 
 const CRAFT_SKILLS_INIT = {
-  weapon: { lv: 0, exp: 0, expToNext: 10 },
-  armor:  { lv: 0, exp: 0, expToNext: 10 },
-  potion: { lv: 0, exp: 0, expToNext: 10 },
-  tool:   { lv: 0, exp: 0, expToNext: 10 }
-  // cooking: { lv: 0, exp: 0, expToNext: 10 }
+  weapon:   { lv: 0, exp: 0, expToNext: 10 },
+  armor:    { lv: 0, exp: 0, expToNext: 10 },
+  potion:   { lv: 0, exp: 0, expToNext: 10 },
+  tool:     { lv: 0, exp: 0, expToNext: 10 },
+  cooking:  { lv: 0, exp: 0, expToNext: 10 }, // 料理用クラフトスキル
+  material: { lv: 0, exp: 0, expToNext: 10 }  // 中間素材用クラフトスキル
 };
 
 // =======================
