@@ -149,16 +149,18 @@ function refreshGatherFieldSelect() {
   const unlocked = [];
 
   // 全採取スキルが Lv0 かどうかチェック
+  // ※料理用は hunt / fish / fieldFarm / garden の4種
   const allGatherLv0 =
-    gatherSkills.wood.lv    === 0 &&
-    gatherSkills.ore.lv     === 0 &&
-    gatherSkills.herb.lv    === 0 &&
-    gatherSkills.cloth.lv   === 0 &&
-    gatherSkills.leather.lv === 0 &&
-    gatherSkills.water.lv   === 0 &&
-    gatherSkills.hunt.lv    === 0 &&
-    gatherSkills.fish.lv    === 0 &&
-    gatherSkills.farm.lv    === 0;
+    gatherSkills.wood.lv      === 0 &&
+    gatherSkills.ore.lv       === 0 &&
+    gatherSkills.herb.lv      === 0 &&
+    gatherSkills.cloth.lv     === 0 &&
+    gatherSkills.leather.lv   === 0 &&
+    gatherSkills.water.lv     === 0 &&
+    gatherSkills.hunt.lv      === 0 &&
+    gatherSkills.fish.lv      === 0 &&
+    gatherSkills.fieldFarm.lv === 0 &&
+    gatherSkills.garden.lv    === 0;
 
   GATHER_FIELDS.forEach(f => {
     if (f.id === "cook") {
@@ -377,7 +379,14 @@ function gather(){
     const mode = cookModeSel.value; // "hunt" / "fish" / "farm" / "garden"
 
     // 対応する採取スキルで量を計算
-    const skillKey = (mode === "hunt" || mode === "fish") ? mode : "farm";
+    let skillKey;
+    if (mode === "hunt" || mode === "fish") {
+      skillKey = mode;
+    } else if (mode === "farm") {
+      skillKey = "fieldFarm";
+    } else {
+      skillKey = "garden";
+    }
     const added = calcGatherAmount(skillKey);
 
     const GATHER_COOK_HUNT = [
