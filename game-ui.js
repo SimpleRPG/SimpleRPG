@@ -42,7 +42,7 @@ function updateGatherMatDetailText() {
     const t3 = m.t3 || 0;
     return `${names[k]}: ${t1}/${t2}/${t3}`;
   });
-  area.textContent = lines.join("\\n");
+  area.textContent = lines.join("\n");
 
   let labelText = "所持素材：-";
 
@@ -112,7 +112,7 @@ function updateCraftMatDetailText() {
     const m = window.materials[k] || {};
     return `${names[k]}: ${formatTierNums(m)}`;
   });
-  area.textContent = lines.join("\\n");
+  area.textContent = lines.join("\n");
 
   // ▼ ここから追加: 中間素材の在庫一覧も表示
   if (typeof window.intermediateMats !== "undefined" &&
@@ -127,7 +127,7 @@ function updateCraftMatDetailText() {
     });
 
     if (interLines.length > 0) {
-      area.textContent += "\\n--- 中間素材 ---\\n" + interLines.join("\\n");
+      area.textContent += "\n--- 中間素材 ---\n" + interLines.join("\n");
     }
   }
 
@@ -297,17 +297,22 @@ window.addEventListener("DOMContentLoaded", () => {
   // メインタブ切り替え
   // =======================
 
+  // index.html 側の activateMainTab とバッティングしないよう、
+  // ここでは「ページIDベースで .tab-page / .tab-button を制御」するだけにする。
   const tabButtonsMap = {
     tabGather:    "pageGather",
-    // tabEquip は index.html 側でコメントアウト済みだが、ここはそのままでも害はない
+    // tabEquip は index.html 側でコメントアウト済み
     tabEquip:     "pageEquip",
     tabExplore:   "pageExplore",
     tabMagicDist: "pageMagicDist",
     tabWarehouse: "pageWarehouse",
-    tabStatus:    "pageStatus"
+    tabStatus:    "pageStatus",
+    tabHelp:      "pageHelp"   // ★ あそびかたタブを追加
   };
 
-  const tabPages = Object.values(tabButtonsMap).map(id => document.getElementById(id));
+  const tabPages = Object.values(tabButtonsMap)
+    .map(id => document.getElementById(id))
+    .filter(Boolean);
 
   function showTabByPageId(pageId) {
     // 探索中制限は探索・ステータス以外に共通でかける
@@ -321,19 +326,20 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // ページ表示切り替え
+    // ページ表示切り替え（.tab-page.active + display は CSS に任せる）
     tabPages.forEach(p => {
       if (!p) return;
-      p.classList.remove("active");
-      p.style.display = (p.id === pageId) ? "block" : "none";
+      const isActive = (p.id === pageId);
+      p.classList.toggle("active", isActive);
+      // display は CSS (.tab-page / .tab-page.active) が決めるのでここでは触らない
     });
 
     // タブボタンの active 切り替え
     Object.entries(tabButtonsMap).forEach(([btnId, pid]) => {
       const btn = document.getElementById(btnId);
       if (!btn) return;
-      if (pid === pageId) btn.classList.add("active");
-      else                btn.classList.remove("active");
+      const isActive = (pid === pageId);
+      btn.classList.toggle("active", isActive);
     });
 
     // 魔巧区のクラフトサブページが開かれたときの初期処理
@@ -368,7 +374,6 @@ window.addEventListener("DOMContentLoaded", () => {
       } else if (activeCat === "material" && interSel && interSel.value) {
         updateCraftCostInfo("material", interSel.value);
       } else if (activeCat === "cooking") {
-        // 料理カテゴリ：サブタブとセレクトに応じて、cookingFood / cookingDrink で表示
         const activeSubTab = document.querySelector(".cook-sub-tab.active");
         const sub = activeSubTab ? activeSubTab.dataset.sub : "food";
 
@@ -397,6 +402,23 @@ window.addEventListener("DOMContentLoaded", () => {
         refreshWarehouseUI();
       }
     }
+
+    // ステータス・ヘルプでも共通ステータス更新をしたければここで呼ぶ
+    if (typeof recalcStats === "function") {
+      recalcStats();
+    }
+    if (typeof updateDisplay === "function") {
+      updateDisplay();
+    }
+    if (typeof renderPlayerStatusIcons === "function") {
+      renderPlayerStatusIcons();
+    }
+    if (typeof updateEnemyStatusUI === "function") {
+      updateEnemyStatusUI();
+    }
+    if (typeof refreshCarryFoodDrinkSelects === "function") {
+      refreshCarryFoodDrinkSelects();
+    }
   }
 
   Object.entries(tabButtonsMap).forEach(([btnId, pageId]) => {
@@ -407,6 +429,7 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // 初期タブは採取
   showTabByPageId("pageGather");
 
   // =======================
@@ -416,7 +439,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const magicTabButtons = document.querySelectorAll(".magic-tab-button");
   const magicSubPages = {
     "magic-craft":   document.getElementById("magicPageCraft"),
-    "magic-enhance": document.getElementById("magicPageEnhance"), // 追加
+    "magic-enhance": document.getElementById("magicPageEnhance"),
     "magic-shop":    document.getElementById("magicPageShop"),
     "magic-market":  document.getElementById("magicPageMarket"),
     "magic-gather":  document.getElementById("magicPageGather")
@@ -453,7 +476,6 @@ window.addEventListener("DOMContentLoaded", () => {
         if (typeof refreshMarketOrderList === "function") {
           refreshMarketOrderList();
         }
-        // 市場内パネル初期表示
         const marketSellPanel = document.getElementById("marketSellPanel");
         const marketBuyPanel  = document.getElementById("marketBuyPanel");
         const marketTabSell   = document.getElementById("marketTabSell");
@@ -484,14 +506,12 @@ window.addEventListener("DOMContentLoaded", () => {
   // 市場タブ・ボタン（追加）
   // =======================
 
-  // メイン（出品/購入）タブ
   const marketSellPanel = document.getElementById("marketSellPanel");
   const marketBuyPanel  = document.getElementById("marketBuyPanel");
   const marketTabSell   = document.getElementById("marketTabSell");
   const marketTabBuy    = document.getElementById("marketTabBuy");
 
   if (marketSellPanel && marketBuyPanel && marketTabSell && marketTabBuy) {
-    // 初期状態は出品タブ
     marketSellPanel.style.display = "";
     marketBuyPanel.style.display  = "none";
     marketTabSell.classList.add("active");
@@ -518,7 +538,6 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // 出品ボタン関連
   const marketSellBtn        = document.getElementById("marketSellBtn");
   const marketSellRefreshBtn = document.getElementById("marketSellRefreshBtn");
   const marketSellCategory   = document.getElementById("marketSellCategory");
@@ -541,7 +560,6 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // 購入一覧更新ボタン
   const marketBuyRefreshBtn = document.getElementById("marketBuyRefreshBtn");
   if (marketBuyRefreshBtn && typeof refreshMarketBuyList === "function") {
     marketBuyRefreshBtn.addEventListener("click", () => {
@@ -549,7 +567,6 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // 購入カテゴリフィルタ
   const marketCatTabs = document.querySelectorAll(".market-cat-tab");
   if (marketCatTabs && marketCatTabs.length > 0 && typeof filterMarketBuyListByCategory === "function") {
     marketCatTabs.forEach(btn => {
@@ -562,14 +579,12 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // 購入サブタブ（出品一覧 / 買い注文）
   const marketSubTabPurchase = document.getElementById("marketSubTabPurchase");
   const marketSubTabOrders   = document.getElementById("marketSubTabOrders");
   const marketSubPagePurchase= document.getElementById("marketSubPagePurchase");
   const marketSubPageOrders  = document.getElementById("marketSubPageOrders");
 
   if (marketSubTabPurchase && marketSubTabOrders && marketSubPagePurchase && marketSubPageOrders) {
-    // 初期状態：購入一覧
     marketSubPagePurchase.style.display = "";
     marketSubPageOrders.style.display   = "none";
     marketSubTabPurchase.classList.add("active");
@@ -596,7 +611,6 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // 買い注文ボタン
   const marketOrderBtn = document.getElementById("marketOrderBtn");
   if (marketOrderBtn && typeof doMarketOrder === "function") {
     marketOrderBtn.addEventListener("click", () => {
@@ -604,7 +618,6 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // 買い注文アイテムセレクト初期化
   initMarketOrderItemSelect();
 
   // =======================
@@ -807,7 +820,6 @@ window.addEventListener("DOMContentLoaded", () => {
         if (typeof refreshEquipSelects === "function") {
           refreshEquipSelects();
         }
-        // ★ 最後に必ず、現在のクラフトカテゴリに応じたコスト表示を上書き
         refreshCurrentCraftCost();
       }
     });
@@ -858,7 +870,6 @@ window.addEventListener("DOMContentLoaded", () => {
       const sel = document.getElementById("intermediateSelect");
       if (sel && sel.value) { updateCraftCostInfo("material", sel.value); return; }
     } else if (cat === "cooking") {
-      // 料理カテゴリ：food/drink のセレクトとサブタブに応じて cost 表示
       const foodSel  = document.getElementById("foodSelect");
       const drinkSel = document.getElementById("drinkSelect");
       const activeSubTab = document.querySelector(".cook-sub-tab.active");
@@ -998,13 +1009,10 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ★ 追加: 戦闘用 / 採取用 切り替えセレクト
   const craftKindSelect = document.getElementById("craftKindSelect");
   if (craftKindSelect && typeof refreshEquipSelects === "function") {
     craftKindSelect.addEventListener("change", () => {
-      // 種別変更時にクラフト用セレクトを作り直す
       refreshEquipSelects();
-      // 変更後の現在カテゴリ＋選択レシピで必要素材表示を更新
       refreshCurrentCraftCost();
     });
   }
@@ -1012,10 +1020,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const craftTierSelect = document.getElementById("craftTierSelect");
   if (craftTierSelect && typeof refreshEquipSelects === "function") {
     craftTierSelect.addEventListener("change", () => {
-      // ティア変更時に全セレクトを作り直す
       refreshEquipSelects();
-
-      // ティア変更後も、アクティブなカテゴリ＋選択レシピで表示を統一
       refreshCurrentCraftCost();
     });
   }
@@ -1071,9 +1076,6 @@ window.addEventListener("DOMContentLoaded", () => {
   // =======================
   // 装備関連
   // =======================
-
-  // 装備タブはコメントアウトしたので、装備切替ボタンのリスナーは削除
-  // 強化ボタンのみ、魔巧区「装備強化」サブページで使用する
 
   const enhanceWeaponBtn = document.getElementById("enhanceWeaponBtn");
   if (enhanceWeaponBtn && typeof enhanceWeapon === "function") {
@@ -1149,7 +1151,6 @@ window.addEventListener("DOMContentLoaded", () => {
           appendLog("動物使いのみ変更できます");
           return;
         }
-        // 仕様はそのままに、ロジック側の petGrowthType と同じ変数を更新する
         window.petGrowthType = val;
         if (typeof petGrowthType !== "undefined") {
           petGrowthType = val;

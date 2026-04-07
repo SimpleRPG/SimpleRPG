@@ -17,6 +17,7 @@
       <button id="tabMagicDist" class="tab-button">魔巧区</button>
       <button id="tabWarehouse" class="tab-button">倉庫</button>
       <button id="tabStatus"    class="tab-button">ステータス</button>
+      <button id="tabHelp"      class="tab-button">あそびかた</button>
     </div>
 
     <!-- PC/スマホ共通レイアウトの本体 -->
@@ -681,6 +682,11 @@
               <button onclick="importSaveData()">貼り付けたデータを読み込む</button>
             </div>
           </div>
+
+          <!-- あそびかた -->
+          <div id="pageHelp" class="tab-page">
+            <div id="helpContentRoot"></div>
+          </div>
         </div><!-- /#mainArea -->
       </div><!-- /#mainColumn -->
 
@@ -757,6 +763,7 @@
 
   <script src="game-ui.js"></script>
   <script src="game-ui-2.js"></script>
+  <script src="asobikata.js"></script>
 
   <!-- ★ 追加: タブ切り替え時に UI を再描画する初期化スクリプト -->
   <script>
@@ -766,14 +773,16 @@
         explore:   document.getElementById("pageExplore"),
         magicDist: document.getElementById("pageMagicDist"),
         warehouse: document.getElementById("pageWarehouse"),
-        status:    document.getElementById("pageStatus")
+        status:    document.getElementById("pageStatus"),
+        help:      document.getElementById("pageHelp")
       };
       const tabs = {
         gather:    document.getElementById("tabGather"),
         explore:   document.getElementById("tabExplore"),
         magicDist: document.getElementById("tabMagicDist"),
         warehouse: document.getElementById("tabWarehouse"),
-        status:    document.getElementById("tabStatus")
+        status:    document.getElementById("tabStatus"),
+        help:      document.getElementById("tabHelp")
       };
 
       function activateMainTab(key) {
@@ -827,21 +836,12 @@
         }
       }
 
-      if (tabs.gather) {
-        tabs.gather.addEventListener("click", () => activateMainTab("gather"));
-      }
-      if (tabs.explore) {
-        tabs.explore.addEventListener("click", () => activateMainTab("explore"));
-      }
-      if (tabs.magicDist) {
-        tabs.magicDist.addEventListener("click", () => activateMainTab("magicDist"));
-      }
-      if (tabs.warehouse) {
-        tabs.warehouse.addEventListener("click", () => activateMainTab("warehouse"));
-      }
-      if (tabs.status) {
-        tabs.status.addEventListener("click", () => activateMainTab("status"));
-      }
+      if (tabs.gather)    tabs.gather.addEventListener("click", () => activateMainTab("gather"));
+      if (tabs.explore)   tabs.explore.addEventListener("click", () => activateMainTab("explore"));
+      if (tabs.magicDist) tabs.magicDist.addEventListener("click", () => activateMainTab("magicDist"));
+      if (tabs.warehouse) tabs.warehouse.addEventListener("click", () => activateMainTab("warehouse"));
+      if (tabs.status)    tabs.status.addEventListener("click", () => activateMainTab("status"));
+      if (tabs.help)      tabs.help.addEventListener("click", () => activateMainTab("help"));
     });
   </script>
 </body>
