@@ -22,8 +22,8 @@ function makeSaveData() {
       rebirthCount,
       growthType,
 
-      STR_,
-      VIT_,
+      STR,
+      VIT,
       INT_,
       DEX_,
       LUK_,
@@ -113,8 +113,6 @@ function makeSaveData() {
     isExploring:   window.isExploring,
     exploringArea: window.exploringArea,
 
-    // 敵・戦闘（途中セーブまではしない設計なので currentEnemy などは保存しない）
-
     // ボス関連フラグ
     areaBossCleared,
     areaBossAvailable,
@@ -133,11 +131,6 @@ function makeSaveData() {
 
     // 逃走補正
     escapeFailBonus,
-
-    // --------------------------------
-    // スキル UI / 職業関連の表示更新用に必要なものは
-    // player/job 側に含まれているのでここでは追加なし
-    // --------------------------------
 
     // --------------------------------
     // 採取拠点・自動採取（core-5）
@@ -172,11 +165,11 @@ function applySaveData(data) {
     if ("rebirthCount" in p)   rebirthCount   = p.rebirthCount;
     if ("growthType" in p)     growthType     = p.growthType;
 
-    if ("STR_" in p)           STR_           = p.STR_;
-    if ("VIT_" in p)           VIT_           = p.VIT_;
-    if ("INT_" in p)           INT_          = p.INT_;
-    if ("DEX_" in p)           DEX_          = p.DEX_;
-    if ("LUK_" in p)           LUK_          = p.LUK_;
+    if ("STR" in p)            STR            = p.STR;
+    if ("VIT" in p)            VIT            = p.VIT;
+    if ("INT_" in p)           INT_           = p.INT_;
+    if ("DEX_" in p)           DEX_           = p.DEX_;
+    if ("LUK_" in p)           LUK_           = p.LUK_;
 
     if ("hp" in p)             hp             = p.hp;
     if ("hpMax" in p)          hpMax          = p.hpMax;
@@ -213,15 +206,54 @@ function applySaveData(data) {
   }
 
   // -------- 採取・クラフト・素材 --------
-  if (data.materials)        materials        = data.materials;
-  if (data.gatherSkills)     gatherSkills     = data.gatherSkills;
-  if (data.craftSkills)      craftSkills      = data.craftSkills;
-  if (data.intermediateMats) intermediateMats = data.intermediateMats;
-  if (data.cookingMats)      cookingMats      = data.cookingMats;
-  if (data.lastGatherInfo)   lastGatherInfo   = data.lastGatherInfo;
+
+  // window 共有オブジェクトは「すげ替え」ではなく中身をコピーする
+  if (data.materials && typeof materials === "object") {
+    Object.keys(materials).forEach(k => delete materials[k]);
+    Object.keys(data.materials).forEach(k => {
+      materials[k] = data.materials[k];
+    });
+    if (typeof window !== "undefined") {
+      window.materials = materials;
+    }
+  }
+
+  if (data.gatherSkills) {
+    gatherSkills = data.gatherSkills;
+  }
+
+  if (data.craftSkills) {
+    craftSkills = data.craftSkills;
+  }
+
+  if (data.intermediateMats && typeof intermediateMats === "object") {
+    Object.keys(intermediateMats).forEach(k => delete intermediateMats[k]);
+    Object.keys(data.intermediateMats).forEach(k => {
+      intermediateMats[k] = data.intermediateMats[k];
+    });
+    if (typeof window !== "undefined") {
+      window.intermediateMats = intermediateMats;
+    }
+  }
+
+  if (data.cookingMats && typeof cookingMats === "object") {
+    Object.keys(cookingMats).forEach(k => delete cookingMats[k]);
+    Object.keys(data.cookingMats).forEach(k => {
+      cookingMats[k] = data.cookingMats[k];
+    });
+  }
+
+  if (data.lastGatherInfo) {
+    lastGatherInfo = data.lastGatherInfo;
+  }
 
   // -------- インベントリ・装備 --------
-  if (data.itemCounts)       itemCounts       = data.itemCounts;
+  if (data.itemCounts && typeof itemCounts === "object") {
+    Object.keys(itemCounts).forEach(k => delete itemCounts[k]);
+    Object.keys(data.itemCounts).forEach(k => {
+      itemCounts[k] = data.itemCounts[k];
+    });
+  }
 
   if (Array.isArray(data.weapons))         weapons         = data.weapons;
   if (Array.isArray(data.armors))          armors          = data.armors;
@@ -304,11 +336,21 @@ function applySaveData(data) {
   }
 
   // -------- 市場 --------
-  if (Array.isArray(data.marketListings))   marketListings   = data.marketListings;
-  if (Array.isArray(data.marketBuyOrders))  marketBuyOrders  = data.marketBuyOrders;
-  if (Array.isArray(data.marketTradeLogs))  marketTradeLogs  = data.marketTradeLogs;
-  if (typeof data.marketOrderIdSeq === "number")   marketOrderIdSeq   = data.marketOrderIdSeq;
-  if (typeof data.marketListingIdSeq === "number") marketListingIdSeq = data.marketListingIdSeq;
+  if (typeof marketListings !== "undefined" && Array.isArray(data.marketListings)) {
+    marketListings = data.marketListings;
+  }
+  if (typeof marketBuyOrders !== "undefined" && Array.isArray(data.marketBuyOrders)) {
+    marketBuyOrders = data.marketBuyOrders;
+  }
+  if (typeof marketTradeLogs !== "undefined" && Array.isArray(data.marketTradeLogs)) {
+    marketTradeLogs = data.marketTradeLogs;
+  }
+  if (typeof marketOrderIdSeq !== "undefined" && typeof data.marketOrderIdSeq === "number") {
+    marketOrderIdSeq = data.marketOrderIdSeq;
+  }
+  if (typeof marketListingIdSeq !== "undefined" && typeof data.marketListingIdSeq === "number") {
+    marketListingIdSeq = data.marketListingIdSeq;
+  }
 
   // -------- 復元後の再計算・UI --------
   if (typeof recalcStats === "function") {
