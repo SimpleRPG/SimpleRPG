@@ -757,5 +757,92 @@
 
   <script src="game-ui.js"></script>
   <script src="game-ui-2.js"></script>
+
+  <!-- ★ 追加: タブ切り替え時に UI を再描画する初期化スクリプト -->
+  <script>
+    window.addEventListener("DOMContentLoaded", () => {
+      const pages = {
+        gather:    document.getElementById("pageGather"),
+        explore:   document.getElementById("pageExplore"),
+        magicDist: document.getElementById("pageMagicDist"),
+        warehouse: document.getElementById("pageWarehouse"),
+        status:    document.getElementById("pageStatus")
+      };
+      const tabs = {
+        gather:    document.getElementById("tabGather"),
+        explore:   document.getElementById("tabExplore"),
+        magicDist: document.getElementById("tabMagicDist"),
+        warehouse: document.getElementById("tabWarehouse"),
+        status:    document.getElementById("tabStatus")
+      };
+
+      function activateMainTab(key) {
+        Object.keys(pages).forEach(k => {
+          if (pages[k]) {
+            pages[k].classList.toggle("active", k === key);
+          }
+        });
+        Object.keys(tabs).forEach(k => {
+          if (tabs[k]) {
+            tabs[k].classList.toggle("active", k === key);
+          }
+        });
+
+        // タブ切り替え後に数値・UIを更新
+        if (typeof recalcStats === "function") {
+          recalcStats();
+        }
+        if (typeof updateDisplay === "function") {
+          updateDisplay();
+        }
+        if (typeof renderPlayerStatusIcons === "function") {
+          renderPlayerStatusIcons();
+        }
+        if (typeof updateEnemyStatusUI === "function") {
+          updateEnemyStatusUI();
+        }
+        if (typeof refreshCarryFoodDrinkSelects === "function") {
+          refreshCarryFoodDrinkSelects();
+        }
+
+        // タブごとの追加更新
+        if (key === "magicDist") {
+          if (typeof refreshEquipSelects === "function") {
+            refreshEquipSelects();
+          }
+          if (typeof refreshMarketSellCandidates === "function") {
+            refreshMarketSellCandidates();
+          }
+          if (typeof refreshMarketBuyList === "function") {
+            refreshMarketBuyList();
+          }
+        } else if (key === "warehouse") {
+          if (typeof refreshWarehouseUI === "function") {
+            refreshWarehouseUI();
+          }
+        } else if (key === "status") {
+          if (typeof refreshStatusUI === "function") {
+            refreshStatusUI();
+          }
+        }
+      }
+
+      if (tabs.gather) {
+        tabs.gather.addEventListener("click", () => activateMainTab("gather"));
+      }
+      if (tabs.explore) {
+        tabs.explore.addEventListener("click", () => activateMainTab("explore"));
+      }
+      if (tabs.magicDist) {
+        tabs.magicDist.addEventListener("click", () => activateMainTab("magicDist"));
+      }
+      if (tabs.warehouse) {
+        tabs.warehouse.addEventListener("click", () => activateMainTab("warehouse"));
+      }
+      if (tabs.status) {
+        tabs.status.addEventListener("click", () => activateMainTab("status"));
+      }
+    });
+  </script>
 </body>
 </html>

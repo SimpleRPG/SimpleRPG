@@ -6,10 +6,10 @@
 // =======================
 
 // レベルアップ用経験値ベース（Lvごとの必要値は addExp/doRebirth 側で利用）
-const BASE_EXP_PER_LEVEL = 100;
+let BASE_EXP_PER_LEVEL = 100;
 
 // ★ 装備耐久（武器・防具共通）
-const MAX_DURABILITY = 3;
+let MAX_DURABILITY = 3;
 
 // =======================
 // 基本ステータス
@@ -68,14 +68,14 @@ let petHp = 10;
 let petBuffRate = 1.0;
 
 // ペット成長タイプ
-const PET_GROWTH_BALANCE = 0;
-const PET_GROWTH_TANK    = 1;
-const PET_GROWTH_DPS     = 2;
+let PET_GROWTH_BALANCE = 0;
+let PET_GROWTH_TANK    = 1;
+let PET_GROWTH_DPS     = 2;
 let petGrowthType = PET_GROWTH_BALANCE;
 
 // ペットスキル（game-core-5 などで中身を定義）
 let petSkills = [];
-const PET_SKILL_TRY_RATE = 0.3;
+let PET_SKILL_TRY_RATE = 0.3;
 
 // お金
 let money = 0;
@@ -125,7 +125,7 @@ window.materials = materials;
 
 // 合計値を返すヘルパー
 function getMatTotal(key) {
-  const m = materials[key];
+  let m = materials[key];
   if (!m) return 0;
   return (m.t1 || 0) + (m.t2 || 0) + (m.t3 || 0);
 }
@@ -202,8 +202,8 @@ function recalcStats() {
   sp = Math.min(sp, spMax);
 
   // 基本攻撃・防御
-  const baseAtk = STR + Math.floor(level * 0.5);
-  const baseDef = VIT + Math.floor(level * 0.5);
+  let baseAtk = STR + Math.floor(level * 0.5);
+  let baseDef = VIT + Math.floor(level * 0.5);
 
   let weaponAtk = 0;
   let weaponScaleStr = 0;
@@ -219,9 +219,9 @@ function recalcStats() {
 
   // ★ 武器は「装備中インスタンス」を最優先、なければID装備を見る
   if (equippedWeaponIndex != null) {
-    const inst = weaponInstances[equippedWeaponIndex];
+    let inst = weaponInstances[equippedWeaponIndex];
     if (inst) {
-      const w = weapons.find(x => x.id === inst.id);
+      let w = weapons.find(x => x.id === inst.id);
       if (w) {
         weaponAtk       = w.atk || 0;
         weaponScaleStr  = w.scaleStr || 0;
@@ -231,7 +231,7 @@ function recalcStats() {
       }
     }
   } else if (equippedWeaponId) {
-    const w = weapons.find(x => x.id === equippedWeaponId);
+    let w = weapons.find(x => x.id === equippedWeaponId);
     if (w) {
       weaponAtk       = w.atk || 0;
       weaponScaleStr  = w.scaleStr || 0;
@@ -243,9 +243,9 @@ function recalcStats() {
 
   // ★ 防具も同様にインスタンス優先
   if (equippedArmorIndex != null) {
-    const inst = armorInstances[equippedArmorIndex];
+    let inst = armorInstances[equippedArmorIndex];
     if (inst) {
-      const a = armors.find(x => x.id === inst.id);
+      let a = armors.find(x => x.id === inst.id);
       if (a) {
         armorDef       = a.def || 0;
         armorScaleVit  = a.scaleVit || 0;
@@ -255,7 +255,7 @@ function recalcStats() {
       }
     }
   } else if (equippedArmorId) {
-    const a = armors.find(x => x.id === equippedArmorId);
+    let a = armors.find(x => x.id === equippedArmorId);
     if (a) {
       armorDef       = a.def || 0;
       armorScaleVit  = a.scaleVit || 0;
@@ -266,15 +266,15 @@ function recalcStats() {
   }
 
   // 強化補正（1段階あたり+5%想定）
-  const WEAPON_ENH_RATE   = 0.05;
-  const ARMOR_ENH_RATE    = 0.05;
+  let WEAPON_ENH_RATE   = 0.05;
+  let ARMOR_ENH_RATE    = 0.05;
 
   // 品質補正（良品10% / 傑作20%）※クラフト側の QUALITY_RATE と整合
-  const QUALITY_GOOD_RATE = 0.10; // quality=1
-  const QUALITY_EX_RATE   = 0.20; // quality=2
+  let QUALITY_GOOD_RATE = 0.10; // quality=1
+  let QUALITY_EX_RATE   = 0.20; // quality=2
 
-  const weaponEnhRate = 1 + weaponEnhance * WEAPON_ENH_RATE;
-  const armorEnhRate  = 1 + armorEnhance * ARMOR_ENH_RATE;
+  let weaponEnhRate = 1 + weaponEnhance * WEAPON_ENH_RATE;
+  let armorEnhRate  = 1 + armorEnhance * ARMOR_ENH_RATE;
 
   let weaponQualityRate = 1.0;
   if (weaponQuality === 1) weaponQualityRate += QUALITY_GOOD_RATE;
@@ -285,14 +285,14 @@ function recalcStats() {
   else if (armorQuality === 2) armorQualityRate += QUALITY_EX_RATE;
 
   // 強化→品質の順で乗算（掛け算なので順序は見た目上は同じ）
-  const enhancedWeaponAtk = Math.floor(weaponAtk * weaponEnhRate * weaponQualityRate);
-  const enhancedArmorDef  = Math.floor(armorDef * armorEnhRate  * armorQualityRate);
+  let enhancedWeaponAtk = Math.floor(weaponAtk * weaponEnhRate * weaponQualityRate);
+  let enhancedArmorDef  = Math.floor(armorDef * armorEnhRate  * armorQualityRate);
 
   // ステータス由来の攻撃
-  const atkFromStr = Math.floor(STR * 0.5);
-  const atkFromDex = Math.floor(DEX_ * 0.3);
-  const atkFromWeaponStr = Math.floor(STR * weaponScaleStr);
-  const atkFromWeaponInt = Math.floor(INT_ * weaponScaleInt);
+  let atkFromStr = Math.floor(STR * 0.5);
+  let atkFromDex = Math.floor(DEX_ * 0.3);
+  let atkFromWeaponStr = Math.floor(STR * weaponScaleStr);
+  let atkFromWeaponInt = Math.floor(INT_ * weaponScaleInt);
 
   atkTotal =
     baseAtk +
@@ -303,9 +303,9 @@ function recalcStats() {
     atkFromWeaponInt;
 
   // ステータス由来の防御
-  const defFromVit = Math.floor(VIT * 0.7);
-  const defFromDex = Math.floor(DEX_ * 0.2);
-  const defFromArmorVit = Math.floor(VIT * armorScaleVit);
+  let defFromVit = Math.floor(VIT * 0.7);
+  let defFromDex = Math.floor(DEX_ * 0.2);
+  let defFromArmorVit = Math.floor(VIT * armorScaleVit);
 
   defTotal =
     baseDef +
@@ -390,13 +390,13 @@ function initGame() {
 // =======================
 
 function setLog(msg) {
-  const el = document.getElementById("log");
+  let el = document.getElementById("log");
   if (!el) return;
   el.textContent = msg;
 }
 
 function appendLog(msg) {
-  const el = document.getElementById("log");
+  let el = document.getElementById("log");
   if (!el) return;
   el.textContent = msg + "\n" + el.textContent;
 }
@@ -417,42 +417,42 @@ function updateMaterialDetailTexts() {
 
 function updateDisplay() {
   // HP/MP/SPバー
-  const hpBarFill = document.getElementById("hpBarFill");
-  const hpBarText = document.getElementById("hpBarText");
-  const mpBarFill = document.getElementById("mpBarFill");
-  const mpBarText = document.getElementById("mpBarText");
-  const spBarFill = document.getElementById("spBarFill");
-  const spBarText = document.getElementById("spBarText");
+  let hpBarFill = document.getElementById("hpBarFill");
+  let hpBarText = document.getElementById("hpBarText");
+  let mpBarFill = document.getElementById("mpBarFill");
+  let mpBarText = document.getElementById("mpBarText");
+  let spBarFill = document.getElementById("spBarFill");
+  let spBarText = document.getElementById("spBarText");
 
   if (hpBarFill && hpBarText) {
-    const ratio = hpMax > 0 ? (hp / hpMax) : 0;
+    let ratio = hpMax > 0 ? (hp / hpMax) : 0;
     hpBarFill.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`;
     hpBarText.textContent = `${hp} / ${hpMax}`;
   }
   if (mpBarFill && mpBarText) {
-    const ratio = mpMax > 0 ? (mp / mpMax) : 0;
+    let ratio = mpMax > 0 ? (mp / mpMax) : 0;
     mpBarFill.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`;
     mpBarText.textContent = `${mp} / ${mpMax}`;
   }
   if (spBarFill && spBarText) {
-    const ratio = spMax > 0 ? (sp / spMax) : 0;
+    let ratio = spMax > 0 ? (sp / spMax) : 0;
     spBarFill.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`;
     spBarText.textContent = `${sp} / ${spMax}`;
   }
 
   // 所持金
-  const moneyEl = document.getElementById("money");
-  const shopGoldEl = document.getElementById("shopGoldDisplay");
+  let moneyEl = document.getElementById("money");
+  let shopGoldEl = document.getElementById("shopGoldDisplay");
   if (moneyEl) moneyEl.textContent = money;
   if (shopGoldEl) shopGoldEl.textContent = money;
 
   // ステータスページ
-  const stLevelEl = document.getElementById("stLevel");
-  const stExpEl   = document.getElementById("stExp");
-  const stExpNext = document.getElementById("stExpToNext");
-  const stRebirth = document.getElementById("stRebirthCount");
-  const stGrowth  = document.getElementById("stGrowthType");
-  const stJobName = document.getElementById("stJobName");
+  let stLevelEl = document.getElementById("stLevel");
+  let stExpEl   = document.getElementById("stExp");
+  let stExpNext = document.getElementById("stExpToNext");
+  let stRebirth = document.getElementById("stRebirthCount");
+  let stGrowth  = document.getElementById("stGrowthType");
+  let stJobName = document.getElementById("stJobName");
 
   if (stLevelEl) stLevelEl.textContent = level;
   if (stExpEl)   stExpEl.textContent   = exp;
@@ -461,11 +461,11 @@ function updateDisplay() {
   if (stGrowth)  stGrowth.textContent  = getGrowthTypeName();
   if (stJobName) stJobName.textContent = getJobName();
 
-  const stSTR = document.getElementById("stSTR");
-  const stVIT = document.getElementById("stVIT");
-  const stINT = document.getElementById("stINT");
-  const stDEX = document.getElementById("stDEX");
-  const stLUK = document.getElementById("stLUK");
+  let stSTR = document.getElementById("stSTR");
+  let stVIT = document.getElementById("stVIT");
+  let stINT = document.getElementById("stINT");
+  let stDEX = document.getElementById("stDEX");
+  let stLUK = document.getElementById("stLUK");
 
   if (stSTR) stSTR.textContent = STR;
   if (stVIT) stVIT.textContent = VIT;
@@ -473,11 +473,11 @@ function updateDisplay() {
   if (stDEX) stDEX.textContent = DEX_;
   if (stLUK) stLUK.textContent = LUK_;
 
-  const stAtkTotal = document.getElementById("stAtkTotal");
-  const stDefTotal = document.getElementById("stDefTotal");
-  const stHpMax    = document.getElementById("stHpMax");
-  const stMpMax    = document.getElementById("stMpMax");
-  const stSpMax    = document.getElementById("stSpMax");
+  let stAtkTotal = document.getElementById("stAtkTotal");
+  let stDefTotal = document.getElementById("stDefTotal");
+  let stHpMax    = document.getElementById("stHpMax");
+  let stMpMax    = document.getElementById("stMpMax");
+  let stSpMax    = document.getElementById("stSpMax");
 
   if (stAtkTotal) stAtkTotal.textContent = atkTotal;
   if (stDefTotal) stDefTotal.textContent = defTotal;
@@ -486,11 +486,11 @@ function updateDisplay() {
   if (stSpMax)    stSpMax.textContent    = spMax;
 
   // 詳細パネル
-  const jobNameEl = document.getElementById("jobName");
-  const eqWpnName = document.getElementById("equippedWeaponName");
-  const eqArmName = document.getElementById("equippedArmorName");
-  const atkTotalEl= document.getElementById("atkTotal");
-  const defTotalEl= document.getElementById("defTotal");
+  let jobNameEl = document.getElementById("jobName");
+  let eqWpnName = document.getElementById("equippedWeaponName");
+  let eqArmName = document.getElementById("equippedArmorName");
+  let atkTotalEl= document.getElementById("atkTotal");
+  let defTotalEl= document.getElementById("defTotal");
 
   if (jobNameEl) jobNameEl.textContent = getJobName();
 
@@ -498,15 +498,15 @@ function updateDisplay() {
   if (eqWpnName) {
     let nameText = "なし";
     if (equippedWeaponIndex != null) {
-      const inst = weaponInstances[equippedWeaponIndex];
+      let inst = weaponInstances[equippedWeaponIndex];
       if (inst) {
-        const w = weapons.find(x => x.id === inst.id);
+        let w = weapons.find(x => x.id === inst.id);
         if (w) {
           nameText = w.name;
         }
       }
     } else if (equippedWeaponId) {
-      const w = weapons.find(x => x.id === equippedWeaponId);
+      let w = weapons.find(x => x.id === equippedWeaponId);
       if (w) nameText = w.name;
     }
     eqWpnName.textContent = nameText;
@@ -515,15 +515,15 @@ function updateDisplay() {
   if (eqArmName) {
     let nameText = "なし";
     if (equippedArmorIndex != null) {
-      const inst = armorInstances[equippedArmorIndex];
+      let inst = armorInstances[equippedArmorIndex];
       if (inst) {
-        const a = armors.find(x => x.id === inst.id);
+        let a = armors.find(x => x.id === inst.id);
         if (a) {
           nameText = a.name;
         }
       }
     } else if (equippedArmorId) {
-      const a = armors.find(x => x.id === equippedArmorId);
+      let a = armors.find(x => x.id === equippedArmorId);
       if (a) nameText = a.name;
     }
     eqArmName.textContent = nameText;
@@ -533,13 +533,13 @@ function updateDisplay() {
   if (defTotalEl) defTotalEl.textContent = defTotal;
 
   // ペット表示
-  const petInfoBox = document.getElementById("petInfo");
-  const petLevelEl = document.getElementById("petLevel");
-  const petHpEl    = document.getElementById("petHp");
-  const petHpMaxEl = document.getElementById("petHpMax");
+  let petInfoBox = document.getElementById("petInfo");
+  let petLevelEl = document.getElementById("petLevel");
+  let petHpEl    = document.getElementById("petHp");
+  let petHpMaxEl = document.getElementById("petHpMax");
 
   if (petInfoBox) {
-    const show = (jobId === 2);
+    let show = (jobId === 2);
     petInfoBox.style.display = show ? "" : "none";
   }
   if (petLevelEl) petLevelEl.textContent = petLevel;
@@ -547,13 +547,13 @@ function updateDisplay() {
   if (petHpMaxEl) petHpMaxEl.textContent = petHpMax;
 
   // ペット用ステータスページ
-  const stPetLevel = document.getElementById("stPetLevel");
-  const stPetExp   = document.getElementById("stPetExp");
-  const stPetExpTo = document.getElementById("stPetExpToNext");
-  const stPetReb   = document.getElementById("stPetRebirthCount");
-  const stPetGrow  = document.getElementById("stPetGrowthType");
-  const stPetHp    = document.getElementById("stPetHp");
-  const stPetHpM   = document.getElementById("stPetHpMax");
+  let stPetLevel = document.getElementById("stPetLevel");
+  let stPetExp   = document.getElementById("stPetExp");
+  let stPetExpTo = document.getElementById("stPetExpToNext");
+  let stPetReb   = document.getElementById("stPetRebirthCount");
+  let stPetGrow  = document.getElementById("stPetGrowthType");
+  let stPetHp    = document.getElementById("stPetHp");
+  let stPetHpM   = document.getElementById("stPetHpMax");
 
   if (stPetLevel) stPetLevel.textContent = petLevel;
   if (stPetExp)   stPetExp.textContent   = petExp;
@@ -568,41 +568,41 @@ function updateDisplay() {
   if (stPetHp)  stPetHp.textContent  = petHp;
   if (stPetHpM) stPetHpM.textContent = petHpMax;
 
-  const petOnlyEls = document.querySelectorAll(".pet-only");
+  let petOnlyEls = document.querySelectorAll(".pet-only");
   petOnlyEls.forEach(el => {
     el.style.display = (jobId === 2) ? "" : "none";
   });
 
   // 空腹・水分バー
-  const hungerGauge = document.getElementById("hungerGauge");
-  const hungerText  = document.getElementById("hungerText");
-  const thirstGauge = document.getElementById("thirstGauge");
-  const thirstText  = document.getElementById("thirstText");
+  let hungerGauge = document.getElementById("hungerGauge");
+  let hungerText  = document.getElementById("hungerText");
+  let thirstGauge = document.getElementById("thirstGauge");
+  let thirstText  = document.getElementById("thirstText");
 
   if (typeof getHungerValue === "function" && hungerGauge && hungerText) {
-    const h = getHungerValue();
-    const ratio = Math.max(0, Math.min(100, h)) / 100;
+    let h = getHungerValue();
+    let ratio = Math.max(0, Math.min(100, h)) / 100;
     hungerGauge.style.width = (ratio * 100) + "%";
     hungerText.textContent  = h;
   }
 
   if (typeof getThirstValue === "function" && thirstGauge && thirstText) {
-    const t = getThirstValue();
-    const ratio = Math.max(0, Math.min(100, t)) / 100;
+    let t = getThirstValue();
+    let ratio = Math.max(0, Math.min(100, t)) / 100;
     thirstGauge.style.width = (ratio * 100) + "%";
     thirstText.textContent  = t;
   }
 
   // 採取スキル表示
-  const skWood   = document.getElementById("skGatherWoodLv");
-  const skOre    = document.getElementById("skGatherOreLv");
-  const skHerb   = document.getElementById("skGatherHerbLv");
-  const skCloth  = document.getElementById("skGatherClothLv");
-  const skLeather= document.getElementById("skGatherLeatherLv");
-  const skWater  = document.getElementById("skGatherWaterLv");
-  const skHunt   = document.getElementById("skGatherHuntLv");
-  const skFish   = document.getElementById("skGatherFishLv");
-  const skFarm   = document.getElementById("skGatherFarmLv");
+  let skWood   = document.getElementById("skGatherWoodLv");
+  let skOre    = document.getElementById("skGatherOreLv");
+  let skHerb   = document.getElementById("skGatherHerbLv");
+  let skCloth  = document.getElementById("skGatherClothLv");
+  let skLeather= document.getElementById("skGatherLeatherLv");
+  let skWater  = document.getElementById("skGatherWaterLv");
+  let skHunt   = document.getElementById("skGatherHuntLv");
+  let skFish   = document.getElementById("skGatherFishLv");
+  let skFarm   = document.getElementById("skGatherFarmLv");
 
   if (skWood  && gatherSkills.wood)    skWood.textContent    = gatherSkills.wood.lv;
   if (skOre   && gatherSkills.ore)     skOre.textContent     = gatherSkills.ore.lv;
@@ -614,10 +614,10 @@ function updateDisplay() {
   if (skFish  && gatherSkills.fish)    skFish.textContent    = gatherSkills.fish.lv;
   if (skFarm  && gatherSkills.farm)    skFarm.textContent    = gatherSkills.farm.lv;
   
-  const skCraftWeapon = document.getElementById("skCraftWeaponLv");
-  const skCraftArmor  = document.getElementById("skCraftArmorLv");
-  const skCraftPotion = document.getElementById("skCraftPotionLv");
-  const skCraftTool   = document.getElementById("skCraftToolLv");
+  let skCraftWeapon = document.getElementById("skCraftWeaponLv");
+  let skCraftArmor  = document.getElementById("skCraftArmorLv");
+  let skCraftPotion = document.getElementById("skCraftPotionLv");
+  let skCraftTool   = document.getElementById("skCraftToolLv");
 
   if (skCraftWeapon && craftSkills.weapon) skCraftWeapon.textContent = craftSkills.weapon.lv;
   if (skCraftArmor  && craftSkills.armor)  skCraftArmor.textContent  = craftSkills.armor.lv;

@@ -31,7 +31,7 @@
 // =======================
 
 // エリアごとの「今ボスに挑める状態か」
-const areaBossAvailable = {
+let areaBossAvailable = {
   field:  false,
   forest: false,
   cave:   false,

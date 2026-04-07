@@ -1,4 +1,3 @@
-
 // inventory-core.js
 // 倉庫・手持ちインベントリ管理
 

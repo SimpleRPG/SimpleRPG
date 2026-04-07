@@ -1100,3 +1100,10 @@ input[type="text"] {
 #magicPageGather #gatherBaseStatus > div span:first-child {
   white-space: nowrap;
 }
+/* 例: インポート／エクスポート欄のテキストエリア共通 */
+#pageImportExport textarea {
+  box-sizing: border-box; /* パディング込みで幅計算 */
+  width: 100%;           /* 親コンテナにフィット */
+  max-width: 100%;       /* はみ出さないようにする */
+  resize: vertical;      /* 横方向には広げられないようにする */
+}

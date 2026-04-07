@@ -269,16 +269,61 @@ function applySaveData(data) {
   if ("equippedWeaponIndex" in data)      equippedWeaponIndex = data.equippedWeaponIndex;
   if ("equippedArmorIndex" in data)       equippedArmorIndex  = data.equippedArmorIndex;
 
-  // 手持ちインベントリ
-  if (data.carryPotions) carryPotions = data.carryPotions;
-  if (data.carryFoods)   carryFoods   = data.carryFoods;
-  if (data.carryDrinks)  carryDrinks  = data.carryDrinks;
-  if (data.carryWeapons) carryWeapons = data.carryWeapons;
-  if (data.carryArmors)  carryArmors  = data.carryArmors;
-  if (data.carryTools)   carryTools   = data.carryTools;
-  if (data.toolCounts)   toolCounts   = data.toolCounts;
-  if (data.cookedFoods)  cookedFoods  = data.cookedFoods;
-  if (data.cookedDrinks) cookedDrinks = data.cookedDrinks;
+  // 手持ちインベントリ（const の可能性があるので中身コピー方式）
+  if (data.carryPotions && typeof carryPotions === "object") {
+    Object.keys(carryPotions).forEach(k => delete carryPotions[k]);
+    Object.keys(data.carryPotions).forEach(k => {
+      carryPotions[k] = data.carryPotions[k];
+    });
+  }
+  if (data.carryFoods && typeof carryFoods === "object") {
+    Object.keys(carryFoods).forEach(k => delete carryFoods[k]);
+    Object.keys(data.carryFoods).forEach(k => {
+      carryFoods[k] = data.carryFoods[k];
+    });
+  }
+  if (data.carryDrinks && typeof carryDrinks === "object") {
+    Object.keys(carryDrinks).forEach(k => delete carryDrinks[k]);
+    Object.keys(data.carryDrinks).forEach(k => {
+      carryDrinks[k] = data.carryDrinks[k];
+    });
+  }
+  if (data.carryWeapons && typeof carryWeapons === "object") {
+    Object.keys(carryWeapons).forEach(k => delete carryWeapons[k]);
+    Object.keys(data.carryWeapons).forEach(k => {
+      carryWeapons[k] = data.carryWeapons[k];
+    });
+  }
+  if (data.carryArmors && typeof carryArmors === "object") {
+    Object.keys(carryArmors).forEach(k => delete carryArmors[k]);
+    Object.keys(data.carryArmors).forEach(k => {
+      carryArmors[k] = data.carryArmors[k];
+    });
+  }
+  if (data.carryTools && typeof carryTools === "object") {
+    Object.keys(carryTools).forEach(k => delete carryTools[k]);
+    Object.keys(data.carryTools).forEach(k => {
+      carryTools[k] = data.carryTools[k];
+    });
+  }
+  if (data.toolCounts && typeof toolCounts === "object") {
+    Object.keys(toolCounts).forEach(k => delete toolCounts[k]);
+    Object.keys(data.toolCounts).forEach(k => {
+      toolCounts[k] = data.toolCounts[k];
+    });
+  }
+  if (data.cookedFoods && typeof cookedFoods === "object") {
+    Object.keys(cookedFoods).forEach(k => delete cookedFoods[k]);
+    Object.keys(data.cookedFoods).forEach(k => {
+      cookedFoods[k] = data.cookedFoods[k];
+    });
+  }
+  if (data.cookedDrinks && typeof cookedDrinks === "object") {
+    Object.keys(cookedDrinks).forEach(k => delete cookedDrinks[k]);
+    Object.keys(data.cookedDrinks).forEach(k => {
+      cookedDrinks[k] = data.cookedDrinks[k];
+    });
+  }
   if ("lastBattleItemCategory" in data) lastBattleItemCategory = data.lastBattleItemCategory;
   if ("lastBattleItemId" in data)       lastBattleItemId       = data.lastBattleItemId;
 
@@ -323,12 +368,14 @@ function applySaveData(data) {
   if (typeof data.escapeFailBonus === "number") escapeFailBonus = data.escapeFailBonus;
 
   // -------- 採取拠点・自動採取 --------
-  if (data.gatherBases) {
-    Object.keys(gatherBases).forEach(k => {
-      if (data.gatherBases[k]) {
-        gatherBases[k].level = data.gatherBases[k].level || 0;
-        gatherBases[k].mode  = data.gatherBases[k].mode  || "normal";
-      }
+  if (data.gatherBases && typeof gatherBases === "object") {
+    Object.keys(gatherBases).forEach(k => delete gatherBases[k]);
+    Object.keys(data.gatherBases).forEach(k => {
+      const src = data.gatherBases[k] || {};
+      gatherBases[k] = {
+        level: src.level || 0,
+        mode:  src.mode  || "normal"
+      };
     });
   }
   if (typeof data.gatherBaseStockTicks === "number") {
