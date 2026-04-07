@@ -5,6 +5,38 @@
 // 市場（売り注文＋買い注文）
 // =======================
 
+// NPC商人名リスト
+const NPC_MERCHANT_NAMES = [
+  "行商人ギルバート",
+  "露店商ミレーヌ",
+  "雑貨屋ボルド",
+  "旅商人エレナ",
+  "貴族商会の使いリュシアン",
+  "鍛冶ギルドの弟子ロルフ",
+  "薬草商サラサ",
+  "魚問屋タリオ",
+  "古物商ニムロド",
+  "行李担ぎのヨアヒム",
+  "宿屋兼雑貨屋のマルタ",
+  "旅回りの魔導書商メルティナ",
+  "地下市場の仲買人グレン",
+  "商人ギルド書記フィーネ",
+  "駆け出し商人カイ",
+  "豪商バルドゥイン",
+  "行商夫婦レオ＆カナリア",
+  "小間物屋リゼット",
+  "香辛料商ハディール",
+  "羊毛商ブラム"
+];
+
+function getRandomNpcMerchantName() {
+  if (!Array.isArray(NPC_MERCHANT_NAMES) || NPC_MERCHANT_NAMES.length === 0) {
+    return "名無しの行商人";
+  }
+  const i = Math.floor(Math.random() * NPC_MERCHANT_NAMES.length);
+  return NPC_MERCHANT_NAMES[i];
+}
+
 // 売り注文
 let marketListings = [];
 // 買い注文
@@ -437,6 +469,143 @@ function doMarketBuy(stackKey, mode, amount){
   const label = getItemLabel(category, itemId);
   setLog(`${label} を ${sim.buyableCount}個購入した（合計${sim.totalPrice}G）`);
   addMarketLog(`購入: ${label} x${sim.buyableCount} @合計${sim.totalPrice}G`);
+
+  updateDisplay();
+  refreshMarketBuyList();
+  refreshMarketSellCandidates();
+  refreshMarketSellItems();
+}
+
+// ★ NPC 購入ロジック用：内部基準価格を返す（暫定実装）
+function getMarketBaseValue(category, itemId) {
+  // 今はシンプルに「既存の出品最安値」を基準価格の候補にする。
+  // 出品がなければ 0（= NPC 買わない）。
+  const stacks = buildMarketStacks();
+  const st = stacks.find(s => s.category === category && s.itemId === itemId);
+  if (!st) return 0;
+  return st.minPrice || 0;
+}
+
+// =======================
+// 市場イベント（ホットカテゴリ）
+// =======================
+
+// イベント候補カテゴリ
+const MARKET_HOT_CATEGORY_CANDIDATES = ["potion", "material", "weapon", "armor", "cooking"];
+
+// 現在ホットなカテゴリ
+let currentMarketHotCats = []; // 例: ["potion","cooking"]
+
+// 需要フェーズ補正（人気カテゴリがあれば確率を上げる）
+function applyMarketEventBoost(prob, itemCategory) {
+  if (Array.isArray(currentMarketHotCats) &&
+      currentMarketHotCats.includes(itemCategory)) {
+    prob *= 4;              // 4倍くらい
+    if (prob > 0.25) prob = 0.25; // 上限 25%
+  }
+  return prob;
+}
+
+// ホットカテゴリをランダム更新
+function rotateMarketHotCategories() {
+  if (!Array.isArray(MARKET_HOT_CATEGORY_CANDIDATES) ||
+      MARKET_HOT_CATEGORY_CANDIDATES.length === 0) {
+    currentMarketHotCats = [];
+    return;
+  }
+
+  const i = Math.floor(Math.random() * MARKET_HOT_CATEGORY_CANDIDATES.length);
+  const hot = MARKET_HOT_CATEGORY_CANDIDATES[i];
+
+  currentMarketHotCats = [hot];
+
+  addMarketLog(`市場ニュース: 現在「${hot}」カテゴリの取引が活況だ！`);
+}
+
+// 現実時間30分ごとにホットカテゴリを切り替える
+(function startMarketEventTimerIfNeeded() {
+  if (typeof window === "undefined") return;
+  if (window._marketEventTimerStarted) return;
+  window._marketEventTimerStarted = true;
+
+  // 起動直後に一度決める
+  rotateMarketHotCategories();
+
+  const THIRTY_MIN_MS = 30 * 60 * 1000;
+  setInterval(() => {
+    rotateMarketHotCategories();
+  }, THIRTY_MIN_MS);
+})();
+
+// ★ NPC 購入確率（プレイヤー優先・安いときたまに・イベント時そこそこ）
+function getNpcBuyProb(baseValue, price, category) {
+  if (price <= 0 || baseValue <= 0) return 0;
+
+  const ratio = price / baseValue; // 高いほど ratio↑
+
+  // かなり安い（半額以下）: たまに売れる
+  if (ratio <= 0.5) {
+    return applyMarketEventBoost(0.03, category); // 3%
+  }
+  // 少し安い〜適正
+  if (ratio <= 1.0) {
+    return applyMarketEventBoost(0.01, category); // 1%
+  }
+
+  // 高め〜ボッタクリは急減衰（プレイヤー向け価格帯）
+  const k = 1.5;
+  let prob = 0.01 * Math.exp(-k * (ratio - 1));
+
+  const MIN_PROB = 0.0000001; // 超低い下限（理論上はいつか売れる）
+  if (prob < MIN_PROB) prob = MIN_PROB;
+
+  return applyMarketEventBoost(prob, category);
+}
+
+// ★ NPC が市場からたまに購入する処理
+function rollNpcMarketBuy() {
+  if (!marketListings.length) return;
+
+  // 出品をシャッフルして数件だけ見る
+  const indices = [...marketListings.keys()];
+  for (let i = indices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [indices[i], indices[j]] = [indices[j], indices[i]];
+  }
+
+  const MAX_CHECK = Math.min(5, indices.length); // 一度に見る出品数上限
+  for (let idx = 0; idx < MAX_CHECK; idx++) {
+    const li = marketListings[indices[idx]];
+    if (!li || li.amount <= 0) continue;
+
+    const baseValue = getMarketBaseValue(li.category, li.itemId);
+    if (baseValue <= 0) continue;
+
+    const prob = getNpcBuyProb(baseValue, li.price, li.category);
+    if (Math.random() >= prob) continue;
+
+    // NPC が 1〜少数だけ購入（全部は買い取らない）
+    const buyAmount = Math.max(1, Math.floor(li.amount * 0.2)) || 1;
+    const actualBuy = Math.min(li.amount, buyAmount);
+    if (actualBuy <= 0) continue;
+
+    const totalPrice = actualBuy * li.price;
+
+    // プレイヤーにお金を渡す（手数料などがあればここで調整）
+    money += totalPrice;
+
+    const label = getItemLabel(li.category, li.itemId);
+    const npcName = getRandomNpcMerchantName();
+    addMarketLog(`${npcName}が ${label} を市場から購入した（x${actualBuy} / ${totalPrice}G）`);
+
+    li.amount -= actualBuy;
+    if (li.amount <= 0) {
+      // 出品枠削除
+      // filter でまとめて整理するのでここではそのまま
+    }
+  }
+
+  marketListings = marketListings.filter(l => l.amount > 0);
 
   updateDisplay();
   refreshMarketBuyList();
