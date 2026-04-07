@@ -133,6 +133,11 @@ function removeItemForSell(category, itemId, amount){
     const have = potionCounts[itemId] || 0;
     if(have < amount) return false;
     potionCounts[itemId] = have - amount;
+  } else if(category === "tool"){
+    // 道具（爆弾など）は toolCounts を倉庫として扱う
+    const have = toolCounts[itemId] || 0;
+    if (have < amount) return false;
+    toolCounts[itemId] = have - amount;
   } else if(category === "materialBase"){
     // 基本素材＋星屑: materials.xxx / itemCounts を利用
     if (itemId === "wood" || itemId === "ore" || itemId === "herb" ||
@@ -208,6 +213,13 @@ function getItemLabel(category, itemId){
   } else if(category === "potion"){
     const p = potions.find(x => x.id === itemId);
     return p ? p.name : itemId;
+  } else if(category === "tool"){
+    // 道具（爆弾など）は簡易ラベル
+    if (itemId === "bomb") return "爆弾";
+    if (itemId === "bomb_T1") return "爆弾T1";
+    if (itemId === "bomb_T2") return "爆弾T2";
+    if (itemId === "bomb_T3") return "爆弾T3";
+    return itemId;
   } else if(category === "materialBase"){
     const baseNames = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
     if (baseNames[itemId]) return baseNames[itemId];
@@ -262,7 +274,7 @@ function doMarketSell(){
   const priceEl= document.getElementById("marketSellPrice");
   if(!catSel || !itemSel || !amtEl || !priceEl) return;
 
-  const uiCategory = catSel.value; // weapon / armor / potion / materialBase / materialInter / cooking
+  const uiCategory = catSel.value; // weapon / armor / potion / materialBase / materialInter / cooking / tool
   const itemId     = itemSel.value;
   const amount     = parseInt(amtEl.value,10) || 0;
   const price      = parseInt(priceEl.value,10) || 0;
@@ -419,6 +431,9 @@ function addItemForBuy(category, itemId, amount){
     armorCounts[itemId] = (armorCounts[itemId] || 0) + amount;
   } else if(category === "potion"){
     potionCounts[itemId] = (potionCounts[itemId] || 0) + amount;
+  } else if(category === "tool"){
+    // 道具は倉庫 toolCounts へ
+    toolCounts[itemId] = (toolCounts[itemId] || 0) + amount;
   } else if(category === "material"){
     // 基本素材は materials.xxx に追加
     if (itemId === "wood" || itemId === "ore" || itemId === "herb" ||
@@ -503,7 +518,17 @@ function getMarketBaseValue(category, itemId) {
 // =======================
 
 // イベント候補カテゴリ
-const MARKET_HOT_CATEGORY_CANDIDATES = ["potion", "material", "weapon", "armor", "cooking"];
+const MARKET_HOT_CATEGORY_CANDIDATES = ["potion", "material", "weapon", "armor", "cooking", "tool"];
+
+// カテゴリ表示名（ニュース用）
+const MARKET_CATEGORY_LABELS_JA = {
+  weapon: "武器",
+  armor: "防具",
+  potion: "ポーション",
+  material: "素材",
+  cooking: "料理",
+  tool: "道具"
+};
 
 // 現在ホットなカテゴリ
 let currentMarketHotCats = []; // 例: ["potion","cooking"]
@@ -531,7 +556,8 @@ function rotateMarketHotCategories() {
 
   currentMarketHotCats = [hot];
 
-  addMarketLog(`市場ニュース: 現在「${hot}」カテゴリの取引が活況だ！`);
+  const labelJa = MARKET_CATEGORY_LABELS_JA[hot] || hot;
+  addMarketLog(`市場ニュース: 現在「${labelJa}」カテゴリの取引が活況だ！`);
 }
 
 // 現実時間30分ごとにホットカテゴリを切り替える
@@ -722,6 +748,7 @@ function refreshMarketSellCandidates(){
     { value: "weapon",       label: "武器" },
     { value: "armor",        label: "防具" },
     { value: "potion",       label: "ポーション" },
+    { value: "tool",         label: "道具" },
     { value: "materialBase", label: "素材" },
     { value: "materialInter",label: "中間素材" },
     { value: "cooking",      label: "料理" }
@@ -780,6 +807,16 @@ function refreshMarketSellItems(){
         appendOption(p.id, `${p.name}（所持${cnt}）`);
       }
     });
+  } else if (category === "tool") {
+    // 倉庫の道具（toolCounts）を出品候補に
+    if (typeof toolCounts === "object") {
+      Object.keys(toolCounts).forEach(id => {
+        const cnt = toolCounts[id] || 0;
+        if (cnt <= 0) return;
+        const label = getItemLabel("tool", id);
+        appendOption(id, `${label}（所持${cnt}）`);
+      });
+    }
   } else if (category === "materialBase") {
     const mats = [
       { id:"wood",    name:"木",    count: getMatTotal("wood") },
