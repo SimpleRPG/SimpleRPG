@@ -488,8 +488,20 @@ input[type="text"] {
   min-width: 90px;
 }
 
+/* クラフトカテゴリタブコンテナ（武器/防具/ポーション/道具/素材/料理）を横スクロール1列に */
+#craftCategoryTabs {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: 4px;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* クラフトカテゴリタブ（武器/防具/ポーション/道具/素材/料理） */
 .craft-cat-tab {
+  flex: 0 0 auto;
   font-size: 13px;
   padding: 6px 18px;
   border-radius: 8px;
@@ -1100,6 +1112,7 @@ input[type="text"] {
 #magicPageGather #gatherBaseStatus > div span:first-child {
   white-space: nowrap;
 }
+
 /* 例: インポート／エクスポート欄のテキストエリア共通 */
 #pageImportExport textarea {
   box-sizing: border-box; /* パディング込みで幅計算 */

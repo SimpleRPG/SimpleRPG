@@ -616,15 +616,20 @@ function updateDisplay() {
   if (skFarm  && gatherSkills.fieldFarm) skFarm.textContent    = gatherSkills.fieldFarm.lv;
   if (skGarden && gatherSkills.garden)   skGarden.textContent  = gatherSkills.garden.lv;
 
-  let skCraftWeapon = document.getElementById("skCraftWeaponLv");
-  let skCraftArmor  = document.getElementById("skCraftArmorLv");
-  let skCraftPotion = document.getElementById("skCraftPotionLv");
-  let skCraftTool   = document.getElementById("skCraftToolLv");
+  // クラフトスキル表示（武器/防具/ポーション/道具/中間素材/料理）
+  let skCraftWeapon   = document.getElementById("skCraftWeaponLv");
+  let skCraftArmor    = document.getElementById("skCraftArmorLv");
+  let skCraftPotion   = document.getElementById("skCraftPotionLv");
+  let skCraftTool     = document.getElementById("skCraftToolLv");
+  let skCraftMaterial = document.getElementById("skCraftMaterialLv");
+  let skCraftCooking  = document.getElementById("skCraftCookingLv");
 
-  if (skCraftWeapon && craftSkills.weapon) skCraftWeapon.textContent = craftSkills.weapon.lv;
-  if (skCraftArmor  && craftSkills.armor)  skCraftArmor.textContent  = craftSkills.armor.lv;
-  if (skCraftPotion && craftSkills.potion) skCraftPotion.textContent = craftSkills.potion.lv;
-  if (skCraftTool   && craftSkills.tool)   skCraftTool.textContent   = craftSkills.tool.lv;
+  if (skCraftWeapon   && craftSkills.weapon)   skCraftWeapon.textContent   = craftSkills.weapon.lv;
+  if (skCraftArmor    && craftSkills.armor)    skCraftArmor.textContent    = craftSkills.armor.lv;
+  if (skCraftPotion   && craftSkills.potion)   skCraftPotion.textContent   = craftSkills.potion.lv;
+  if (skCraftTool     && craftSkills.tool)     skCraftTool.textContent     = craftSkills.tool.lv;
+  if (skCraftMaterial && craftSkills.material) skCraftMaterial.textContent = craftSkills.material.lv;
+  if (skCraftCooking  && craftSkills.cooking)  skCraftCooking.textContent  = craftSkills.cooking.lv;
 
   // ★ 素材ラベルは game-ui.js 側で更新するのでここでは触らない
 }

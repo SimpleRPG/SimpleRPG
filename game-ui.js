@@ -297,17 +297,14 @@ window.addEventListener("DOMContentLoaded", () => {
   // メインタブ切り替え
   // =======================
 
-  // index.html 側の activateMainTab とバッティングしないよう、
-  // ここでは「ページIDベースで .tab-page / .tab-button を制御」するだけにする。
   const tabButtonsMap = {
     tabGather:    "pageGather",
-    // tabEquip は index.html 側でコメントアウト済み
     tabEquip:     "pageEquip",
     tabExplore:   "pageExplore",
     tabMagicDist: "pageMagicDist",
     tabWarehouse: "pageWarehouse",
     tabStatus:    "pageStatus",
-    tabHelp:      "pageHelp"   // ★ あそびかたタブを追加
+    tabHelp:      "pageHelp"
   };
 
   const tabPages = Object.values(tabButtonsMap)
@@ -315,7 +312,7 @@ window.addEventListener("DOMContentLoaded", () => {
     .filter(Boolean);
 
   function showTabByPageId(pageId) {
-    // 探索中制限は探索・ステータス以外に共通でかける
+    // 探索中制限
     if (window.isExploring || window.currentEnemy) {
       const allowed = ["pageExplore", "pageStatus"];
       if (!allowed.includes(pageId)) {
@@ -326,12 +323,11 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // ページ表示切り替え（.tab-page.active + display は CSS に任せる）
+    // ページ表示切り替え
     tabPages.forEach(p => {
       if (!p) return;
       const isActive = (p.id === pageId);
       p.classList.toggle("active", isActive);
-      // display は CSS (.tab-page / .tab-page.active) が決めるのでここでは触らない
     });
 
     // タブボタンの active 切り替え
@@ -342,9 +338,8 @@ window.addEventListener("DOMContentLoaded", () => {
       btn.classList.toggle("active", isActive);
     });
 
-    // 魔巧区のクラフトサブページが開かれたときの初期処理
+    // 魔巧区タブ
     if (pageId === "pageMagicDist") {
-      // デフォルトでクラフトサブページをアクティブにする
       setMagicSubPage("magic-craft");
 
       if (typeof refreshEquipSelects === "function") {
@@ -395,15 +390,30 @@ window.addEventListener("DOMContentLoaded", () => {
       }
 
       updateCraftMatDetailText();
+
+      if (typeof refreshMarketSellCandidates === "function") {
+        refreshMarketSellCandidates();
+      }
+      if (typeof refreshMarketBuyList === "function") {
+        refreshMarketBuyList();
+      }
     }
 
+    // 倉庫タブ
     if (pageId === "pageWarehouse") {
       if (typeof refreshWarehouseUI === "function") {
         refreshWarehouseUI();
       }
     }
 
-    // ステータス・ヘルプでも共通ステータス更新をしたければここで呼ぶ
+    // ステータスタブ
+    if (pageId === "pageStatus") {
+      if (typeof refreshStatusUI === "function") {
+        refreshStatusUI();
+      }
+    }
+
+    // 共通の再計算・UI更新
     if (typeof recalcStats === "function") {
       recalcStats();
     }
@@ -446,13 +456,11 @@ window.addEventListener("DOMContentLoaded", () => {
   };
 
   function setMagicSubPage(key) {
-    // ボタン active
     magicTabButtons.forEach(btn => {
       if (btn.dataset.page === key) btn.classList.add("active");
       else                          btn.classList.remove("active");
     });
 
-    // ページ表示
     Object.entries(magicSubPages).forEach(([k, el]) => {
       if (!el) return;
       el.style.display = (k === key) ? "" : "none";
@@ -460,7 +468,6 @@ window.addEventListener("DOMContentLoaded", () => {
       else           el.classList.remove("active");
     });
 
-    // サブページ固有の初期処理
     if (key === "magic-shop") {
       if (typeof initShop === "function") {
         initShop();
@@ -492,7 +499,6 @@ window.addEventListener("DOMContentLoaded", () => {
         refreshWarehouseUI();
       }
     }
-    // magic-enhance は特別な初期処理なしでOK
   }
 
   magicTabButtons.forEach(btn => {
@@ -503,7 +509,7 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   // =======================
-  // 市場タブ・ボタン（追加）
+  // 市場タブ・ボタン
   // =======================
 
   const marketSellPanel = document.getElementById("marketSellPanel");
@@ -1202,6 +1208,10 @@ window.addEventListener("DOMContentLoaded", () => {
 
   if (typeof updateDisplay === "function") {
     updateDisplay();
+  }
+
+  if (typeof refreshExploreAreaSelect === "function") {
+    refreshExploreAreaSelect();
   }
 
   if (typeof refreshWarehouseUI === "function") {

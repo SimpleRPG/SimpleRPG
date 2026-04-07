@@ -253,9 +253,31 @@
             <!-- サブページ: 装備強化 -->
             <div id="magicPageEnhance" class="magic-sub-page" style="display:none;">
               <h3>装備強化</h3>
-              <p>装備中の武器・防具を強化します。</p>
-              <button id="enhanceWeaponBtn">武器を強化</button>
-              <button id="enhanceArmorBtn">防具を強化</button>
+              <p>強化したい装備と、素材にする同名装備を所持している必要があります。</p>
+
+              <div style="margin-bottom:6px;">
+                <h4 style="margin:4px 0;">武器強化</h4>
+                <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
+                  <label style="font-size:12px;">強化対象武器:</label>
+                  <!-- ★ インスタンス選択用セレクト（game-core-6.js で埋める） -->
+                  <select id="enhanceWeaponTargetSelect" style="flex:1;"></select>
+                </div>
+                <button id="enhanceWeaponBtn">武器を強化</button>
+              </div>
+
+              <div style="margin-top:8px;">
+                <h4 style="margin:4px 0;">防具強化</h4>
+                <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
+                  <label style="font-size:12px;">強化対象防具:</label>
+                  <!-- ★ インスタンス選択用セレクト（game-core-6.js で埋める） -->
+                  <select id="enhanceArmorTargetSelect" style="flex:1;"></select>
+                </div>
+                <button id="enhanceArmorBtn">防具を強化</button>
+              </div>
+
+              <p style="font-size:11px; color:#ccc; margin-top:6px;">
+                ※強化済みや高品質の装備を素材にするときはログに警告が表示されます。
+              </p>
             </div>
 
             <!-- サブページ: ショップ -->
@@ -403,12 +425,7 @@
 
             <div class="explore-header-row">
               <span class="label">行き先:</span>
-              <select id="exploreTarget">
-                <option value="field">草原（敵弱い・素材ほぼ出ない）</option>
-                <option value="forest">森（敵やや強い・草/木が少し出る）</option>
-                <option value="cave">洞窟（敵強い・素材少し）</option>
-                <option value="mine">廃鉱山（敵かなり強い・鉱石/皮レア）</option>
-              </select>
+              <select id="exploreTarget"></select>
 
               <button id="exploreStartBtn" class="btn-attack">
                 探索する
@@ -647,8 +664,10 @@
             <div id="craftSkillBox" class="status-block">
               武器: Lv<span id="skCraftWeaponLv">0</span>,
               防具: Lv<span id="skCraftArmorLv">0</span>,
-              ポーション: Lv<span id="skCraftPotionLv">0</span>
-              <!-- 料理スキルを足すならここに追加予定 -->
+              ポーション: Lv<span id="skCraftPotionLv">0</span>,
+              道具: Lv<span id="skCraftToolLv">0</span>,
+              素材: Lv<span id="skCraftMaterialLv">0</span>,
+              料理: Lv<span id="skCraftCookingLv">0</span>
             </div>
 
             <h3 class="pet-only">ペットステータス（動物使いのみ）</h3>
@@ -754,95 +773,14 @@
   <script src="game-core-4.js"></script>
   <script src="game-core-5.js"></script>
   <script src="game-core-6.js"></script>  
+  <script src="game-core-7.js"></script>
 
   <script src="skill-core.js"></script>
   <script src="market-core.js"></script>
-
-  <!-- ★ セーブシステム（saveToLocal / loadFromLocal / exportSaveData / importSaveData を定義するファイル） -->
   <script src="save-system.js"></script>
 
   <script src="game-ui.js"></script>
   <script src="game-ui-2.js"></script>
   <script src="asobikata.js"></script>
-
-  <!-- ★ 追加: タブ切り替え時に UI を再描画する初期化スクリプト -->
-  <script>
-    window.addEventListener("DOMContentLoaded", () => {
-      const pages = {
-        gather:    document.getElementById("pageGather"),
-        explore:   document.getElementById("pageExplore"),
-        magicDist: document.getElementById("pageMagicDist"),
-        warehouse: document.getElementById("pageWarehouse"),
-        status:    document.getElementById("pageStatus"),
-        help:      document.getElementById("pageHelp")
-      };
-      const tabs = {
-        gather:    document.getElementById("tabGather"),
-        explore:   document.getElementById("tabExplore"),
-        magicDist: document.getElementById("tabMagicDist"),
-        warehouse: document.getElementById("tabWarehouse"),
-        status:    document.getElementById("tabStatus"),
-        help:      document.getElementById("tabHelp")
-      };
-
-      function activateMainTab(key) {
-        Object.keys(pages).forEach(k => {
-          if (pages[k]) {
-            pages[k].classList.toggle("active", k === key);
-          }
-        });
-        Object.keys(tabs).forEach(k => {
-          if (tabs[k]) {
-            tabs[k].classList.toggle("active", k === key);
-          }
-        });
-
-        // タブ切り替え後に数値・UIを更新
-        if (typeof recalcStats === "function") {
-          recalcStats();
-        }
-        if (typeof updateDisplay === "function") {
-          updateDisplay();
-        }
-        if (typeof renderPlayerStatusIcons === "function") {
-          renderPlayerStatusIcons();
-        }
-        if (typeof updateEnemyStatusUI === "function") {
-          updateEnemyStatusUI();
-        }
-        if (typeof refreshCarryFoodDrinkSelects === "function") {
-          refreshCarryFoodDrinkSelects();
-        }
-
-        // タブごとの追加更新
-        if (key === "magicDist") {
-          if (typeof refreshEquipSelects === "function") {
-            refreshEquipSelects();
-          }
-          if (typeof refreshMarketSellCandidates === "function") {
-            refreshMarketSellCandidates();
-          }
-          if (typeof refreshMarketBuyList === "function") {
-            refreshMarketBuyList();
-          }
-        } else if (key === "warehouse") {
-          if (typeof refreshWarehouseUI === "function") {
-            refreshWarehouseUI();
-          }
-        } else if (key === "status") {
-          if (typeof refreshStatusUI === "function") {
-            refreshStatusUI();
-          }
-        }
-      }
-
-      if (tabs.gather)    tabs.gather.addEventListener("click", () => activateMainTab("gather"));
-      if (tabs.explore)   tabs.explore.addEventListener("click", () => activateMainTab("explore"));
-      if (tabs.magicDist) tabs.magicDist.addEventListener("click", () => activateMainTab("magicDist"));
-      if (tabs.warehouse) tabs.warehouse.addEventListener("click", () => activateMainTab("warehouse"));
-      if (tabs.status)    tabs.status.addEventListener("click", () => activateMainTab("status"));
-      if (tabs.help)      tabs.help.addEventListener("click", () => activateMainTab("help"));
-    });
-  </script>
 </body>
 </html>

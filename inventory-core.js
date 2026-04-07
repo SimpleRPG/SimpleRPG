@@ -561,3 +561,26 @@ function refreshCarryFoodDrinkSelects() {
   fillFood(foodSel);
   fillDrink(drinkSel);
 }
+
+// =======================
+// save-system.js 向けラッパー
+// =======================
+//
+// セーブデータ適用後にセレクト類をまとめて更新するための薄いラッパー。
+// 既存仕様は変えず、未定義エラーを防ぎつつ UI を同期する。
+
+function refreshBattleItemSelect() {
+  if (typeof refreshBattleItemSelectWithCategory === "function") {
+    refreshBattleItemSelectWithCategory();
+  }
+}
+
+function refreshUseItemSelect() {
+  // フィールド用ポーション + 食べ物/飲み物セレクトをまとめて更新
+  if (typeof refreshCarryPotionSelects === "function") {
+    refreshCarryPotionSelects();
+  }
+  if (typeof refreshCarryFoodDrinkSelects === "function") {
+    refreshCarryFoodDrinkSelects();
+  }
+}
