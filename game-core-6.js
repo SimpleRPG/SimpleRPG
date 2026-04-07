@@ -56,7 +56,17 @@ function addCraftSkillExp(category){
     s.exp -= s.expToNext;
     s.lv++;
     s.expToNext = Math.floor(s.expToNext * 1.3) + 1;
-    appendLog(`${category} クラフトスキルがLv${s.lv}になった！`);
+
+    // カテゴリに応じて日本語ラベルを出す
+    let label = category;
+    if (category === "weapon")   label = "武器";
+    else if (category === "armor")    label = "防具";
+    else if (category === "potion")   label = "ポーション";
+    else if (category === "tool")     label = "道具";
+    else if (category === "cooking")  label = "料理";
+    else if (category === "material") label = "中間素材";
+
+    appendLog(`${label}クラフトスキルがLv${s.lv}になった！`);
   }
 }
 
@@ -190,8 +200,8 @@ function updateCraftCostInfo(category, recipeId){
     clothBolt_T2:      "T2布束",
     clothBolt_T3:      "T3布束",
     toughLeather_T1:   "T1強化皮",
-    toughLeather_T2:   "T1強化皮",
-    toughLeather_T3:   "T1強化皮",
+    toughLeather_T2:   "T2強化皮",
+    toughLeather_T3:   "T3強化皮",
     mixHerb_T1:        "T1調合用薬草",
     mixHerb_T2:        "T2調合用薬草",
     mixHerb_T3:        "T3調合用薬草",
@@ -217,8 +227,8 @@ function updateCraftCostInfo(category, recipeId){
     cloth_T2:  "T2布",
     cloth_T3:  "T3布",
     leather_T1:"T1皮",
-    leather_T2:"T1皮",
-    leather_T3:"T1皮"
+    leather_T2:"T2皮",
+    leather_T3:"T3皮"
   };
 
   Object.keys(recipe.cost).forEach(k => {

@@ -112,9 +112,9 @@ function addItemToInventory(itemId, amount) {
   if (typeof weaponCounts !== "undefined" && Array.isArray(weapons)) {
     const w = weapons.find(x => x.id === itemId);
     if (w) {
-      // 既存仕様: 倉庫本数カウンタ
+      // 倉庫本数カウンタ
       weaponCounts[itemId] = (weaponCounts[itemId] || 0) + amount;
-      // 新仕様: インスタンスも追加（品質0, 強化はマスタ基準, 耐久MAX）
+      // インスタンスも追加（品質0, 強化はマスタ基準, 耐久MAX, location=warehouse）
       if (Array.isArray(window.weaponInstances) && typeof MAX_DURABILITY !== "undefined") {
         const baseEnh = w.enhance || 0;
         for (let i = 0; i < amount; i++) {
@@ -122,7 +122,8 @@ function addItemToInventory(itemId, amount) {
             id: itemId,
             quality: 0,
             enhance: baseEnh,
-            durability: MAX_DURABILITY
+            durability: MAX_DURABILITY,
+            location: "warehouse"
           });
         }
       }
@@ -142,7 +143,8 @@ function addItemToInventory(itemId, amount) {
             id: itemId,
             quality: 0,
             enhance: baseEnh,
-            durability: MAX_DURABILITY
+            durability: MAX_DURABILITY,
+            location: "warehouse"
           });
         }
       }
@@ -260,9 +262,7 @@ function moveDrinkToWarehouse(id, amount) {
   return true;
 }
 
-// 武器
-// ★ ここからは weaponInstances / armorInstances を壊さないように、
-//    IDごとの本数カウンタだけを動かす（インスタンスの「持ち歩き状態」は別管理 or 今は区別しない）。
+// 武器（インスタンス＋location対応）
 function moveWeaponToCarry(id, amount) {
   amount = Math.max(1, amount | 0);
   const have = weaponCounts[id] || 0;
@@ -275,6 +275,24 @@ function moveWeaponToCarry(id, amount) {
     appendLog("これ以上武器を持ち歩けない（上限2本）");
     return false;
   }
+
+  // 倉庫にあるインスタンスから amount 本取り出す
+  if (Array.isArray(window.weaponInstances)) {
+    let remaining = amount;
+    for (let i = 0; i < window.weaponInstances.length && remaining > 0; i++) {
+      const inst = window.weaponInstances[i];
+      if (!inst || inst.id !== id) continue;
+      const loc = inst.location || "warehouse";
+      if (loc !== "warehouse") continue;
+      inst.location = "carry";
+      remaining--;
+    }
+    if (remaining > 0) {
+      // location の不整合で取り出せなかった場合、安全のためロールバックせず counts だけ合わせる
+      appendLog("警告: 武器インスタンス数と倉庫カウントが一致していません");
+    }
+  }
+
   weaponCounts[id] -= amount;
   carryWeapons[id] = (carryWeapons[id] || 0) + amount;
   return true;
@@ -287,13 +305,30 @@ function moveWeaponToWarehouse(id, amount) {
     appendLog("手持ちのその武器が足りない");
     return false;
   }
+
+  // 手持ちインスタンスから amount 本倉庫に戻す
+  if (Array.isArray(window.weaponInstances)) {
+    let remaining = amount;
+    for (let i = 0; i < window.weaponInstances.length && remaining > 0; i++) {
+      const inst = window.weaponInstances[i];
+      if (!inst || inst.id !== id) continue;
+      const loc = inst.location || "warehouse";
+      if (loc !== "carry") continue;
+      inst.location = "warehouse";
+      remaining--;
+    }
+    if (remaining > 0) {
+      appendLog("警告: 武器インスタンス数と手持ちカウントが一致していません");
+    }
+  }
+
   carryWeapons[id] -= amount;
   if (carryWeapons[id] <= 0) delete carryWeapons[id];
   weaponCounts[id] = (weaponCounts[id] || 0) + amount;
   return true;
 }
 
-// 防具
+// 防具（インスタンス＋location対応）
 function moveArmorToCarry(id, amount) {
   amount = Math.max(1, amount | 0);
   const have = armorCounts[id] || 0;
@@ -306,6 +341,22 @@ function moveArmorToCarry(id, amount) {
     appendLog("これ以上防具を持ち歩けない（上限2着）");
     return false;
   }
+
+  if (Array.isArray(window.armorInstances)) {
+    let remaining = amount;
+    for (let i = 0; i < window.armorInstances.length && remaining > 0; i++) {
+      const inst = window.armorInstances[i];
+      if (!inst || inst.id !== id) continue;
+      const loc = inst.location || "warehouse";
+      if (loc !== "warehouse") continue;
+      inst.location = "carry";
+      remaining--;
+    }
+    if (remaining > 0) {
+      appendLog("警告: 防具インスタンス数と倉庫カウントが一致していません");
+    }
+  }
+
   armorCounts[id] -= amount;
   carryArmors[id] = (carryArmors[id] || 0) + amount;
   return true;
@@ -318,6 +369,22 @@ function moveArmorToWarehouse(id, amount) {
     appendLog("手持ちのその防具が足りない");
     return false;
   }
+
+  if (Array.isArray(window.armorInstances)) {
+    let remaining = amount;
+    for (let i = 0; i < window.armorInstances.length && remaining > 0; i++) {
+      const inst = window.armorInstances[i];
+      if (!inst || inst.id !== id) continue;
+      const loc = inst.location || "warehouse";
+      if (loc !== "carry") continue;
+      inst.location = "warehouse";
+      remaining--;
+    }
+    if (remaining > 0) {
+      appendLog("警告: 防具インスタンス数と手持ちカウントが一致していません");
+    }
+  }
+
   carryArmors[id] -= amount;
   if (carryArmors[id] <= 0) delete carryArmors[id];
   armorCounts[id] = (armorCounts[id] || 0) + amount;

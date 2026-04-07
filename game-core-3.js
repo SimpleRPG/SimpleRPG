@@ -1024,19 +1024,18 @@ function onBossDefeated() {
     ? (window.exploringArea || getCurrentArea())
     : getCurrentArea();
 
+  // 今倒したエリアだけクリアフラグを立てる
   if (typeof areaBossCleared !== "undefined") {
     areaBossCleared[area] = true;
   }
 
+  // ログはこれまで通り「次のエリアが解放された」文言だけ出す
   if (typeof areaBossCleared !== "undefined") {
     if (area === "field") {
-      areaBossCleared.forest = true;
       appendLog("草原のボスを倒した！ 森エリアが解放された！");
     } else if (area === "forest") {
-      areaBossCleared.cave = true;
       appendLog("森のボスを倒した！ 洞窟エリアが解放された！");
     } else if (area === "cave") {
-      areaBossCleared.mine = true;
       appendLog("洞窟のボスを倒した！ 廃鉱山エリアが解放された！");
     } else {
       appendLog("ボスを撃破した！");
