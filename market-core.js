@@ -4,6 +4,16 @@
 // =======================
 // 市場（売り注文＋買い注文）
 // =======================
+// 素材ティアごとのベース価値
+// T1: 3G, T2: 5G, T3: 10G
+const MATERIAL_TIER_VALUES = {
+  t1: 3,
+  t2: 5,
+  t3: 10
+};
+
+// 料理素材（レシピに使う素材）は一律 10G 相当
+const COOKING_INGREDIENT_BASE_VALUE = 10;
 
 // NPC商人名リスト
 const NPC_MERCHANT_NAMES = [
@@ -477,9 +487,11 @@ function doMarketBuy(stackKey, mode, amount){
 }
 
 // ★ NPC 購入ロジック用：内部基準価格を返す（暫定実装）
+// ここでは仕様をまだ変えず、「最安出品価格のみ」を使う状態を維持している。
+// 素材・クラフト原価を使った理論値を組み込みたくなったら、
+// ここに getItemTheoreticalBaseValue(category, itemId) を足して
+// min/ max を取る実装を追加する。
 function getMarketBaseValue(category, itemId) {
-  // 今はシンプルに「既存の出品最安値」を基準価格の候補にする。
-  // 出品がなければ 0（= NPC 買わない）。
   const stacks = buildMarketStacks();
   const st = stacks.find(s => s.category === category && s.itemId === itemId);
   if (!st) return 0;
