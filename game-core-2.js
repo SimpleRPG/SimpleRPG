@@ -153,11 +153,28 @@ function applyPetRebirthBonus() {
 
 const REBIRTH_LEVEL_REQ = 100;
 
+// ★ 初期ステータスに戻す（転生用）
+// 既存の game-core-1.js の初期値に合わせる
+function resetBaseStatsToInitial() {
+  STR  = 1;
+  VIT  = 1;
+  INT_ = 1;
+  DEX_ = 1;
+  LUK_ = 1;
+
+  hpMaxBase = 30;
+  mpMaxBase = 10;
+  spMaxBase = 10;
+}
+
 function doRebirth() {
   if (level < REBIRTH_LEVEL_REQ) {
     appendLog(`転生にはLv${REBIRTH_LEVEL_REQ}以上が必要です`);
     return;
   }
+
+  // ★ 先に基礎ステを初期値に戻す
+  resetBaseStatsToInitial();
 
   rebirthCount++;
   growthType = Math.floor(Math.random() * 5); // 0〜4の成長タイプに再ロール
