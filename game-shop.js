@@ -26,7 +26,7 @@ const shopData = {
     { id: "inn_hp",   name: "宿屋で休む(HP)",      price: 500,  desc: "HPを全回復します。",             type: "service", kind: "innHP" },
     { id: "inn_full", name: "宿屋で休む(HP/MP)",   price: 800, desc: "HPとMPを全回復します。",         type: "service", kind: "innFull" },
     // ★追加: 定食
-    { id: "setmeal",  name: "定食を食べる",        price: 10,  desc: "空腹と水分が少し回復する定食。", type: "service", kind: "meal" }
+    { id: "setmeal",  name: "定食を食べる",        price: 130,  desc: "空腹と水分が少し回復する定食。", type: "service", kind: "meal" }
   ]
 };
 
