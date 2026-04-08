@@ -28,6 +28,101 @@ const STAR_SHARD_ITEM_ID  = "starShard"; // itemCounts で使うキー名
 const STAR_SHARD_NEED_LV  = 5;           // この強化段階（現在値）以上から星屑要求
 const STAR_SHARD_NEED_NUM = 1;           // 1回の強化で必要な個数
 
+// =======================
+// 1時間ごとの採取ボーナスカテゴリ
+// =======================
+
+// 対象カテゴリ一覧（通常6＋料理4＝10）
+const HOURLY_GATHER_BONUS_CATEGORIES = [
+  "wood", "ore", "herb", "cloth", "leather", "water",
+  "hunt", "fish", "farm", "garden"
+];
+
+// 現在の時間から、今のボーナスカテゴリを決定する。
+// 「1時間ごとに全員同じ」になるよう、時刻→インデックスへの簡単な決定関数。
+function getHourlyGatherBonusCategory() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1; // 1-12
+  const d = now.getDate();
+  const h = now.getHours();     // 0-23
+
+  const seed = y * 10000 + m * 100 + d;
+  const value = seed + h * 37;
+  const idx = Math.abs(value) % HOURLY_GATHER_BONUS_CATEGORIES.length;
+
+  return HOURLY_GATHER_BONUS_CATEGORIES[idx];
+}
+
+// 「たまにちょっと多めに取れる」確率（通常／料理共通）
+const EXTRA_GATHER_BONUS_RATE = 0.05; // 5%
+
+// =======================
+// 採取統計（素材ごと）
+// =======================
+
+// gatherStats[materialId] = { total: 累計個数, times: 採取回数, maxOnce: 一度の最大数 }
+window.gatherStats = window.gatherStats || {};
+
+function addGatherStat(materialId, gainedCount) {
+  if (!materialId || gainedCount <= 0) return;
+  const stats = window.gatherStats[materialId] || { total: 0, times: 0, maxOnce: 0 };
+  stats.total += gainedCount;
+  stats.times += 1;
+  if (gainedCount > stats.maxOnce) {
+    stats.maxOnce = gainedCount;
+  }
+  window.gatherStats[materialId] = stats;
+}
+
+// 統計タブ用：素材ごとの統計一覧を返すヘルパー
+// 戻り値: [{ id, name, total, times, maxOnce, kind: "normal" | "cook" }, ...]
+function getGatherStatsList() {
+  const list = [];
+
+  // 通常素材名テーブル
+  const NORMAL_MAT_NAMES = {
+    wood: "木",
+    ore: "鉱石",
+    herb: "草",
+    cloth: "布",
+    leather: "皮",
+    water: "水"
+  };
+
+  const normalOrder = ["wood", "ore", "herb", "cloth", "leather", "water"];
+
+  // 通常素材
+  normalOrder.forEach(id => {
+    const stats = window.gatherStats[id];
+    if (!stats) return;
+    list.push({
+      id,
+      name: NORMAL_MAT_NAMES[id] || id,
+      total: stats.total,
+      times: stats.times,
+      maxOnce: stats.maxOnce,
+      kind: "normal"
+    });
+  });
+
+  // 料理素材（COOKING_MAT_NAMES のキー順）
+  Object.keys(COOKING_MAT_NAMES).forEach(id => {
+    const stats = window.gatherStats[id];
+    if (!stats) return;
+    list.push({
+      id,
+      name: COOKING_MAT_NAMES[id] || id,
+      total: stats.total,
+      times: stats.times,
+      maxOnce: stats.maxOnce,
+      kind: "cook"
+    });
+  });
+
+  return list;
+}
+
 // 採取スキルでフィールド解放をチェックするフック
 function checkGatherAreaUnlockBySkill(resourceKey) {
   // いまは何もしないダミーでOK（将来「新しい採取場所に行けそうだ」ログを出す用）
@@ -387,7 +482,7 @@ function gather(){
     } else {
       skillKey = "garden";
     }
-    const added = calcGatherAmount(skillKey);
+    let added = calcGatherAmount(skillKey);
 
     const GATHER_COOK_HUNT = [
       "meat_hard",
@@ -445,12 +540,43 @@ function gather(){
       return;
     }
 
+    // 1時間ボーナス（料理カテゴリ）
+    let bonusChanceCook = 0;
+    const hourlyBonus = getHourlyGatherBonusCategory();
+    if (hourlyBonus === mode) {
+      bonusChanceCook += 0.20;
+    }
+
+    // 「たまに多めに取れる」イベント（料理）
+    if (Math.random() < EXTRA_GATHER_BONUS_RATE) {
+      const extra = 1 + Math.floor(Math.random() * 3); // 1〜3
+      added += extra;
+      appendLog(`手際が良く、いつもより多く料理素材を集められた！（+${extra}）`);
+    }
+
+    // 料理の＋1抽選（いまは1時間ボーナスのみ）
+    if (bonusChanceCook > 0) {
+      const guaranteed = Math.floor(bonusChanceCook);
+      const fraction   = bonusChanceCook - guaranteed;
+      if (guaranteed > 0) {
+        added += guaranteed;
+      }
+      if (fraction > 0 && Math.random() < fraction) {
+        added += 1;
+      }
+    }
+
     let gained = {};
     for (let i = 0; i < added; i++) {
       const id = pool[Math.floor(Math.random() * pool.length)];
       cookingMats[id] = (cookingMats[id] || 0) + 1;
       gained[id] = (gained[id] || 0) + 1;
     }
+
+    // 料理素材ごとの統計更新
+    Object.keys(gained).forEach(id => {
+      addGatherStat(id, gained[id]);
+    });
 
     addGatherSkillExp(skillKey);
 
@@ -548,10 +674,44 @@ function gather(){
     return;
   }
 
-  // 採取装備ボーナス（+1個抽選）
-  const bonusChance = getGatherBonusChance(target);
-  if (bonusChance > 0 && Math.random() < bonusChance) {
-    added += 1;
+  // 「たまに多めに取れる」イベント（通常）
+  if (Math.random() < EXTRA_GATHER_BONUS_RATE) {
+    const extra = 1 + Math.floor(Math.random() * 3); // 1〜3
+    added += extra;
+    appendLog(`手際が良く、いつもより多く採取できた！（+${extra}）`);
+  }
+
+  // 採取装備ボーナス（+1個抽選）＋ 空腹・水分＋1時間カテゴリボーナスによる加算補正（上限なし）
+  let bonusChance = getGatherBonusChance(target);
+
+  // 空腹・水分補正
+  if (typeof currentHunger === "number" && typeof currentThirst === "number") {
+    // バフ: 両方80%以上 → +0.20
+    if (currentHunger >= 80 && currentThirst >= 80) {
+      bonusChance += 0.20;
+    }
+    // デバフ: どちらか25%以下 → -0.20
+    else if (currentHunger <= 25 || currentThirst <= 25) {
+      bonusChance -= 0.20;
+    }
+  }
+
+  // 1時間ごとのカテゴリボーナス
+  const hourlyBonusCategory = getHourlyGatherBonusCategory();
+  if (hourlyBonusCategory === target) {
+    bonusChance += 0.20;
+  }
+
+  if (bonusChance > 0) {
+    const guaranteed = Math.floor(bonusChance);       // 1.2 → 1
+    const fraction   = bonusChance - guaranteed;      // 1.2 → 0.2
+
+    if (guaranteed > 0) {
+      added += guaranteed;
+    }
+    if (fraction > 0 && Math.random() < fraction) {
+      added += 1;
+    }
   }
 
   let t1 = 0, t2 = 0, t3 = 0;
@@ -573,6 +733,10 @@ function gather(){
   materials[target].t1 += t1;
   materials[target].t2 += t2;
   materials[target].t3 += t3;
+
+  // 通常素材ごとの統計更新（target単位で合計）
+  const gainedTotal = t1 + t2 + t3;
+  addGatherStat(target, gainedTotal);
 
   const names = {
     wood: "木",

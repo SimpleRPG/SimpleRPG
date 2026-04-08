@@ -618,89 +618,112 @@
           <div id="pageStatus" class="tab-page">
             <h2>ステータス</h2>
 
-            <div class="status-block">
-              レベル: <span id="stLevel">1</span><br>
-              経験値: <span id="stExp">0</span> / <span id="stExpToNext">100</span><br>
-              転生回数: <span id="stRebirthCount">0</span><br>
-              成長タイプ: <span id="stGrowthType">バランス型</span><br>
-              職業:
-              <span id="stJobName">未設定</span>
-              <button id="changeJobBtn" style="margin-left:4px; font-size:11px; padding:1px 6px;">
-                職業を変更
-              </button>
+            <!-- ステータス内サブタブ -->
+            <div id="statusSubTabs" style="margin-bottom:8px;">
+              <button id="statusTabMain"    class="status-sub-tab active" data-page="status-main">基本情報</button>
+              <button id="statusTabGather"  class="status-sub-tab"         data-page="status-gather-stats">採取統計</button>
             </div>
 
-            <div class="status-block">
-              STR: <span id="stSTR">1</span>,
-              VIT: <span id="stVIT">1</span>,
-              INT: <span id="stINT">1</span>,
-              DEX: <span id="stDEX">1</span>,
-              LUK: <span id="stLUK">1</span><br>
-              攻撃力: <span id="stAtkTotal">0</span>,
-              防御力: <span id="stDefTotal">0</span><br>
-              最大HP: <span id="stHpMax">30</span>,
-              最大MP: <span id="stMpMax">10</span>,
-              最大SP: <span id="stSpMax">10</span>
+            <!-- サブページ: 基本情報（元のステータス内容） -->
+            <div id="statusPageMain" class="status-sub-page active">
+              <div class="status-block">
+                レベル: <span id="stLevel">1</span><br>
+                経験値: <span id="stExp">0</span> / <span id="stExpToNext">100</span><br>
+                転生回数: <span id="stRebirthCount">0</span><br>
+                成長タイプ: <span id="stGrowthType">バランス型</span><br>
+                職業:
+                <span id="stJobName">未設定</span>
+                <button id="changeJobBtn" style="margin-left:4px; font-size:11px; padding:1px 6px;">
+                  職業を変更
+                </button>
+              </div>
+
+              <div class="status-block">
+                STR: <span id="stSTR">1</span>,
+                VIT: <span id="stVIT">1</span>,
+                INT: <span id="stINT">1</span>,
+                DEX: <span id="stDEX">1</span>,
+                LUK: <span id="stLUK">1</span><br>
+                攻撃力: <span id="stAtkTotal">0</span>,
+                防御力: <span id="stDefTotal">0</span><br>
+                最大HP: <span id="stHpMax">30</span>,
+                最大MP: <span id="stMpMax">10</span>,
+                最大SP: <span id="stSpMax">10</span>
+              </div>
+
+              <h3>転生</h3>
+              <div class="status-block">
+                Lv100以上で転生できます。転生するとLv1に戻りますが、ステータスにボーナスが付きます。<br>
+                <button id="rebirthBtn">転生する</button>
+              </div>
+
+              <h3>採取スキル</h3>
+              <div id="gatherSkillBox" class="status-block">
+                木: Lv<span id="skGatherWoodLv">0</span>,
+                鉱石: Lv<span id="skGatherOreLv">0</span>,
+                草: Lv<span id="skGatherHerbLv">0</span><br>
+                布: Lv<span id="skGatherClothLv">0</span>,
+                皮: Lv<span id="skGatherLeatherLv">0</span>,
+                水: Lv<span id="skGatherWaterLv">0</span><br>
+                狩猟: Lv<span id="skGatherHuntLv">0</span>,
+                釣り: Lv<span id="skGatherFishLv">0</span>,
+                畑: Lv<span id="skGatherFarmLv">0</span>
+              </div>
+
+              <h3>クラフトスキル</h3>
+              <div id="craftSkillBox" class="status-block">
+                武器: Lv<span id="skCraftWeaponLv">0</span>,
+                防具: Lv<span id="skCraftArmorLv">0</span>,
+                ポーション: Lv<span id="skCraftPotionLv">0</span>,
+                道具: Lv<span id="skCraftToolLv">0</span>,
+                素材: Lv<span id="skCraftMaterialLv">0</span>,
+                料理: Lv<span id="skCraftCookingLv">0</span>
+              </div>
+
+              <h3 class="pet-only">ペットステータス（動物使いのみ）</h3>
+              <div class="status-block pet-only">
+                ペットLv: <span id="stPetLevel">1</span><br>
+                ペット経験値: <span id="stPetExp">0</span> / <span id="stPetExpToNext">5</span><br>
+                ペット転生回数: <span id="stPetRebirthCount">0</span><br>
+                成長タイプ: <span id="stPetGrowthType">バランス型</span><br>
+                ペットHP: <span id="stPetHp">10</span> / <span id="stPetHpMax">10</span>
+              </div>
+
+              <div class="status-block">
+                <button id="changePetGrowthBtn" class="pet-only">ペット成長タイプを変更</button>
+              </div>
+
+              <!-- ★ セーブ/ロード + エクスポート/インポートUI -->
+              <h3>セーブ / ロード</h3>
+              <div class="status-block">
+                <button onclick="saveToLocal()">ローカルにセーブ</button>
+                <button onclick="loadFromLocal()">ローカルからロード</button>
+                <p style="font-size:11px; color:#ccc;">
+                  ※通常は自動セーブされますが、ブラウザのデータ削除で消える場合があります。
+                </p>
+
+                <h4 style="margin-top:8px;">エクスポート（バックアップ用）</h4>
+                <button onclick="exportSaveData()">セーブデータをテキストに出力</button><br>
+                <textarea id="exportSaveText" rows="4" cols="60" placeholder="ここにセーブデータが出力されます（コピーしてメモ帳などに保存してください）"></textarea>
+
+                <h4 style="margin-top:8px;">インポート（復元）</h4>
+                <textarea id="importSaveText" rows="4" cols="60" placeholder="保存しておいたセーブデータをここに貼り付けてください"></textarea><br>
+                <button onclick="importSaveData()">貼り付けたデータを読み込む</button>
+              </div>
             </div>
 
-            <h3>転生</h3>
-            <div class="status-block">
-              Lv100以上で転生できます。転生するとLv1に戻りますが、ステータスにボーナスが付きます。<br>
-              <button id="rebirthBtn">転生する</button>
-            </div>
-
-            <h3>採取スキル</h3>
-            <div id="gatherSkillBox" class="status-block">
-              木: Lv<span id="skGatherWoodLv">0</span>,
-              鉱石: Lv<span id="skGatherOreLv">0</span>,
-              草: Lv<span id="skGatherHerbLv">0</span><br>
-              布: Lv<span id="skGatherClothLv">0</span>,
-              皮: Lv<span id="skGatherLeatherLv">0</span>,
-              水: Lv<span id="skGatherWaterLv">0</span><br>
-              狩猟: Lv<span id="skGatherHuntLv">0</span>,
-              釣り: Lv<span id="skGatherFishLv">0</span>,
-              畑: Lv<span id="skGatherFarmLv">0</span>
-            </div>
-
-            <h3>クラフトスキル</h3>
-            <div id="craftSkillBox" class="status-block">
-              武器: Lv<span id="skCraftWeaponLv">0</span>,
-              防具: Lv<span id="skCraftArmorLv">0</span>,
-              ポーション: Lv<span id="skCraftPotionLv">0</span>,
-              道具: Lv<span id="skCraftToolLv">0</span>,
-              素材: Lv<span id="skCraftMaterialLv">0</span>,
-              料理: Lv<span id="skCraftCookingLv">0</span>
-            </div>
-
-            <h3 class="pet-only">ペットステータス（動物使いのみ）</h3>
-            <div class="status-block pet-only">
-              ペットLv: <span id="stPetLevel">1</span><br>
-              ペット経験値: <span id="stPetExp">0</span> / <span id="stPetExpToNext">5</span><br>
-              ペット転生回数: <span id="stPetRebirthCount">0</span><br>
-              成長タイプ: <span id="stPetGrowthType">バランス型</span><br>
-              ペットHP: <span id="stPetHp">10</span> / <span id="stPetHpMax">10</span>
-            </div>
-
-            <div class="status-block">
-              <button id="changePetGrowthBtn" class="pet-only">ペット成長タイプを変更</button>
-            </div>
-
-            <!-- ★ セーブ/ロード + エクスポート/インポートUI -->
-            <h3>セーブ / ロード</h3>
-            <div class="status-block">
-              <button onclick="saveToLocal()">ローカルにセーブ</button>
-              <button onclick="loadFromLocal()">ローカルからロード</button>
-              <p style="font-size:11px; color:#ccc;">
-                ※通常は自動セーブされますが、ブラウザのデータ削除で消える場合があります。
-              </p>
-
-              <h4 style="margin-top:8px;">エクスポート（バックアップ用）</h4>
-              <button onclick="exportSaveData()">セーブデータをテキストに出力</button><br>
-              <textarea id="exportSaveText" rows="4" cols="60" placeholder="ここにセーブデータが出力されます（コピーしてメモ帳などに保存してください）"></textarea>
-
-              <h4 style="margin-top:8px;">インポート（復元）</h4>
-              <textarea id="importSaveText" rows="4" cols="60" placeholder="保存しておいたセーブデータをここに貼り付けてください"></textarea><br>
-              <button onclick="importSaveData()">貼り付けたデータを読み込む</button>
+            <!-- サブページ: 採取統計 -->
+            <div id="statusPageGatherStats" class="status-sub-page" style="display:none;">
+              <h3>採取統計</h3>
+              <div id="gatherStatsContainer" class="status-block" style="max-height:300px; overflow:auto; font-size:12px;">
+                <!-- game-ui 側で getGatherStatsList() を使ってテーブルを描画する想定 -->
+                <!-- 例:
+                  <table>
+                    <thead>...</thead>
+                    <tbody>...</tbody>
+                  </table>
+                -->
+              </div>
             </div>
           </div>
 
