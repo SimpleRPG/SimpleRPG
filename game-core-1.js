@@ -191,14 +191,12 @@ function getJobName() {
 // =======================
 
 function recalcStats() {
-  // 最大値の下限を維持
-  if (hpMax < hpMaxBase) {
-    hpMax = hpMaxBase;
-  }
+  // ★ まず「素の最大値」から毎回作り直す
+  hpMax = hpMaxBase;
   mpMax = mpMaxBase;
   spMax = spMaxBase;
 
-  // 現在値を最大値に丸め込み
+  // 現在値を一旦丸め込み（安全側）
   hp = Math.min(hp, hpMax);
   mp = Math.min(mp, mpMax);
   sp = Math.min(sp, spMax);
@@ -316,12 +314,18 @@ function recalcStats() {
     defFromArmorVit = Math.floor(defFromArmorVit * thirstDefDexLukRate);
   }
 
+  // ★ 最大値系も「素の値」に対してデバフを掛ける
   if (typeof hungerHpRate === "number") {
-    hpMax = Math.floor(hpMax * hungerHpRate);
+    hpMax = Math.floor(hpMaxBase * hungerHpRate);
+  } else {
+    hpMax = hpMaxBase;
   }
   if (typeof thirstMpSpRate === "number") {
-    mpMax = Math.floor(mpMax * thirstMpSpRate);
-    spMax = Math.floor(spMax * thirstMpSpRate);
+    mpMax = Math.floor(mpMaxBase * thirstMpSpRate);
+    spMax = Math.floor(spMaxBase * thirstMpSpRate);
+  } else {
+    mpMax = mpMaxBase;
+    spMax = spMaxBase;
   }
 
   if (hpMax < 1) hpMax = 1;
