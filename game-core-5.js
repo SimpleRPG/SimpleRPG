@@ -603,7 +603,7 @@ function startBossBattleFromUI() {
 // 撃破処理（経験値・お金・ボスフラグ）
 // =======================
 
-function onEnemyDefeatedCore(enemyInst) {
+function onEnemyDefeatedCore(enemyInst, killFlag, killSource) {
   if (!enemyInst) return;
 
   const expGain = (typeof getBattleExpPerWin === "function")
@@ -626,6 +626,9 @@ function onEnemyDefeatedCore(enemyInst) {
   if (typeof handleHungerThirstOnAction === "function") {
     handleHungerThirstOnAction("battleWin");
   }
+
+  // ここでは「誰がトドメを刺したか」は扱わず、ギルド依頼のカウントは
+  // game-core-3.js 側の onEnemyKilledBy〜 系フックに委ねる。
 
   if (enemyInst.isBoss && typeof onBossDefeated === "function") {
     onBossDefeated();
@@ -670,7 +673,7 @@ function applyPotionEffect(p, inBattle) {
       appendLog(`${p.name} を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
       if (enemyHp <= 0) {
         enemyHp = 0;
-        winBattle();
+        winBattle(true, "item");
       }
     }
   }
@@ -923,7 +926,7 @@ function useBattleItem() {
       appendLog(`爆弾を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
       if (enemyHp <= 0) {
         enemyHp = 0;
-        winBattle();
+        winBattle(true, "item");
         return;
       }
     }
@@ -1382,7 +1385,7 @@ function tryUpgradeGatherBase(matKey) {
       const haveStar = intermediateMats["starShard"] || 0;
       lines.push(`- starShard: 必要 ${needStar} 個 / 所持 ${haveStar} 個`);
     }
-    appendLog(lines.join("\\\\\\\\\\\\\\\\n"));
+    appendLog(lines.join("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n"));
   })();
 
   for (const iid in needInter) {

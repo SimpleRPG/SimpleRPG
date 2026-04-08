@@ -230,7 +230,11 @@ function doPetTurn() {
   }
 
   if (enemyHp <= 0) {
-    winBattle();
+    enemyHp = 0;
+    if (typeof onEnemyKilledByPet === "function") {
+      onEnemyKilledByPet();
+    }
+    winBattle(true, "pet");
   } else {
     if (typeof updateDisplay === "function") {
       updateDisplay();
@@ -334,7 +338,11 @@ function castMagicFromUI() {
 
   if (didDamage) {
     if (enemyHp <= 0) {
-      winBattle();
+      enemyHp = 0;
+      if (typeof onEnemyKilledByPlayerMagic === "function") {
+        onEnemyKilledByPlayerMagic();
+      }
+      winBattle(true, "magic");
       if (typeof updateEnemyStatusUI === "function") {
         updateEnemyStatusUI();
       }
@@ -464,7 +472,11 @@ function useSkillFromUI() {
     }
   } else if (didDamage) {
     if (enemyHp <= 0) {
-      winBattle();
+      enemyHp = 0;
+      if (typeof onEnemyKilledByPlayerPhysical === "function") {
+        onEnemyKilledByPlayerPhysical();
+      }
+      winBattle(true, "phys");
       if (typeof updateEnemyStatusUI === "function") {
         updateEnemyStatusUI();
       }

@@ -23,6 +23,97 @@ const BUFF_SOURCE_POTION = "potion";
 const BUFF_SOURCE_OTHER  = "other";
 
 // =======================
+// 戦闘ギルド用依頼進捗フラグ
+// =======================
+//
+// A依頼: 敵30体撃破（手段別）
+//   - 戦士ギルド: 物理攻撃でトドメ30回
+//   - 魔法ギルド: 魔法でトドメ30回（※実装は今後、magicKillカウント時に加算）
+//   - 動物使いギルド: ペットでトドメ30回（※実装は今後、ペット撃破処理で加算）
+// B依頼: ボス1体撃破（3ギルド共通）
+window.guildQuestProgress = window.guildQuestProgress || {};
+window.guildQuestProgress.warrior_kill_30_phys = window.guildQuestProgress.warrior_kill_30_phys || { count: 0, done: false };
+window.guildQuestProgress.mage_kill_30_magic   = window.guildQuestProgress.mage_kill_30_magic   || { count: 0, done: false };
+window.guildQuestProgress.tamer_kill_30_pet    = window.guildQuestProgress.tamer_kill_30_pet    || { count: 0, done: false };
+window.guildQuestProgress.battle_boss_1        = window.guildQuestProgress.battle_boss_1        || { count: 0, done: false };
+
+// このファイルでは、
+// - 物理フィニッシュ（playerAttack / 物理系スキルから winBattle(true, "phys") を呼ぶ）
+// - ボス撃破（onBossDefeated 内）
+// だけを扱う。
+// 魔法フィニッシュ / ペットフィニッシュは、それぞれの処理側から winBattle(true, "magic") / winBattle(true, "pet") を呼ぶ想定。
+
+// プレイヤー物理フィニッシュ時に呼ぶヘルパ
+function onEnemyKilledByPlayerPhysical() {
+  const prog = window.guildQuestProgress.warrior_kill_30_phys;
+  if (!prog.done) {
+    prog.count = (prog.count || 0) + 1;
+    if (prog.count >= 30) {
+      prog.done = true;
+      if (typeof addGuildFame === "function") {
+        addGuildFame("warrior", 10);
+      }
+      if (typeof appendLog === "function") {
+        appendLog("戦士ギルド依頼『物理撃破30回』を達成！ 戦士ギルドの名声が上がった！");
+      }
+    }
+  }
+}
+
+// 魔法・ペット用のフックも用意しておく（今後、対応コードから呼ぶ）
+function onEnemyKilledByPlayerMagic() {
+  const prog = window.guildQuestProgress.mage_kill_30_magic;
+  if (!prog.done) {
+    prog.count = (prog.count || 0) + 1;
+    if (prog.count >= 30) {
+      prog.done = true;
+      if (typeof addGuildFame === "function") {
+        addGuildFame("mage", 10);
+      }
+      if (typeof appendLog === "function") {
+        appendLog("魔法ギルド依頼『魔法撃破30回』を達成！ 魔法ギルドの名声が上がった！");
+      }
+    }
+  }
+}
+
+function onEnemyKilledByPet() {
+  const prog = window.guildQuestProgress.tamer_kill_30_pet;
+  if (!prog.done) {
+    prog.count = (prog.count || 0) + 1;
+    if (prog.count >= 30) {
+      prog.done = true;
+      if (typeof addGuildFame === "function") {
+        addGuildFame("tamer", 10);
+      }
+      if (typeof appendLog === "function") {
+        appendLog("動物使いギルド依頼『ペット撃破30回』を達成！ 動物使いギルドの名声が上がった！");
+      }
+    }
+  }
+}
+
+// ボス撃破で共通依頼を進める
+function onAnyBossKillForGuildQuests() {
+  const prog = window.guildQuestProgress.battle_boss_1;
+  if (!prog.done) {
+    prog.count = (prog.count || 0) + 1;
+    if (prog.count >= 1) {
+      prog.done = true;
+      if (typeof addGuildFame === "function") {
+        // ボス討伐は3ギルド共通で評価、所属ギルドを見て名声を上げる
+        if (window.playerGuildId === "warrior") addGuildFame("warrior", 15);
+        if (window.playerGuildId === "mage")    addGuildFame("mage", 15);
+        if (window.playerGuildId === "tamer")   addGuildFame("tamer", 15);
+      }
+      if (typeof appendLog === "function") {
+        appendLog("ギルド依頼『ボス討伐試験』を達成！ 所属している戦闘ギルドの名声が上がった！");
+      }
+    }
+  }
+}
+
+// =======================
 // 状態異常・バフデバフ定義
 // =======================
 //
@@ -801,14 +892,22 @@ function playerAttack() {
 
   if (enemyHp <= 0) {
     enemyHp = 0;
-    winBattle();
+
+    // 物理通常攻撃でトドメを刺したので、戦士ギルド用カウントを進める
+    onEnemyKilledByPlayerPhysical();
+
+    winBattle(true, "phys");
     return;
   }
 
   doPetTurn();
   if (enemyHp <= 0) {
     enemyHp = 0;
-    winBattle();
+
+    // ペットがトドメを刺した場合（doPetTurn 内で敵HPを0にした想定）
+    onEnemyKilledByPet();
+
+    winBattle(true, "pet");
     return;
   }
 
@@ -1048,6 +1147,9 @@ function onBossDefeated() {
     appendLog("ボスを撃破した！");
   }
 
+  // ★ ギルド依頼用：ボス撃破で共通依頼を進行
+  onAnyBossKillForGuildQuests();
+
   if (typeof refreshExploreAreaSelect === "function") {
     refreshExploreAreaSelect();
   }
@@ -1086,12 +1188,14 @@ function tryEscape() {
 // 戦闘勝利共通処理
 // =======================
 
-function winBattle() {
+// killFlag: true のときは「この関数を呼んだ時点で敵HP0＝撃破済み」を意味する
+// killSource: "phys" / "magic" / "pet" など、将来用に拡張しておく
+function winBattle(killFlag, killSource) {
   if (typeof onEnemyDefeatedCore === "function") {
     if (currentEnemy) {
-      onEnemyDefeatedCore(currentEnemy);
+      onEnemyDefeatedCore(currentEnemy, killFlag, killSource);
     } else {
-      onEnemyDefeatedCore();
+      onEnemyDefeatedCore(undefined, killFlag, killSource);
     }
   } else {
     // 保険として、敵撃破時に戦闘を終了
