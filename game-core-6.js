@@ -470,6 +470,11 @@ function craftWeapon(){
 
   appendLog(`${qName}${recipe.name} をクラフトした`);
 
+  // ★ 鍛冶ギルド用：武器クラフト依頼を進行
+  if (typeof onCraftCompletedForGuild === "function") {
+    onCraftCompletedForGuild({ category: "weapon", recipeId: recipe.id });
+  }
+
   refreshEquipSelects();
   updateDisplay();
 
@@ -510,6 +515,11 @@ function craftArmor(){
   addArmorInstance(recipe.id, q, baseEnh);
 
   appendLog(`${qName}${recipe.name} をクラフトした`);
+
+  // ★ 鍛冶ギルド用：防具クラフト依頼を進行
+  if (typeof onCraftCompletedForGuild === "function") {
+    onCraftCompletedForGuild({ category: "armor", recipeId: recipe.id });
+  }
 
   refreshEquipSelects();
   updateDisplay();
@@ -555,6 +565,11 @@ function craftPotion(){
 
   appendLog(`${recipe.name} をクラフトした`);
 
+  // ★ 錬金ギルド用：ポーションクラフト依頼を進行
+  if (typeof onCraftCompletedForGuild === "function") {
+    onCraftCompletedForGuild({ category: "potion", recipeId: recipe.id });
+  }
+
   updateDisplay();
   refreshEquipSelects();
 
@@ -598,6 +613,11 @@ function craftTool(){
   }
 
   appendLog(`${recipe.name} をクラフトした`);
+
+  // ★ 錬金／道具系ギルド用：道具クラフト依頼を進行
+  if (typeof onCraftCompletedForGuild === "function") {
+    onCraftCompletedForGuild({ category: "tool", recipeId: recipe.id });
+  }
 
   updateDisplay();
   refreshEquipSelects();
@@ -702,6 +722,11 @@ function craftFood(){
 
   appendLog(`${recipe.name} を作った`);
 
+  // ★ 料理ギルド用：料理クラフト依頼を進行
+  if (typeof onCraftCompletedForGuild === "function") {
+    onCraftCompletedForGuild({ category: "food", recipeId: recipe.id });
+  }
+
   updateDisplay();
   refreshEquipSelects();
 
@@ -765,6 +790,11 @@ function craftDrink(){
   }
 
   appendLog(`${recipe.name} を作った`);
+
+  // ★ 料理ギルド用：飲み物クラフト依頼を進行
+  if (typeof onCraftCompletedForGuild === "function") {
+    onCraftCompletedForGuild({ category: "drink", recipeId: recipe.id });
+  }
 
   updateDisplay();
   refreshEquipSelects();

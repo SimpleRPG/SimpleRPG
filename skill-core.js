@@ -231,9 +231,12 @@ function doPetTurn() {
 
   if (enemyHp <= 0) {
     enemyHp = 0;
-    if (typeof onEnemyKilledByPet === "function") {
-      onEnemyKilledByPet();
+
+    // ★ ギルド用ヘルパーにペット撃破を通知
+    if (typeof onEnemyKilledForGuild === "function") {
+      onEnemyKilledForGuild({ by: "pet", isBoss: !!isBossBattle });
     }
+
     winBattle(true, "pet");
   } else {
     if (typeof updateDisplay === "function") {
@@ -339,9 +342,12 @@ function castMagicFromUI() {
   if (didDamage) {
     if (enemyHp <= 0) {
       enemyHp = 0;
-      if (typeof onEnemyKilledByPlayerMagic === "function") {
-        onEnemyKilledByPlayerMagic();
+
+      // ★ ギルド用ヘルパーに魔法撃破を通知
+      if (typeof onEnemyKilledForGuild === "function") {
+        onEnemyKilledForGuild({ by: "magic", isBoss: !!isBossBattle });
       }
+
       winBattle(true, "magic");
       if (typeof updateEnemyStatusUI === "function") {
         updateEnemyStatusUI();
@@ -473,9 +479,12 @@ function useSkillFromUI() {
   } else if (didDamage) {
     if (enemyHp <= 0) {
       enemyHp = 0;
-      if (typeof onEnemyKilledByPlayerPhysical === "function") {
-        onEnemyKilledByPlayerPhysical();
+
+      // ★ ギルド用ヘルパーに物理スキル撃破を通知
+      if (typeof onEnemyKilledForGuild === "function") {
+        onEnemyKilledForGuild({ by: "phys", isBoss: !!isBossBattle });
       }
+
       winBattle(true, "phys");
       if (typeof updateEnemyStatusUI === "function") {
         updateEnemyStatusUI();

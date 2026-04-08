@@ -203,6 +203,157 @@ function addGuildFame(guildId, amount) {
 }
 
 // =======================
+// ギルド用進捗ヘルパー（戦闘・クラフトから呼ばれる）
+// =======================
+
+// 戦闘用：物理／魔法／ペット撃破＋ボス撃破
+function onEnemyKilledForGuild(params) {
+  if (!params) return;
+  const by = params.by;
+  const isBoss = !!params.isBoss;
+
+  // A依頼: 各ギルド30体撃破
+  if (by === "phys") {
+    const id = "warrior_kill_30_phys";
+    const raw = window.guildQuestProgress[id] || {};
+    const count = (raw.count || 0) + 1;
+    const done = count >= 30;
+    window.guildQuestProgress[id] = {
+      ...raw,
+      count,
+      done: done || raw.done,
+      rewardTaken: !!raw.rewardTaken
+    };
+  }
+  if (by === "magic") {
+    const id = "mage_kill_30_magic";
+    const raw = window.guildQuestProgress[id] || {};
+    const count = (raw.count || 0) + 1;
+    const done = count >= 30;
+    window.guildQuestProgress[id] = {
+      ...raw,
+      count,
+      done: done || raw.done,
+      rewardTaken: !!raw.rewardTaken
+    };
+  }
+  if (by === "pet") {
+    const id = "tamer_kill_30_pet";
+    const raw = window.guildQuestProgress[id] || {};
+    const count = (raw.count || 0) + 1;
+    const done = count >= 30;
+    window.guildQuestProgress[id] = {
+      ...raw,
+      count,
+      done: done || raw.done,
+      rewardTaken: !!raw.rewardTaken
+    };
+  }
+
+  // B依頼: ボス撃破（手段問わず）
+  if (isBoss) {
+    const id = "battle_boss_1";
+    const raw = window.guildQuestProgress[id] || {};
+    const count = (raw.count || 0) + 1;
+    const done = count >= 1;
+    window.guildQuestProgress[id] = {
+      ...raw,
+      count,
+      done: done || raw.done,
+      rewardTaken: !!raw.rewardTaken
+    };
+  }
+
+  // ギルドタブ開いていたら更新
+  if (typeof renderGuildQuests === "function") {
+    renderGuildQuests();
+  }
+}
+
+// バフ料理B依頼用：バフ付き料理／飲み物を食べたときに呼ぶ（game-core-5.js 側から）
+function onBuffFoodEatenForGuild() {
+  const id = "cooking_buff";
+  const raw = window.guildQuestProgress[id] || {};
+  const count = (raw.count || 0) + 1;
+  const done = count >= 2;
+  window.guildQuestProgress[id] = {
+    ...raw,
+    count,
+    done: done || raw.done,
+    rewardTaken: !!raw.rewardTaken
+  };
+
+  if (typeof renderGuildQuests === "function") {
+    renderGuildQuests();
+  }
+}
+
+// クラフト用：鍛冶／錬金／料理ギルドの依頼進行
+function onCraftCompletedForGuild(params) {
+  if (!params) return;
+  const category = params.category;
+  const recipeId = params.recipeId;
+
+  // 鍛冶ギルド: 武器3本クラフト
+  if (category === "weapon" || category === "armor") {
+    const id = "smith_craft_weapon";
+    const raw = window.guildQuestProgress[id] || {};
+    const count = (raw.count || 0) + 1;
+    const done = count >= 3;
+    window.guildQuestProgress[id] = {
+      ...raw,
+      count,
+      done: done || raw.done,
+      rewardTaken: !!raw.rewardTaken
+    };
+  }
+
+  // 錬金ギルド: ポーション5回クラフト / 爆弾3個クラフト
+  if (category === "potion") {
+    const id = "alch_craft_potion";
+    const raw = window.guildQuestProgress[id] || {};
+    const count = (raw.count || 0) + 1;
+    const done = count >= 5;
+    window.guildQuestProgress[id] = {
+      ...raw,
+      count,
+      done: done || raw.done,
+      rewardTaken: !!raw.rewardTaken
+    };
+  }
+  if (category === "tool") {
+    const id = "alch_craft_bomb";
+    const raw = window.guildQuestProgress[id] || {};
+    const count = (raw.count || 0) + 1;
+    const done = count >= 3;
+    window.guildQuestProgress[id] = {
+      ...raw,
+      count,
+      done: done || raw.done,
+      rewardTaken: !!raw.rewardTaken
+    };
+  }
+
+  // 料理ギルド: 料理を3回作る（食べ物も飲み物もまとめてカウント）
+  if (category === "food" || category === "drink") {
+    const id = "cooking_basic";
+    const raw = window.guildQuestProgress[id] || {};
+    const count = (raw.count || 0) + 1;
+    const done = count >= 3;
+    window.guildQuestProgress[id] = {
+      ...raw,
+      count,
+      done: done || raw.done,
+      rewardTaken: !!raw.rewardTaken
+    };
+  }
+
+  if (typeof renderGuildQuests === "function") {
+    renderGuildQuests();
+  }
+}
+
+// =======================
 // UI: ヘッダ
 // =======================
 
@@ -487,11 +638,18 @@ const GUILD_QUESTS = {
 function getGuildQuestProg(id) {
   const raw = window.guildQuestProgress[id] || {};
 
-  // A依頼 / B依頼
-  if (id === "warrior_kill_30_phys" ||
-      id === "mage_kill_30_magic"   ||
-      id === "tamer_kill_30_pet"    ||
-      id === "battle_boss_1") {
+  // カウント型依頼
+  if (
+    id === "warrior_kill_30_phys" ||
+    id === "mage_kill_30_magic"   ||
+    id === "tamer_kill_30_pet"    ||
+    id === "battle_boss_1"        ||
+    id === "smith_craft_weapon"   ||
+    id === "alch_craft_potion"    ||
+    id === "alch_craft_bomb"      ||
+    id === "cooking_basic"        ||
+    id === "cooking_buff"        // ★ バフ料理依頼を count 型に追加
+  ) {
     return {
       count: raw.count || 0,
       done: !!raw.done,
@@ -602,7 +760,7 @@ function renderGuildQuests() {
     status.style.fontSize = "11px";
     status.style.marginTop = "2px";
 
-    // A/B 依頼は count / done を表示
+    // A/B 依頼＋クラフト系の count / done を表示
     if (q.id === "warrior_kill_30_phys") {
       status.textContent = prog.done
         ? `状態: 完了（物理撃破 ${prog.count}/30）`
@@ -619,6 +777,26 @@ function renderGuildQuests() {
       status.textContent = prog.done
         ? `状態: 完了（ボス討伐 ${prog.count}/1）`
         : `状態: 進行中（ボス討伐 ${prog.count}/1）`;
+    } else if (q.id === "smith_craft_weapon") {
+      status.textContent = prog.done
+        ? `状態: 完了（クラフト ${prog.count}/3）`
+        : `状態: 進行中（クラフト ${prog.count}/3）`;
+    } else if (q.id === "alch_craft_potion") {
+      status.textContent = prog.done
+        ? `状態: 完了（ポーションクラフト ${prog.count}/5）`
+        : `状態: 進行中（ポーションクラフト ${prog.count}/5）`;
+    } else if (q.id === "alch_craft_bomb") {
+      status.textContent = prog.done
+        ? `状態: 完了（爆弾クラフト ${prog.count}/3）`
+        : `状態: 進行中（爆弾クラフト ${prog.count}/3）`;
+    } else if (q.id === "cooking_basic") {
+      status.textContent = prog.done
+        ? `状態: 完了（料理作成 ${prog.count}/3）`
+        : `状態: 進行中（料理作成 ${prog.count}/3）`;
+    } else if (q.id === "cooking_buff") { // ★ バフ料理依頼の表示
+      status.textContent = prog.done
+        ? `状態: 完了（バフ料理 ${prog.count}/2）`
+        : `状態: 進行中（バフ料理 ${prog.count}/2）`;
     } else {
       status.textContent = prog.done
         ? "状態: 完了"

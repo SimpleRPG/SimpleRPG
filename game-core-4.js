@@ -599,6 +599,18 @@ function gather(){
       gained: gained
     };
 
+    // ★ 食材ギルド用：料理素材採取依頼を進行
+    if (typeof onGatherCompletedForGuild === "function") {
+      let totalCount = 0;
+      Object.keys(gained).forEach(id => {
+        totalCount += gained[id];
+      });
+      onGatherCompletedForGuild({
+        kind: "food",
+        total: totalCount
+      });
+    }
+
     if (typeof RARE_GATHER_DROP_RATE === "number" &&
         typeof RARE_GATHER_ITEM_ID === "string") {
       if (Math.random() < RARE_GATHER_DROP_RATE) {
@@ -749,6 +761,15 @@ function gather(){
   if (t1 > 0) appendLog(`T1${names[target]}を${t1}つ採取した！`);
   if (t2 > 0) appendLog(`T2${names[target]}を${t2}つ採取した！`);
   if (t3 > 0) appendLog(`T3${names[target]}を${t3}つ採取した！`);
+
+  // ★ 採取ギルド用：通常素材採取依頼を進行
+  if (typeof onGatherCompletedForGuild === "function") {
+    onGatherCompletedForGuild({
+      kind: "gather",
+      total: gainedTotal,
+      t3: t3
+    });
+  }
 
   if (typeof RARE_GATHER_DROP_RATE === "number" &&
       typeof RARE_GATHER_ITEM_ID === "string") {

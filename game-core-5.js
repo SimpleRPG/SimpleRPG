@@ -1054,6 +1054,11 @@ function eatFoodInField() {
 
   appendLog(`${recipe.name} を食べた！`);
 
+  // ★ バフ付き料理ギルド依頼用：バフ付き料理を食べたらカウント
+  if (recipe.effect.statusId && typeof onBuffFoodEatenForGuild === "function") {
+    onBuffFoodEatenForGuild();
+  }
+
   if (typeof refreshCarryFoodDrinkSelects === "function") {
     refreshCarryFoodDrinkSelects();
   }
@@ -1089,6 +1094,11 @@ function drinkInField() {
   if (carryDrinks[id] <= 0) delete carryDrinks[id];
 
   appendLog(`${recipe.name} を飲んだ！`);
+
+  // ★ バフ飲み物も依頼対象に含めるならここでカウント
+  if (recipe.effect.statusId && typeof onBuffFoodEatenForGuild === "function") {
+    onBuffFoodEatenForGuild();
+  }
 
   if (typeof refreshCarryFoodDrinkSelects === "function") {
     refreshCarryFoodDrinkSelects();
@@ -1393,7 +1403,7 @@ function tryUpgradeGatherBase(matKey) {
       const haveStar = intermediateMats["starShard"] || 0;
       lines.push(`- starShard: 必要 ${needStar} 個 / 所持 ${haveStar} 個`);
     }
-    appendLog(lines.join("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n"));
+    appendLog(lines.join("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n"));
   })();
 
   for (const iid in needInter) {
