@@ -42,6 +42,11 @@ let areaBossAvailable = {
 window.isExploring   = false;      // 街にいる: false / どこか探索中: true
 window.exploringArea = "field";    // 現在探索しているエリアID
 
+// 撤退状態管理
+let isRetreating = false;      // 撤退中かどうか
+let retreatTurnsLeft = 0;      // 帰還までに必要な残りターン数
+const RETREAT_TURNS = 3;       // 撤退開始時に必要なターン数（調整用）
+
 // ポーション選択の記憶
 let lastSelectedFieldPotionId  = null;
 let lastSelectedBattleItemId   = null;
@@ -247,6 +252,39 @@ function tryFindBossOnExplore() {
 }
 
 // =======================
+// 撤退進行処理
+// =======================
+
+function handleRetreatProgress() {
+  if (!isRetreating) return;
+
+  retreatTurnsLeft--;
+  if (retreatTurnsLeft > 0) {
+    appendLog(`出口へ向かって撤退中… 残り${retreatTurnsLeft}ターン。`);
+    return;
+  }
+
+  // 帰還確定
+  isRetreating = false;
+  retreatTurnsLeft = 0;
+
+  window.isExploring   = false;
+  window.exploringArea = "field";
+
+  appendLog("なんとか街までたどり着いた… ひとまず安全だ。");
+
+  if (typeof setBattleCommandVisible === "function") {
+    setBattleCommandVisible(false);
+  }
+  if (typeof updateReturnTownButton === "function") {
+    updateReturnTownButton();
+  }
+  if (typeof updateDisplay === "function") {
+    updateDisplay();
+  }
+}
+
+// =======================
 // 探索（ランダムイベント対応版）
 // =======================
 
@@ -272,12 +310,14 @@ function doExploreEvent(area) {
   if (roll < 0.2) {
     appendLog("何も見つからなかった…");
     updateReturnTownButton();
+    handleRetreatProgress();
     return;
   }
 
   if (roll < 0.4) {
     doExploreRandomEvent(area);
     updateReturnTownButton();
+    handleRetreatProgress();
     return;
   }
 
@@ -285,12 +325,14 @@ function doExploreEvent(area) {
   if (!enemyId) {
     appendLog("敵データが見つからない");
     updateReturnTownButton();
+    handleRetreatProgress();
     return;
   }
   const enemy = createEnemyInstance(enemyId, false);
   if (!enemy) {
     appendLog("敵データの取得に失敗しました");
     updateReturnTownButton();
+    handleRetreatProgress();
     return;
   }
 
@@ -308,6 +350,9 @@ function doExploreEvent(area) {
     },
     false
   );
+
+  // 戦闘が起きても撤退状態は継続
+  handleRetreatProgress();
 }
 
 function doExploreRandomEvent(area) {
@@ -934,8 +979,9 @@ function applyFoodEffect(effect, foodId) {
 function applyDrinkEffect(effect, drinkId) {
   if (!effect) return;
 
-  if (effect.statusId && typeof addFoodStatusToPlayer === "function") {
-    addFoodStatusToPlayer(effect.statusId, effect.durationTurns);
+  // 飲み物ステータスは「飲み物バフ」扱いにする
+  if (effect.statusId && typeof addDrinkStatusToPlayer === "function") {
+    addDrinkStatusToPlayer(effect.statusId, effect.durationTurns);
   }
 
   if (typeof restoreHungerThirst === "function") {
@@ -1336,7 +1382,7 @@ function tryUpgradeGatherBase(matKey) {
       const haveStar = intermediateMats["starShard"] || 0;
       lines.push(`- starShard: 必要 ${needStar} 個 / 所持 ${haveStar} 個`);
     }
-    appendLog(lines.join("\\n"));
+    appendLog(lines.join("\\\\\\\\n"));
   })();
 
   for (const iid in needInter) {

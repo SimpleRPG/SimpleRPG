@@ -436,8 +436,11 @@ if (Array.isArray(data.armorInstances)) {
   if (typeof refreshCarryFoodDrinkSelects === "function") {
     refreshCarryFoodDrinkSelects();
   }
-}
-
+  if (typeof updateHungerThirstEffects === "function") {
+    updateHungerThirstEffects();
+  }
+  }
+ 
 // ==============================
 // ローカルストレージにセーブ
 // ==============================

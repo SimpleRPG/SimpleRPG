@@ -6,8 +6,8 @@ const ENEMIES = {
   slime: {
     id: "slime",
     name: "スライム",
-    hp: 10,   // 3発前後で倒せる
-    atk: 3,   // HP30に対して10発耐えるくらい
+    hp: 12,   // ほんの少しだけ増やす
+    atk: 4,   // HP30に対して8発前後
     def: 0,
     exp: 8,
     money: 3,
@@ -16,43 +16,43 @@ const ENEMIES = {
   wolf: {
     id: "wolf",
     name: "オオカミ",
-    hp: 18,   // 4〜6発くらい
-    atk: 4,   // ちょっとだけ痛い
+    hp: 22,   // 4〜6発くらい
+    atk: 6,   // ちょっとだけ痛い
     def: 1,
     exp: 12,
     money: 5,
     isBoss: false
   },
 
-  // 森系（10転生目安に少し強化）
+  // 森系（10転生目安）
   forestWolf: {
     id: "forestWolf",
     name: "森のオオカミ",
-    hp: 80,     // 旧:70
-    atk: 20,    // 旧:18
-    def: 3,
-    exp: 30,    // やや増
+    hp: 140,     // 素STR/VITに対して10ターン程度想定で増やす
+    atk: 55,     // 10転生VIT96前後に対してそこそこ痛い
+    def: 18,
+    exp: 30,
     money: 12,
     isBoss: false
   },
   goblin: {
     id: "goblin",
     name: "ゴブリン",
-    hp: 95,     // 旧:85
-    atk: 22,    // 旧:20
-    def: 4,
+    hp: 170,
+    atk: 60,
+    def: 20,
     exp: 38,
     money: 14,
     isBoss: false
   },
 
-  // 洞窟系（20転生目安に強化）
+  // 洞窟系（20転生目安）
   caveGoblin: {
     id: "caveGoblin",
     name: "洞窟ゴブリン",
-    hp: 135,    // 旧:110
-    atk: 32,    // 旧:28
-    def: 6,
+    hp: 260,
+    atk: 85,
+    def: 30,
     exp: 65,
     money: 24,
     isBoss: false
@@ -60,9 +60,9 @@ const ENEMIES = {
   goblinMage: {
     id: "goblinMage",
     name: "ゴブリンマジシャン",
-    hp: 150,    // 旧:120
-    atk: 40,    // 旧:35
-    def: 6,
+    hp: 300,
+    atk: 95,
+    def: 32,
     exp: 80,
     money: 30,
     isBoss: false
@@ -70,9 +70,9 @@ const ENEMIES = {
   goblinTamer: {
     id: "goblinTamer",
     name: "ゴブリンテイマー",
-    hp: 180,    // 旧:140
-    atk: 45,    // 旧:38
-    def: 7,
+    hp: 340,
+    atk: 105,
+    def: 35,
     exp: 100,
     money: 36,
     isBoss: false
@@ -80,21 +80,21 @@ const ENEMIES = {
   ogre: {
     id: "ogre",
     name: "オーガ",
-    hp: 240,    // 旧:200
-    atk: 56,    // 旧:50
-    def: 9,
+    hp: 420,
+    atk: 120,
+    def: 40,
     exp: 160,
     money: 60,
     isBoss: false
   },
 
-  // 廃鉱山系ザコ（40転生目安に強化）
+  // 廃鉱山系ザコ（40転生目安）
   ogreBrute: {
     id: "ogreBrute",
     name: "オーガブルート",
-    hp: 340,    // 旧:260
-    atk: 70,    // 旧:60
-    def: 11,
+    hp: 650,
+    atk: 155,
+    def: 55,
     exp: 210,
     money: 70,
     isBoss: false
@@ -102,9 +102,9 @@ const ENEMIES = {
   ogreGuard: {
     id: "ogreGuard",
     name: "オーガガード",
-    hp: 400,    // 旧:300
-    atk: 72,    // 旧:58
-    def: 13,
+    hp: 720,
+    atk: 165,
+    def: 60,
     exp: 250,
     money: 82,
     isBoss: false
@@ -112,33 +112,33 @@ const ENEMIES = {
   ogreShaman: {
     id: "ogreShaman",
     name: "オーガシャーマン",
-    hp: 320,    // 旧:240
-    atk: 78,    // 旧:65
-    def: 10,
+    hp: 680,
+    atk: 175,
+    def: 52,
     exp: 270,
     money: 90,
     isBoss: false
   },
 
   // ===== ボス =====
-  // 草原ボスはほぼ据え置き（0転生レベル100＋料理前提）
+  // 草原ボス：0転生レベル100＋料理前提
   kingSlime: {
     id: "kingSlime",
     name: "キングスライム？",
-    hp: 260,    // 旧:250（微増）
-    atk: 42,    // 旧:40
-    def: 8,
+    hp: 420,   // HP228＋装備込ATK/DEF想定で10T前後
+    atk: 60,   // 0転生DEF＋料理で3〜5発耐える程度
+    def: 18,
     exp: 800,
     money: 200,
     isBoss: true
   },
-  // 森ボス：10転生＋料理前提で少し強化
+  // 森ボス：10転生＋料理前提
   hundredWolfKing: {
     id: "hundredWolfKing",
     name: "百狼の王",
-    hp: 480,    // 旧:400
-    atk: 75,    // 旧:65
-    def: 11,    // 旧:10
+    hp: 900,   // 10転生想定、与ダメも被ダメも10T前後
+    atk: 110,
+    def: 40,
     exp: 1600,
     money: 450,
     isBoss: true
@@ -147,9 +147,9 @@ const ENEMIES = {
   goblinKing: {
     id: "goblinKing",
     name: "ゴブリンキング",
-    hp: 820,    // 旧:650
-    atk: 110,   // 旧:90
-    def: 15,    // 旧:14
+    hp: 1500,
+    atk: 150,
+    def: 60,
     exp: 2800,
     money: 800,
     isBoss: true
@@ -158,9 +158,9 @@ const ENEMIES = {
   berserkOgre: {
     id: "berserkOgre",
     name: "バーサークオーガー",
-    hp: 1400,   // 旧:1000
-    atk: 145,   // 旧:120
-    def: 20,    // 旧:18
+    hp: 2600,  // 40転生STR/スキル/料理フルで10T前後を想定
+    atk: 210,  // DEF237＋装備＋防御料理でも2〜4発は食らう
+    def: 90,   // 1転生T1装備ではまともに通らない程度
     exp: 4500,
     money: 1400,
     isBoss: true

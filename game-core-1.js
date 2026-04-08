@@ -296,6 +296,40 @@ function recalcStats() {
   let atkFromWeaponStr = Math.floor(STR * weaponScaleStr);
   let atkFromWeaponInt = Math.floor(INT_ * weaponScaleInt);
 
+  // ステータス由来の防御
+  let defFromVit = Math.floor(VIT * 0.7);
+  let defFromDex = Math.floor(DEX_ * 0.2);
+  let defFromArmorVit = Math.floor(VIT * armorScaleVit);
+
+  // ===== 空腹・水分デバフ反映 =====
+  // （game-core-2.js で定義されている係数を前提）
+
+  if (typeof hungerAtkIntRate === "number") {
+    atkFromStr       = Math.floor(atkFromStr       * hungerAtkIntRate);
+    atkFromWeaponStr = Math.floor(atkFromWeaponStr * hungerAtkIntRate);
+    atkFromWeaponInt = Math.floor(atkFromWeaponInt * hungerAtkIntRate);
+  }
+
+  if (typeof thirstDefDexLukRate === "number") {
+    defFromVit      = Math.floor(defFromVit      * thirstDefDexLukRate);
+    defFromDex      = Math.floor(defFromDex      * thirstDefDexLukRate);
+    defFromArmorVit = Math.floor(defFromArmorVit * thirstDefDexLukRate);
+  }
+
+  if (typeof hungerHpRate === "number") {
+    hpMax = Math.floor(hpMax * hungerHpRate);
+  }
+  if (typeof thirstMpSpRate === "number") {
+    mpMax = Math.floor(mpMax * thirstMpSpRate);
+    spMax = Math.floor(spMax * thirstMpSpRate);
+  }
+
+  if (hpMax < 1) hpMax = 1;
+  if (hp > hpMax) hp = hpMax;
+  if (mp > mpMax) mp = mpMax;
+  if (sp > spMax) sp = spMax;
+
+  // ===== 最終 ATK / DEF 再計算 =====
   atkTotal =
     baseAtk +
     enhancedWeaponAtk +
@@ -303,11 +337,6 @@ function recalcStats() {
     atkFromDex +
     atkFromWeaponStr +
     atkFromWeaponInt;
-
-  // ステータス由来の防御
-  let defFromVit = Math.floor(VIT * 0.7);
-  let defFromDex = Math.floor(DEX_ * 0.2);
-  let defFromArmorVit = Math.floor(VIT * armorScaleVit);
 
   defTotal =
     baseDef +

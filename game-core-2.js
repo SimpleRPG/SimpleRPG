@@ -242,6 +242,22 @@ let wellFedUntil = 0;
 let hungerActionCount = 0;
 let thirstActionCount = 0;
 
+// ★ 空腹・水分による最大値＆ステ補正用係数
+let hungerHpRate        = 1.0; // 0〜1（最大HP用）
+let thirstMpSpRate      = 1.0; // 0〜1（最大MP/SP用）
+let hungerAtkIntRate    = 1.0; // 0〜1（STR, INT 用）
+let thirstDefDexLukRate = 1.0; // 0〜1（VIT, DEX, LUK 用）
+
+// しきい値ログ用フラグ
+let hungerBelow50Logged = false;
+let hungerBelow25Logged = false;
+let thirstBelow50Logged = false;
+let thirstBelow25Logged = false;
+
+function clamp01(v) {
+  return Math.max(0, Math.min(1, v));
+}
+
 // 今「満腹＆十分な水分」かどうか
 function isWellFed() {
   const now = Date.now();
@@ -258,6 +274,65 @@ function getBattleExpPerWin(enemy) {
   return isWellFed() ? 8 : 5;
 }
 
+// ★ 空腹・水分の値から各種係数を更新する
+function updateHungerThirstEffects() {
+  const hungerRatio = clamp01(hunger / 100);
+  const thirstRatio = clamp01(thirst / 100);
+
+  // 50%を切ったところから「0.5→1.0 / 0→0.0」で線形
+  if (hungerRatio < 0.5) {
+    hungerHpRate = hungerRatio / 0.5;   // 0.5で1.0, 0で0.0
+    if (!hungerBelow50Logged) {
+      appendLog("お腹が減ってきた… 最大HPが下がり始めている。");
+      hungerBelow50Logged = true;
+    }
+  } else {
+    hungerHpRate = 1.0;
+    hungerBelow50Logged = false; // 回復で50%以上に戻ったらリセット
+  }
+
+  if (thirstRatio < 0.5) {
+    thirstMpSpRate = thirstRatio / 0.5;
+    if (!thirstBelow50Logged) {
+      appendLog("喉の渇きを感じる… 最大MPとSPが下がり始めている。");
+      thirstBelow50Logged = true;
+    }
+  } else {
+    thirstMpSpRate = 1.0;
+    thirstBelow50Logged = false;
+  }
+
+  // 25%を切ったら STR/INT, VIT/DEX/LUK にデバフ
+  if (hungerRatio < 0.25) {
+    const t = hungerRatio / 0.25;       // 0〜1
+    hungerAtkIntRate = 0.7 + 0.3 * t;   // 0.25→1.0, 0→0.7
+    if (!hungerBelow25Logged) {
+      appendLog("空腹で力が入らない… 攻撃と魔力がかなり落ちている。");
+      hungerBelow25Logged = true;
+    }
+  } else {
+    hungerAtkIntRate = 1.0;
+    hungerBelow25Logged = false;
+  }
+
+  if (thirstRatio < 0.25) {
+    const t = thirstRatio / 0.25;
+    thirstDefDexLukRate = 0.7 + 0.3 * t;
+    if (!thirstBelow25Logged) {
+      appendLog("強い渇きで体が重い… 防御や器用さがかなり落ちている。");
+      thirstBelow25Logged = true;
+    }
+  } else {
+    thirstDefDexLukRate = 1.0;
+    thirstBelow25Logged = false;
+  }
+
+  // 係数が変わったのでステ再計算
+  if (typeof recalcStats === "function") {
+    recalcStats();
+  }
+}
+
 // 空腹・水分を増やす（料理・飲み物から呼ぶ想定）
 function restoreHungerThirst(addHunger, addThirst) {
   hunger = Math.min(100, hunger + (addHunger || 0));
@@ -267,6 +342,9 @@ function restoreHungerThirst(addHunger, addThirst) {
   if (hunger === 100 || thirst === 100) {
     wellFedUntil = Date.now() + 20 * 60 * 1000;
   }
+
+  // ★ 満腹・水分回復時にもデバフを更新
+  updateHungerThirstEffects();
 
   updateDisplay();
 }
@@ -290,6 +368,9 @@ function handleHungerThirstOnAction(actionType) {
   // カウンタはもう不要なら消してよい
   hungerActionCount = 0;
   thirstActionCount = 0;
+
+  // ★ 空腹・水分低下に伴う係数更新
+  updateHungerThirstEffects();
 
   updateDisplay();
 }

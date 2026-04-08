@@ -26,7 +26,7 @@ const shopData = {
     { id: "inn_hp",   name: "宿屋で休む(HP)",      price: 500,  desc: "HPを全回復します。",             type: "service", kind: "innHP" },
     { id: "inn_full", name: "宿屋で休む(HP/MP)",   price: 800, desc: "HPとMPを全回復します。",         type: "service", kind: "innFull" },
     // ★追加: 定食
-    { id: "setmeal",  name: "定食を食べる",        price: 100,  desc: "空腹と水分が少し回復する定食。", type: "service", kind: "meal" }
+    { id: "setmeal",  name: "定食を食べる",        price: 10,  desc: "空腹と水分が少し回復する定食。", type: "service", kind: "meal" }
   ]
 };
 
@@ -109,7 +109,7 @@ function getMaterialSellPrice(baseKey, tier) {
 }
 
 // 料理素材（cookingMats）の売値
-// market-core.js の COOKING_INGREDIENT_BASE_VALUE = 10 に合わせて、価値10G → 売値5G。
+// market-core.js の COOKING_INGREDIENT_BASE_VALUE に合わせて
 function getCookingMatSellPrice(matId) {
   const base = (typeof COOKING_INGREDIENT_BASE_VALUE === "number")
     ? COOKING_INGREDIENT_BASE_VALUE
