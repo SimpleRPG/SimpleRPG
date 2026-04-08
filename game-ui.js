@@ -304,6 +304,7 @@ window.addEventListener("DOMContentLoaded", () => {
     tabMagicDist: "pageMagicDist",
     tabWarehouse: "pageWarehouse",
     tabStatus:    "pageStatus",
+    tabGuild:     "pageGuild",   // ★ ギルドタブを追加
     tabHelp:      "pageHelp"
   };
 
@@ -410,6 +411,14 @@ window.addEventListener("DOMContentLoaded", () => {
     if (pageId === "pageStatus") {
       if (typeof refreshStatusUI === "function") {
         refreshStatusUI();
+      }
+    }
+
+    // ギルドタブ
+    if (pageId === "pageGuild") {
+      // とりあえずタブ切り替えだけ（中身の描画は guild.js 側に任せる）
+      if (typeof renderGuildUI === "function") {
+        renderGuildUI();
       }
     }
 

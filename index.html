@@ -17,6 +17,8 @@
       <button id="tabMagicDist" class="tab-button">魔巧区</button>
       <button id="tabWarehouse" class="tab-button">倉庫</button>
       <button id="tabStatus"    class="tab-button">ステータス</button>
+      <!-- ★追加: ギルドタブ -->
+      <button id="tabGuild"     class="tab-button">ギルド</button>
       <button id="tabHelp"      class="tab-button">あそびかた</button>
     </div>
 
@@ -729,6 +731,63 @@
             </div>
           </div>
 
+          <!-- ギルド -->
+          <div id="pageGuild" class="tab-page">
+            <h2>ギルド</h2>
+
+            <div id="guildScreen" style="padding:8px; border:1px solid #444; margin-top:8px; background:#111;">
+              <!-- 上部: 所属情報 -->
+              <div id="guildHeader" style="margin-bottom:8px; border-bottom:1px solid #555; padding-bottom:4px;">
+                <div>
+                  所属ギルド: <span id="guildCurrentName">未所属</span>
+                </div>
+                <div>
+                  名声: <span id="guildCurrentFame">0</span>
+                  ／ ランク: <span id="guildCurrentRank">-</span>
+                </div>
+              </div>
+
+              <!-- タブ切り替え -->
+              <div id="guildTabs" style="margin-bottom:8px;">
+                <button class="guildTabBtn" data-guild-tab="list">ギルド一覧</button>
+                <button class="guildTabBtn" data-guild-tab="quests">依頼</button>
+                <button class="guildTabBtn" data-guild-tab="rewards">報酬・称号</button>
+              </div>
+
+              <!-- タブ本体 -->
+              <div id="guildTabContents">
+                <!-- ギルド一覧タブ -->
+                <div id="guildTab_list" class="guildTabPane">
+                  <h3>ギルド一覧</h3>
+                  <div id="guildListContainer">
+                    <!-- guild.js / game-ui 側でギルド候補リストを追加する -->
+                  </div>
+                </div>
+
+                <!-- 依頼タブ -->
+                <div id="guildTab_quests" class="guildTabPane" style="display:none;">
+                  <h3>ギルド依頼</h3>
+                  <div id="guildQuestList">
+                    <!-- 所属ギルドの依頼をJSで表示する -->
+                  </div>
+                </div>
+
+                <!-- 報酬・称号タブ -->
+                <div id="guildTab_rewards" class="guildTabPane" style="display:none;">
+                  <h3>報酬・称号</h3>
+                  <div id="guildRewardList">
+                    <!-- 名声に応じた報酬一覧をJSで表示する -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- 下部: 説明／ログエリア -->
+              <div id="guildMessage" style="margin-top:8px; padding:4px; border-top:1px solid #555; min-height:40px; font-size:0.9em;">
+                ギルドに所属して依頼をこなすことで、名声や特別な報酬を得られます。
+              </div>
+            </div>
+          </div>
+
           <!-- あそびかた -->
           <div id="pageHelp" class="tab-page">
             <div id="helpContentRoot"></div>
@@ -805,6 +864,9 @@
   <script src="skill-core.js"></script>
   <script src="market-core.js"></script>
   <script src="save-system.js"></script>
+
+  <!-- ★追加: ギルド関連ロジック -->
+  <script src="guild.js"></script>
 
   <script src="game-ui.js"></script>
   <script src="game-ui-2.js"></script>
