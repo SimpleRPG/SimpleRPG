@@ -66,11 +66,16 @@ function addExp(amount) {
       applyLevelUpGrowth();
     }
 
-    // ★ 必要経験値をレベルアップごとに再設定
+       // ★ 必要経験値をレベルアップごとに再設定
     expToNext = BASE_EXP_PER_LEVEL;
   }
   if (leveled) {
     appendLog(`レベルアップ！ Lv${level}になった（成長タイプ: ${getGrowthTypeName()}）`);
+
+    // ★ レベルアップ後に攻撃力・防御力などを再計算
+    if (typeof recalcStats === "function") {
+      recalcStats();
+    }
   }
   updateDisplay();
 }
