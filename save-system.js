@@ -261,8 +261,14 @@ function applySaveData(data) {
   if (data.weaponCounts)                  weaponCounts    = data.weaponCounts;
   if (data.armorCounts)                   armorCounts     = data.armorCounts;
   if (data.potionCounts)                  potionCounts    = data.potionCounts;
-  if (Array.isArray(data.weaponInstances)) weaponInstances = data.weaponInstances;
-  if (Array.isArray(data.armorInstances))  armorInstances  = data.armorInstances;
+  if (Array.isArray(data.weaponInstances)) {
+  weaponInstances.length = 0;
+  data.weaponInstances.forEach(i => weaponInstances.push(i));
+}
+if (Array.isArray(data.armorInstances)) {
+  armorInstances.length = 0;
+  data.armorInstances.forEach(i => armorInstances.push(i));
+}
 
   if ("equippedWeaponId" in data)         equippedWeaponId    = data.equippedWeaponId;
   if ("equippedArmorId" in data)          equippedArmorId     = data.equippedArmorId;

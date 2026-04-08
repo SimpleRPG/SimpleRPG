@@ -249,26 +249,16 @@ function refreshWarehouseUI() {
         {
           label: "装備",
           onClick: () => {
-            // ★インスタンス方式での装備
-            if (Array.isArray(window.weaponInstances)) {
-              // そのIDの中でとりあえず最初の1本を装備（UIから個別選択するのは別実装）
-              const idx = window.weaponInstances.findIndex(w => w.id === id);
-              if (idx >= 0) {
-                window.equippedWeaponIndex = idx;
-                window.equippedWeaponId    = id;
-                appendLog("武器を装備した");
-                if (typeof recalcStats === "function") {
-                  recalcStats();
-                } else if (typeof updateDisplay === "function") {
-                  updateDisplay();
-                }
-              }
+            // 手持ちから装備：コア側関数に委譲
+            if (typeof equipWeaponFromCarry === "function") {
+              equipWeaponFromCarry(id);
             } else if (typeof equipWeapon === "function") {
-              // 旧仕様フォールバック
-              equippedWeaponId = id;
+              // 旧仕様フォールバック（インスタンスなし版）
+              window.equippedWeaponId = id;
               appendLog("武器を装備した");
               if (typeof updateDisplay === "function") updateDisplay();
             }
+            refreshWarehouseUI();
           }
         },
         {
@@ -295,24 +285,15 @@ function refreshWarehouseUI() {
         {
           label: "装備",
           onClick: () => {
-            if (Array.isArray(window.armorInstances)) {
-              const idx = window.armorInstances.findIndex(a => a.id === id);
-              if (idx >= 0) {
-                window.equippedArmorIndex = idx;
-                window.equippedArmorId    = id;
-                appendLog("防具を装備した");
-                if (typeof recalcStats === "function") {
-                  recalcStats();
-                } else if (typeof updateDisplay === "function") {
-                  updateDisplay();
-                }
-              }
+            if (typeof equipArmorFromCarry === "function") {
+              equipArmorFromCarry(id);
             } else if (typeof equipArmor === "function") {
               // 旧仕様フォールバック
-              equippedArmorId = id;
+              window.equippedArmorId = id;
               appendLog("防具を装備した");
               if (typeof updateDisplay === "function") updateDisplay();
             }
+            refreshWarehouseUI();
           }
         },
         {
@@ -457,22 +438,23 @@ function refreshWarehouseUI() {
         {
           label: "装備",
           onClick: () => {
+            // 倉庫から装備：コア側関数に丸投げ
             if (typeof equipWeaponFromWarehouse === "function") {
               equipWeaponFromWarehouse(id);
-            } else if (Array.isArray(window.weaponInstances)) {
-              // 簡易フォールバック：倉庫側からも代表1本を装備
-              const idx = window.weaponInstances.findIndex(w => w.id === id);
-              if (idx >= 0) {
-                window.equippedWeaponIndex = idx;
-                window.equippedWeaponId    = id;
+            } else {
+              // 旧仕様フォールバック：倉庫→手持ち→装備
+              if (!moveWeaponToCarry(id, 1)) {
+                return;
+              }
+              if (typeof equipWeaponFromCarry === "function") {
+                equipWeaponFromCarry(id);
+              } else if (typeof equipWeapon === "function") {
+                window.equippedWeaponId = id;
                 appendLog("武器を装備した");
-                if (typeof recalcStats === "function") {
-                  recalcStats();
-                } else if (typeof updateDisplay === "function") {
-                  updateDisplay();
-                }
+                if (typeof updateDisplay === "function") updateDisplay();
               }
             }
+            refreshWarehouseUI();
           }
         },
         {
@@ -501,19 +483,20 @@ function refreshWarehouseUI() {
           onClick: () => {
             if (typeof equipArmorFromWarehouse === "function") {
               equipArmorFromWarehouse(id);
-            } else if (Array.isArray(window.armorInstances)) {
-              const idx = window.armorInstances.findIndex(a => a.id === id);
-              if (idx >= 0) {
-                window.equippedArmorIndex = idx;
-                window.equippedArmorId    = id;
+            } else {
+              // 旧仕様フォールバック：倉庫→手持ち→装備
+              if (!moveArmorToCarry(id, 1)) {
+                return;
+              }
+              if (typeof equipArmorFromCarry === "function") {
+                equipArmorFromCarry(id);
+              } else if (typeof equipArmor === "function") {
+                window.equippedArmorId = id;
                 appendLog("防具を装備した");
-                if (typeof recalcStats === "function") {
-                  recalcStats();
-                } else if (typeof updateDisplay === "function") {
-                  updateDisplay();
-                }
+                if (typeof updateDisplay === "function") updateDisplay();
               }
             }
+            refreshWarehouseUI();
           }
         },
         {

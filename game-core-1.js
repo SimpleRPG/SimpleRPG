@@ -100,14 +100,15 @@ let potionCounts = {};
 // location: "warehouse" | "carry" | "equipped"
 let weaponInstances = []; // { id, quality, enhance, durability, location }
 let armorInstances  = [];
+window.weaponInstances = weaponInstances;
+window.armorInstances  = armorInstances;
 
-// 従来の「どのIDを装備しているか」は互換用に残す
-let equippedWeaponId = null;
-let equippedArmorId  = null;
 
 // ★ どのインスタンスを装備しているか（indexで保持）
-let equippedWeaponIndex = null; // weaponInstances の index
-let equippedArmorIndex  = null; // armorInstances の index
+window.equippedWeaponIndex = null;
+window.equippedArmorIndex  = null;
+window.equippedWeaponId    = null;
+window.equippedArmorId     = null;
 
 // =======================
 // 素材・中間素材
@@ -341,8 +342,9 @@ function initWeaponsAndArmors() {
   equippedArmorId  = null;
 
   // ★ インスタンスと装備インデックスも初期化
-  weaponInstances = [];
-  armorInstances  = [];
+  // 参照を切り替えず、中身だけ空にする
+  weaponInstances.length = 0;
+  armorInstances.length  = 0;
   equippedWeaponIndex = null;
   equippedArmorIndex  = null;
 }
@@ -610,7 +612,7 @@ function updateDisplay() {
   let skHunt    = document.getElementById("skGatherHuntLv");
   let skFish    = document.getElementById("skGatherFishLv");
   let skFarm    = document.getElementById("skGatherFarmLv");   // 畑
-  let skGarden  = document.getElementById("skGatherGardenLv"); // 菜園（★要: index.html 側に span 追加）
+  let skGarden  = document.getElementById("skGatherGardenLv"); // 菜園
 
   if (skWood  && gatherSkills.wood)      skWood.textContent    = gatherSkills.wood.lv;
   if (skOre   && gatherSkills.ore)       skOre.textContent     = gatherSkills.ore.lv;
@@ -654,35 +656,56 @@ function equipWeaponFromWarehouse(weaponId) {
   }
   if (!weaponId) return;
 
-  // 倉庫にそのIDのインスタンスがあるか確認
-  const idx = weaponInstances.findIndex(
-    w => w.id === weaponId && (w.location === "warehouse" || !w.location)
-  );
-  if (idx < 0) {
-    appendLog("その武器は倉庫にない！");
-    return;
-  }
-
-  // 旧装備（インスタンス）を倉庫へ戻す
+  // ① 先に旧装備を倉庫へ戻して手持ち枠を空ける
   if (equippedWeaponIndex != null) {
     const oldInst = weaponInstances[equippedWeaponIndex];
     if (oldInst) {
       oldInst.location = "warehouse";
       weaponCounts[oldInst.id] = (weaponCounts[oldInst.id] || 0) + 1;
+      if (typeof window.carryWeapons === "object" && window.carryWeapons) {
+        if (window.carryWeapons[oldInst.id]) {
+          window.carryWeapons[oldInst.id] = Math.max(0, window.carryWeapons[oldInst.id] - 1);
+          if (window.carryWeapons[oldInst.id] <= 0) {
+            delete window.carryWeapons[oldInst.id];
+          }
+        }
+      }
     }
+    equippedWeaponIndex = null;
+    equippedWeaponId    = null;
   } else if (equippedWeaponId) {
-    // 旧仕様互換：IDだけ持っている場合は counts を倉庫に戻す
     weaponCounts[equippedWeaponId] = (weaponCounts[equippedWeaponId] || 0) + 1;
+    equippedWeaponId = null;
   }
 
-  // 新しい武器インスタンスを倉庫→装備へ
+  // ② 倉庫→手持ちへ1本移動（既存の上限チェックロジックを利用）
+  if (typeof moveWeaponToCarry === "function") {
+    const ok = moveWeaponToCarry(weaponId, 1);
+    if (!ok) {
+      return;
+    }
+  }
+
+  // ③ 手持ちになったインスタンスのうち1本を装備インスタンスにする
+  let idx = -1;
+  for (let i = 0; i < weaponInstances.length; i++) {
+    const inst = weaponInstances[i];
+    if (!inst || inst.id !== weaponId) continue;
+    const loc = inst.location || "warehouse";
+    if (loc === "carry") {
+      idx = i;
+      break;
+    }
+  }
+  if (idx < 0) {
+    appendLog("手持ちに装備可能な武器インスタンスが見つからない");
+    return;
+  }
+
   const inst = weaponInstances[idx];
   inst.location = "equipped";
   equippedWeaponIndex = idx;
   equippedWeaponId    = weaponId;
-
-  // 倉庫カウントを減らす
-  weaponCounts[weaponId] = Math.max(0, (weaponCounts[weaponId] || 0) - 1);
 
   appendLog("武器を装備した。");
   recalcStats();
@@ -701,31 +724,56 @@ function equipArmorFromWarehouse(armorId) {
   }
   if (!armorId) return;
 
-  const idx = armorInstances.findIndex(
-    a => a.id === armorId && (a.location === "warehouse" || !a.location)
-  );
-  if (idx < 0) {
-    appendLog("その防具は倉庫にない！");
-    return;
-  }
-
-  // 旧装備を倉庫へ戻す
+  // ① 先に旧装備を倉庫へ戻して手持ち枠を空ける
   if (equippedArmorIndex != null) {
     const oldInst = armorInstances[equippedArmorIndex];
     if (oldInst) {
       oldInst.location = "warehouse";
       armorCounts[oldInst.id] = (armorCounts[oldInst.id] || 0) + 1;
+      if (typeof window.carryArmors === "object" && window.carryArmors) {
+        if (window.carryArmors[oldInst.id]) {
+          window.carryArmors[oldInst.id] = Math.max(0, window.carryArmors[oldInst.id] - 1);
+          if (window.carryArmors[oldInst.id] <= 0) {
+            delete window.carryArmors[oldInst.id];
+          }
+        }
+      }
     }
+    equippedArmorIndex = null;
+    equippedArmorId    = null;
   } else if (equippedArmorId) {
     armorCounts[equippedArmorId] = (armorCounts[equippedArmorId] || 0) + 1;
+    equippedArmorId = null;
+  }
+
+  // ② 倉庫→手持ちへ1枚移動
+  if (typeof moveArmorToCarry === "function") {
+    const ok = moveArmorToCarry(armorId, 1);
+    if (!ok) {
+      return;
+    }
+  }
+
+  // ③ 手持ちになったインスタンスのうち1枚を装備インスタンスにする
+  let idx = -1;
+  for (let i = 0; i < armorInstances.length; i++) {
+    const inst = armorInstances[i];
+    if (!inst || inst.id !== armorId) continue;
+    const loc = inst.location || "warehouse";
+    if (loc === "carry") {
+      idx = i;
+      break;
+    }
+  }
+  if (idx < 0) {
+    appendLog("手持ちに装備可能な防具インスタンスが見つからない");
+    return;
   }
 
   const inst = armorInstances[idx];
   inst.location = "equipped";
   equippedArmorIndex = idx;
   equippedArmorId    = armorId;
-
-  armorCounts[armorId] = Math.max(0, (armorCounts[armorId] || 0) - 1);
 
   appendLog("防具を装備した。");
   recalcStats();

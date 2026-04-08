@@ -75,6 +75,7 @@ function addExp(amount) {
   updateDisplay();
 }
 
+// ★ ペット経験値：プレイヤーと同じ 100 固定＆LvUpでHP再計算
 function addPetExp(amount) {
   if (jobId !== 2) return;
   petExp += amount;
@@ -94,7 +95,13 @@ function addPetExp(amount) {
       petHpBase += 4;
       petAtkBase += 2;
     }
-    petExpToNext = Math.floor(petExpToNext * 1.3);
+
+    // ★ ペット最大HPをベース値から再計算して全回復
+    petHpMax = petHpBase + petRebirthCount * 3;
+    petHp    = petHpMax;
+
+    // ★ 必要経験値はプレイヤーと同じく 100 固定
+    petExpToNext = BASE_EXP_PER_LEVEL;
   }
   if (leveled) {
     appendLog(`ペットのレベルが上がった！ Lv${petLevel}`);
@@ -175,7 +182,8 @@ function doRebirth() {
   // ペットリセット
   petLevel     = 1;
   petExp       = 0;
-  petExpToNext = 5;
+  // ★ ペットの必要経験値も 100 でリセット
+  petExpToNext = BASE_EXP_PER_LEVEL;
   petHpMax     = petHpBase + petRebirthCount * 3;
   petHp        = petHpMax;
 

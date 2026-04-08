@@ -439,6 +439,7 @@ function consumeMaterials(cost){
 }
 
 function craftWeapon(){
+  console.log("craftWeapon from game-core-6.js");
   const sel = document.getElementById("weaponSelect");
   if(!sel || !sel.value) return;
 

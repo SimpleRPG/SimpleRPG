@@ -1230,3 +1230,43 @@ const POTIONS_INIT = [
     rate: 0.7
   }
 ];
+// ★ここから追加（ファイル末尾あたりに置く）
+// インスタンス配列の初期化と location デフォルト付け
+
+window.weaponInstances = window.weaponInstances || [];
+window.armorInstances  = window.armorInstances  || [];
+
+// まだインスタンスが無い初回起動時は、マスタから「倉庫在庫0・location=warehouse」で作っておく。
+// （クラフトで作られた分は addItemToInventory が location: "warehouse" 付きで push 済みなので触らない）
+if (weaponInstances.length === 0 && Array.isArray(WEAPONS_INIT)) {
+  WEAPONS_INIT.forEach(w => {
+    weaponInstances.push({
+      id: w.id,
+      quality: 0,
+      enhance: w.enhance || 0,
+      durability: w.durability || BASE_DURABILITY,
+      location: "warehouse"
+    });
+  });
+}
+
+if (armorInstances.length === 0 && Array.isArray(ARMORS_INIT)) {
+  ARMORS_INIT.forEach(a => {
+    armorInstances.push({
+      id: a.id,
+      quality: 0,
+      enhance: a.enhance || 0,
+      durability: a.durability || BASE_DURABILITY,
+      location: "warehouse"
+    });
+  });
+}
+
+// 既存セーブ互換用: location が未定義の既存インスタンスには倉庫扱いを与える
+weaponInstances.forEach(inst => {
+  if (!inst.location) inst.location = "warehouse";
+});
+armorInstances.forEach(inst => {
+  if (!inst.location) inst.location = "warehouse";
+});
+// ★ここまで追加
