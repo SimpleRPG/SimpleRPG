@@ -5,7 +5,7 @@
 //   money, hp, hpMax, mp, mpMax,
 //   potions, potionCounts,
 //   cookedFoods, cookedDrinks,
-//   toolCounts, materials,
+//   toolCounts, materials, cookingMats,
 //   restoreHungerThirst(addHunger, addThirst),
 //   updateDisplay(), appendLog()
 // が定義済み。
@@ -23,10 +23,10 @@ const shopData = {
     { id: "bomb_shop",     potionId: null,       name: "爆弾",             price: 100, desc: "敵にダメージを与える攻撃アイテム（道具）。" }
   ],
   service: [
-    { id: "inn_hp",   name: "宿屋で休む(HP)",      price: 80,  desc: "HPを全回復します。",             type: "service", kind: "innHP" },
-    { id: "inn_full", name: "宿屋で休む(HP/MP)",   price: 120, desc: "HPとMPを全回復します。",         type: "service", kind: "innFull" },
+    { id: "inn_hp",   name: "宿屋で休む(HP)",      price: 500,  desc: "HPを全回復します。",             type: "service", kind: "innHP" },
+    { id: "inn_full", name: "宿屋で休む(HP/MP)",   price: 800, desc: "HPとMPを全回復します。",         type: "service", kind: "innFull" },
     // ★追加: 定食
-    { id: "setmeal",  name: "定食を食べる",        price: 50,  desc: "空腹と水分が少し回復する定食。", type: "service", kind: "meal" }
+    { id: "setmeal",  name: "定食を食べる",        price: 100,  desc: "空腹と水分が少し回復する定食。", type: "service", kind: "meal" }
   ]
 };
 
@@ -49,7 +49,7 @@ function updateShopGoldDisplay() {
 // 売値計算：価値の半分（切り上げ）
 function getSellPriceFromValue(value) {
   const v = typeof value === "number" ? value : 0;
-  return Math.max(0, Math.ceil(v / 2)); // Math.ceil で切り上げ[web:164]
+  return Math.max(0, Math.ceil(v / 2));
 }
 
 // ポーションマスタから価値を取る前提（なければ price を流用）
@@ -99,13 +99,30 @@ function getToolSellPrice(toolId) {
 }
 
 // 通常素材（materials: { wood:{t1,t2,t3}, ... }）の売値
-// T1/T2/T3 の価値は暫定で 10/30/90 とする（必要ならマスタ化してOK）
+// T1/T2/T3 の価値は market-core の MATERIAL_TIER_VALUES に合わせて 3/5/10G 相当（売値はその半額）とする。
 function getMaterialSellPrice(baseKey, tier) {
   let base = 0;
-  if (tier === "t1") base = 10;
-  else if (tier === "t2") base = 30;
-  else if (tier === "t3") base = 90;
+  if (tier === "t1") base = 3;
+  else if (tier === "t2") base = 5;
+  else if (tier === "t3") base = 10;
   return getSellPriceFromValue(base);
+}
+
+// 料理素材（cookingMats）の売値
+// market-core.js の COOKING_INGREDIENT_BASE_VALUE = 10 に合わせて、価値10G → 売値5G。
+function getCookingMatSellPrice(matId) {
+  const base = (typeof COOKING_INGREDIENT_BASE_VALUE === "number")
+    ? COOKING_INGREDIENT_BASE_VALUE
+    : 10;
+  return getSellPriceFromValue(base);
+}
+
+// 料理素材の名前（COOKING_MAT_NAMES を想定）
+function getCookingMatName(matId) {
+  if (typeof COOKING_MAT_NAMES === "object" && COOKING_MAT_NAMES !== null) {
+    if (COOKING_MAT_NAMES[matId]) return COOKING_MAT_NAMES[matId];
+  }
+  return matId;
 }
 
 // =======================
@@ -235,6 +252,24 @@ function buildSellableList() {
     });
   }
 
+  // ★追加: 料理素材（cookingMats）
+  if (typeof cookingMats === "object") {
+    Object.keys(cookingMats).forEach(id => {
+      const cnt = cookingMats[id] || 0;
+      if (cnt <= 0) return;
+      const name = getCookingMatName(id);
+      const price = getCookingMatSellPrice(id);
+      if (price <= 0) return;
+      list.push({
+        kind: "cookingMat",
+        id,
+        name,
+        count: cnt,
+        price
+      });
+    });
+  }
+
   return list;
 }
 
@@ -286,6 +321,15 @@ function sellOneItem(entry) {
         const info = materials[entry.baseKey];
         if (info && info[entry.tier] > 0) {
           info[entry.tier] -= 1;
+          success = true;
+        }
+      }
+      break;
+    case "cookingMat":
+      if (typeof cookingMats === "object") {
+        const have = cookingMats[entry.id] || 0;
+        if (have > 0) {
+          cookingMats[entry.id] = have - 1;
           success = true;
         }
       }
@@ -386,7 +430,7 @@ function selectShopItem(item) {
 
   if (nameEl)  nameEl.textContent = item.name;
   if (descEl)  descEl.textContent = item.desc;
-  if (priceEl) priceEl.textContent = `価格: ${item.price}G`;
+  if (priceEl)  priceEl.textContent = `価格: ${item.price}G`;
 
   if (buyBtn) {
     buyBtn.disabled = false;
@@ -438,7 +482,7 @@ function buyShopItem(item) {
     } else if (item.kind === "meal") {
       // ★定食: 空腹＆水分 +30 回復
       if (typeof restoreHungerThirst === "function") {
-        restoreHungerThirst(30, 30); // 空腹+30, 水分+30[web:170][web:172]
+        restoreHungerThirst(30, 30);
       }
       appendLog("定食を食べ、お腹も喉も少し満たされた。");
     }

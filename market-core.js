@@ -13,7 +13,7 @@ const MATERIAL_TIER_VALUES = {
 };
 
 // 料理素材（レシピに使う素材）は一律 10G 相当
-const COOKING_INGREDIENT_BASE_VALUE = 10;
+const COOKING_INGREDIENT_BASE_VALUE = 5;
 
 // NPC商人名リスト
 const NPC_MERCHANT_NAMES = [
