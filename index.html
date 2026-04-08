@@ -684,7 +684,12 @@
 
               <h3 class="pet-only">ペットステータス（動物使いのみ）</h3>
               <div class="status-block pet-only">
-                ペット名: <span id="stPetName">ペット</span><br>
+                <div id="petNameRow" style="display:inline-flex; align-items:center; gap:4px;">
+                  ペット名: <span id="stPetName">ペット</span>
+                  <button id="renamePetBtn" style="font-size:11px; padding:1px 6px;">
+                    ペット名を変更
+                  </button>
+                </div><br>
                 ペットLv: <span id="stPetLevel">1</span><br>
                 ペット経験値: <span id="stPetExp">0</span> / <span id="stPetExpToNext">5</span><br>
                 ペット転生回数: <span id="stPetRebirthCount">0</span><br>
@@ -694,9 +699,6 @@
                 ペット攻撃力(素): <span id="stPetAtkBase">4</span><br>
                 ペット攻撃力(現在): <span id="stPetAtkNow">4</span><br>
                 ペット防御力: <span id="stPetDef">2</span><br>
-                <button id="renamePetBtn" style="margin-top:4px; font-size:11px; padding:1px 6px;">
-                  ペット名を変更
-                </button>
               </div>
 
               <div class="status-block">
