@@ -78,7 +78,7 @@ let petSkills = [];
 let PET_SKILL_TRY_RATE = 0.3;
 
 // お金
-let money = 0;
+let money = 50;
 
 // 星屑など汎用アイテムカウント
 window.itemCounts = window.itemCounts || {};
