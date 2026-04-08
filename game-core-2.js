@@ -55,6 +55,7 @@ function addExp(amount) {
     leveled = true;
 
     // ★ ベース成長: HP 最大値をレベルに応じて決定
+    //   → hpMaxBase は転生ボーナス用の基礎値、実際のレベル反映は recalcHpMaxByLevel に一本化
     hpMax = recalcHpMaxByLevel();
     hp    = hpMax;
     mp    = mpMax;
@@ -66,13 +67,13 @@ function addExp(amount) {
       applyLevelUpGrowth();
     }
 
-       // ★ 必要経験値をレベルアップごとに再設定
+    // ★ 必要経験値をレベルアップごとに再設定
     expToNext = BASE_EXP_PER_LEVEL;
   }
   if (leveled) {
     appendLog(`レベルアップ！ Lv${level}になった（成長タイプ: ${getGrowthTypeName()}）`);
 
-    // ★ レベルアップ後に攻撃力・防御力などを再計算
+    // ★ レベルアップ後に攻撃力・防御力・最大HPなどを再計算
     if (typeof recalcStats === "function") {
       recalcStats();
     }
