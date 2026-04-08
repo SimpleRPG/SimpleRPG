@@ -416,9 +416,12 @@ window.addEventListener("DOMContentLoaded", () => {
 
     // ギルドタブ
     if (pageId === "pageGuild") {
-      // とりあえずタブ切り替えだけ（中身の描画は guild.js 側に任せる）
       if (typeof renderGuildUI === "function") {
         renderGuildUI();
+      }
+      // ギルド内サブタブ初期表示（仕様は変えず、「一覧」開始とみなす）
+      if (typeof setGuildSubPage === "function") {
+        setGuildSubPage("list");
       }
     }
 
@@ -516,6 +519,53 @@ window.addEventListener("DOMContentLoaded", () => {
       setMagicSubPage(key);
     });
   });
+
+  // =======================
+  // ギルド内サブタブ
+  // =======================
+
+  const guildTabList   = document.getElementById("guildTabList");
+  const guildTabQuest  = document.getElementById("guildTabQuest");
+  const guildTabReward = document.getElementById("guildTabReward");
+
+  const guildPageList   = document.getElementById("guildPageList");
+  const guildPageQuest  = document.getElementById("guildPageQuest");
+  const guildPageReward = document.getElementById("guildPageReward");
+
+  function setGuildSubPage(kind) {
+    if (!guildPageList || !guildPageQuest || !guildPageReward) return;
+
+    // ボタンの active 切り替え
+    const mapping = {
+      list:   guildTabList,
+      quest:  guildTabQuest,
+      reward: guildTabReward
+    };
+    [guildTabList, guildTabQuest, guildTabReward].forEach(btn => {
+      if (!btn) return;
+      btn.classList.toggle("active", btn === mapping[kind]);
+    });
+
+    // ページ表示切り替え
+    guildPageList.style.display   = (kind === "list")   ? "" : "none";
+    guildPageQuest.style.display  = (kind === "quest")  ? "" : "none";
+    guildPageReward.style.display = (kind === "reward") ? "" : "none";
+
+    // 中身の再描画（仕様は guild.js にある renderX を呼ぶだけ）
+    if (kind === "list") {
+      if (typeof renderGuildList === "function") renderGuildList();
+    } else if (kind === "quest") {
+      if (typeof renderGuildQuests === "function") renderGuildQuests();
+    } else if (kind === "reward") {
+      if (typeof renderGuildRewards === "function") renderGuildRewards();
+    }
+  }
+
+  if (guildTabList && guildTabQuest && guildTabReward) {
+    guildTabList.addEventListener("click", () => setGuildSubPage("list"));
+    guildTabQuest.addEventListener("click", () => setGuildSubPage("quest"));
+    guildTabReward.addEventListener("click", () => setGuildSubPage("reward"));
+  }
 
   // =======================
   // 市場タブ・ボタン

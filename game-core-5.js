@@ -256,12 +256,12 @@ function tryFindBossOnExplore() {
 // =======================
 
 function handleRetreatProgress() {
-  if (!window.isRetreating) return;
+  if (!window.isRetreating) return false;
 
   window.retreatTurnsLeft--;
   if (window.retreatTurnsLeft > 0) {
     appendLog(`出口へ向かって撤退中… 残り${window.retreatTurnsLeft}ターン。`);
-    return;
+    return false;
   }
 
   // 帰還確定
@@ -282,6 +282,8 @@ function handleRetreatProgress() {
   if (typeof updateDisplay === "function") {
     updateDisplay();
   }
+
+  return true;
 }
 
 // =======================
@@ -303,6 +305,11 @@ function doExploreEvent(area) {
   window.exploringArea = area;
   window.isExploring = true;
 
+  // 撤退進行を先に処理し、このターンで街に着いたら以降の処理を行わない
+  if (handleRetreatProgress()) {
+    return;
+  }
+
   tryFindBossOnExplore();
 
   const roll = Math.random();
@@ -310,14 +317,12 @@ function doExploreEvent(area) {
   if (roll < 0.2) {
     appendLog("何も見つからなかった…");
     updateReturnTownButton();
-    handleRetreatProgress();
     return;
   }
 
   if (roll < 0.4) {
     doExploreRandomEvent(area);
     updateReturnTownButton();
-    handleRetreatProgress();
     return;
   }
 
@@ -325,14 +330,12 @@ function doExploreEvent(area) {
   if (!enemyId) {
     appendLog("敵データが見つからない");
     updateReturnTownButton();
-    handleRetreatProgress();
     return;
   }
   const enemy = createEnemyInstance(enemyId, false);
   if (!enemy) {
     appendLog("敵データの取得に失敗しました");
     updateReturnTownButton();
-    handleRetreatProgress();
     return;
   }
 
@@ -351,8 +354,7 @@ function doExploreEvent(area) {
     false
   );
 
-  // 戦闘が起きても撤退状態は継続
-  handleRetreatProgress();
+  updateReturnTownButton();
 }
 
 function doExploreRandomEvent(area) {
@@ -368,6 +370,10 @@ function doExploreRandomEvent(area) {
     if (hp <= 0) {
       hp = 0;
       appendLog("あなたは罠で倒れてしまった…");
+
+      // 撤退状態は死亡でリセット
+      window.isRetreating     = false;
+      window.retreatTurnsLeft = 0;
 
       window.isExploring   = false;
       window.exploringArea = "field";
@@ -387,7 +393,8 @@ function doExploreRandomEvent(area) {
           const idx = equippedWeaponIndex;
           const inst = window.weaponInstances[idx];
           if (inst) {
-            inst.durability = Math.max(0, (inst.durability ?? MAX_DURABILITY) - 1);
+            const MAX_DURABILITY_LOCAL = typeof MAX_DURABILITY === "number" ? MAX_DURABILITY : 10;
+            inst.durability = Math.max(0, (inst.durability ?? MAX_DURABILITY_LOCAL) - 1);
             if (inst.durability <= 0) {
               const wName = (weapons.find(w => w.id === inst.id)?.name) || inst.id;
               appendLog(`${wName} は壊れて消滅した…`);
@@ -408,7 +415,8 @@ function doExploreRandomEvent(area) {
           const idx = equippedArmorIndex;
           const inst = window.armorInstances[idx];
           if (inst) {
-            inst.durability = Math.max(0, (inst.durability ?? MAX_DURABILITY) - 1);
+            const MAX_DURABILITY_LOCAL = typeof MAX_DURABILITY === "number" ? MAX_DURABILITY : 10;
+            inst.durability = Math.max(0, (inst.durability ?? MAX_DURABILITY_LOCAL) - 1);
             if (inst.durability <= 0) {
               const aName = (armors.find(a => a.id === inst.id)?.name) || inst.id;
               appendLog(`${aName} は壊れて消滅した…`);
@@ -1385,7 +1393,7 @@ function tryUpgradeGatherBase(matKey) {
       const haveStar = intermediateMats["starShard"] || 0;
       lines.push(`- starShard: 必要 ${needStar} 個 / 所持 ${haveStar} 個`);
     }
-    appendLog(lines.join("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n"));
+    appendLog(lines.join("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n"));
   })();
 
   for (const iid in needInter) {

@@ -749,7 +749,8 @@
 
               <!-- タブ切り替え -->
               <div id="guildTabs" style="margin-bottom:8px;">
-                <button class="guildTabBtn" data-guild-tab="list">ギルド一覧</button>
+                <!-- 仕様どおり class と data 属性はそのまま、初期選択だけ class="active" 付与 -->
+                <button class="guildTabBtn active" data-guild-tab="list">ギルド一覧</button>
                 <button class="guildTabBtn" data-guild-tab="quests">依頼</button>
                 <button class="guildTabBtn" data-guild-tab="rewards">報酬・称号</button>
               </div>
@@ -757,7 +758,7 @@
               <!-- タブ本体 -->
               <div id="guildTabContents">
                 <!-- ギルド一覧タブ -->
-                <div id="guildTab_list" class="guildTabPane">
+                <div id="guildTab_list" class="guildTabPane" style="">
                   <h3>ギルド一覧</h3>
                   <div id="guildListContainer">
                     <!-- guild.js / game-ui 側でギルド候補リストを追加する -->
@@ -881,6 +882,35 @@
           }
         });
       }
+
+      // ★ ギルド内タブ切り替え（仕様はそのまま、中身の表示を切り替えるだけ）
+      const guildTabButtons = document.querySelectorAll(".guildTabBtn");
+      const guildPaneList   = document.getElementById("guildTab_list");
+      const guildPaneQuests = document.getElementById("guildTab_quests");
+      const guildPaneRewards= document.getElementById("guildTab_rewards");
+
+      function setGuildTab(tab) {
+        if (!guildPaneList || !guildPaneQuests || !guildPaneRewards) return;
+
+        guildTabButtons.forEach(btn => {
+          const t = btn.dataset.guildTab;
+          btn.classList.toggle("active", t === tab);
+        });
+
+        guildPaneList.style.display    = (tab === "list")   ? "" : "none";
+        guildPaneQuests.style.display  = (tab === "quests") ? "" : "none";
+        guildPaneRewards.style.display = (tab === "rewards")? "" : "none";
+      }
+
+      guildTabButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+          const t = btn.dataset.guildTab || "list";
+          setGuildTab(t);
+        });
+      });
+
+      // 初期状態は「ギルド一覧」タブを表示
+      setGuildTab("list");
     });
   </script>
 </body>

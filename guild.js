@@ -14,6 +14,12 @@ window.playerGuildId = window.playerGuildId || null;
 // 例: { warrior: 10, mage: 0, ... }
 window.guildFame = window.guildFame || {};
 
+// ギルド依頼進行（戦闘コア側でも使う）
+// 例:
+//  warrior_kill_30_phys: { count: 12, done: false, rewardTaken: false }
+//  battle_boss_1:        { count: 1,  done: true,  rewardTaken: true  }
+window.guildQuestProgress = window.guildQuestProgress || {};
+
 // ギルドごとの名声ランク定義
 // 名声がこの値以上でランク到達、の境界
 const GUILD_RANK_THRESHOLDS = [
@@ -179,7 +185,7 @@ function getNextRankInfo(fame) {
   return null;
 }
 
-// 名声加算（今は内部用・将来クエスト達成時に使う）
+// 名声加算（今は内部用・クエスト達成時に使う）
 function addGuildFame(guildId, amount) {
   if (!GUILDS[guildId]) return;
   const prev = getGuildFame(guildId);
@@ -341,66 +347,60 @@ function renderGuildList() {
 }
 
 // =======================
-// UI: 依頼タブ（シンプルなダミー）
+// UI: 依頼タブ
 // =======================
 
 // ひとまずギルドごとに簡易依頼を定義
 const GUILD_QUESTS = {
   warrior: [
     {
-      id: "warrior_kill_slimes",
-      name: "スライム討伐任務",
-      desc: "フィールドでスライムを10体倒す。",
-      fameReward: 5,
-      hint: "序盤フィールドで自然と達成できる想定。"
-    },
-    {
-      id: "warrior_kill_boss",
-      name: "ボス討伐推薦試験",
-      desc: "任意のボスを1体倒す。",
-      fameReward: 15,
-      hint: "ボス挑戦を促す導線。"
-    },
-    {
-      id: "warrior_damage_task",
-      name: "物理攻撃の熟練",
-      desc: "物理攻撃でトドメを20回刺す。",
+      id: "warrior_kill_30_phys",
+      name: "A依頼: 物理撃破訓練",
+      desc: "物理攻撃で敵を30体倒す。",
       fameReward: 10,
-      hint: "通常戦闘を続けると自然に達成。"
+      hint: "通常攻撃や物理スキルでトドメを刺すとカウントされる。"
+    },
+    {
+      id: "battle_boss_1",
+      name: "B依頼: ボス討伐試験",
+      desc: "いずれかのエリアボスを1体倒す。",
+      fameReward: 15,
+      hint: "草原・森・洞窟など、どのボスでも1体倒せば達成。"
     }
   ],
   mage: [
     {
-      id: "mage_cast_magic",
-      name: "魔法行使訓練",
-      desc: "魔法で敵を20体倒す。",
+      id: "mage_kill_30_magic",
+      name: "A依頼: 魔法撃破訓練",
+      desc: "魔法で敵を30体倒す。",
       fameReward: 10,
-      hint: "魔法運用のチュートリアル的役割。"
+      hint: "ファイアボルトやアイスランスなどでトドメを刺すとカウントされる。"
     },
     {
-      id: "mage_mp_control",
-      name: "魔力制御の試験",
-      desc: "MP満タン状態から戦闘を5回開始する。",
-      fameReward: 5,
-      hint: "宿屋利用やポーション使用を促す。"
+      id: "battle_boss_1",
+      name: "B依頼: ボス討伐試験",
+      desc: "いずれかのエリアボスを1体倒す。",
+      fameReward: 15,
+      hint: "草原・森・洞窟など、どのボスでも1体倒せば達成。"
     }
   ],
   tamer: [
     {
-      id: "tamer_with_pet",
-      name: "ペットとの共闘",
-      desc: "ペットと一緒に敵を30体倒す。",
+      id: "tamer_kill_30_pet",
+      name: "A依頼: ペット撃破訓練",
+      desc: "ペットで敵を30体倒す。",
       fameReward: 10,
-      hint: "ペット運用の導線。"
+      hint: "ペットの攻撃やスキルでトドメを刺すとカウントされる。"
     },
     {
-      id: "tamer_rebirth",
-      name: "ペット転生の研究",
-      desc: "ペットを1回転生させる。",
-      fameReward: 20,
-      hint: "長期目標。"
+      id: "battle_boss_1",
+      name: "B依頼: ボス討伐試験",
+      desc: "いずれかのエリアボスを1体倒す。",
+      fameReward: 15,
+      hint: "草原・森・洞窟など、どのボスでも1体倒せば達成。"
     }
   ],
+  // 以下のクラフト／採取ギルドは現状プレースホルダのまま
   smith: [
     {
       id: "smith_craft_weapon",
@@ -483,10 +483,66 @@ const GUILD_QUESTS = {
   ]
 };
 
-// 依頼の進行状況（ひとまず保存だけしておく）
-window.guildQuestProgress = window.guildQuestProgress || {};
+// 進捗オブジェクトの形をそろえる
+function getGuildQuestProg(id) {
+  const raw = window.guildQuestProgress[id] || {};
 
-// この段階では「内容一覧を表示するだけ」に留めて、進行更新は今後の拡張で
+  // A依頼 / B依頼
+  if (id === "warrior_kill_30_phys" ||
+      id === "mage_kill_30_magic"   ||
+      id === "tamer_kill_30_pet"    ||
+      id === "battle_boss_1") {
+    return {
+      count: raw.count || 0,
+      done: !!raw.done,
+      rewardTaken: !!raw.rewardTaken
+    };
+  }
+
+  // それ以外は従来どおり
+  return {
+    done: !!raw.done,
+    note: raw.note || "",
+    rewardTaken: !!raw.rewardTaken
+  };
+}
+
+// 名声報酬受取処理（依頼タブから呼ぶ）
+function claimGuildQuestReward(guildId, questDef) {
+  if (!guildId || !questDef) return;
+  const id = questDef.id;
+  const prog = getGuildQuestProg(id);
+
+  if (!prog.done) {
+    if (typeof appendLog === "function") {
+      appendLog("まだ依頼の条件を満たしていない。");
+    }
+    return;
+  }
+  if (prog.rewardTaken) {
+    if (typeof appendLog === "function") {
+      appendLog("この依頼の報酬はすでに受け取っている。");
+    }
+    return;
+  }
+
+  // 名声付与
+  addGuildFame(guildId, questDef.fameReward);
+
+  // フラグ更新
+  const stored = window.guildQuestProgress[id] || {};
+  stored.rewardTaken = true;
+  window.guildQuestProgress[id] = stored;
+
+  if (typeof appendLog === "function") {
+    appendLog(`${GUILDS[guildId].name} の依頼「${questDef.name}」を達成し、名声を${questDef.fameReward}獲得した！`);
+  }
+
+  renderGuildQuests();
+}
+
+// この段階では A/B 以外は「内容一覧＋簡易報酬ボタン」に留める
+
 function renderGuildQuests() {
   const listEl = document.getElementById("guildQuestList");
   if (!listEl) return;
@@ -540,12 +596,59 @@ function renderGuildQuests() {
       box.appendChild(hint);
     }
 
-    const prog = window.guildQuestProgress[q.id] || { done: false, note: "" };
+    const prog = getGuildQuestProg(q.id);
+
     const status = document.createElement("div");
     status.style.fontSize = "11px";
     status.style.marginTop = "2px";
-    status.textContent = prog.done ? "状態: 完了" : "状態: 進行中（システム実装予定）";
+
+    // A/B 依頼は count / done を表示
+    if (q.id === "warrior_kill_30_phys") {
+      status.textContent = prog.done
+        ? `状態: 完了（物理撃破 ${prog.count}/30）`
+        : `状態: 進行中（物理撃破 ${prog.count}/30）`;
+    } else if (q.id === "mage_kill_30_magic") {
+      status.textContent = prog.done
+        ? `状態: 完了（魔法撃破 ${prog.count}/30）`
+        : `状態: 進行中（魔法撃破 ${prog.count}/30）`;
+    } else if (q.id === "tamer_kill_30_pet") {
+      status.textContent = prog.done
+        ? `状態: 完了（ペット撃破 ${prog.count}/30）`
+        : `状態: 進行中（ペット撃破 ${prog.count}/30）`;
+    } else if (q.id === "battle_boss_1") {
+      status.textContent = prog.done
+        ? `状態: 完了（ボス討伐 ${prog.count}/1）`
+        : `状態: 進行中（ボス討伐 ${prog.count}/1）`;
+    } else {
+      status.textContent = prog.done
+        ? "状態: 完了"
+        : "状態: 進行中（システム実装予定）";
+    }
     box.appendChild(status);
+
+    // 報酬ボタン
+    const btnRow = document.createElement("div");
+    btnRow.style.marginTop = "4px";
+
+    const rewardBtn = document.createElement("button");
+    rewardBtn.style.fontSize = "11px";
+
+    if (prog.rewardTaken) {
+      rewardBtn.textContent = "報酬受取済み";
+      rewardBtn.disabled = true;
+    } else if (!prog.done) {
+      rewardBtn.textContent = "未達成";
+      rewardBtn.disabled = true;
+    } else {
+      rewardBtn.textContent = "報酬を受け取る";
+      rewardBtn.disabled = false;
+      rewardBtn.addEventListener("click", () => {
+        claimGuildQuestReward(guildId, q);
+      });
+    }
+
+    btnRow.appendChild(rewardBtn);
+    box.appendChild(btnRow);
 
     listEl.appendChild(box);
   });
