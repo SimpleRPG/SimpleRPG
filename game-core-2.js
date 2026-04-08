@@ -81,6 +81,31 @@ function addExp(amount) {
   updateDisplay();
 }
 
+// =======================
+// ペット関連
+// =======================
+
+// ペットの名前変更
+function renamePet(newName) {
+  const trimmed = (newName || "").trim();
+  if (!trimmed) {
+    appendLog("名前が空です。");
+    return;
+  }
+  const oldName = petName;
+  petName = trimmed;
+  appendLog(`ペットの名前を「${oldName}」から「${petName}」に変更した。`);
+  updateDisplay();
+}
+
+// プロンプト付きの簡易UI（必要な場合にボタン等から呼ぶ）
+function promptRenamePet() {
+  const newName = window.prompt("ペットの新しい名前を入力してください", petName);
+  if (newName != null) {
+    renamePet(newName);
+  }
+}
+
 // ★ ペット経験値：プレイヤーと同じ 100 固定＆LvUpでHP再計算
 function addPetExp(amount) {
   if (jobId !== 2) return;
@@ -110,7 +135,7 @@ function addPetExp(amount) {
     petExpToNext = BASE_EXP_PER_LEVEL;
   }
   if (leveled) {
-    appendLog(`ペットのレベルが上がった！ Lv${petLevel}`);
+    appendLog(`${petName}のレベルが上がった！ Lv${petLevel}`);
   }
   updateDisplay();
 }

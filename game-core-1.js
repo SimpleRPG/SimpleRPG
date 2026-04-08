@@ -60,9 +60,13 @@ let petRebirthCount = 0;
 
 let petHpBase = 10;
 let petAtkBase = 4;
+let petDefBase = 2; // ★追加: ペット基礎防御
 
 let petHpMax = 10;
 let petHp = 10;
+
+// ★ ペット名
+let petName = "ペット";
 
 // ペット攻撃倍率（スキルバフで変動）
 let petBuffRate = 1.0;
@@ -269,7 +273,7 @@ function recalcStats() {
   let WEAPON_ENH_RATE   = 0.05;
   let ARMOR_ENH_RATE    = 0.05;
 
-  // 品質補正（良品10% / 傑作20%）※クラフト側の QUALITY_RATE と整合
+  // 品質補正（良品10% / 傑作20%）
   let QUALITY_GOOD_RATE = 0.10; // quality=1
   let QUALITY_EX_RATE   = 0.20; // quality=2
 
@@ -284,7 +288,6 @@ function recalcStats() {
   if (armorQuality === 1) armorQualityRate += QUALITY_GOOD_RATE;
   else if (armorQuality === 2) armorQualityRate += QUALITY_EX_RATE;
 
-  // 強化→品質の順で乗算（掛け算なので順序は見た目上は同じ）
   let enhancedWeaponAtk = Math.floor(weaponAtk * weaponEnhRate * weaponQualityRate);
   let enhancedArmorDef  = Math.floor(armorDef * armorEnhRate  * armorQualityRate);
 
@@ -300,8 +303,6 @@ function recalcStats() {
   let defFromArmorVit = Math.floor(VIT * armorScaleVit);
 
   // ===== 空腹・水分デバフ反映 =====
-  // （game-core-2.js で定義されている係数を前提）
-
   if (typeof hungerAtkIntRate === "number") {
     atkFromStr       = Math.floor(atkFromStr       * hungerAtkIntRate);
     atkFromWeaponStr = Math.floor(atkFromWeaponStr * hungerAtkIntRate);
@@ -333,7 +334,6 @@ function recalcStats() {
   if (mp > mpMax) mp = mpMax;
   if (sp > spMax) sp = spMax;
 
-  // ===== 最終 ATK / DEF 再計算 =====
   atkTotal =
     baseAtk +
     enhancedWeaponAtk +
@@ -374,8 +374,6 @@ function initWeaponsAndArmors() {
   equippedWeaponId = null;
   equippedArmorId  = null;
 
-  // ★ インスタンスと装備インデックスも初期化
-  // 参照を切り替えず、中身だけ空にする
   weaponInstances.length = 0;
   armorInstances.length  = 0;
   equippedWeaponIndex = null;
@@ -383,7 +381,6 @@ function initWeaponsAndArmors() {
 }
 
 function initIntermediateMats() {
-  // window とローカル両方をクリアして同期させる
   window.intermediateMats = {};
   intermediateMats = window.intermediateMats;
 
@@ -441,10 +438,8 @@ function appendLog(msg) {
 // 素材表示ヘルパー
 // =======================
 
-// ★ UI に統一したので、ここでは何もしないダミー関数にしておく
 function updateMaterialDetailTexts() {
-  // 何もしない（従来の UI 更新は game-ui.js の
-  // updateGatherMatDetailText / updateCraftMatDetailText に委譲）
+  // 何もしない（従来の UI 更新は game-ui.js 側に委譲）
 }
 
 // =======================
@@ -530,16 +525,13 @@ function updateDisplay() {
 
   if (jobNameEl) jobNameEl.textContent = getJobName();
 
-  // ★ 装備名表示もインスタンス優先（見た目仕様は従来どおり）
   if (eqWpnName) {
     let nameText = "なし";
     if (equippedWeaponIndex != null) {
       let inst = weaponInstances[equippedWeaponIndex];
       if (inst) {
         let w = weapons.find(x => x.id === inst.id);
-        if (w) {
-          nameText = w.name;
-        }
+        if (w) nameText = w.name;
       }
     } else if (equippedWeaponId) {
       let w = weapons.find(x => x.id === equippedWeaponId);
@@ -554,9 +546,7 @@ function updateDisplay() {
       let inst = armorInstances[equippedArmorIndex];
       if (inst) {
         let a = armors.find(x => x.id === inst.id);
-        if (a) {
-          nameText = a.name;
-        }
+        if (a) nameText = a.name;
       }
     } else if (equippedArmorId) {
       let a = armors.find(x => x.id === equippedArmorId);
@@ -582,13 +572,14 @@ function updateDisplay() {
   if (petHpEl)    petHpEl.textContent    = petHp;
   if (petHpMaxEl) petHpMaxEl.textContent = petHpMax;
 
-  // ★ 上部簡易ステータスバー用 ペットLv/HP 表示（存在する場合のみ）
+  // 上部簡易ステータスバー用 ペットLv/HP 表示
   let headerPetLevelEl = document.getElementById("headerPetLevel");
   let headerPetHpEl    = document.getElementById("headerPetHp");
   if (headerPetLevelEl) headerPetLevelEl.textContent = petLevel;
   if (headerPetHpEl)    headerPetHpEl.textContent    = `${petHp} / ${petHpMax}`;
 
   // ペット用ステータスページ
+  let stPetName  = document.getElementById("stPetName");
   let stPetLevel = document.getElementById("stPetLevel");
   let stPetExp   = document.getElementById("stPetExp");
   let stPetExpTo = document.getElementById("stPetExpToNext");
@@ -596,7 +587,11 @@ function updateDisplay() {
   let stPetGrow  = document.getElementById("stPetGrowthType");
   let stPetHp    = document.getElementById("stPetHp");
   let stPetHpM   = document.getElementById("stPetHpMax");
+  let stPetAtkBaseEl = document.getElementById("stPetAtkBase");
+  let stPetAtkNowEl  = document.getElementById("stPetAtkNow");
+  let stPetDefEl     = document.getElementById("stPetDef");
 
+  if (stPetName)  stPetName.textContent  = petName;
   if (stPetLevel) stPetLevel.textContent = petLevel;
   if (stPetExp)   stPetExp.textContent   = petExp;
   if (stPetExpTo) stPetExpTo.textContent = petExpToNext;
@@ -609,6 +604,18 @@ function updateDisplay() {
   }
   if (stPetHp)  stPetHp.textContent  = petHp;
   if (stPetHpM) stPetHpM.textContent = petHpMax;
+
+  // ペット攻撃力・防御力表示（skill-core.js のヘルパーを利用）
+  if (typeof getPetBaseAtk === "function") {
+    const baseAtk = getPetBaseAtk();
+    const nowAtk  = Math.floor(baseAtk * petBuffRate);
+    if (stPetAtkBaseEl) stPetAtkBaseEl.textContent = baseAtk;
+    if (stPetAtkNowEl)  stPetAtkNowEl.textContent  = nowAtk;
+  }
+  if (typeof getPetDef === "function") {
+    const defVal = getPetDef();
+    if (stPetDefEl) stPetDefEl.textContent = defVal;
+  }
 
   let petOnlyEls = document.querySelectorAll(".pet-only");
   petOnlyEls.forEach(el => {
@@ -644,8 +651,8 @@ function updateDisplay() {
   let skWater   = document.getElementById("skGatherWaterLv");
   let skHunt    = document.getElementById("skGatherHuntLv");
   let skFish    = document.getElementById("skGatherFishLv");
-  let skFarm    = document.getElementById("skGatherFarmLv");   // 畑
-  let skGarden  = document.getElementById("skGatherGardenLv"); // 菜園
+  let skFarm    = document.getElementById("skGatherFarmLv");
+  let skGarden  = document.getElementById("skGatherGardenLv");
 
   if (skWood  && gatherSkills.wood)      skWood.textContent    = gatherSkills.wood.lv;
   if (skOre   && gatherSkills.ore)       skOre.textContent     = gatherSkills.ore.lv;
@@ -658,7 +665,7 @@ function updateDisplay() {
   if (skFarm  && gatherSkills.fieldFarm) skFarm.textContent    = gatherSkills.fieldFarm.lv;
   if (skGarden && gatherSkills.garden)   skGarden.textContent  = gatherSkills.garden.lv;
 
-  // クラフトスキル表示（武器/防具/ポーション/道具/中間素材/料理）
+  // クラフトスキル表示
   let skCraftWeapon   = document.getElementById("skCraftWeaponLv");
   let skCraftArmor    = document.getElementById("skCraftArmorLv");
   let skCraftPotion   = document.getElementById("skCraftPotionLv");
@@ -672,12 +679,10 @@ function updateDisplay() {
   if (skCraftTool     && craftSkills.tool)     skCraftTool.textContent     = craftSkills.tool.lv;
   if (skCraftMaterial && craftSkills.material) skCraftMaterial.textContent = craftSkills.material.lv;
   if (skCraftCooking  && craftSkills.cooking)  skCraftCooking.textContent  = craftSkills.cooking.lv;
-
-  // ★ 素材ラベルは game-ui.js 側で更新するのでここでは触らない
 }
 
 // =======================
-// 倉庫からの直接装備ヘルパー（インスタンス対応）
+// 倉庫からの直接装備ヘルパー
 // =======================
 
 function equipWeaponFromWarehouse(weaponId) {
@@ -689,7 +694,6 @@ function equipWeaponFromWarehouse(weaponId) {
   }
   if (!weaponId) return;
 
-  // ① 先に旧装備を倉庫へ戻して手持ち枠を空ける
   if (equippedWeaponIndex != null) {
     const oldInst = weaponInstances[equippedWeaponIndex];
     if (oldInst) {
@@ -711,15 +715,11 @@ function equipWeaponFromWarehouse(weaponId) {
     equippedWeaponId = null;
   }
 
-  // ② 倉庫→手持ちへ1本移動（既存の上限チェックロジックを利用）
   if (typeof moveWeaponToCarry === "function") {
     const ok = moveWeaponToCarry(weaponId, 1);
-    if (!ok) {
-      return;
-    }
+    if (!ok) return;
   }
 
-  // ③ 手持ちになったインスタンスのうち1本を装備インスタンスにする
   let idx = -1;
   for (let i = 0; i < weaponInstances.length; i++) {
     const inst = weaponInstances[i];
@@ -757,7 +757,6 @@ function equipArmorFromWarehouse(armorId) {
   }
   if (!armorId) return;
 
-  // ① 先に旧装備を倉庫へ戻して手持ち枠を空ける
   if (equippedArmorIndex != null) {
     const oldInst = armorInstances[equippedArmorIndex];
     if (oldInst) {
@@ -779,15 +778,11 @@ function equipArmorFromWarehouse(armorId) {
     equippedArmorId = null;
   }
 
-  // ② 倉庫→手持ちへ1枚移動
   if (typeof moveArmorToCarry === "function") {
     const ok = moveArmorToCarry(armorId, 1);
-    if (!ok) {
-      return;
-    }
+    if (!ok) return;
   }
 
-  // ③ 手持ちになったインスタンスのうち1枚を装備インスタンスにする
   let idx = -1;
   for (let i = 0; i < armorInstances.length; i++) {
     const inst = armorInstances[i];

@@ -1,7 +1,7 @@
 // skill-core.js
 // 職業スキル定義 ＋ スキルUI ＋ 実行ロジック ＋ ペット攻撃
 // 前提: game-core-*.js のグローバル（jobId, atkTotal, INT_, hp, mp, sp, currentEnemy, enemyHp, enemyHpMax,
-//        petHp, petHpMax, petAtkBase, petLevel, shieldBlowGuardTurnRemain など）が存在
+//        petHp, petHpMax, petAtkBase, petDefBase, petLevel, petName, shieldBlowGuardTurnRemain など）が存在
 
 // =======================
 // スキル定義
@@ -176,6 +176,12 @@ function getPetBaseAtk() {
   return Math.max(1, petAtkBase + levelBonus);
 }
 
+// ★追加: ペット防御力（game-core-1.js の petDefBase を利用）
+function getPetDef() {
+  const levelBonus = Math.floor(petLevel * 0.3);
+  return Math.max(0, petDefBase + levelBonus);
+}
+
 function calcPetDamage() {
   const base = getPetBaseAtk() * petBuffRate;
   const variance = Math.floor(base * 0.2);
@@ -195,16 +201,16 @@ function doPetTurn() {
       let base = calcPetDamage();
       let dmg = Math.floor(base * (s.powerRate || 1.6));
       enemyHp = Math.max(0, enemyHp - dmg);
-      appendLog(`ペットの${s.name}！ ${currentEnemy.name}に${dmg}ダメージ！`);
+      appendLog(`${petName}の${s.name}！ ${currentEnemy.name}に${dmg}ダメージ！`);
       usedSkill = true;
     } else if (s && s.id === "taunt") {
-      appendLog(`ペットの${s.name}！ 敵の注意を引きつけた！`);
+      appendLog(`${petName}の${s.name}！ 敵の注意を引きつけた！`);
       petBuffTurnRemain = Math.max(petBuffTurnRemain, 1);
       usedSkill = true;
     } else if (s && s.id === "selfHeal") {
       const heal = Math.floor(petHpMax * (s.healRate || 0.3)) + 3;
       petHp = Math.min(petHp + heal, petHpMax);
-      appendLog(`ペットの${s.name}！ HPが${heal}回復した！`);
+      appendLog(`${petName}の${s.name}！ HPが${heal}回復した！`);
       usedSkill = true;
     }
   }
@@ -216,10 +222,10 @@ function doPetTurn() {
       const critBonus = 1.5;
       dmg = Math.floor(dmg * critBonus);
       enemyHp = Math.max(0, enemyHp - dmg);
-      appendLog(`ペットの渾身の一撃！ ${currentEnemy.name} に${dmg}ダメージ！`);
+      appendLog(`${petName}の渾身の一撃！ ${currentEnemy.name} に${dmg}ダメージ！`);
     } else {
       enemyHp = Math.max(0, enemyHp - dmg);
-      appendLog(`ペットの攻撃！ ${currentEnemy.name} に${dmg}ダメージ`);
+      appendLog(`${petName}の攻撃！ ${currentEnemy.name} に${dmg}ダメージ`);
     }
   }
 
@@ -313,7 +319,7 @@ function castMagicFromUI() {
     } else {
       const heal = Math.floor(petHpMax * 0.4) + 5;
       petHp = Math.min(petHp + heal, petHpMax);
-      setLog(`ビーストヒール！ ペットのHPが${heal}回復した`);
+      setLog(`ビーストヒール！ ${petName}のHPが${heal}回復した`);
     }
   }
 
@@ -443,7 +449,7 @@ function useSkillFromUI() {
     } else {
       petBuffRate = 1.4;
       petBuffTurnRemain = 2;
-      setLog("アニマルリンク！ ペットの攻撃力が上がった");
+      setLog(`アニマルリンク！ ${petName}の攻撃力が上がった`);
     }
   }
 

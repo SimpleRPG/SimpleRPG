@@ -700,16 +700,28 @@ window.addEventListener("DOMContentLoaded", () => {
     bossBtn.addEventListener("click", () => startBossBattleFromUI());
   }
 
+  // ★ ここを撤退仕様に合わせて修正
   const returnTownBtn = document.getElementById("returnTownBtn");
   if (returnTownBtn) {
     returnTownBtn.addEventListener("click", () => {
       if (window.currentEnemy) {
-        appendLog("戦闘中は帰還できない！");
+        appendLog("戦闘中は撤退を開始できない！");
         return;
       }
-      window.isExploring = false;
-      window.exploringArea = null;
-      appendLog("街へ戻った。探索を終了した。");
+      if (!window.isExploring) {
+        appendLog("今は街にいる。");
+        return;
+      }
+
+      // game-core-5.js 側の撤退フラグを使う前提
+      if (window.isRetreating) {
+        appendLog(`すでに撤退中だ… 街に着くまであと${window.retreatTurnsLeft}ターン。`);
+      } else {
+        window.isRetreating = true;
+        window.retreatTurnsLeft = (typeof RETREAT_TURNS === "number") ? RETREAT_TURNS : 3;
+        appendLog(`街への撤退を開始した… 街に着くまであと${window.retreatTurnsLeft}ターン。`);
+      }
+
       if (typeof updateReturnTownButton === "function") {
         updateReturnTownButton();
       }

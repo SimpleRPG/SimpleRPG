@@ -973,17 +973,21 @@ function enemyTurn() {
       updateDisplay();
     }
   } else {
-    let petDef  = Math.floor(petLevel * 0.5);
+    // ★ 修正: ペット防御ステータスを使用
+    let petDef  = (typeof getPetDef === "function")
+      ? getPetDef()
+      : Math.floor(petLevel * 0.5);
+
     let baseAtk = (currentEnemy.atk || 3);
     baseAtk     = applyAttackBuffsForEnemy(baseAtk);
     let dmg     = Math.max(1, baseAtk - petDef);
 
     petHp -= dmg;
-    appendLog(`${currentEnemy.name}の攻撃！ ペットに${dmg}ダメージ`);
+    appendLog(`${currentEnemy.name}の攻撃！ ${petName}に${dmg}ダメージ`);
 
     if (petHp <= 0) {
       petHp = 0;
-      appendLog("ペットは倒れてしまった…");
+      appendLog(`${petName}は倒れてしまった…`);
     }
 
     tickSkillBuffTurns();

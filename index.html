@@ -682,11 +682,19 @@
 
               <h3 class="pet-only">ペットステータス（動物使いのみ）</h3>
               <div class="status-block pet-only">
+                ペット名: <span id="stPetName">ペット</span><br>
                 ペットLv: <span id="stPetLevel">1</span><br>
                 ペット経験値: <span id="stPetExp">0</span> / <span id="stPetExpToNext">5</span><br>
                 ペット転生回数: <span id="stPetRebirthCount">0</span><br>
                 成長タイプ: <span id="stPetGrowthType">バランス型</span><br>
-                ペットHP: <span id="stPetHp">10</span> / <span id="stPetHpMax">10</span>
+                ペットHP: <span id="stPetHp">10</span> / <span id="stPetHpMax">10</span><br>
+                <!-- ★追加: ペット攻撃力・防御力表示 -->
+                ペット攻撃力(素): <span id="stPetAtkBase">4</span><br>
+                ペット攻撃力(現在): <span id="stPetAtkNow">4</span><br>
+                ペット防御力: <span id="stPetDef">2</span><br>
+                <button id="renamePetBtn" style="margin-top:4px; font-size:11px; padding:1px 6px;">
+                  ペット名を変更
+                </button>
               </div>
 
               <div class="status-block">
@@ -717,12 +725,6 @@
               <h3>採取統計</h3>
               <div id="gatherStatsContainer" class="status-block" style="max-height:300px; overflow:auto; font-size:12px;">
                 <!-- game-ui 側で getGatherStatsList() を使ってテーブルを描画する想定 -->
-                <!-- 例:
-                  <table>
-                    <thead>...</thead>
-                    <tbody>...</tbody>
-                  </table>
-                -->
               </div>
             </div>
           </div>
@@ -807,5 +809,19 @@
   <script src="game-ui.js"></script>
   <script src="game-ui-2.js"></script>
   <script src="asobikata.js"></script>
+
+  <script>
+    // ペット名変更ボタン → game-core-2.js の promptRenamePet を呼ぶ
+    document.addEventListener("DOMContentLoaded", () => {
+      const btn = document.getElementById("renamePetBtn");
+      if (btn) {
+        btn.addEventListener("click", () => {
+          if (typeof promptRenamePet === "function") {
+            promptRenamePet();
+          }
+        });
+      }
+    });
+  </script>
 </body>
 </html>
