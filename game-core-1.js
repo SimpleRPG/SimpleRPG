@@ -195,15 +195,10 @@ function getJobName() {
 // =======================
 
 function recalcStats() {
-  // ★ まず「素の最大値」から毎回作り直す
-  hpMax = hpMaxBase;
-  mpMax = mpMaxBase;
-  spMax = spMaxBase;
-
-  // 現在値を一旦丸め込み（安全側）
-  hp = Math.min(hp, hpMax);
-  mp = Math.min(mp, mpMax);
-  sp = Math.min(sp, spMax);
+  // ★ まず「素の最大値」を基礎値から毎回作り直す（空腹・水分デバフはここではまだ掛けない）
+  let baseHpMax = hpMaxBase;
+  let baseMpMax = mpMaxBase;
+  let baseSpMax = spMaxBase;
 
   // 基本攻撃・防御
   let baseAtk = STR + Math.floor(level * 0.5);
@@ -302,7 +297,7 @@ function recalcStats() {
   let defFromDex = Math.floor(DEX_ * 0.2);
   let defFromArmorVit = Math.floor(VIT * armorScaleVit);
 
-  // ===== 空腹・水分デバフ反映 =====
+  // ===== 空腹・水分デバフ反映（攻撃・防御） =====
   if (typeof hungerAtkIntRate === "number") {
     atkFromStr       = Math.floor(atkFromStr       * hungerAtkIntRate);
     atkFromWeaponStr = Math.floor(atkFromWeaponStr * hungerAtkIntRate);
@@ -315,24 +310,28 @@ function recalcStats() {
     defFromArmorVit = Math.floor(defFromArmorVit * thirstDefDexLukRate);
   }
 
-  // ★ 最大値系も「素の値」に対してデバフを掛ける
+  // ===== 空腹・水分デバフ反映（最大HP/MP/SP） =====
   if (typeof hungerHpRate === "number") {
-    hpMax = Math.floor(hpMaxBase * hungerHpRate);
+    hpMax = Math.floor(baseHpMax * hungerHpRate);
   } else {
-    hpMax = hpMaxBase;
+    hpMax = baseHpMax;
   }
   if (typeof thirstMpSpRate === "number") {
-    mpMax = Math.floor(mpMaxBase * thirstMpSpRate);
-    spMax = Math.floor(spMaxBase * thirstMpSpRate);
+    mpMax = Math.floor(baseMpMax * thirstMpSpRate);
+    spMax = Math.floor(baseSpMax * thirstMpSpRate);
   } else {
-    mpMax = mpMaxBase;
-    spMax = spMaxBase;
+    mpMax = baseMpMax;
+    spMax = baseSpMax;
   }
 
   if (hpMax < 1) hpMax = 1;
-  if (hp > hpMax) hp = hpMax;
-  if (mp > mpMax) mp = mpMax;
-  if (sp > spMax) sp = spMax;
+  if (mpMax < 1) mpMax = 1;
+  if (spMax < 1) spMax = 1;
+
+  // 現在値を丸め込み（最大値が増減した場合でもはみ出さないように）
+  hp = Math.min(hp, hpMax);
+  mp = Math.min(mp, mpMax);
+  sp = Math.min(sp, spMax);
 
   atkTotal =
     baseAtk +
