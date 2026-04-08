@@ -486,14 +486,48 @@ function consumeOneWeaponInstanceAsMaterial(weaponId){
   for (let i = 0; i < weaponInstances.length; i++) {
     const inst = weaponInstances[i];
     if (!inst || inst.id !== weaponId) continue;
-    // 強化対象そのものを素材にしないようにする（装備中インデックスもあれば除外）
-    if (typeof equippedWeaponIndex === "number" && equippedWeaponIndex === i) continue;
+
+    const loc = inst.location || "warehouse";
+    if (loc !== "warehouse") continue;              // 倉庫だけ素材候補
+    if (typeof equippedWeaponIndex === "number" &&
+        equippedWeaponIndex === i) continue;        // 念のため装備中は除外
+
     usedQuality = inst.quality || 0;
-    usedEnh = inst.enhance || 0;
+    usedEnh     = inst.enhance || 0;
+
     weaponInstances.splice(i, 1);
-    weaponCounts[weaponId] = Math.max(0, (weaponCounts[weaponId] || 0) - 1);
+    weaponCounts[weaponId] =
+      Math.max(0, (weaponCounts[weaponId] || 0) - 1);
+
     if (usedQuality > 0 || usedEnh > 0) {
       appendLog("※良品/傑作/強化済みの武器を素材として消費した");
+    }
+    return true;
+  }
+  return false;
+}
+
+function consumeOneArmorInstanceAsMaterial(armorId){
+  let usedQuality = 0;
+  let usedEnh = 0;
+  for (let i = 0; i < armorInstances.length; i++) {
+    const inst = armorInstances[i];
+    if (!inst || inst.id !== armorId) continue;
+
+    const loc = inst.location || "warehouse";
+    if (loc !== "warehouse") continue;
+    if (typeof equippedArmorIndex === "number" &&
+        equippedArmorIndex === i) continue;
+
+    usedQuality = inst.quality || 0;
+    usedEnh     = inst.enhance || 0;
+
+    armorInstances.splice(i, 1);
+    armorCounts[armorId] =
+      Math.max(0, (armorCounts[armorId] || 0) - 1);
+
+    if (usedQuality > 0 || usedEnh > 0) {
+      appendLog("※良品/傑作/強化済みの防具を素材として消費した");
     }
     return true;
   }

@@ -509,3 +509,15 @@ function changePetGrowthType() {
   const modal = document.getElementById("petGrowthModal");
   if (modal) modal.style.display = "flex";
 }
+
+// ペット簡易ステータス（上部バー下のミニ表示）更新
+function updatePetMiniStatus() {
+  const lvEl    = document.getElementById("petLevelMini");
+  const hpEl    = document.getElementById("petHpMini");
+  const hpMaxEl = document.getElementById("petHpMaxMini");
+  if (!lvEl || !hpEl || !hpMaxEl) return;
+
+  lvEl.textContent    = (typeof petLevel === "number") ? petLevel : "-";
+  hpEl.textContent    = (typeof petHp === "number")    ? petHp    : "-";
+  hpMaxEl.textContent = (typeof petHpMax === "number") ? petHpMax : "-";
+}

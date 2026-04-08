@@ -572,11 +572,16 @@ function updateDisplay() {
   if (petHpEl)    petHpEl.textContent    = petHp;
   if (petHpMaxEl) petHpMaxEl.textContent = petHpMax;
 
-  // 上部簡易ステータスバー用 ペットLv/HP 表示
+  // 上部簡易ステータスバー用 ペットLv/HP 表示（旧仕様保持）
   let headerPetLevelEl = document.getElementById("headerPetLevel");
   let headerPetHpEl    = document.getElementById("headerPetHp");
   if (headerPetLevelEl) headerPetLevelEl.textContent = petLevel;
   if (headerPetHpEl)    headerPetHpEl.textContent    = `${petHp} / ${petHpMax}`;
+
+  // 新UI: 上部の簡易ペットステータス（petInfoMini）も更新
+  if (typeof updatePetMiniStatus === "function") {
+    updatePetMiniStatus();
+  }
 
   // ペット用ステータスページ
   let stPetName  = document.getElementById("stPetName");

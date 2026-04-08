@@ -12,7 +12,7 @@ const MATERIAL_TIER_VALUES = {
   t3: 10
 };
 
-// 料理素材（レシピに使う素材）は一律 10G 相当
+// 料理素材（レシピに使う素材）は一律 5G 相当
 const COOKING_INGREDIENT_BASE_VALUE = 5;
 
 // NPC商人名リスト
@@ -118,17 +118,61 @@ function removeItemForSell(category, itemId, amount){
   if(category === "weapon"){
     const have = weaponCounts[itemId] || 0;
     if(have < amount) return false;
-    weaponCounts[itemId] = have - amount;
+
+    let removed = 0;
+    if (Array.isArray(window.weaponInstances)) {
+      for (let i = 0; i < weaponInstances.length && removed < amount; i++) {
+        const inst = weaponInstances[i];
+        if (!inst || inst.id !== itemId) continue;
+        const loc = inst.location || "warehouse";
+        if (loc !== "warehouse") continue;   // 倉庫分だけ売る
+
+        weaponInstances.splice(i, 1);
+        i--;
+        removed++;
+      }
+      if (removed < amount) {
+        appendLog(`警告: 市場出品時に倉庫内の武器インスタンスが不足しています（id=${itemId}）`);
+        return false;
+      }
+    } else {
+      removed = amount;
+    }
+
+    weaponCounts[itemId] = have - removed;
     if(equippedWeaponId === itemId && weaponCounts[itemId] <= 0){
       equippedWeaponId = null;
     }
+    return true;
   } else if(category === "armor"){
     const have = armorCounts[itemId] || 0;
     if(have < amount) return false;
-    armorCounts[itemId] = have - amount;
+
+    let removed = 0;
+    if (Array.isArray(window.armorInstances)) {
+      for (let i = 0; i < armorInstances.length && removed < amount; i++) {
+        const inst = armorInstances[i];
+        if (!inst || inst.id !== itemId) continue;
+        const loc = inst.location || "warehouse";
+        if (loc !== "warehouse") continue;
+
+        armorInstances.splice(i, 1);
+        i--;
+        removed++;
+      }
+      if (removed < amount) {
+        appendLog(`警告: 市場出品時に倉庫内の防具インスタンスが不足しています（id=${itemId}）`);
+        return false;
+      }
+    } else {
+      removed = amount;
+    }
+
+    armorCounts[itemId] = have - removed;
     if(equippedArmorId === itemId && armorCounts[itemId] <= 0){
       equippedArmorId = null;
     }
+    return true;
   } else if(category === "potion"){
     const have = potionCounts[itemId] || 0;
     if(have < amount) return false;
@@ -425,6 +469,19 @@ function simulateMarketBuy(stackKey, mode, amount){
 }
 
 function addItemForBuy(category, itemId, amount){
+  // 武器・防具・ポーション・道具・料理・素材はまとめて addItemToInventory に任せる
+  if (typeof addItemToInventory === "function" &&
+      (category === "weapon" || category === "armor" ||
+       category === "potion" || category === "tool"  ||
+       category === "material")) {
+
+    for (let i = 0; i < amount; i++) {
+      addItemToInventory(itemId, 1);
+    }
+    return;
+  }
+
+  // フォールバック（念のため残すなら）
   if(category === "weapon"){
     weaponCounts[itemId] = (weaponCounts[itemId] || 0) + amount;
   } else if(category === "armor"){
@@ -432,7 +489,6 @@ function addItemForBuy(category, itemId, amount){
   } else if(category === "potion"){
     potionCounts[itemId] = (potionCounts[itemId] || 0) + amount;
   } else if(category === "tool"){
-    // 道具は倉庫 toolCounts へ
     toolCounts[itemId] = (toolCounts[itemId] || 0) + amount;
   } else if(category === "material"){
     // 基本素材は materials.xxx に追加

@@ -150,6 +150,79 @@ function makeSaveData() {
 }
 
 // ==============================
+// インスタンス整形・装備補正ヘルパ
+// ==============================
+
+function normalizeInstanceLocations() {
+  if (Array.isArray(weaponInstances)) {
+    weaponInstances.forEach(inst => {
+      if (!inst) return;
+      if (!inst.location) inst.location = "warehouse";
+    });
+  }
+  if (Array.isArray(armorInstances)) {
+    armorInstances.forEach(inst => {
+      if (!inst) return;
+      if (!inst.location) inst.location = "warehouse";
+    });
+  }
+}
+
+function fixEquippedAfterLoad() {
+  // 武器
+  if (Array.isArray(weaponInstances)) {
+    let ok = false;
+    if (typeof equippedWeaponIndex === "number") {
+      const inst = weaponInstances[equippedWeaponIndex];
+      if (inst && inst.id === equippedWeaponId) {
+        inst.location = "equipped";
+        ok = true;
+      }
+    }
+    if (!ok && equippedWeaponId) {
+      let found = -1;
+      weaponInstances.forEach((w, i) => {
+        if (found !== -1) return;
+        if (w && w.id === equippedWeaponId) found = i;
+      });
+      if (found === -1) {
+        equippedWeaponIndex = null;
+        equippedWeaponId = null;
+      } else {
+        equippedWeaponIndex = found;
+        weaponInstances[found].location = "equipped";
+      }
+    }
+  }
+
+  // 防具
+  if (Array.isArray(armorInstances)) {
+    let ok = false;
+    if (typeof equippedArmorIndex === "number") {
+      const inst = armorInstances[equippedArmorIndex];
+      if (inst && inst.id === equippedArmorId) {
+        inst.location = "equipped";
+        ok = true;
+      }
+    }
+    if (!ok && equippedArmorId) {
+      let found = -1;
+      armorInstances.forEach((a, i) => {
+        if (found !== -1) return;
+        if (a && a.id === equippedArmorId) found = i;
+      });
+      if (found === -1) {
+        equippedArmorIndex = null;
+        equippedArmorId = null;
+      } else {
+        equippedArmorIndex = found;
+        armorInstances[found].location = "equipped";
+      }
+    }
+  }
+}
+
+// ==============================
 // セーブデータ → ゲーム状態へ反映
 // ==============================
 function applySaveData(data) {
@@ -258,17 +331,18 @@ function applySaveData(data) {
   if (Array.isArray(data.weapons))         weapons         = data.weapons;
   if (Array.isArray(data.armors))          armors          = data.armors;
   if (Array.isArray(data.potions))         potions         = data.potions;
-  if (data.weaponCounts)                  weaponCounts    = data.weaponCounts;
-  if (data.armorCounts)                   armorCounts     = data.armorCounts;
-  if (data.potionCounts)                  potionCounts    = data.potionCounts;
+  if (data.weaponCounts)                   weaponCounts    = data.weaponCounts;
+  if (data.armorCounts)                    armorCounts     = data.armorCounts;
+  if (data.potionCounts)                   potionCounts    = data.potionCounts;
+
   if (Array.isArray(data.weaponInstances)) {
-  weaponInstances.length = 0;
-  data.weaponInstances.forEach(i => weaponInstances.push(i));
-}
-if (Array.isArray(data.armorInstances)) {
-  armorInstances.length = 0;
-  data.armorInstances.forEach(i => armorInstances.push(i));
-}
+    weaponInstances.length = 0;
+    data.weaponInstances.forEach(i => weaponInstances.push(i));
+  }
+  if (Array.isArray(data.armorInstances)) {
+    armorInstances.length = 0;
+    data.armorInstances.forEach(i => armorInstances.push(i));
+  }
 
   if ("equippedWeaponId" in data)         equippedWeaponId    = data.equippedWeaponId;
   if ("equippedArmorId" in data)          equippedArmorId     = data.equippedArmorId;
@@ -405,6 +479,13 @@ if (Array.isArray(data.armorInstances)) {
     marketListingIdSeq = data.marketListingIdSeq;
   }
 
+  // -------- インスタンス整形・装備補正・カウント再同期 --------
+  normalizeInstanceLocations();
+  fixEquippedAfterLoad();
+  if (typeof syncEquipmentCountsFromInstances === "function") {
+    syncEquipmentCountsFromInstances();
+  }
+
   // -------- 復元後の再計算・UI --------
   if (typeof recalcStats === "function") {
     recalcStats();
@@ -439,8 +520,8 @@ if (Array.isArray(data.armorInstances)) {
   if (typeof updateHungerThirstEffects === "function") {
     updateHungerThirstEffects();
   }
-  }
- 
+}
+
 // ==============================
 // ローカルストレージにセーブ
 // ==============================
