@@ -255,6 +255,11 @@ function doRebirth() {
 
   setBattleCommandVisible(false);
 
+  // ★ ギルド依頼用: 転生達成を通知（職業IDをそのまま渡す）
+  if (typeof onRebirthForGuild === "function") {
+    onRebirthForGuild({ jobId });
+  }
+
   setLog(
     `転生した！ 転生回数: ${rebirthCount}\n` +
     `成長タイプ: ${getGrowthTypeName()}\n` +
