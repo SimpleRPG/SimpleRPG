@@ -33,6 +33,13 @@ const JOB_SKILLS = {
         name: "ブレイブチャージ",
         type: SKILL_TYPE_BUFF,
         spCost: 5
+      },
+      // ★ 戦士ギルド専用: ガードインパクト（所属中のみUI表示＆使用可）
+      {
+        id: "guardImpact",
+        name: "ガードインパクト",
+        type: SKILL_TYPE_PHYS,
+        spCost: 5
       }
     ],
     magic: [] // 戦士は魔法なし
@@ -57,6 +64,13 @@ const JOB_SKILLS = {
         name: "チェインライトニング",
         type: SKILL_TYPE_MAGIC,
         mpCost: 8
+      },
+      // ★ 魔法ギルド専用: マナバースト（所属中のみUI表示＆使用可）
+      {
+        id: "manaBurst",
+        name: "マナバースト",
+        type: SKILL_TYPE_MAGIC,
+        mpCost: 10
       }
     ]
   },
@@ -73,6 +87,13 @@ const JOB_SKILLS = {
         name: "アニマルリンク",
         type: SKILL_TYPE_PET,
         spCost: 4
+      },
+      // ★ 動物使いギルド専用: ビーストロア（所属中のみUI表示＆使用可）
+      {
+        id: "beastRoar",
+        name: "ビーストロア",
+        type: SKILL_TYPE_PET,
+        spCost: 5
       }
     ],
     magic: [
@@ -99,6 +120,7 @@ function refreshSkillUIs() {
   skillSel.innerHTML = "";
 
   const jobSkills = JOB_SKILLS[jobId] || { phys: [], magic: [] };
+  const guildId = typeof window !== "undefined" ? window.playerGuildId : null;
 
   {
     const optNone = document.createElement("option");
@@ -106,12 +128,18 @@ function refreshSkillUIs() {
     optNone.textContent = "魔法なし";
     magicSel.appendChild(optNone);
 
-    jobSkills.magic.forEach(s => {
-      const opt = document.createElement("option");
-      opt.value = s.id;
-      opt.textContent = s.name;
-      magicSel.appendChild(opt);
-    });
+    jobSkills.magic
+      .filter(s => {
+        // マナバーストは魔法ギルド所属中のみ表示
+        if (s.id === "manaBurst" && guildId !== "mage") return false;
+        return true;
+      })
+      .forEach(s => {
+        const opt = document.createElement("option");
+        opt.value = s.id;
+        opt.textContent = s.name;
+        magicSel.appendChild(opt);
+      });
   }
 
   {
@@ -120,12 +148,20 @@ function refreshSkillUIs() {
     optNone.textContent = "スキルなし";
     skillSel.appendChild(optNone);
 
-    jobSkills.phys.forEach(s => {
-      const opt = document.createElement("option");
-      opt.value = s.id;
-      opt.textContent = s.name;
-      skillSel.appendChild(opt);
-    });
+    jobSkills.phys
+      .filter(s => {
+        // ガードインパクトは戦士ギルド所属中のみ表示
+        if (s.id === "guardImpact" && guildId !== "warrior") return false;
+        // ビーストロアは動物使いギルド所属中のみ表示
+        if (s.id === "beastRoar" && guildId !== "tamer") return false;
+        return true;
+      })
+      .forEach(s => {
+        const opt = document.createElement("option");
+        opt.value = s.id;
+        opt.textContent = s.name;
+        skillSel.appendChild(opt);
+      });
   }
 }
 
@@ -295,6 +331,13 @@ function castMagicFromUI() {
     return;
   }
 
+  const guildId = typeof window !== "undefined" ? window.playerGuildId : null;
+  // ★ マナバーストは魔法ギルド所属中のみ使用可能
+  if (skillId === "manaBurst" && guildId !== "mage") {
+    setLog("この魔法は今は使えない（対応するギルドに所属していない）");
+    return;
+  }
+
   // ビーストヒール以外は敵必須
   if (!currentEnemy && skillId !== "beastHeal") {
     setLog("敵がいない");
@@ -346,6 +389,14 @@ function castMagicFromUI() {
     }
     enemyHp = Math.max(0, enemyHp - total);
     setLog(`チェインライトニング！ ${currentEnemy.name} に${hits}ヒット合計${total}ダメージ`);
+    didDamage = true;
+  } else if (skillId === "manaBurst") {
+    const baseInt = getEffectiveIntForMagic();
+    const dmg = 15 + baseInt * 3;
+    enemyHp = Math.max(0, enemyHp - dmg);
+    const extra = Math.floor(mpMax * 0.1);
+    mp = Math.max(0, mp - extra);
+    setLog(`マナバースト！ ${currentEnemy.name} に${dmg}ダメージ（反動でMPを${extra}消費）`);
     didDamage = true;
   } else if (skillId === "beastHeal") {
     if (jobId !== 2) {
@@ -437,7 +488,19 @@ function useSkillFromUI() {
     return;
   }
 
-  if (!currentEnemy && skillId !== "animalLink") {
+  const guildId = typeof window !== "undefined" ? window.playerGuildId : null;
+  // ★ ガードインパクトは戦士ギルド所属中のみ使用可能
+  if (skillId === "guardImpact" && guildId !== "warrior") {
+    setLog("このスキルは今は使えない（対応するギルドに所属していない）");
+    return;
+  }
+  // ★ ビーストロアは動物使いギルド所属中のみ使用可能
+  if (skillId === "beastRoar" && guildId !== "tamer") {
+    setLog("このスキルは今は使えない（対応するギルドに所属していない）");
+    return;
+  }
+
+  if (!currentEnemy && skillId !== "animalLink" && skillId !== "beastRoar") {
     setLog("敵がいない");
     return;
   }
@@ -479,6 +542,13 @@ function useSkillFromUI() {
   } else if (skillId === "braveCharge") {
     braveChargeTurnRemain = 2;
     setLog("ブレイブチャージ！ しばらく攻撃力が上がった");
+  } else if (skillId === "guardImpact") {
+    const dmg = Math.floor(getCurrentAtkForSkill() * 1.1);
+    enemyHp = Math.max(0, enemyHp - dmg);
+    // シールドブロウより長くガード
+    shieldBlowGuardTurnRemain = 2;
+    setLog(`ガードインパクト！ ${currentEnemy.name} に${dmg}ダメージ（しばらく被ダメージ軽減）`);
+    didDamage = true;
   } else if (skillId === "beastSlash") {
     const dmg = Math.floor(getCurrentAtkForSkill() * 1.3);
     enemyHp = Math.max(0, enemyHp - dmg);
@@ -492,9 +562,17 @@ function useSkillFromUI() {
       petBuffTurnRemain = 2;
       setLog(`アニマルリンク！ ${petName}の攻撃力が上がった`);
     }
+  } else if (skillId === "beastRoar") {
+    if (jobId !== 2) {
+      setLog("ビーストロアは動物使い専用だ");
+    } else {
+      petBuffRate = 1.6;
+      petBuffTurnRemain = 3;
+      setLog(`ビーストロア！ ${petName}の力がみなぎった`);
+    }
   }
 
-  if (skillId === "animalLink" || skillId === "braveCharge") {
+  if (skillId === "animalLink" || skillId === "braveCharge" || skillId === "beastRoar") {
     // 純バフ系スキルもターンを消費して敵ターンへ
     enemyTurn();
     if (typeof tickStatusesTurnEndForBoth === "function") {

@@ -400,7 +400,7 @@ h1 {
 button {
   background: linear-gradient(135deg, #2c2c40, #1b1b30);
   color: var(--text-main);
-  border: 1px solid rgba(150,150,220,0.8);
+  border: 1px  solid rgba(150,150,220,0.8);
   border-radius: 6px;
   padding: 5px 10px;
   font-size: 0.9rem;
@@ -1119,4 +1119,22 @@ input[type="text"] {
   width: 100%;           /* 親コンテナにフィット */
   max-width: 100%;       /* はみ出さないようにする */
   resize: vertical;      /* 横方向には広げられないようにする */
+}
+
+/* ======================
+   タイトルバー（画面下固定）
+   ====================== */
+
+#titleBar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;              /* 画面の一番下に固定 */
+  z-index: 200;
+  text-align: center;
+  pointer-events: none;   /* ゲームUIの操作を邪魔しないように */
+}
+
+#titleBar h1 {
+  pointer-events: auto;   /* タイトル自体の選択などは可能に */
 }

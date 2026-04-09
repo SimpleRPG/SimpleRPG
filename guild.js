@@ -319,6 +319,38 @@ function onEnemyKilledForGuild(params) {
   }
 }
 
+// ★ 転生時に呼ばれる想定のヘルパー
+// params: { jobId: number }
+function onRebirthForGuild(params) {
+  if (!params) return;
+  const jobId = params.jobId;
+
+  let questId = null;
+  if (jobId === 0) {
+    questId = "warrior_rebirth_1";
+  } else if (jobId === 1) {
+    questId = "mage_rebirth_1";
+  } else if (jobId === 2) {
+    questId = "tamer_rebirth_1";
+  }
+
+  if (!questId) return;
+
+  const raw = window.guildQuestProgress[questId] || {};
+  const count = 1; // その職で1回転生したら即達成
+  const done = true;
+  window.guildQuestProgress[questId] = {
+    ...raw,
+    count,
+    done: done || raw.done,
+    rewardTaken: !!raw.rewardTaken
+  };
+
+  if (typeof renderGuildQuests === "function") {
+    renderGuildQuests();
+  }
+}
+
 // バフ料理B依頼用：バフ付き料理／飲み物を食べたときに呼ぶ（game-core-5.js 側から）
 function onBuffFoodEatenForGuild() {
   const id = "cooking_buff";
@@ -663,6 +695,14 @@ const GUILD_QUESTS = {
       desc: "いずれかのエリアボスを1体倒す。",
       fameReward: 15,
       hint: "草原・森・洞窟など、どのボスでも1体倒せば達成。"
+    },
+    // ★ 戦士転生依頼
+    {
+      id: "warrior_rebirth_1",
+      name: "C依頼: 戦士としての再出発",
+      desc: "戦士として1回転生する。",
+      fameReward: 20,
+      hint: "戦士の職業で1度転生すると達成される。"
     }
   ],
   mage: [
@@ -679,6 +719,14 @@ const GUILD_QUESTS = {
       desc: "いずれかのエリアボスを1体倒す。",
       fameReward: 15,
       hint: "草原・森・洞窟など、どのボスでも1体倒せば達成。"
+    },
+    // ★ 魔法使い転生依頼
+    {
+      id: "mage_rebirth_1",
+      name: "C依頼: 魔法使いとしての再出発",
+      desc: "魔法使いとして1回転生する。",
+      fameReward: 20,
+      hint: "魔法使いの職業で1度転生すると達成される。"
     }
   ],
   tamer: [
@@ -695,6 +743,14 @@ const GUILD_QUESTS = {
       desc: "いずれかのエリアボスを1体倒す。",
       fameReward: 15,
       hint: "草原・森・洞窟など、どのボスでも1体倒せば達成。"
+    },
+    // ★ 動物使い転生依頼
+    {
+      id: "tamer_rebirth_1",
+      name: "C依頼: 動物使いとしての再出発",
+      desc: "動物使いとして1回転生する。",
+      fameReward: 20,
+      hint: "動物使いの職業で1度転生すると達成される。"
     }
   ],
   // 以下のクラフト／採取ギルドはプレースホルダから、今回で一部実装済みに
@@ -799,7 +855,10 @@ function getGuildQuestProg(id) {
     id === "gather_basic"         || // ★ 採取ギルド 素材50個
     id === "gather_t3"            || // ★ 採取ギルド T3素材5個
     id === "food_mat"             || // ★ 食材ギルド 素材30個
-    id === "food_rare"            // ★ 食材ギルド レア食材1個
+    id === "food_rare"            || // ★ 食材ギルド レア食材1個
+    id === "warrior_rebirth_1"    || // ★ 戦士転生1回
+    id === "mage_rebirth_1"       || // ★ 魔法使い転生1回
+    id === "tamer_rebirth_1"         // ★ 動物使い転生1回
   ) {
     return {
       count: raw.count || 0,
@@ -968,6 +1027,18 @@ function renderGuildQuests() {
       status.textContent = prog.done
         ? `状態: 完了（レア食材 ${prog.count}/1）`
         : `状態: 進行中（レア食材 ${prog.count}/1）`;
+    } else if (q.id === "warrior_rebirth_1") {
+      status.textContent = prog.done
+        ? `状態: 完了（戦士転生 ${prog.count}/1）`
+        : `状態: 進行中（戦士転生 ${prog.count}/1）`;
+    } else if (q.id === "mage_rebirth_1") {
+      status.textContent = prog.done
+        ? `状態: 完了（魔法使い転生 ${prog.count}/1）`
+        : `状態: 進行中（魔法使い転生 ${prog.count}/1）`;
+    } else if (q.id === "tamer_rebirth_1") {
+      status.textContent = prog.done
+        ? `状態: 完了（動物使い転生 ${prog.count}/1）`
+        : `状態: 進行中（動物使い転生 ${prog.count}/1）`;
     } else {
       status.textContent = prog.done
         ? "状態: 完了"
@@ -1029,6 +1100,37 @@ function renderGuildRewards() {
   header.style.fontSize = "12px";
   header.textContent = `${g.name} の現在の名声: ${fame}（ランク: ${currentRank.name}）`;
   listEl.appendChild(header);
+
+  // ★ ランクボーナスの現在値を表示
+  const bonusLine = document.createElement("div");
+  bonusLine.style.fontSize = "11px";
+  bonusLine.style.color = "#8cf";
+
+  const battleBonus = getGuildBattleBonus();
+  const gatherBonus = getGuildGatherExtraBonusChance();
+
+  if (g.type === "battle") {
+    if (battleBonus.phys > 0) {
+      bonusLine.textContent = `現在のランクボーナス: 物理スキルダメージ +${Math.round(battleBonus.phys * 100)}%`;
+    } else if (battleBonus.magic > 0) {
+      bonusLine.textContent = `現在のランクボーナス: 魔法スキルダメージ +${Math.round(battleBonus.magic * 100)}%`;
+    } else if (battleBonus.pet > 0) {
+      bonusLine.textContent = `現在のランクボーナス: ペットの与ダメージ +${Math.round(battleBonus.pet * 100)}%`;
+    } else {
+      bonusLine.textContent = "現在のランクボーナス: まだ発生していません（名声を稼いでランクを上げよう）";
+    }
+  } else if (g.type === "gather") {
+    if (gatherBonus > 0) {
+      bonusLine.textContent = `現在のランクボーナス: +1個ボーナス抽選 +${Math.round(gatherBonus * 100)}%`;
+    } else {
+      bonusLine.textContent = "現在のランクボーナス: まだ発生していません（名声を稼いでランクを上げよう）";
+    }
+  } else {
+    // craft ギルドはまだ数値ボーナス未実装
+    bonusLine.textContent = "現在のランクボーナス: 今後のアップデートで追加予定。";
+  }
+
+  listEl.appendChild(bonusLine);
 
   const nextRank = getNextRankInfo(fame);
   if (nextRank) {

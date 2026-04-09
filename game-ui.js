@@ -419,7 +419,7 @@ window.addEventListener("DOMContentLoaded", () => {
       if (typeof renderGuildUI === "function") {
         renderGuildUI();
       }
-      // ギルド内サブタブ初期表示（仕様は変えず、「一覧」開始とみなす）
+      // ギルド内サブタブ初期表示（仕様は guild.js にある renderX を呼ぶだけ）
       if (typeof setGuildSubPage === "function") {
         setGuildSubPage("list");
       }
@@ -1177,115 +1177,16 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   // =======================
-  // 職業・ペット
+  // 分割UI初期化呼び出し
   // =======================
 
-  const changeJobBtn2 = document.getElementById("changeJobBtn");
-  if (changeJobBtn2 && typeof openJobModal === "function") {
-    changeJobBtn2.addEventListener("click", () => {
-      if (window.isExploring || window.currentEnemy) {
-        appendLog("探索中は職業変更できない！");
-        return;
-      }
-      openJobModal();
-    });
+  if (typeof initWarehouseAndStatusUI === "function") {
+    initWarehouseAndStatusUI();
   }
-
-  const jobWarriorBtn = document.getElementById("jobWarriorBtn");
-  if (jobWarriorBtn && typeof applyJobChange === "function") {
-    jobWarriorBtn.addEventListener("click", () => applyJobChange(0));
+  if (typeof initBattleAndShopUI === "function") {
+    initBattleAndShopUI();
   }
-
-  const jobMageBtn = document.getElementById("jobMageBtn");
-  if (jobMageBtn && typeof applyJobChange === "function") {
-    jobMageBtn.addEventListener("click", () => applyJobChange(1));
-  }
-
-  const jobTamerBtn = document.getElementById("jobTamerBtn");
-  if (jobTamerBtn && typeof applyJobChange === "function") {
-    jobTamerBtn.addEventListener("click", () => applyJobChange(2));
-  }
-
-  const changePetGrowthBtn2 = document.getElementById("changePetGrowthBtn");
-  if (changePetGrowthBtn2 && typeof changePetGrowthType === "function") {
-    changePetGrowthBtn2.addEventListener("click", () => {
-      if (window.isExploring || window.currentEnemy) {
-        appendLog("探索中はペット成長タイプを変更できない！");
-        return;
-      }
-      changePetGrowthType();
-    });
-  }
-
-  const petGrowthModal = document.getElementById("petGrowthModal");
-  const petGrowthButtons = document.querySelectorAll("#petGrowthButtons button");
-  const petGrowthCloseBtn2 = document.getElementById("petGrowthCloseBtn");
-  if (petGrowthModal) {
-    petGrowthButtons.forEach(btn => {
-      btn.addEventListener("click", () => {
-        const val = parseInt(btn.dataset.growth, 10);
-        if (jobId !== 2) {
-          appendLog("動物使いのみ変更できます");
-          return;
-        }
-        window.petGrowthType = val;
-        if (typeof petGrowthType !== "undefined") {
-          petGrowthType = val;
-        }
-        appendLog("ペット成長タイプを変更した");
-        if (typeof updateDisplay === "function") updateDisplay();
-        petGrowthModal.style.display = "none";
-      });
-    });
-    if (petGrowthCloseBtn2) {
-      petGrowthCloseBtn2.addEventListener("click", () => {
-        petGrowthModal.style.display = "none";
-      });
-    }
-    petGrowthModal.addEventListener("click", (e) => {
-      if (e.target === petGrowthModal) petGrowthModal.style.display = "none";
-    });
-  }
-
-  // =======================
-  // 転生
-  // =======================
-
-  const rebirthBtn2 = document.getElementById("rebirthBtn");
-  if (rebirthBtn2 && typeof doRebirth === "function") {
-    rebirthBtn2.addEventListener("click", () => {
-      if (window.isExploring || window.currentEnemy) {
-        appendLog("探索中は転生できない！");
-        return;
-      }
-      doRebirth();
-    });
-  }
-
-  // =======================
-  // 最終表示更新
-  // =======================
-
-  if (typeof refreshEquipSelects === "function") {
-    refreshEquipSelects();
-  }
-
-  updateGatherMatDetailText();
-  updateCraftMatDetailText();
-
-  if (typeof refreshCarryFoodDrinkSelects === "function") {
-    refreshCarryFoodDrinkSelects();
-  }
-
-  if (typeof updateDisplay === "function") {
-    updateDisplay();
-  }
-
-  if (typeof refreshExploreAreaSelect === "function") {
-    refreshExploreAreaSelect();
-  }
-
-  if (typeof refreshWarehouseUI === "function") {
-    refreshWarehouseUI();
+  if (typeof initJobPetRebirthUI === "function") {
+    initJobPetRebirthUI();
   }
 });

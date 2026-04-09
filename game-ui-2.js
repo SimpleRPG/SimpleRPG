@@ -879,7 +879,8 @@ function consumeDrinkFromWarehouse(id) {
 // 戦闘スキルボタンのバインド＋ショップ＋料理UIイベント
 // =======================
 
-window.addEventListener("DOMContentLoaded", () => {
+// ★修正: DOMContentLoaded ではなく init 関数として定義し、game-ui.js から呼び出す
+function initBattleAndShopUI() {
   // まず全クラフトセレクトを game-core-6 側で構築
   if (typeof refreshEquipSelects === "function") {
     refreshEquipSelects();
@@ -993,143 +994,143 @@ window.addEventListener("DOMContentLoaded", () => {
       if (typeof updateDisplay === "function") updateDisplay();
     });
   }
-});
 
-// =======================
-// 倉庫サブタブ切り替え
-// =======================
+  // =======================
+  // 倉庫サブタブ切り替え
+  // =======================
 
-(function () {
-  const tabItems      = document.getElementById("warehouseTabItems");
-  const tabMaterials  = document.getElementById("warehouseTabMaterials");
-  const pageItems     = document.getElementById("warehousePageItems");
-  const pageMaterials = document.getElementById("warehousePageMaterials");
+  (function () {
+    const tabItems      = document.getElementById("warehouseTabItems");
+    const tabMaterials  = document.getElementById("warehouseTabMaterials");
+    const pageItems     = document.getElementById("warehousePageItems");
+    const pageMaterials = document.getElementById("warehousePageMaterials");
 
-  if (!tabItems || !tabMaterials || !pageItems || !pageMaterials) {
-    return;
-  }
-
-  function setWarehouseSubPage(key) {
-    if (key === "items") {
-      pageItems.style.display     = "";
-      pageMaterials.style.display = "none";
-      tabItems.classList.add("active");
-      tabMaterials.classList.remove("active");
-    } else {
-      pageItems.style.display     = "none";
-      pageMaterials.style.display = "";
-      tabItems.classList.remove("active");
-      tabMaterials.classList.add("active");
+    if (!tabItems || !tabMaterials || !pageItems || !pageMaterials) {
+      return;
     }
+
+    function setWarehouseSubPage(key) {
+      if (key === "items") {
+        pageItems.style.display     = "";
+        pageMaterials.style.display = "none";
+        tabItems.classList.add("active");
+        tabMaterials.classList.remove("active");
+      } else {
+        pageItems.style.display     = "none";
+        pageMaterials.style.display = "";
+        tabItems.classList.remove("active");
+        tabMaterials.classList.add("active");
+      }
+    }
+
+    tabItems.addEventListener("click", () => setWarehouseSubPage("items"));
+    tabMaterials.addEventListener("click", () => setWarehouseSubPage("materials"));
+
+    // 初期は装備・アイテム側
+    setWarehouseSubPage("items");
+  })();
+
+  // =======================
+  // ステータス内サブタブ切り替え＋採取統計描画
+  // =======================
+
+  // 採取統計テーブルを描画するヘルパー
+  function renderGatherStatsTable() {
+    const container = document.getElementById("gatherStatsContainer");
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    if (typeof getGatherStatsList !== "function") {
+      const p = document.createElement("p");
+      p.textContent = "採取統計データがまだありません。";
+      container.appendChild(p);
+      return;
+    }
+
+    const stats = getGatherStatsList();
+    if (!stats || !stats.length) {
+      const p = document.createElement("p");
+      p.textContent = "まだ採取統計はありません。";
+      container.appendChild(p);
+      return;
+    }
+
+    const table = document.createElement("table");
+    table.className = "mat-table";
+
+    const thead = document.createElement("thead");
+    const htr = document.createElement("tr");
+    ["種別", "素材", "累計個数", "採取回数", "一度の最大数"].forEach(label => {
+      const th = document.createElement("th");
+      th.textContent = label;
+      htr.appendChild(th);
+    });
+    thead.appendChild(htr);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    stats.forEach(row => {
+      const tr = document.createElement("tr");
+      const kindTd = document.createElement("td");
+      kindTd.textContent = row.kind === "normal" ? "採取素材" : "料理素材";
+      tr.appendChild(kindTd);
+
+      const nameTd = document.createElement("td");
+      nameTd.textContent = row.name;
+      tr.appendChild(nameTd);
+
+      const totalTd = document.createElement("td");
+      totalTd.textContent = row.total;
+      tr.appendChild(totalTd);
+
+      const timesTd = document.createElement("td");
+      timesTd.textContent = row.times;
+      tr.appendChild(timesTd);
+
+      const maxTd = document.createElement("td");
+      maxTd.textContent = row.maxOnce;
+      tr.appendChild(maxTd);
+
+      tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    container.appendChild(table);
   }
 
-  tabItems.addEventListener("click", () => setWarehouseSubPage("items"));
-  tabMaterials.addEventListener("click", () => setWarehouseSubPage("materials"));
+  // ステータス内サブタブ切り替え
+  (function () {
+    const tabMain   = document.getElementById("statusTabMain");
+    const tabGather = document.getElementById("statusTabGather");
+    const pageMain  = document.getElementById("statusPageMain");
+    const pageGather= document.getElementById("statusPageGatherStats");
 
-  // 初期は装備・アイテム側
-  setWarehouseSubPage("items");
-})();
+    if (!tabMain || !tabGather || !pageMain || !pageGather) {
+      return;
+    }
 
-// =======================
-// ステータス内サブタブ切り替え＋採取統計描画
-// =======================
+    function setStatusSubPage(key) {
+      if (key === "main") {
+        pageMain.style.display   = "";
+        pageGather.style.display = "none";
+        tabMain.classList.add("active");
+        tabGather.classList.remove("active");
+      } else {
+        pageMain.style.display   = "none";
+        pageGather.style.display = "";
+        tabMain.classList.remove("active");
+        tabGather.classList.add("active");
 
-// 採取統計テーブルを描画するヘルパー
-function renderGatherStatsTable() {
-  const container = document.getElementById("gatherStatsContainer");
-  if (!container) return;
+        // 採取統計タブを開いたタイミングでテーブル更新
+        renderGatherStatsTable();
+      }
+    }
 
-  container.innerHTML = "";
+    tabMain.addEventListener("click", () => setStatusSubPage("main"));
+    tabGather.addEventListener("click", () => setStatusSubPage("gather"));
 
-  if (typeof getGatherStatsList !== "function") {
-    const p = document.createElement("p");
-    p.textContent = "採取統計データがまだありません。";
-    container.appendChild(p);
-    return;
-  }
-
-  const stats = getGatherStatsList();
-  if (!stats || !stats.length) {
-    const p = document.createElement("p");
-    p.textContent = "まだ採取統計はありません。";
-    container.appendChild(p);
-    return;
-  }
-
-  const table = document.createElement("table");
-  table.className = "mat-table";
-
-  const thead = document.createElement("thead");
-  const htr = document.createElement("tr");
-  ["種別", "素材", "累計個数", "採取回数", "一度の最大数"].forEach(label => {
-    const th = document.createElement("th");
-    th.textContent = label;
-    htr.appendChild(th);
-  });
-  thead.appendChild(htr);
-  table.appendChild(thead);
-
-  const tbody = document.createElement("tbody");
-  stats.forEach(row => {
-    const tr = document.createElement("tr");
-    const kindTd = document.createElement("td");
-    kindTd.textContent = row.kind === "normal" ? "採取素材" : "料理素材";
-    tr.appendChild(kindTd);
-
-    const nameTd = document.createElement("td");
-    nameTd.textContent = row.name;
-    tr.appendChild(nameTd);
-
-    const totalTd = document.createElement("td");
-    totalTd.textContent = row.total;
-    tr.appendChild(totalTd);
-
-    const timesTd = document.createElement("td");
-    timesTd.textContent = row.times;
-    tr.appendChild(timesTd);
-
-    const maxTd = document.createElement("td");
-    maxTd.textContent = row.maxOnce;
-    tr.appendChild(maxTd);
-
-    tbody.appendChild(tr);
-  });
-
-  table.appendChild(tbody);
-  container.appendChild(table);
+    // 初期状態は基本情報タブ
+    setStatusSubPage("main");
+  })();
 }
-
-// ステータス内サブタブ切り替え
-(function () {
-  const tabMain   = document.getElementById("statusTabMain");
-  const tabGather = document.getElementById("statusTabGather");
-  const pageMain  = document.getElementById("statusPageMain");
-  const pageGather= document.getElementById("statusPageGatherStats");
-
-  if (!tabMain || !tabGather || !pageMain || !pageGather) {
-    return;
-  }
-
-  function setStatusSubPage(key) {
-    if (key === "main") {
-      pageMain.style.display   = "";
-      pageGather.style.display = "none";
-      tabMain.classList.add("active");
-      tabGather.classList.remove("active");
-    } else {
-      pageMain.style.display   = "none";
-      pageGather.style.display = "";
-      tabMain.classList.remove("active");
-      tabGather.classList.add("active");
-
-      // 採取統計タブを開いたタイミングでテーブル更新
-      renderGatherStatsTable();
-    }
-  }
-
-  tabMain.addEventListener("click", () => setStatusSubPage("main"));
-  tabGather.addEventListener("click", () => setStatusSubPage("gather"));
-
-  // 初期状態は基本情報タブ
-  setStatusSubPage("main");
-})();
