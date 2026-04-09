@@ -5,13 +5,13 @@
 // レベル・転生
 // =======================
 
-// ★ レベルに応じた最大HPを返す関数
-// Lv1 は hpMaxBase (=30) のまま、Lv2 以降は +2ずつ伸ばす。
-function recalcHpMaxByLevel() {
+// ★ レベルに応じた最大HP加算量を返す関数
+// Lv1 は +0、Lv2 以降は +2ずつ伸ばす（Lv2: +2, Lv3: +4, ...）。
+function getHpLevelBonus() {
   if (level <= 1) {
-    return hpMaxBase;                   // Lv1: 30
+    return 0;
   } else {
-    return hpMaxBase + (level - 1) * 2; // Lv2〜: +2ずつ
+    return (level - 1) * 2;
   }
 }
 
@@ -54,12 +54,11 @@ function addExp(amount) {
     level++;
     leveled = true;
 
-    // ★ ベース成長: HP 最大値をレベルに応じて決定
-    //   → hpMaxBase は転生ボーナス用の基礎値、実際のレベル反映は recalcHpMaxByLevel に一本化
-    hpMax = recalcHpMaxByLevel();
-    hp    = hpMax;
-    mp    = mpMax;
-    sp    = spMax;
+    // ★ ベース成長: レベルアップごとに最大HP基礎値を +2 ずつ伸ばす（Lv2以降）。
+    //   例: Lv1→2 で +2, Lv2→3 でさらに +2 ...
+    if (level >= 2) {
+      hpMaxBase += 2;
+    }
 
     // 成長ロール
     const rolls = getLevelUpRolls();
@@ -76,6 +75,10 @@ function addExp(amount) {
     // ★ レベルアップ後に攻撃力・防御力・最大HPなどを再計算
     if (typeof recalcStats === "function") {
       recalcStats();
+      // レベルアップ時は HP/MP/SP を最大まで回復（元の仕様を維持する意図）。
+      hp = hpMax;
+      mp = mpMax;
+      sp = spMax;
     }
   }
   updateDisplay();
@@ -217,13 +220,22 @@ function doRebirth() {
   exp       = 0;
   expToNext = BASE_EXP_PER_LEVEL;
 
-  // ★ 基礎ステ再計算（HPはレベルに応じて）
-  hpMax = recalcHpMaxByLevel();
-  hp    = hpMax;
-  mpMax = mpMaxBase;
-  mp    = mpMax;
-  spMax = spMaxBase;
-  sp    = spMax;
+  // ★ 基礎ステ再計算（hpMaxBase / mpMaxBase / spMaxBase に転生ボーナスが入った状態で、
+  //    recalcStats に任せる）
+  if (typeof recalcStats === "function") {
+    recalcStats();
+    hp = hpMax;
+    mp = mpMax;
+    sp = spMax;
+  } else {
+    // 念のためのフォールバック（recalcStats がまだ無い場合）
+    hpMax = hpMaxBase;
+    mpMax = mpMaxBase;
+    spMax = spMaxBase;
+    hp    = hpMax;
+    mp    = mpMax;
+    sp    = spMax;
+  }
 
   // ★ 素材と所持品はリセットしない（既存の保持仕様を維持する）
 
