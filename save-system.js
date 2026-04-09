@@ -58,7 +58,9 @@ function makeSaveData() {
       petHp,
       petBuffRate,
       petGrowthType,
-      petSkills
+      petSkills,
+      // ★ 追加: ペット名
+      petName: (typeof petName !== "undefined") ? petName : ""
     },
 
     // --------------------------------
@@ -145,7 +147,14 @@ function makeSaveData() {
     marketBuyOrders,
     marketTradeLogs,
     marketOrderIdSeq,
-    marketListingIdSeq
+    marketListingIdSeq,
+
+    // --------------------------------
+    // ギルド関連（guild.js）
+    // --------------------------------
+    playerGuildId: (typeof window !== "undefined") ? window.playerGuildId : null,
+    guildFame: (typeof window !== "undefined") ? (window.guildFame || {}) : {},
+    guildQuestProgress: (typeof window !== "undefined") ? (window.guildQuestProgress || {}) : {}
   };
 }
 
@@ -276,6 +285,8 @@ function applySaveData(data) {
     if ("petBuffRate" in pet)     petBuffRate     = pet.petBuffRate;
     if ("petGrowthType" in pet)   petGrowthType   = pet.petGrowthType;
     if (Array.isArray(pet.petSkills)) petSkills   = pet.petSkills;
+    // ★ ペット名
+    if ("petName" in pet)         petName         = pet.petName;
   }
 
   // -------- 採取・クラフト・素材 --------
@@ -479,6 +490,27 @@ function applySaveData(data) {
     marketListingIdSeq = data.marketListingIdSeq;
   }
 
+  // -------- ギルド関連 --------
+  if (typeof window !== "undefined") {
+    if (typeof data.playerGuildId !== "undefined") {
+      window.playerGuildId = data.playerGuildId;
+    }
+    if (data.guildFame) {
+      window.guildFame = window.guildFame || {};
+      Object.keys(window.guildFame).forEach(k => delete window.guildFame[k]);
+      Object.keys(data.guildFame).forEach(k => {
+        window.guildFame[k] = data.guildFame[k];
+      });
+    }
+    if (data.guildQuestProgress) {
+      window.guildQuestProgress = window.guildQuestProgress || {};
+      Object.keys(window.guildQuestProgress).forEach(k => delete window.guildQuestProgress[k]);
+      Object.keys(data.guildQuestProgress).forEach(k => {
+        window.guildQuestProgress[k] = data.guildQuestProgress[k];
+      });
+    }
+  }
+
   // -------- インスタンス整形・装備補正・カウント再同期 --------
   normalizeInstanceLocations();
   fixEquippedAfterLoad();
@@ -519,6 +551,11 @@ function applySaveData(data) {
   }
   if (typeof updateHungerThirstEffects === "function") {
     updateHungerThirstEffects();
+  }
+
+  // ギルドUIがあれば再描画
+  if (typeof renderGuildUI === "function") {
+    renderGuildUI();
   }
 }
 
