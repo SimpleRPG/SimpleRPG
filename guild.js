@@ -20,6 +20,10 @@ window.guildFame = window.guildFame || {};
 //  battle_boss_1:        { count: 1,  done: true,  rewardTaken: true  }
 window.guildQuestProgress = window.guildQuestProgress || {};
 
+// =======================
+// 名声・ランク定義
+// =======================
+
 // ギルドごとの名声ランク定義
 // 名声がこの値以上でランク到達、の境界
 const GUILD_RANK_THRESHOLDS = [
@@ -897,6 +901,14 @@ function claimGuildQuestReward(guildId, questDef) {
   // 名声付与
   addGuildFame(guildId, questDef.fameReward);
 
+  // ★ 戦闘ギルド依頼なら戦闘ギルドスキルポイントも付与
+  if (guildId === "warrior" || guildId === "mage" || guildId === "tamer") {
+    window.combatGuildSkillPoints = (window.combatGuildSkillPoints || 0) + 1;
+    if (typeof appendLog === "function") {
+      appendLog("戦闘ギルドスキルポイントを1獲得した！");
+    }
+  }
+
   // フラグ更新
   const stored = window.guildQuestProgress[id] || {};
   stored.rewardTaken = true;
@@ -907,6 +919,11 @@ function claimGuildQuestReward(guildId, questDef) {
   }
 
   renderGuildQuests();
+
+  // ツリーUI更新（guildskill.js があれば）
+  if (typeof renderGuildRewards === "function") {
+    renderGuildRewards();
+  }
 }
 
 // この段階では A/B 以外は「内容一覧＋簡易報酬ボタン」に留める
@@ -1192,6 +1209,11 @@ function renderGuildRewards() {
 
   table.appendChild(tbody);
   listEl.appendChild(table);
+
+  // ★ 戦闘ギルドツリー（guildskill.js）があれば表示
+  if (typeof renderCombatGuildTreeSection === "function") {
+    renderCombatGuildTreeSection(listEl);
+  }
 }
 
 // =======================

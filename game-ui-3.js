@@ -2,21 +2,168 @@
 // 職業・ペット・転生まわりのUI初期化
 
 
+// ★ステータスタブHTMLを組み立てる
+function buildStatusPage() {
+  const page = document.getElementById("pageStatus");
+  if (!page) return;
+
+  page.innerHTML = `
+    <h2>ステータス</h2>
+
+    <!-- ステータス内サブタブ -->
+    <div id="statusSubTabs" style="margin-bottom:8px;">
+      <button id="statusTabMain"    class="status-sub-tab active" data-page="status-main">基本情報</button>
+      <button id="statusTabGather"  class="status-sub-tab"         data-page="status-gather-stats">採取統計</button>
+    </div>
+
+    <!-- サブページ: 基本情報（元のステータス内容） -->
+    <div id="statusPageMain" class="status-sub-page active">
+      <div class="status-block">
+        レベル: <span id="stLevel">1</span><br>
+        経験値: <span id="stExp">0</span> / <span id="stExpToNext">100</span><br>
+        転生回数: <span id="stRebirthCount">0</span><br>
+        成長タイプ: <span id="stGrowthType">バランス型</span><br>
+        職業:
+        <span id="stJobName">未設定</span>
+        <button id="changeJobBtn" style="margin-left:4px; font-size:11px; padding:1px 6px;">
+          職業を変更
+        </button>
+      </div>
+
+      <div class="status-block">
+        STR: <span id="stSTR">1</span>,
+        VIT: <span id="stVIT">1</span>,
+        INT: <span id="stINT">1</span>,
+        DEX: <span id="stDEX">1</span>,
+        LUK: <span id="stLUK">1</span><br>
+        攻撃力: <span id="stAtkTotal">0</span>,
+        防御力: <span id="stDefTotal">0</span><br>
+        最大HP: <span id="stHpMax">30</span>,
+        最大MP: <span id="stMpMax">10</span>,
+        最大SP: <span id="stSpMax">10</span>
+      </div>
+
+      <h3>転生</h3>
+      <div class="status-block">
+        Lv100以上で転生できます。転生するとLv1に戻りますが、ステータスにボーナスが付きます。<br>
+        <button id="rebirthBtn">転生する</button>
+      </div>
+
+      <h3>採取スキル</h3>
+      <div id="gatherSkillBox" class="status-block">
+        木: Lv<span id="skGatherWoodLv">0</span>,
+        鉱石: Lv<span id="skGatherOreLv">0</span>,
+        草: Lv<span id="skGatherHerbLv">0</span><br>
+        布: Lv<span id="skGatherClothLv">0</span>,
+        皮: Lv<span id="skGatherLeatherLv">0</span>,
+        水: Lv<span id="skGatherWaterLv">0</span><br>
+        狩猟: Lv<span id="skGatherHuntLv">0</span>,
+        釣り: Lv<span id="skGatherFishLv">0</span>,
+        畑: Lv<span id="skGatherFarmLv">0</span>
+      </div>
+
+      <h3>クラフトスキル</h3>
+      <div id="craftSkillBox" class="status-block">
+        武器: Lv<span id="skCraftWeaponLv">0</span>,
+        防具: Lv<span id="skCraftArmorLv">0</span>,
+        ポーション: Lv<span id="skCraftPotionLv">0</span>,
+        道具: Lv<span id="skCraftToolLv">0</span>,
+        素材: Lv<span id="skCraftMaterialLv">0</span>,
+        料理: Lv<span id="skCraftCookingLv">0</span>
+      </div>
+
+      <h3 class="pet-only">ペットステータス（動物使いのみ）</h3>
+      <div class="status-block pet-only">
+        <div id="petNameRow" style="display:inline-flex; align-items:center; gap:4px;">
+          ペット名: <span id="stPetName">ペット</span>
+          <button id="renamePetBtn" style="font-size:11px; padding:1px 6px;">
+            ペット名を変更
+          </button>
+        </div><br>
+        ペットLv: <span id="stPetLevel">1</span><br>
+        ペット経験値: <span id="stPetExp">0</span> / <span id="stPetExpToNext">5</span><br>
+        ペット転生回数: <span id="stPetRebirthCount">0</span><br>
+        成長タイプ: <span id="stPetGrowthType">バランス型</span><br>
+        ペットHP: <span id="stPetHp">10</span> / <span id="stPetHpMax">10</span><br>
+        ペット攻撃力(素): <span id="stPetAtkBase">4</span><br>
+        ペット攻撃力(現在): <span id="stPetAtkNow">4</span><br>
+        ペット防御力: <span id="stPetDef">2</span><br>
+      </div>
+
+      <div class="status-block">
+        <button id="changePetGrowthBtn" class="pet-only">ペット成長タイプを変更</button>
+      </div>
+
+      <!-- セーブ/ロード + エクスポート/インポートUI -->
+      <h3>セーブ / ロード</h3>
+      <div class="status-block">
+        <button onclick="saveToLocal()">ローカルにセーブ</button>
+        <button onclick="loadFromLocal()">ローカルからロード</button>
+        <p style="font-size:11px; color:#ccc;">
+          ※バージョンあげる時はインポートのがいいかも
+        </p>
+
+        <h4 style="margin-top:8px;">エクスポート（バックアップ用）</h4>
+        <button onclick="exportSaveData()">セーブデータをテキストに出力</button><br>
+        <textarea id="exportSaveText" rows="4" cols="60" placeholder="ここにセーブデータが出力されます（コピーしてメモ帳などに保存してください）"></textarea>
+
+        <h4 style="margin-top:8px;">インポート（復元）</h4>
+        <textarea id="importSaveText" rows="4" cols="60" placeholder="保存しておいたセーブデータをここに貼り付けてください"></textarea><br>
+        <button onclick="importSaveData()">貼り付けたデータを読み込む</button>
+      </div>
+    </div>
+
+    <!-- サブページ: 採取統計 -->
+    <div id="statusPageGatherStats" class="status-sub-page" style="display:none;">
+      <h3>採取統計</h3>
+      <div id="gatherStatsContainer" class="status-block" style="max-height:300px; overflow:auto; font-size:12px;">
+        <!-- game-ui 側で getGatherStatsList() を使ってテーブルを描画する想定 -->
+      </div>
+    </div>
+  `;
+
+  // サブタブ切り替え
+  const tabMain   = document.getElementById("statusTabMain");
+  const tabGather = document.getElementById("statusTabGather");
+  const pageMain  = document.getElementById("statusPageMain");
+  const pageGather= document.getElementById("statusPageGatherStats");
+
+  function setStatusSubPage(kind) {
+    if (!tabMain || !tabGather || !pageMain || !pageGather) return;
+
+    const isMain = (kind === "main");
+    tabMain.classList.toggle("active", isMain);
+    tabGather.classList.toggle("active", !isMain);
+    pageMain.classList.toggle("active", isMain);
+    pageGather.classList.toggle("active", !isMain);
+    pageMain.style.display   = isMain ? "" : "none";
+    pageGather.style.display = isMain ? "none" : "";
+  }
+
+  if (tabMain && tabGather) {
+    tabMain.addEventListener("click", () => setStatusSubPage("main"));
+    tabGather.addEventListener("click", () => setStatusSubPage("gather"));
+    setStatusSubPage("main");
+  }
+
+  // ペット名変更ボタン → promptRenamePet
+  const renamePetBtn = document.getElementById("renamePetBtn");
+  if (renamePetBtn && typeof promptRenamePet === "function") {
+    renamePetBtn.addEventListener("click", () => {
+      promptRenamePet();
+    });
+  }
+}
+
+
 // ★修正: 農園UIの表示制御ヘルパ（現行レイアウト用の簡易版）
 function updateFarmAreaVisibility() {
-  // 現在のHTMLでは farmSelectRow / farmSelect / farmArea は存在せず、
-  // 「採取 > 食材調達 > 農園」タブの切り替えで表示非表示を制御している。
-  // ここでは存在チェックだけに留め、何も隠さない。
   const farmAreaCooking = document.getElementById("farmAreaCooking");
   const farmSlots       = document.getElementById("farmSlots");
 
   if (!farmAreaCooking || !farmSlots) {
-    // 農園UI自体がないレイアウトなら何もしない
     return;
   }
-
-  // 将来レイアウトを変えるとき用のフックとして残すだけ。
-  // 必要であればここで farmAreaCooking.style.display をいじる。
 }
 
 // farm-core.js の updateFarmUI の最後から呼ぶためのフック
@@ -72,7 +219,7 @@ function updateGatherMatDetailText() {
     }
   }
 
-  // ▼ 料理素材（game-core-4 で kind: "cooking", gained: {...} を入れている）
+  // ▼ 料理素材
   if (info && info.kind === "cooking" && info.gained && window.cookingMats) {
     const ids = Object.keys(info.gained);
     if (ids.length > 0) {
@@ -119,7 +266,7 @@ function updateCraftMatDetailText() {
   });
   area.textContent = lines.join("\n");
 
-  // ▼ ここから追加: 中間素材の在庫一覧も表示
+  // 中間素材の在庫一覧
   if (typeof window.intermediateMats !== "undefined" &&
       Array.isArray(window.INTERMEDIATE_MATERIALS || INTERMEDIATE_MATERIALS)) {
 
@@ -159,7 +306,7 @@ function updateCraftMatDetailText() {
   label.textContent = labelText;
 }
 
-// 買い注文用セレクトの初期化（追加）
+// 買い注文用セレクトの初期化
 function initMarketOrderItemSelect() {
   const sel = document.getElementById("marketOrderItem");
   if (!sel) return;
@@ -230,6 +377,9 @@ function initMarketOrderItemSelect() {
 
 
 function initJobPetRebirthUI() {
+  // まずステータスページを構築
+  buildStatusPage();
+
   // =======================
   // 職業・ペット
   // =======================
@@ -306,13 +456,13 @@ function initJobPetRebirthUI() {
   // =======================
 
   const rebirthBtn2 = document.getElementById("rebirthBtn");
-  if (rebirthBtn2 && typeof doRebirth === "function") {
+  if (rebirthBtn2 && typeof openRebirthModal === "function") {
     rebirthBtn2.addEventListener("click", () => {
       if (window.isExploring || window.currentEnemy) {
         appendLog("探索中は転生できない！");
         return;
       }
-      doRebirth();
+      openRebirthModal();
     });
   }
 

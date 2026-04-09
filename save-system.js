@@ -150,11 +150,14 @@ function makeSaveData() {
     marketListingIdSeq,
 
     // --------------------------------
-    // ギルド関連（guild.js）
+    // ギルド関連（guild.js / guildskill.js）
     // --------------------------------
     playerGuildId: (typeof window !== "undefined") ? window.playerGuildId : null,
     guildFame: (typeof window !== "undefined") ? (window.guildFame || {}) : {},
-    guildQuestProgress: (typeof window !== "undefined") ? (window.guildQuestProgress || {}) : {}
+    guildQuestProgress: (typeof window !== "undefined") ? (window.guildQuestProgress || {}) : {},
+    // ★ 追加: 戦闘ギルドスキルツリー
+    combatGuildTreeUnlocked: (typeof window !== "undefined") ? (window.combatGuildTreeUnlocked || {}) : {},
+    combatGuildSkillPoints: (typeof window !== "undefined") ? (window.combatGuildSkillPoints || 0) : 0
   };
 }
 
@@ -508,6 +511,18 @@ function applySaveData(data) {
       Object.keys(data.guildQuestProgress).forEach(k => {
         window.guildQuestProgress[k] = data.guildQuestProgress[k];
       });
+    }
+
+    // ★ 戦闘ギルドスキルツリー
+    if (data.combatGuildTreeUnlocked) {
+      window.combatGuildTreeUnlocked = window.combatGuildTreeUnlocked || {};
+      Object.keys(window.combatGuildTreeUnlocked).forEach(k => delete window.combatGuildTreeUnlocked[k]);
+      Object.keys(data.combatGuildTreeUnlocked).forEach(k => {
+        window.combatGuildTreeUnlocked[k] = data.combatGuildTreeUnlocked[k];
+      });
+    }
+    if (typeof data.combatGuildSkillPoints === "number") {
+      window.combatGuildSkillPoints = data.combatGuildSkillPoints;
     }
   }
 

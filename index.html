@@ -339,7 +339,7 @@
               <h3>ショップ</h3>
               <p>消耗品やサービスを購入できます。</p>
 
-              <p>所持ゴールド: <span id="shopGoldDisplay">0</span>G</p>
+              <p>所持ゴールド: <span id="shopGoldDisplay">0</span>G</span></p>
 
               <div id="shopCategoryTabs">
                 <button class="shop-category-button" data-category="item">消耗品</button>
@@ -669,121 +669,8 @@
           </div>
 
           <!-- ステータス -->
-          <div id="pageStatus" class="tab-page">
-            <h2>ステータス</h2>
-
-            <!-- ステータス内サブタブ -->
-            <div id="statusSubTabs" style="margin-bottom:8px;">
-              <button id="statusTabMain"    class="status-sub-tab active" data-page="status-main">基本情報</button>
-              <button id="statusTabGather"  class="status-sub-tab"         data-page="status-gather-stats">採取統計</button>
-            </div>
-
-            <!-- サブページ: 基本情報（元のステータス内容） -->
-            <div id="statusPageMain" class="status-sub-page active">
-              <div class="status-block">
-                レベル: <span id="stLevel">1</span><br>
-                経験値: <span id="stExp">0</span> / <span id="stExpToNext">100</span><br>
-                転生回数: <span id="stRebirthCount">0</span><br>
-                成長タイプ: <span id="stGrowthType">バランス型</span><br>
-                職業:
-                <span id="stJobName">未設定</span>
-                <button id="changeJobBtn" style="margin-left:4px; font-size:11px; padding:1px 6px;">
-                  職業を変更
-                </button>
-              </div>
-
-              <div class="status-block">
-                STR: <span id="stSTR">1</span>,
-                VIT: <span id="stVIT">1</span>,
-                INT: <span id="stINT">1</span>,
-                DEX: <span id="stDEX">1</span>,
-                LUK: <span id="stLUK">1</span><br>
-                攻撃力: <span id="stAtkTotal">0</span>,
-                防御力: <span id="stDefTotal">0</span><br>
-                最大HP: <span id="stHpMax">30</span>,
-                最大MP: <span id="stMpMax">10</span>,
-                最大SP: <span id="stSpMax">10</span>
-              </div>
-
-              <h3>転生</h3>
-              <div class="status-block">
-                Lv100以上で転生できます。転生するとLv1に戻りますが、ステータスにボーナスが付きます。<br>
-                <button id="rebirthBtn">転生する</button>
-              </div>
-
-              <h3>採取スキル</h3>
-              <div id="gatherSkillBox" class="status-block">
-                木: Lv<span id="skGatherWoodLv">0</span>,
-                鉱石: Lv<span id="skGatherOreLv">0</span>,
-                草: Lv<span id="skGatherHerbLv">0</span><br>
-                布: Lv<span id="skGatherClothLv">0</span>,
-                皮: Lv<span id="skGatherLeatherLv">0</span>,
-                水: Lv<span id="skGatherWaterLv">0</span><br>
-                狩猟: Lv<span id="skGatherHuntLv">0</span>,
-                釣り: Lv<span id="skGatherFishLv">0</span>,
-                畑: Lv<span id="skGatherFarmLv">0</span>
-              </div>
-
-              <h3>クラフトスキル</h3>
-              <div id="craftSkillBox" class="status-block">
-                武器: Lv<span id="skCraftWeaponLv">0</span>,
-                防具: Lv<span id="skCraftArmorLv">0</span>,
-                ポーション: Lv<span id="skCraftPotionLv">0</span>,
-                道具: Lv<span id="skCraftToolLv">0</span>,
-                素材: Lv<span id="skCraftMaterialLv">0</span>,
-                料理: Lv<span id="skCraftCookingLv">0</span>
-              </div>
-
-              <h3 class="pet-only">ペットステータス（動物使いのみ）</h3>
-              <div class="status-block pet-only">
-                <div id="petNameRow" style="display:inline-flex; align-items:center; gap:4px;">
-                  ペット名: <span id="stPetName">ペット</span>
-                  <button id="renamePetBtn" style="font-size:11px; padding:1px 6px;">
-                    ペット名を変更
-                  </button>
-                </div><br>
-                ペットLv: <span id="stPetLevel">1</span><br>
-                ペット経験値: <span id="stPetExp">0</span> / <span id="stPetExpToNext">5</span><br>
-                ペット転生回数: <span id="stPetRebirthCount">0</span><br>
-                成長タイプ: <span id="stPetGrowthType">バランス型</span><br>
-                ペットHP: <span id="stPetHp">10</span> / <span id="stPetHpMax">10</span><br>
-                <!-- ★追加: ペット攻撃力・防御力表示 -->
-                ペット攻撃力(素): <span id="stPetAtkBase">4</span><br>
-                ペット攻撃力(現在): <span id="stPetAtkNow">4</span><br>
-                ペット防御力: <span id="stPetDef">2</span><br>
-              </div>
-
-              <div class="status-block">
-                <button id="changePetGrowthBtn" class="pet-only">ペット成長タイプを変更</button>
-              </div>
-
-              <!-- ★ セーブ/ロード + エクスポート/インポートUI -->
-              <h3>セーブ / ロード</h3>
-              <div class="status-block">
-                <button onclick="saveToLocal()">ローカルにセーブ</button>
-                <button onclick="loadFromLocal()">ローカルからロード</button>
-                <p style="font-size:11px; color:#ccc;">
-                  ※バージョンあげる時はインポートのがいいかも
-                </p>
-
-                <h4 style="margin-top:8px;">エクスポート（バックアップ用）</h4>
-                <button onclick="exportSaveData()">セーブデータをテキストに出力</button><br>
-                <textarea id="exportSaveText" rows="4" cols="60" placeholder="ここにセーブデータが出力されます（コピーしてメモ帳などに保存してください）"></textarea>
-
-                <h4 style="margin-top:8px;">インポート（復元）</h4>
-                <textarea id="importSaveText" rows="4" cols="60" placeholder="保存しておいたセーブデータをここに貼り付けてください"></textarea><br>
-                <button onclick="importSaveData()">貼り付けたデータを読み込む</button>
-              </div>
-            </div>
-
-            <!-- サブページ: 採取統計 -->
-            <div id="statusPageGatherStats" class="status-sub-page" style="display:none;">
-              <h3>採取統計</h3>
-              <div id="gatherStatsContainer" class="status-block" style="max-height:300px; overflow:auto; font-size:12px;">
-                <!-- game-ui 側で getGatherStatsList() を使ってテーブルを描画する想定 -->
-              </div>
-            </div>
-          </div>
+          <!-- ★ここは game-ui-3.js の buildStatusPage で生成するので、中身を空にしておく -->
+          <div id="pageStatus" class="tab-page"></div>
 
           <!-- ギルド -->
           <div id="pageGuild" class="tab-page">
@@ -880,6 +767,20 @@
       </div>
     </div>
 
+    <!-- ★追加: 転生確認モーダル -->
+    <div id="rebirthModal" class="modal-center hidden">
+      <div id="rebirthModalInner">
+        <h3>転生の確認</h3>
+        <p id="rebirthModalMessage" style="font-size:0.9em;">
+          <!-- メッセージは game-core-2.js の openRebirthModal() で差し込まれる -->
+        </p>
+        <div style="margin-top:10px; text-align:right;">
+          <button id="rebirthCancelBtn" onclick="closeRebirthModal()">やめる</button>
+          <button id="rebirthConfirmBtn" onclick="confirmRebirth()">転生する</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ペット成長タイプ変更モーダル -->
     <div id="petGrowthModal" class="modal-center hidden">
       <div id="petGrowthModalInner">
@@ -937,6 +838,7 @@
   <script src="market-core.js"></script>
   <script src="save-system.js"></script>
   <script src="guild.js"></script>
+  <script src="guildskill.js"></script>
 
   <script src="game-ui.js"></script>
   <script src="game-ui-2.js"></script>
@@ -945,18 +847,8 @@
   <script src="asobikata.js"></script>
 
   <script>
-    // ペット名変更ボタン → game-core-2.js の promptRenamePet を呼ぶ
+    // ギルド内タブ切り替え（仕様はそのまま、中身の表示を切り替えるだけ）
     document.addEventListener("DOMContentLoaded", () => {
-      const btn = document.getElementById("renamePetBtn");
-      if (btn) {
-        btn.addEventListener("click", () => {
-          if (typeof promptRenamePet === "function") {
-            promptRenamePet();
-          }
-        });
-      }
-
-      // ★ ギルド内タブ切り替え（仕様はそのまま、中身の表示を切り替えるだけ）
       const guildTabButtons = document.querySelectorAll(".guildTabBtn");
       const guildPaneList   = document.getElementById("guildTab_list");
       const guildPaneQuests = document.getElementById("guildTab_quests");

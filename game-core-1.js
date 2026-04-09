@@ -11,6 +11,11 @@ let BASE_EXP_PER_LEVEL = 100;
 // ★ 装備耐久（武器・防具共通）
 let MAX_DURABILITY = 3;
 
+// ★ ステータス→HP/MP/SP 変換係数（VIT3でHP+1, INT3でMP+1, DEX3でSP+1）
+const HP_PER_VIT_POINT = 1 / 3;
+const MP_PER_INT_POINT = 1 / 3;
+const SP_PER_DEX_POINT = 1 / 3;
+
 // =======================
 // 基本ステータス
 // =======================
@@ -309,6 +314,15 @@ function recalcStats() {
     defFromDex      = Math.floor(defFromDex      * thirstDefDexLukRate);
     defFromArmorVit = Math.floor(defFromArmorVit * thirstDefDexLukRate);
   }
+
+  // ===== ステータス→最大HP/MP/SP への追加分を反映 =====
+  const hpFromVit = Math.floor(VIT * HP_PER_VIT_POINT);
+  const mpFromInt = Math.floor(INT_ * MP_PER_INT_POINT);
+  const spFromDex = Math.floor(DEX_ * SP_PER_DEX_POINT);
+
+  baseHpMax += hpFromVit;
+  baseMpMax += mpFromInt;
+  baseSpMax += spFromDex;
 
   // ===== 空腹・水分デバフ反映（最大HP/MP/SP） =====
   if (typeof hungerHpRate === "number") {

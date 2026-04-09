@@ -886,6 +886,14 @@ input[type="text"] {
   margin: 4px 0;
 }
 
+/* ステータス内のインポート／エクスポート用テキストエリアがはみ出さないように */
+#pageStatus textarea {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  resize: vertical;
+}
+
 /* ======================
    数値変化アニメ
    ====================== */
@@ -1171,4 +1179,51 @@ input[type="text"] {
 
 #titleBar h1 {
   pointer-events: auto;   /* タイトル自体の選択などは可能に */
+}
+
+/* ======================
+   転生モーダル
+   ====================== */
+
+#rebirthModal {
+  background: rgba(0,0,0,0.65); /* 画面全体を薄暗く */
+  z-index: 103;                 /* 職業/ペット/農園より上 */
+}
+
+/* 中身のパネルは職業・ペットモーダルと揃える */
+#rebirthModalInner {
+  background: #11111c;
+  border-radius: 10px;
+  border: 1px solid rgba(200,190,255,0.95);
+  padding: 14px 18px 16px;
+  max-width: 360px;
+  width: 92%;
+  box-shadow:
+    0 14px 32px rgba(0,0,0,0.9),
+    0 0 12px rgba(159,123,255,0.8);
+  font-size: 13px;
+}
+
+#rebirthModalInner h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+#rebirthModalInner p {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+}
+
+/* ボタン行（右寄せ） */
+#rebirthModalInner > div:last-child button {
+  min-width: 90px;
+}
+
+/* モーダル内パネルが画面からはみ出さないように共通制限 */
+#jobModalInner,
+#petGrowthModalInner,
+#rebirthModalInner,
+.modal .modal-content {
+  max-height: 90vh;
+  overflow-y: auto;
 }

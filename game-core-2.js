@@ -15,6 +15,7 @@ function getHpLevelBonus() {
   }
 }
 
+// ★ 成長ロール1回ぶんを行い、どのステが上がったかを返す
 function applyLevelUpGrowth() {
   const pool = [];
   if (growthType === 0) {
@@ -34,21 +35,25 @@ function applyLevelUpGrowth() {
     pool.push("STR","VIT","INT_","DEX_","LUK");
   }
   const pick = pool[Math.floor(Math.random() * pool.length)];
-  if      (pick === "STR")  STR++;
-  else if (pick === "VIT")  VIT++;
-  else if (pick === "INT_") INT_++;
-  else if (pick === "DEX_") DEX_++;
-  else if (pick === "LUK")  LUK_++;
+  if      (pick === "STR")  { STR++;  return "STR"; }
+  else if (pick === "VIT")  { VIT++;  return "VIT"; }
+  else if (pick === "INT_") { INT_++; return "INT"; }
+  else if (pick === "DEX_") { DEX_++; return "DEX"; }
+  else if (pick === "LUK")  { LUK_++; return "LUK"; }
+  return null;
 }
 
 function getLevelUpRolls() {
-  const extra = Math.floor(Math.sqrt(rebirthCount)) + Math.floor(rebirthCount / 20);
-  return 1 + extra;
+  // 基本1ロール + 転生回数ぶん上乗せ
+  return 1 + rebirthCount;
 }
 
 function addExp(amount) {
   exp += amount;
   let leveled = false;
+  // ★ レベルアップ中に増えたステータスを集計する
+  let totalUp = { STR: 0, VIT: 0, INT: 0, DEX: 0, LUK: 0 };
+
   while (exp >= expToNext) {
     exp -= expToNext;
     level++;
@@ -63,7 +68,10 @@ function addExp(amount) {
     // 成長ロール
     const rolls = getLevelUpRolls();
     for (let i = 0; i < rolls; i++) {
-      applyLevelUpGrowth();
+      const up = applyLevelUpGrowth();
+      if (up && totalUp[up] != null) {
+        totalUp[up] += 1;
+      }
     }
 
     // ★ 必要経験値をレベルアップごとに再設定
@@ -71,6 +79,17 @@ function addExp(amount) {
   }
   if (leveled) {
     appendLog(`レベルアップ！ Lv${level}になった（成長タイプ: ${getGrowthTypeName()}）`);
+
+    // ★ どのステータスがどれだけ上がったかをまとめてログ
+    const parts = [];
+    if (totalUp.STR) parts.push(`STR +${totalUp.STR}`);
+    if (totalUp.VIT) parts.push(`VIT +${totalUp.VIT}`);
+    if (totalUp.INT) parts.push(`INT +${totalUp.INT}`);
+    if (totalUp.DEX) parts.push(`DEX +${totalUp.DEX}`);
+    if (totalUp.LUK) parts.push(`LUK +${totalUp.LUK}`);
+    if (parts.length > 0) {
+      appendLog("成長ステータス: " + parts.join(", "));
+    }
 
     // ★ レベルアップ後に攻撃力・防御力・最大HPなどを再計算
     if (typeof recalcStats === "function") {
@@ -146,7 +165,8 @@ function addPetExp(amount) {
 function applyRebirthBonus() {
   const choices = ["STR","VIT","INT","DEX","LUK","HP","MP","SP"];
   let msgList = [];
-  const rolls = 3; // 今は3回固定（必要なら将来拡張）
+  // ★ 転生直後に貰えるポイント回数 = 転生回数 × 3
+  const rolls = rebirthCount * 3;
 
   for (let i = 0; i < rolls; i++) {
     const pick = choices[Math.floor(Math.random() * choices.length)];
@@ -176,7 +196,7 @@ function applyRebirthBonus() {
       msgList.push("LUK +1");
     }
   }
-  return "転生ボーナス:\n" + msgList.join("\n");
+  return "転生ボーナス:\\\n" + msgList.join("\\\n");
 }
 
 function applyPetRebirthBonus() {
@@ -201,13 +221,42 @@ function resetBaseStatsToInitial() {
   spMaxBase = 10;
 }
 
-function doRebirth() {
+// 転生確認モーダルを開く
+function openRebirthModal() {
+  const modal = document.getElementById("rebirthModal");
+  const msgEl = document.getElementById("rebirthModalMessage");
+  if (!modal || !msgEl) return;
+
+  msgEl.innerHTML =
+    "転生を行うと、レベルは1に戻り、必要経験値もリセットされます。<br>" +
+    "ステータスは初期値に戻りますが、これまでの転生回数に応じた<br>" +
+    "恒久ボーナス（転生回数×3）とペットの強化は蓄積されます。<br>" +
+    "レベルアップで得られるステータスポイントが転生回数分上乗せされます。<br><br>" +
+    `※転生には現在レベル${REBIRTH_LEVEL_REQ}以上が必要です。<br>` +
+    "条件を満たしていない場合は説明のみ表示されます。<br><br>" +
+    "本当に転生しますか？";
+
+  modal.classList.remove("hidden");
+}
+
+function closeRebirthModal() {
+  const modal = document.getElementById("rebirthModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+function confirmRebirth() {
+  // レベル条件チェック：条件未達なら説明だけ見せて終了
   if (level < REBIRTH_LEVEL_REQ) {
     appendLog(`転生にはLv${REBIRTH_LEVEL_REQ}以上が必要です`);
+    closeRebirthModal();
     return;
   }
+  closeRebirthModal();
+  doRebirth();
+}
 
-  // ★ 先に基礎ステを初期値に戻す
+function doRebirth() {
+  // ★ 先に基礎ステを初期値に戻す（レベルチェックは confirmRebirth 側に一本化）
   resetBaseStatsToInitial();
 
   rebirthCount++;
@@ -220,15 +269,13 @@ function doRebirth() {
   exp       = 0;
   expToNext = BASE_EXP_PER_LEVEL;
 
-  // ★ 基礎ステ再計算（hpMaxBase / mpMaxBase / spMaxBase に転生ボーナスが入った状態で、
-  //    recalcStats に任せる）
+  // ★ 基礎ステ再計算
   if (typeof recalcStats === "function") {
     recalcStats();
     hp = hpMax;
     mp = mpMax;
     sp = spMax;
   } else {
-    // 念のためのフォールバック（recalcStats がまだ無い場合）
     hpMax = hpMaxBase;
     mpMax = mpMaxBase;
     spMax = spMaxBase;
@@ -237,12 +284,9 @@ function doRebirth() {
     sp    = spMax;
   }
 
-  // ★ 素材と所持品はリセットしない（既存の保持仕様を維持する）
-
   // ペットリセット
   petLevel     = 1;
   petExp       = 0;
-  // ★ ペットの必要経験値も 100 でリセット
   petExpToNext = BASE_EXP_PER_LEVEL;
   petHpMax     = petHpBase + petRebirthCount * 3;
   petHp        = petHpMax;
@@ -255,7 +299,6 @@ function doRebirth() {
 
   setBattleCommandVisible(false);
 
-  // ★ ギルド依頼用: 転生達成を通知（職業IDをそのまま渡す）
   if (typeof onRebirthForGuild === "function") {
     onRebirthForGuild({ jobId });
   }
@@ -267,7 +310,6 @@ function doRebirth() {
     `ペット転生回数: ${petRebirthCount}（基礎ATKとHPが強化された）`
   );
 
-  // 装備リスト・表示更新（実体は game-core-4 側）
   if (typeof refreshEquipSelects === "function") {
     refreshEquipSelects();
   }
@@ -309,16 +351,12 @@ function clamp01(v) {
 // 今「満腹＆十分な水分」かどうか
 function isWellFed() {
   const now = Date.now();
-  // 100にしてから20分経過していなければ常に満腹扱い
   if (now < wellFedUntil) return true;
-  // タイマー切れ後は実際の値で判定
   return hunger >= 90 && thirst >= 90;
 }
 
 // 戦闘1勝あたりの経験値を返す
-// （敵expを無視して「5 or 8固定」にしたい案に合わせている）
 function getBattleExpPerWin(enemy) {
-  // 将来、敵ごとのexpを活かすならここで enemy.exp を使って倍率をかける
   return isWellFed() ? 8 : 5;
 }
 
@@ -327,16 +365,15 @@ function updateHungerThirstEffects() {
   const hungerRatio = clamp01(hunger / 100);
   const thirstRatio = clamp01(thirst / 100);
 
-  // 50%を切ったところから「0.5→1.0 / 0→0.0」で線形
   if (hungerRatio < 0.5) {
-    hungerHpRate = hungerRatio / 0.5;   // 0.5で1.0, 0で0.0
+    hungerHpRate = hungerRatio / 0.5;
     if (!hungerBelow50Logged) {
       appendLog("お腹が減ってきた… 最大HPが下がり始めている。");
       hungerBelow50Logged = true;
     }
   } else {
     hungerHpRate = 1.0;
-    hungerBelow50Logged = false; // 回復で50%以上に戻ったらリセット
+    hungerBelow50Logged = false;
   }
 
   if (thirstRatio < 0.5) {
@@ -350,10 +387,9 @@ function updateHungerThirstEffects() {
     thirstBelow50Logged = false;
   }
 
-  // 25%を切ったら STR/INT, VIT/DEX/LUK にデバフ
   if (hungerRatio < 0.25) {
-    const t = hungerRatio / 0.25;       // 0〜1
-    hungerAtkIntRate = 0.7 + 0.3 * t;   // 0.25→1.0, 0→0.7
+    const t = hungerRatio / 0.25;
+    hungerAtkIntRate = 0.7 + 0.3 * t;
     if (!hungerBelow25Logged) {
       appendLog("空腹で力が入らない… 攻撃と魔力がかなり落ちている。");
       hungerBelow25Logged = true;
@@ -375,7 +411,6 @@ function updateHungerThirstEffects() {
     thirstBelow25Logged = false;
   }
 
-  // 係数が変わったのでステ再計算
   if (typeof recalcStats === "function") {
     recalcStats();
   }
@@ -386,14 +421,11 @@ function restoreHungerThirst(addHunger, addThirst) {
   hunger = Math.min(100, hunger + (addHunger || 0));
   thirst = Math.min(100, thirst + (addThirst || 0));
 
-  // どちらかでも100になったら20分間は減らさない
   if (hunger === 100 || thirst === 100) {
     wellFedUntil = Date.now() + 20 * 60 * 1000;
   }
 
-  // ★ 満腹・水分回復時にもデバフを更新
   updateHungerThirstEffects();
-
   updateDisplay();
 }
 
@@ -401,25 +433,19 @@ function restoreHungerThirst(addHunger, addThirst) {
 function handleHungerThirstOnAction(actionType) {
   const now = Date.now();
   if (now < wellFedUntil) {
-    // 満腹タイム中は一切減らさない
     return;
   }
 
-  // 行動内容で分岐したければ actionType を見る（今は共通で+1）
   hungerActionCount++;
   thirstActionCount++;
 
-  // 毎アクション -1
   hunger = Math.max(0, hunger - 1);
   thirst = Math.max(0, thirst - 1);
 
-  // カウンタはもう不要なら消してよい
   hungerActionCount = 0;
   thirstActionCount = 0;
 
-  // ★ 空腹・水分低下に伴う係数更新
   updateHungerThirstEffects();
-
   updateDisplay();
 }
 
@@ -450,7 +476,6 @@ function openJobModal() {
     msgEl.innerHTML = "職業を1つ選んでください。<br>変更は100Gで可能です。";
   }
 
-  // ★ display ではなく hidden クラスで表示制御
   modal.classList.remove("hidden");
 }
 
@@ -480,14 +505,12 @@ function applyJobChange(newJobId) {
   jobId = newJobId;
   if (newJobId === 2) everBeastTamer = true;
 
-  // 初回転生前は職業に応じて成長タイプ固定
   if (!rebirthCount) {
-    if      (newJobId === 0) growthType = 0; // 戦士=STR型
-    else if (newJobId === 1) growthType = 2; // 魔法使い=INT型
-    else if (newJobId === 2) growthType = 4; // 動物使い=バランス型
+    if      (newJobId === 0) growthType = 0;
+    else if (newJobId === 1) growthType = 2;
+    else if (newJobId === 2) growthType = 4;
   }
 
-  // ★ 動物使い用ペットスキルの初期化
   if (jobId === 2) {
     petSkills = [
       { id: "powerBite", name: "パワーバイト", powerRate: 1.6 },
@@ -498,10 +521,7 @@ function applyJobChange(newJobId) {
     petSkills = [];
   }
 
-  // ★ 職業変更後にステータス再計算
   recalcStats();
-
-  // ★ 職業選択・変更時に MP/SP を最大まで回復
   mp = mpMax;
   sp = spMax;
 
@@ -526,7 +546,6 @@ function changePetGrowthType() {
   }
   const modal = document.getElementById("petGrowthModal");
   if (modal) {
-    // ★ display ではなく hidden クラスで表示制御
     modal.classList.remove("hidden");
   }
 }
