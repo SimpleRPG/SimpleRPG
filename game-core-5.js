@@ -1,30 +1,6 @@
 // game-core-5.js
 // 探索・ランダムイベント・敵関連ロジック（エリア出現・ボス生成・撃破処理）工場区画
 //
-// 前提：enemy-data.js で
-//   ENEMIES, AREA_ENEMY_TABLE, AREA_BOSS_ID
-// が定義済み。
-// game-core-1.js / 2.js / 3.js で
-//   currentEnemy, enemyHp, enemyHpMax, isBossBattle,
-//   areaBossCleared, areaBossAvailable,
-//   money, addExp, addPetExp,
-//   getCurrentArea(), setBattleCommandVisible(), setExploreUIVisible(),
-//   updateDisplay(), appendLog(), endBattleCommon(),
-//   getBattleExpPerWin(), handleHungerThirstOnAction(),
-//   materials, wood, ore, herb, cloth, leather, water,
-//   hp, hpMax, mp, mpMax, sp, spMax, petHp, petHpMax,
-//   equippedWeaponId, equippedArmorId, weapons, armors,
-//   weaponCounts, armorCounts,
-//   refreshEquipSelects,
-//   carryFoods, carryDrinks, COOKING_RECIPES,
-//   refreshCarryFoodDrinkSelects,
-//   potions, potionCounts,
-//   POTION_TYPE_HP, POTION_TYPE_MP, POTION_TYPE_BOTH, POTION_TYPE_DAMAGE,
-//   escapeFailBonus, LUK_,
-//   onBossDefeated(), startBattleCommon(),
-//   updateSkillButtonsByJob(), updateBattleSkillUIByJob(),
-//   gatherSkills, intermediateMats
-// などが定義済みである前提。
 
 // =======================
 // グローバル状態（探索・ボス）

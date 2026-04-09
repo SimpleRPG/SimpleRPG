@@ -685,16 +685,29 @@ input[type="text"] {
 }
 
 /* ======================
+   共通モーダルセンタリング
+   ====================== */
+
+/* 画面全体を覆って中央寄せする共通レイアウト */
+.modal-center {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 非表示状態用クラス（JSで付け外しする想定） */
+.modal-center.hidden {
+  display: none;
+}
+
+/* ======================
    職業モーダル
    ====================== */
 
 #jobModal {
-  position: fixed;
-  inset: 0;
   background: rgba(0,0,0,0.65);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   z-index: 100;
 }
 
@@ -735,12 +748,8 @@ input[type="text"] {
 /* ペット成長タイプモーダル */
 
 #petGrowthModal {
-  position: fixed;
-  inset: 0;
   background: rgba(0,0,0,0.65);
-  display: none;
-  align-items: center;
-  justify-content: center;
+  /* display は .modal-center.hidden に任せる */
   z-index: 101;
 }
 
@@ -776,6 +785,31 @@ input[type="text"] {
 #petGrowthButtons button {
   min-width: 90px;
   text-align: center;
+}
+
+/* ======================
+   農園モーダル（共通 .modal クラス）
+   ====================== */
+
+/* 画面全体を覆うモーダル共通スタイル */
+.modal {
+  background: rgba(0,0,0,0.65);
+  /* display は JS ではなく .hidden クラスで切り替える */
+  z-index: 102;             /* 職業/ペットより一段上 */
+}
+
+/* .modal 内のパネル（農園用） */
+.modal .modal-content {
+  background: #11111c;
+  border-radius: 10px;
+  border: 1px solid rgba(200,190,255,0.95);
+  padding: 14px 18px 16px;
+  max-width: 360px;
+  width: 92%;
+  box-shadow:
+    0 14px 32px rgba(0,0,0,0.9),
+    0 0 12px rgba(159,123,255,0.8);
+  font-size: 13px;
 }
 
 /* ======================

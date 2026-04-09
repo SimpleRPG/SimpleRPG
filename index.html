@@ -95,25 +95,77 @@
           <!-- 採取 -->
           <div id="pageGather" class="tab-page active">
             <h2>採取</h2>
-            <p>採取対象を選んで採取（待ち時間なし）。</p>
+            <p>採取タブと食材調達タブを切り替えて行動します。</p>
 
-            <label class="text-caption">フィールド:</label>
-            <!-- option は JS 側で全部生成する -->
-            <select id="gatherField"></select>
-
-            <select id="gatherTarget"></select>
-
-            <button id="gather">採取</button>
-
-            <div style="display:flex; align-items:center; gap:4px; margin-top:4px;">
-              <p id="gatherMaterials" style="flex:1;">
-                所持素材：-
-              </p>
-              <button id="toggleMatDetailBtn" style="font-size:11px; padding:2px 6px;">
-                詳細▼
-              </button>
+            <!-- ★採取ページ内サブタブ -->
+            <div id="gatherSubTabs" style="margin-bottom:8px;">
+              <button id="gatherTabNormal" class="gather-sub-tab active" data-gather-page="gather-normal">採取</button>
+              <button id="gatherTabCooking" class="gather-sub-tab" data-gather-page="gather-cooking">食材調達</button>
             </div>
-            <pre id="gatherMatDetail" style="display:none; font-size:11px; margin:2px 0 0;"></pre>
+
+            <!-- サブページ: 通常採取 -->
+            <div id="gatherPageNormal" class="gather-sub-page active">
+              <p>採取対象を選んで採取（待ち時間なし）。</p>
+
+              <label class="text-caption">フィールド:</label>
+              <!-- option は JS 側で全部生成する -->
+              <select id="gatherField"></select>
+
+              <select id="gatherTarget"></select>
+
+              <button id="gather">採取</button>
+
+              <div style="display:flex; align-items:center; gap:4px; margin-top:4px;">
+                <p id="gatherMaterials" style="flex:1;">
+                  所持素材：-
+                </p>
+                <button id="toggleMatDetailBtn" style="font-size:11px; padding:2px 6px;">
+                  詳細▼
+                </button>
+              </div>
+              <pre id="gatherMatDetail" style="display:none; font-size:11px; margin:2px 0 0;"></pre>
+            </div>
+
+            <!-- サブページ: 食材調達 -->
+            <div id="gatherPageCooking" class="gather-sub-page" style="display:none;">
+              <h3>食材調達</h3>
+              <p style="font-size:12px; margin-bottom:4px;">
+                狩猟・釣り・農園から料理用の素材を集めます。
+              </p>
+
+              <!-- 食材調達内サブタブ（郊外 / 農園） -->
+              <div class="gather-cook-sub-tabs" style="margin-bottom:4px;">
+                <button id="gatherCookTabField" class="gather-cook-tab-btn active">郊外</button>
+                <button id="gatherCookTabFarm"  class="gather-cook-tab-btn">農園</button>
+              </div>
+
+              <!-- 郊外タブ: 狩猟・釣り -->
+              <div id="gatherCookPageField">
+                <div class="gather-cooking-buttons" style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:4px;">
+                  <button id="gatherHuntBtn">狩猟で食材を集める</button>
+                  <button id="gatherFishBtn">釣りで食材を集める</button>
+                </div>
+                <p style="font-size:11px; color:#ccc;">
+                  狩猟と釣りでは、肉や魚などの料理素材を入手できます。
+                </p>
+              </div>
+
+              <!-- 農園タブ: 農園UIをここに表示（実体は farm-core.js） -->
+              <div id="gatherCookPageFarm" style="display:none;">
+                <div id="farmAreaCooking" style="margin-top:6px; padding:6px; border:1px solid #555;">
+                  <h3>農園</h3>
+                  <p style="font-size:11px; color:#ccc; margin:0 0 4px;">
+                    畑と菜園の管理・収穫はここから行います。
+                  </p>
+                  <div id="farmSlots">
+                    <!-- farm-core.js の updateFarmUI() がここにスロットを描画する -->
+                  </div>
+                  <div style="margin-top:4px;">
+                    <button id="careFarmAllBtn" onclick="careFarmAll()">畑・菜園の世話をする</button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- 魔巧区（クラフト＋装備強化＋ショップ＋市場＋採取拠点） -->
@@ -165,7 +217,7 @@
                 </select>
               </div>
 
-              <!-- ★追加: 装備種別フィルタ -->
+              <!-- 装備種別フィルタ -->
               <div id="craftKindRow" style="margin:4px 0;">
                 <label style="font-size:12px;">装備種別:</label>
                 <select id="craftKindSelect">
@@ -212,7 +264,7 @@
                 </div>
               </div>
 
-              <!-- 追加: 料理クラフトパネル -->
+              <!-- 料理クラフトパネル -->
               <div id="craftPanelCooking" class="craft-panel" style="display:none;">
                 <h3>料理クラフト</h3>
 
@@ -259,7 +311,7 @@
 
               <div style="margin-bottom:6px;">
                 <h4 style="margin:4px 0;">武器強化</h4>
-                <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
+                <div style="display:flex; gap:4px; alignitems:center; margin-bottom:4px;">
                   <label style="font-size:12px;">強化対象武器:</label>
                   <!-- ★ インスタンス選択用セレクト（game-core-6.js で埋める） -->
                   <select id="enhanceWeaponTargetSelect" style="flex:1;"></select>
@@ -269,7 +321,7 @@
 
               <div style="margin-top:8px;">
                 <h4 style="margin:4px 0;">防具強化</h4>
-                <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
+                <div style="display:flex; gap:4px; alignitems:center; margin-bottom:4px;">
                   <label style="font-size:12px;">強化対象防具:</label>
                   <!-- ★ インスタンス選択用セレクト（game-core-6.js で埋める） -->
                   <select id="enhanceArmorTargetSelect" style="flex:1;"></select>
@@ -813,7 +865,7 @@
     </div><!-- /#layoutBody -->
 
     <!-- 職業選択モーダル -->
-    <div id="jobModal">
+    <div id="jobModal" class="modal-center hidden">
       <div id="jobModalInner">
         <h3 id="jobModalTitle">最初の職業を選択</h3>
         <p id="jobModalMessage" style="font-size:0.9em;">
@@ -829,7 +881,7 @@
     </div>
 
     <!-- ペット成長タイプ変更モーダル -->
-    <div id="petGrowthModal" style="display:none;">
+    <div id="petGrowthModal" class="modal-center hidden">
       <div id="petGrowthModalInner">
         <h3>ペット成長タイプを変更</h3>
         <p style="font-size:0.9em;">
@@ -846,6 +898,22 @@
         </div>
       </div>
     </div>
+
+    <!-- 農園: 作物選択モーダル（セレクト＋説明付き） -->
+    <div id="farmPlantModal" class="modal modal-center hidden">
+      <div class="modal-content">
+        <h3>どの作物を植えますか？</h3>
+        <select id="farmPlantSelect"></select>
+        <div id="farmPlantDesc" class="farm-plant-desc" style="margin-top:4px; font-size:12px; color:#ccc;">
+          <!-- 選択中の作物の説明がここに表示されます -->
+        </div>
+        <div class="modal-buttons" style="margin-top:8px; text-align:right;">
+          <button id="farmPlantOk">OK</button>
+          <button id="farmPlantCancel">キャンセル</button>
+        </div>
+      </div>
+    </div>
+
   </div><!-- /#appRoot -->
 
   <script src="enemy-data.js"></script>
@@ -855,6 +923,7 @@
   <script src="game-shop.js"></script>
   <script src="cook-data.js"></script>
   <script src="inventory-core.js"></script>
+  <script src="farm-core.js"></script>
 
   <script src="game-core-1.js"></script>
   <script src="game-core-2.js"></script>

@@ -445,12 +445,13 @@ function openJobModal() {
     msgEl.innerHTML = "職業を1つ選んでください。<br>変更は100Gで可能です。";
   }
 
-  modal.style.display = "flex";
+  // ★ display ではなく hidden クラスで表示制御
+  modal.classList.remove("hidden");
 }
 
 function closeJobModal() {
   const modal = document.getElementById("jobModal");
-  if (modal) modal.style.display = "none";
+  if (modal) modal.classList.add("hidden");
 }
 
 function applyJobChange(newJobId) {
@@ -519,7 +520,10 @@ function changePetGrowthType() {
     return;
   }
   const modal = document.getElementById("petGrowthModal");
-  if (modal) modal.style.display = "flex";
+  if (modal) {
+    // ★ display ではなく hidden クラスで表示制御
+    modal.classList.remove("hidden");
+  }
 }
 
 // ペット簡易ステータス（上部バー下のミニ表示）更新
