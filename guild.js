@@ -42,12 +42,13 @@ const GUILDS = {
     type: "battle",
     desc: "前衛戦士たちが所属するギルド。物理攻撃や耐久面の支援に長けている。",
     detail: "近接戦闘の依頼や、ボス討伐の推薦状を主に扱う。",
+    // ランクボーナスのみを表示
     perks: [
-      { rank: 1, fame: 10,  summary: "物理攻撃力+小、HP+小のパッシブを解放。" },
-      { rank: 2, fame: 30,  summary: "戦士系スキル書の一部が解放される。" },
-      { rank: 3, fame: 70,  summary: "高難度フィールドへの推薦状が届くことがある。" },
-      { rank: 4, fame: 150, summary: "ボス戦での被ダメージ軽減パッシブを解放。" },
-      { rank: 5, fame: 300, summary: "戦士専用の高ティア武器レシピが解放。" }
+      {
+        rank: 1,
+        fame: 10,
+        summary: "所属中、ランク×2%分だけ物理スキルダメージが増加する（最大+10%）。"
+      }
     ]
   },
   mage: {
@@ -57,11 +58,11 @@ const GUILDS = {
     desc: "魔法使い達が集うギルド。新しい魔法やMP関連の支援を行う。",
     detail: "魔法研究と危険な魔力調査を担当する。",
     perks: [
-      { rank: 1, fame: 10,  summary: "最大MP+小、魔法攻撃力+小のパッシブを解放。" },
-      { rank: 2, fame: 30,  summary: "新たな攻撃魔法が依頼報酬として出現。" },
-      { rank: 3, fame: 70,  summary: "魔法クリティカル率アップのパッシブを解放。" },
-      { rank: 4, fame: 150, summary: "高位属性魔法の習得依頼が解放。" },
-      { rank: 5, fame: 300, summary: "魔法ギルド専用の魔道具レシピが解放。" }
+      {
+        rank: 1,
+        fame: 10,
+        summary: "所属中、ランク×2%分だけ魔法スキルダメージが増加する（最大+10%）。"
+      }
     ]
   },
   tamer: {
@@ -71,11 +72,11 @@ const GUILDS = {
     desc: "ペットと共に戦う者たちのギルド。ペット育成と支援が中心。",
     detail: "希少な魔獣の調査や保護依頼も多い。",
     perks: [
-      { rank: 1, fame: 10,  summary: "ペット経験値獲得量アップのパッシブを解放。" },
-      { rank: 2, fame: 30,  summary: "ペット枠の増加依頼が発生することがある。" },
-      { rank: 3, fame: 70,  summary: "ペットの攻撃力・防御力アップパッシブを解放。" },
-      { rank: 4, fame: 150, summary: "ペット転生時のボーナス量が増える。" },
-      { rank: 5, fame: 300, summary: "特殊なペット専用装備レシピが解放。" }
+      {
+        rank: 1,
+        fame: 10,
+        summary: "所属中、ランク×2%分だけペットの与ダメージが増加する（最大+10%）。"
+      }
     ]
   },
   smith: {
@@ -84,12 +85,13 @@ const GUILDS = {
     type: "craft",
     desc: "武器や防具の制作・強化を担うギルド。装備の性能を引き出すプロ集団。",
     detail: "高品質装備や強化技術の研究が盛ん。",
+    // 鍛冶ギルドは現状ランクボーナス実装なし → 説明だけ残す
     perks: [
-      { rank: 1, fame: 10,  summary: "武器・防具クラフト時の大成功率が少し上昇。" },
-      { rank: 2, fame: 30,  summary: "上位ティア装備レシピの一部が解放。" },
-      { rank: 3, fame: 70,  summary: "装備強化時の失敗リスクが軽減。" },
-      { rank: 4, fame: 150, summary: "強化上限+1の特別依頼が出現。" },
-      { rank: 5, fame: 300, summary: "専用の傑作装備レシピが解放。" }
+      {
+        rank: 1,
+        fame: 10,
+        summary: "将来的に、鍛冶関連のランクボーナスや専用依頼が追加される予定。"
+      }
     ]
   },
   alchemist: {
@@ -99,11 +101,11 @@ const GUILDS = {
     desc: "ポーションや爆弾などの道具を扱う錬金術師たちのギルド。",
     detail: "薬品調合から危険な実験まで、少し物騒な仕事が多い。",
     perks: [
-      { rank: 1, fame: 10,  summary: "ポーションクラフト時の個数ボーナス発生率が上昇。" },
-      { rank: 2, fame: 30,  summary: "上位ポーション・爆弾レシピの一部が解放。" },
-      { rank: 3, fame: 70,  summary: "ポーション効果量＋、クールタイム短縮などのパッシブを解放。" },
-      { rank: 4, fame: 150, summary: "強力な戦闘用道具のレシピ依頼が解放。" },
-      { rank: 5, fame: 300, summary: "錬金ギルド専用の高級ポーション／爆弾レシピが解放。" }
+      {
+        rank: 1,
+        fame: 10,
+        summary: "将来的に、錬金関連のランクボーナスや専用依頼が追加される予定。"
+      }
     ]
   },
   cooking: {
@@ -113,11 +115,11 @@ const GUILDS = {
     desc: "料理人たちが所属するギルド。強力な料理バフを生み出す。",
     detail: "パーティ用の大皿料理から珍味まで幅広く扱う。",
     perks: [
-      { rank: 1, fame: 10,  summary: "料理効果時間+小、料理クラフト時の成果+1のチャンス。" },
-      { rank: 2, fame: 30,  summary: "強力なバフ料理レシピが順次解放。" },
-      { rank: 3, fame: 70,  summary: "空腹ペナルティ軽減のパッシブを解放。" },
-      { rank: 4, fame: 150, summary: "複数バフを付与する特製料理依頼が解放。" },
-      { rank: 5, fame: 300, summary: "高級料理を市場に出品できる特別許可を取得。" }
+      {
+        rank: 1,
+        fame: 10,
+        summary: "将来的に、料理関連のランクボーナスや専用依頼が追加される予定。"
+      }
     ]
   },
   gather: {
@@ -126,12 +128,13 @@ const GUILDS = {
     type: "gather",
     desc: "木・鉱石・布・皮・水など、基本素材の採取に特化したギルド。",
     detail: "採取拠点の管理や、素材の品質管理も担当。",
+    // ランク×2% の +1個抽選ボーナスのみ
     perks: [
-      { rank: 1, fame: 10,  summary: "採取時の獲得量+1のチャンスが増加。" },
-      { rank: 2, fame: 30,  summary: "採取拠点レベル上限がわずかに上昇。" },
-      { rank: 3, fame: 70,  summary: "高ティア素材(T3)出現率アップのパッシブを解放。" },
-      { rank: 4, fame: 150, summary: "自動採取ストック上限アップの依頼が解放。" },
-      { rank: 5, fame: 300, summary: "希少素材(レアドロップ)の追加テーブルを解放。" }
+      {
+        rank: 1,
+        fame: 10,
+        summary: "所属中、通常素材採取時の+1個ボーナス抽選がランク×2%分だけ増加する（最大+10%）。"
+      }
     ]
   },
   food: {
@@ -141,11 +144,11 @@ const GUILDS = {
     desc: "草・畑・釣り・狩猟など、料理素材に特化した採取ギルド。",
     detail: "季節限定食材や希少な香辛料の確保も任務のひとつ。",
     perks: [
-      { rank: 1, fame: 10,  summary: "料理素材の採取量+1のチャンスが増加。" },
-      { rank: 2, fame: 30,  summary: "高品質食材の入手率アップのパッシブを解放。" },
-      { rank: 3, fame: 70,  summary: "釣りや狩猟でレア食材が出やすくなる。" },
-      { rank: 4, fame: 150, summary: "季節限定の特別食材依頼が解放。" },
-      { rank: 5, fame: 300, summary: "料理ギルドと連携した高級料理用食材ルートを解放。" }
+      {
+        rank: 1,
+        fame: 10,
+        summary: "所属中、料理素材採取時の+1個ボーナス抽選がランク×2%分だけ増加する（最大+10%）。"
+      }
     ]
   }
 };
@@ -203,7 +206,53 @@ function addGuildFame(guildId, amount) {
 }
 
 // =======================
-// ギルド用進捗ヘルパー（戦闘・クラフトから呼ばれる）
+// ギルドパーク用ボーナス取得ヘルパー
+// =======================
+
+// 戦士: 物理攻撃力 +2%×ランク
+// 魔法: 魔法攻撃力 +2%×ランク
+// 動物使い: ペット攻撃力 +2%×ランク
+function getGuildBattleBonus() {
+  const result = { phys: 0, magic: 0, pet: 0 };
+  const guildId = window.playerGuildId;
+  if (!guildId) return result;
+
+  const fame = getGuildFame(guildId);
+  const rankInfo = getGuildRankInfo(fame);
+  const rank = rankInfo ? rankInfo.id : 0;
+  if (rank <= 0) return result;
+
+  const perRank = 0.02; // 2%
+
+  if (guildId === "warrior") {
+    result.phys = rank * perRank;
+  } else if (guildId === "mage") {
+    result.magic = rank * perRank;
+  } else if (guildId === "tamer") {
+    result.pet = rank * perRank;
+  }
+
+  return result;
+}
+
+// 採取/食材ギルド: 既存の「＋1個抽選」とは別枠で、ランク毎に+2%の＋1抽選
+function getGuildGatherExtraBonusChance() {
+  const guildId = window.playerGuildId;
+  if (!guildId) return 0;
+
+  if (guildId !== "gather" && guildId !== "food") return 0;
+
+  const fame = getGuildFame(guildId);
+  const rankInfo = getGuildRankInfo(fame);
+  const rank = rankInfo ? rankInfo.id : 0;
+  if (rank <= 0) return 0;
+
+  const perRank = 0.02; // 2%
+  return rank * perRank;
+}
+
+// =======================
+// ギルド用進捗ヘルパー（戦闘・クラフト・採取から呼ばれる）
 // =======================
 
 // 戦闘用：物理／魔法／ペット撃破＋ボス撃破
@@ -288,13 +337,32 @@ function onBuffFoodEatenForGuild() {
   }
 }
 
+// 装備強化用：鍛冶ギルド「smith_enhance」
+// game-core-7.js の enhanceWeapon / enhanceArmor 成功・失敗後から呼ばれる想定
+function onEquipEnhancedForGuild(params) {
+  const id = "smith_enhance";
+  const raw = window.guildQuestProgress[id] || {};
+  const count = (raw.count || 0) + 1;
+  const done = count >= 2;
+  window.guildQuestProgress[id] = {
+    ...raw,
+    count,
+    done: done || raw.done,
+    rewardTaken: !!raw.rewardTaken
+  };
+
+  if (typeof renderGuildQuests === "function") {
+    renderGuildQuests();
+  }
+}
+
 // クラフト用：鍛冶／錬金／料理ギルドの依頼進行
 function onCraftCompletedForGuild(params) {
   if (!params) return;
   const category = params.category;
   const recipeId = params.recipeId;
 
-  // 鍛冶ギルド: 武器3本クラフト
+  // 鍛冶ギルド: 武器3本クラフト（武器・防具クラフトどちらも対象）
   if (category === "weapon" || category === "armor") {
     const id = "smith_craft_weapon";
     const raw = window.guildQuestProgress[id] || {};
@@ -346,6 +414,84 @@ function onCraftCompletedForGuild(params) {
       done: done || raw.done,
       rewardTaken: !!raw.rewardTaken
     };
+  }
+
+  if (typeof renderGuildQuests === "function") {
+    renderGuildQuests();
+  }
+}
+
+// 採取用：採取ギルド＆食材ギルドの依頼進行
+// game-core-4.js の gather 内から呼ばれる想定
+// params: { kind: "gather" | "food", total: number, t3?: number, rare?: boolean }
+function onGatherCompletedForGuild(params) {
+  if (!params) return;
+  const kind = params.kind;
+
+  // 採取ギルド: 素材集めの手伝い（gather_basic）＝通常素材 total 個
+  //              高品質素材の納品（gather_t3）＝ T3 素材 t3 個
+  if (kind === "gather") {
+    const total = params.total || 0;
+    const t3    = params.t3 || 0;
+
+    if (total > 0) {
+      const id = "gather_basic";
+      const raw = window.guildQuestProgress[id] || {};
+      const count = (raw.count || 0) + total;
+      const done = count >= 50;
+      window.guildQuestProgress[id] = {
+        ...raw,
+        count,
+        done: done || raw.done,
+        rewardTaken: !!raw.rewardTaken
+      };
+    }
+
+    if (t3 > 0) {
+      const id = "gather_t3";
+      const raw = window.guildQuestProgress[id] || {};
+      const count = (raw.count || 0) + t3;
+      const done = count >= 5;
+      window.guildQuestProgress[id] = {
+        ...raw,
+        count,
+        done: done || raw.done,
+        rewardTaken: !!raw.rewardTaken
+      };
+    }
+  }
+
+  // 食材ギルド: food_mat（料理素材 total 個）／food_rare（レア食材1個）
+  if (kind === "food") {
+    const total = params.total || 0;
+    const isRare = !!params.rare;
+
+    if (total > 0) {
+      const id = "food_mat";
+      const raw = window.guildQuestProgress[id] || {};
+      const count = (raw.count || 0) + total;
+      const done = count >= 30;
+      window.guildQuestProgress[id] = {
+        ...raw,
+        count,
+        done: done || raw.done,
+        rewardTaken: !!raw.rewardTaken
+      };
+    }
+
+    // レア食材は1回入手すればOK、複数回入手しても count を増やすだけで done は1個で到達
+    if (isRare) {
+      const id = "food_rare";
+      const raw = window.guildQuestProgress[id] || {};
+      const count = (raw.count || 0) + 1;
+      const done = count >= 1;
+      window.guildQuestProgress[id] = {
+        ...raw,
+        count,
+        done: done || raw.done,
+        rewardTaken: !!raw.rewardTaken
+      };
+    }
   }
 
   if (typeof renderGuildQuests === "function") {
@@ -482,12 +628,12 @@ function renderGuildList() {
     perksBox.style.color = "#ccc";
 
     const perkTitle = document.createElement("div");
-    perkTitle.textContent = "主な名声報酬（要約）";
+    perkTitle.textContent = "主な名声報酬（ランクボーナス）";
     perksBox.appendChild(perkTitle);
 
     g.perks.forEach(p => {
       const li = document.createElement("div");
-      li.textContent = `・[${p.rank}段階目から] ${p.summary}`;
+      li.textContent = `・${p.summary}`;
       perksBox.appendChild(li);
     });
 
@@ -551,7 +697,7 @@ const GUILD_QUESTS = {
       hint: "草原・森・洞窟など、どのボスでも1体倒せば達成。"
     }
   ],
-  // 以下のクラフト／採取ギルドは現状プレースホルダのまま
+  // 以下のクラフト／採取ギルドはプレースホルダから、今回で一部実装済みに
   smith: [
     {
       id: "smith_craft_weapon",
@@ -645,10 +791,15 @@ function getGuildQuestProg(id) {
     id === "tamer_kill_30_pet"    ||
     id === "battle_boss_1"        ||
     id === "smith_craft_weapon"   ||
+    id === "smith_enhance"        || // ★ 鍛冶ギルド 強化依頼
     id === "alch_craft_potion"    ||
     id === "alch_craft_bomb"      ||
     id === "cooking_basic"        ||
-    id === "cooking_buff"        // ★ バフ料理依頼を count 型に追加
+    id === "cooking_buff"         || // ★ バフ料理依頼
+    id === "gather_basic"         || // ★ 採取ギルド 素材50個
+    id === "gather_t3"            || // ★ 採取ギルド T3素材5個
+    id === "food_mat"             || // ★ 食材ギルド 素材30個
+    id === "food_rare"            // ★ 食材ギルド レア食材1個
   ) {
     return {
       count: raw.count || 0,
@@ -760,7 +911,7 @@ function renderGuildQuests() {
     status.style.fontSize = "11px";
     status.style.marginTop = "2px";
 
-    // A/B 依頼＋クラフト系の count / done を表示
+    // A/B 依頼＋クラフト系＋採取系の count / done を表示
     if (q.id === "warrior_kill_30_phys") {
       status.textContent = prog.done
         ? `状態: 完了（物理撃破 ${prog.count}/30）`
@@ -781,6 +932,10 @@ function renderGuildQuests() {
       status.textContent = prog.done
         ? `状態: 完了（クラフト ${prog.count}/3）`
         : `状態: 進行中（クラフト ${prog.count}/3）`;
+    } else if (q.id === "smith_enhance") {
+      status.textContent = prog.done
+        ? `状態: 完了（強化 ${prog.count}/2）`
+        : `状態: 進行中（強化 ${prog.count}/2）`;
     } else if (q.id === "alch_craft_potion") {
       status.textContent = prog.done
         ? `状態: 完了（ポーションクラフト ${prog.count}/5）`
@@ -793,10 +948,26 @@ function renderGuildQuests() {
       status.textContent = prog.done
         ? `状態: 完了（料理作成 ${prog.count}/3）`
         : `状態: 進行中（料理作成 ${prog.count}/3）`;
-    } else if (q.id === "cooking_buff") { // ★ バフ料理依頼の表示
+    } else if (q.id === "cooking_buff") { // バフ料理依頼の表示
       status.textContent = prog.done
         ? `状態: 完了（バフ料理 ${prog.count}/2）`
         : `状態: 進行中（バフ料理 ${prog.count}/2）`;
+    } else if (q.id === "gather_basic") {
+      status.textContent = prog.done
+        ? `状態: 完了（採取素材 ${prog.count}/50）`
+        : `状態: 進行中（採取素材 ${prog.count}/50）`;
+    } else if (q.id === "gather_t3") {
+      status.textContent = prog.done
+        ? `状態: 完了（T3素材 ${prog.count}/5）`
+        : `状態: 進行中（T3素材 ${prog.count}/5）`;
+    } else if (q.id === "food_mat") {
+      status.textContent = prog.done
+        ? `状態: 完了（料理素材 ${prog.count}/30）`
+        : `状態: 進行中（料理素材 ${prog.count}/30）`;
+    } else if (q.id === "food_rare") {
+      status.textContent = prog.done
+        ? `状態: 完了（レア食材 ${prog.count}/1）`
+        : `状態: 進行中（レア食材 ${prog.count}/1）`;
     } else {
       status.textContent = prog.done
         ? "状態: 完了"
@@ -843,7 +1014,7 @@ function renderGuildRewards() {
 
   if (!window.playerGuildId || !GUILDS[window.playerGuildId]) {
     const p = document.createElement("p");
-    p.textContent = "ギルドに所属すると、名声に応じて特別な報酬や称号が解放されます。";
+    p.textContent = "ギルドに所属すると、名声に応じてランクボーナスが強化されます。";
     listEl.appendChild(p);
     return;
   }
@@ -906,7 +1077,7 @@ function renderGuildRewards() {
 
     const stateTd = document.createElement("td");
     if (fame >= p.fame) {
-      stateTd.textContent = "解放済み（実効果は今後実装）";
+      stateTd.textContent = "解放済み（ランクに応じて自動で強化）";
       stateTd.style.color = "#8f8";
     } else {
       stateTd.textContent = "未解放";

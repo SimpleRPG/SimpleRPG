@@ -144,6 +144,15 @@ function getCurrentAtkForSkill() {
   if (braveChargeTurnRemain > 0) {
     base = Math.floor(base * (1 + braveChargeRate));
   }
+
+  // ★ ギルド物理ボーナス（戦士ギルド）
+  if (typeof getGuildBattleBonus === "function") {
+    const bonus = getGuildBattleBonus();
+    if (bonus && bonus.phys) {
+      base = Math.floor(base * (1 + bonus.phys));
+    }
+  }
+
   return base;
 }
 
@@ -152,6 +161,15 @@ function getEffectiveIntForMagic() {
   if (typeof applyMagicAttackBuffsForPlayer === "function") {
     base = applyMagicAttackBuffsForPlayer(base);
   }
+
+  // ★ ギルド魔法ボーナス（魔法ギルド）
+  if (typeof getGuildBattleBonus === "function") {
+    const bonus = getGuildBattleBonus();
+    if (bonus && bonus.magic) {
+      base = Math.floor(base * (1 + bonus.magic));
+    }
+  }
+
   return base;
 }
 
@@ -183,7 +201,16 @@ function getPetDef() {
 }
 
 function calcPetDamage() {
-  const base = getPetBaseAtk() * petBuffRate;
+  let base = getPetBaseAtk() * petBuffRate;
+
+  // ★ ギルドペットボーナス（動物使いギルド）
+  if (typeof getGuildBattleBonus === "function") {
+    const bonus = getGuildBattleBonus();
+    if (bonus && bonus.pet) {
+      base = base * (1 + bonus.pet);
+    }
+  }
+
   const variance = Math.floor(base * 0.2);
   const roll = base + (Math.floor(Math.random() * (variance * 2 + 1)) - variance);
   return Math.max(1, Math.floor(roll));

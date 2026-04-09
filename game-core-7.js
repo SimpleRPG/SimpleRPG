@@ -534,25 +534,6 @@ function consumeOneArmorInstanceAsMaterial(armorId){
   return false;
 }
 
-function consumeOneArmorInstanceAsMaterial(armorId){
-  let usedQuality = 0;
-  let usedEnh = 0;
-  for (let i = 0; i < armorInstances.length; i++) {
-    const inst = armorInstances[i];
-    if (!inst || inst.id !== armorId) continue;
-    if (typeof equippedArmorIndex === "number" && equippedArmorIndex === i) continue;
-    usedQuality = inst.quality || 0;
-    usedEnh = inst.enhance || 0;
-    armorInstances.splice(i, 1);
-    armorCounts[armorId] = Math.max(0, (armorCounts[armorId] || 0) - 1);
-    if (usedQuality > 0 || usedEnh > 0) {
-      appendLog("※良品/傑作/強化済みの防具を素材として消費した");
-    }
-    return true;
-  }
-  return false;
-}
-
 function getWeaponInstanceByKey(key) {
   const parsed = parseEnhanceTargetKey(key);
   if (!parsed || parsed.type !== "W") return null;
@@ -636,6 +617,11 @@ function enhanceWeapon(){
     appendLog(`武器強化失敗…（同名武器は消費された${inst.enhance >= STAR_SHARD_NEED_LV ? "／星屑の結晶も消費された" : ""}）`);
   }
 
+  // ★ ギルド依頼カウント（鍛冶ギルド: smith_enhance）
+  if (typeof onEquipEnhancedForGuild === "function") {
+    onEquipEnhancedForGuild({ type: "weapon" });
+  }
+
   refreshEquipSelects();
   updateDisplay();
 }
@@ -703,6 +689,11 @@ function enhanceArmor(){
     appendLog(`防具強化成功！ ${base.name}+${inst.enhance}になった（同名防具1つ消費${inst.enhance - 1 >= STAR_SHARD_NEED_LV ? "＋星屑の結晶消費" : ""}）`);
   } else {
     appendLog(`防具強化失敗…（同名防具は消費された${inst.enhance >= STAR_SHARD_NEED_LV ? "／星屑の結晶も消費された" : ""}）`);
+  }
+
+  // ★ ギルド依頼カウント（鍛冶ギルド: smith_enhance）
+  if (typeof onEquipEnhancedForGuild === "function") {
+    onEquipEnhancedForGuild({ type: "armor" });
   }
 
   refreshEquipSelects();

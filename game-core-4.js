@@ -373,7 +373,7 @@ const COOKING_MAT_NAMES = {
 };
 
 // 直近の通常素材採取情報
-window.lastGatherInfo = null;
+window.lastGatherInfo = window.lastGatherInfo || null;
 
 // =======================
 // 採取装備ボーナス判定
@@ -547,6 +547,14 @@ function gather(){
       bonusChanceCook += 0.20;
     }
 
+    // ★ 食材ギルドのランクボーナスも料理採取に適用
+    if (typeof getGuildGatherExtraBonusChance === "function") {
+      const guildExtra = getGuildGatherExtraBonusChance();
+      if (guildExtra > 0) {
+        bonusChanceCook += guildExtra;
+      }
+    }
+
     // 「たまに多めに取れる」イベント（料理）
     if (Math.random() < EXTRA_GATHER_BONUS_RATE) {
       const extra = 1 + Math.floor(Math.random() * 3); // 1〜3
@@ -554,7 +562,7 @@ function gather(){
       appendLog(`手際が良く、いつもより多く料理素材を集められた！（+${extra}）`);
     }
 
-    // 料理の＋1抽選（いまは1時間ボーナスのみ）
+    // 料理の＋1抽選（1時間ボーナス＋ギルドボーナス）
     if (bonusChanceCook > 0) {
       const guaranteed = Math.floor(bonusChanceCook);
       const fraction   = bonusChanceCook - guaranteed;
@@ -607,7 +615,8 @@ function gather(){
       });
       onGatherCompletedForGuild({
         kind: "food",
-        total: totalCount
+        total: totalCount,
+        rare: false // レアフラグは通常側で扱うのでここでは false
       });
     }
 
@@ -714,6 +723,14 @@ function gather(){
     bonusChance += 0.20;
   }
 
+  // ギルドボーナス（採取ギルド / 食材ギルド）
+  if (typeof getGuildGatherExtraBonusChance === "function") {
+    const guildExtra = getGuildGatherExtraBonusChance();
+    if (guildExtra > 0) {
+      bonusChance += guildExtra;
+    }
+  }
+
   if (bonusChance > 0) {
     const guaranteed = Math.floor(bonusChance);       // 1.2 → 1
     const fraction   = bonusChance - guaranteed;      // 1.2 → 0.2
@@ -762,7 +779,7 @@ function gather(){
   if (t2 > 0) appendLog(`T2${names[target]}を${t2}つ採取した！`);
   if (t3 > 0) appendLog(`T3${names[target]}を${t3}つ採取した！`);
 
-  // ★ 採取ギルド用：通常素材採取依頼を進行
+  // ★ 採取ギルド／食材ギルド用：通常素材採取依頼を進行
   if (typeof onGatherCompletedForGuild === "function") {
     onGatherCompletedForGuild({
       kind: "gather",

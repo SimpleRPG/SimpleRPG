@@ -438,6 +438,47 @@ function consumeMaterials(cost){
   }
 }
 
+// ギルドによるクラフト成功率ボーナス（カテゴリ別）
+// smith: weapon / armor, alchemist: potion / tool, cooking: food / drink
+function getGuildCraftSuccessBonus(category) {
+  if (!window.playerGuildId || !window.guildFame) return 0;
+  const guildId = window.playerGuildId;
+  const fame    = window.guildFame[guildId] || 0;
+
+  // guild.js と同じ閾値構成をここでも使う想定:
+  const thresholds = [
+    { fame: 0,   rank: 0 },
+    { fame: 10,  rank: 1 },
+    { fame: 30,  rank: 2 },
+    { fame: 70,  rank: 3 },
+    { fame: 150, rank: 4 },
+    { fame: 300, rank: 5 }
+  ];
+
+  let currentRank = 0;
+  for (const t of thresholds) {
+    if (fame >= t.fame) currentRank = t.rank;
+  }
+  if (currentRank <= 0) return 0;
+
+  // ランク毎 +2% => rank * 0.02
+  const bonusPerRank = 0.02;
+  const bonus = currentRank * bonusPerRank;
+
+  // ギルド×カテゴリの対応
+  if (guildId === "smith" && (category === "weapon" || category === "armor")) {
+    return bonus;
+  }
+  if (guildId === "alchemist" && (category === "potion" || category === "tool")) {
+    return bonus;
+  }
+  if (guildId === "cooking" && (category === "food" || category === "drink")) {
+    return bonus;
+  }
+
+  return 0;
+}
+
 function craftWeapon(){
   console.log("craftWeapon from game-core-6.js");
   const sel = document.getElementById("weaponSelect");
@@ -450,7 +491,13 @@ function craftWeapon(){
   if(!hasMaterials(recipe.cost)){ appendLog("素材が足りない"); return; }
 
   const skillLv = getCraftSkillLevel("weapon");
-  const successRate = calcCraftSuccessRate(recipe.baseRate, skillLv);
+  let successRate = calcCraftSuccessRate(recipe.baseRate, skillLv);
+
+  // ギルド成功率ボーナス（鍛冶ギルド）
+  const guildBonus = (typeof getGuildCraftSuccessBonus === "function")
+    ? getGuildCraftSuccessBonus("weapon")
+    : 0;
+  successRate = Math.min(1, successRate + guildBonus);
 
   consumeMaterials(recipe.cost);
   addCraftSkillExp("weapon");
@@ -496,7 +543,13 @@ function craftArmor(){
   if(!hasMaterials(recipe.cost)){ appendLog("素材が足りない"); return; }
 
   const skillLv = getCraftSkillLevel("armor");
-  const successRate = calcCraftSuccessRate(recipe.baseRate, skillLv);
+  let successRate = calcCraftSuccessRate(recipe.baseRate, skillLv);
+
+  // ギルド成功率ボーナス（鍛冶ギルド）
+  const guildBonus = (typeof getGuildCraftSuccessBonus === "function")
+    ? getGuildCraftSuccessBonus("armor")
+    : 0;
+  successRate = Math.min(1, successRate + guildBonus);
 
   consumeMaterials(recipe.cost);
   addCraftSkillExp("armor");
@@ -542,7 +595,13 @@ function craftPotion(){
   if(!hasMaterials(recipe.cost)){ appendLog("素材が足りない"); return; }
 
   const skillLv = getCraftSkillLevel("potion");
-  const successRate = calcCraftSuccessRate(recipe.baseRate, skillLv);
+  let successRate = calcCraftSuccessRate(recipe.baseRate, skillLv);
+
+  // ギルド成功率ボーナス（錬金ギルド）
+  const guildBonus = (typeof getGuildCraftSuccessBonus === "function")
+    ? getGuildCraftSuccessBonus("potion")
+    : 0;
+  successRate = Math.min(1, successRate + guildBonus);
 
   consumeMaterials(recipe.cost);
   addCraftSkillExp("potion");
@@ -591,7 +650,13 @@ function craftTool(){
   if(!hasMaterials(recipe.cost)){ appendLog("素材が足りない"); return; }
 
   const skillLv = getCraftSkillLevel("tool");
-  const successRate = calcCraftSuccessRate(recipe.baseRate, skillLv);
+  let successRate = calcCraftSuccessRate(recipe.baseRate, skillLv);
+
+  // ギルド成功率ボーナス（錬金ギルド）
+  const guildBonus = (typeof getGuildCraftSuccessBonus === "function")
+    ? getGuildCraftSuccessBonus("tool")
+    : 0;
+  successRate = Math.min(1, successRate + guildBonus);
 
   consumeMaterials(recipe.cost);
   addCraftSkillExp("tool");
@@ -689,7 +754,13 @@ function craftFood(){
   }
 
   const skillLv = getCraftSkillLevel("cooking") || 0;
-  const successRate = calcCraftSuccessRate(recipe.baseRate || 1.0, skillLv);
+  let successRate = calcCraftSuccessRate(recipe.baseRate || 1.0, skillLv);
+
+  // ギルド成功率ボーナス（料理ギルド）
+  const guildBonus = (typeof getGuildCraftSuccessBonus === "function")
+    ? getGuildCraftSuccessBonus("food")
+    : 0;
+  successRate = Math.min(1, successRate + guildBonus);
 
   if (Math.random() >= successRate) {
     if (recipe.cost) consumeCookingMaterials(recipe.cost);
@@ -758,7 +829,13 @@ function craftDrink(){
   }
 
   const skillLv = getCraftSkillLevel("cooking") || 0;
-  const successRate = calcCraftSuccessRate(recipe.baseRate || 1.0, skillLv);
+  let successRate = calcCraftSuccessRate(recipe.baseRate || 1.0, skillLv);
+
+  // ギルド成功率ボーナス（料理ギルド）
+  const guildBonus = (typeof getGuildCraftSuccessBonus === "function")
+    ? getGuildCraftSuccessBonus("drink")
+    : 0;
+  successRate = Math.min(1, successRate + guildBonus);
 
   if (Math.random() >= successRate) {
     if (recipe.cost) consumeCookingMaterials(recipe.cost);
