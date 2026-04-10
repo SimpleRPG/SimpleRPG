@@ -53,7 +53,7 @@ let atkTotal = 0;
 let defTotal = 0;
 
 // 職業
-let jobId = null;  // 0:戦士,1:魔法使い,2:動物使い
+let jobId = null;  // 0:戦士,1:魔法使い,2:動物使い,3:錬金術師
 let jobChangedOnce = false;
 let everBeastTamer = false;
 
@@ -192,6 +192,7 @@ function getJobName() {
   if (jobId === 0) return "戦士";
   if (jobId === 1) return "魔法使い";
   if (jobId === 2) return "動物使い";
+  if (jobId === 3) return "錬金術師"; // ★ 追加
   return "未設定";
 }
 

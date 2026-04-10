@@ -196,7 +196,7 @@ function applyRebirthBonus() {
       msgList.push("LUK +1");
     }
   }
-  return "転生ボーナス:\\\n" + msgList.join("\\\n");
+  return "転生ボーナス:\\\\\\n" + msgList.join("\\\\\\n");
 }
 
 function applyPetRebirthBonus() {
@@ -304,9 +304,9 @@ function doRebirth() {
   }
 
   setLog(
-    `転生した！ 転生回数: ${rebirthCount}\n` +
-    `成長タイプ: ${getGrowthTypeName()}\n` +
-    `${bonusMsg}\n` +
+    `転生した！ 転生回数: ${rebirthCount}\\n` +
+    `成長タイプ: ${getGrowthTypeName()}\\n` +
+    `${bonusMsg}\\n` +
     `ペット転生回数: ${petRebirthCount}（基礎ATKとHPが強化された）`
   );
 
@@ -505,10 +505,12 @@ function applyJobChange(newJobId) {
   jobId = newJobId;
   if (newJobId === 2) everBeastTamer = true;
 
+  // ★ 転生前の初回のみ、職業に応じて成長タイプを自動設定（既存仕様＋錬金術師追加）
   if (!rebirthCount) {
-    if      (newJobId === 0) growthType = 0;
-    else if (newJobId === 1) growthType = 2;
-    else if (newJobId === 2) growthType = 4;
+    if      (newJobId === 0) growthType = 0; // 戦士: STR型
+    else if (newJobId === 1) growthType = 2; // 魔法使い: INT型
+    else if (newJobId === 2) growthType = 4; // 動物使い: バランス型
+    else if (newJobId === 3) growthType = 2; // 錬金術師: INT型（魔法寄り）
   }
 
   if (jobId === 2) {
