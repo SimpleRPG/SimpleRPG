@@ -592,6 +592,66 @@ const CRAFT_RECIPES = {
       name: "エリクサー",
       cost: { mixHerb_T3: 2, distilledWater_T3: 2, ore_T3: 2 },
       baseRate: 0.5
+    },
+
+    // 攻撃強化ポーション（料理よりバフ値少し高め・ターン数短い想定）
+    {
+      id: "buffAtk_T1",
+      name: "攻撃強化ポーションT1",
+      cost: { mixHerb_T1: 1, ironIngot_T1: 1 },
+      baseRate: 0.8
+    },
+    {
+      id: "buffAtk_T2",
+      name: "攻撃強化ポーションT2",
+      cost: { mixHerb_T2: 2, ironIngot_T2: 1 },
+      baseRate: 0.7
+    },
+    {
+      id: "buffAtk_T3",
+      name: "攻撃強化ポーションT3",
+      cost: { mixHerb_T3: 3, ironIngot_T3: 2 },
+      baseRate: 0.6
+    },
+
+    // 守護ポーション（防御寄り、小回復付き）
+    {
+      id: "buffDef_T1",
+      name: "守護ポーションT1",
+      cost: { toughLeather_T1: 1, distilledWater_T1: 1 },
+      baseRate: 0.8
+    },
+    {
+      id: "buffDef_T2",
+      name: "守護ポーションT2",
+      cost: { toughLeather_T2: 2, distilledWater_T2: 1 },
+      baseRate: 0.7
+    },
+    {
+      id: "buffDef_T3",
+      name: "守護ポーションT3",
+      cost: { toughLeather_T3: 3, distilledWater_T3: 2 },
+      baseRate: 0.6
+    },
+
+    // コンディションポーション（状態異常解除＋リジェネ寄り）
+    {
+      id: "cleanse_T1",
+      name: "コンディションポーションT1",
+      cost: { mixHerb_T1: 2, distilledWater_T1: 1 },
+      baseRate: 0.8
+    },
+    {
+      id: "cleanse_T2",
+      name: "コンディションポーションT2",
+      cost: { mixHerb_T2: 3, distilledWater_T2: 2 },
+      baseRate: 0.7
+    },
+    {
+      id: "cleanse_T3",
+      name: "コンディションポーションT3",
+      cost: { mixHerb_T3: 4, distilledWater_T3: 2 },
+      baseRate: 0.6
     }
   ],
 
@@ -613,6 +673,66 @@ const CRAFT_RECIPES = {
       id: "bomb_T3",
       name: "爆弾T3",
       cost: { ironIngot_T3: 2, mixHerb_T3: 2 },
+      baseRate: 0.6
+    },
+
+    // 火炎瓶：単体ダメ＋やけど
+    {
+      id: "bomb_fire_T1",
+      name: "火炎瓶T1",
+      cost: { ironIngot_T1: 1, mixHerb_T1: 2 },
+      baseRate: 0.7
+    },
+    {
+      id: "bomb_fire_T2",
+      name: "火炎瓶T2",
+      cost: { ironIngot_T2: 1, mixHerb_T2: 3 },
+      baseRate: 0.65
+    },
+    {
+      id: "bomb_fire_T3",
+      name: "火炎瓶T3",
+      cost: { ironIngot_T3: 2, mixHerb_T3: 3 },
+      baseRate: 0.6
+    },
+
+    // 毒針：低ダメ＋毒DOT
+    {
+      id: "poisonNeedle_T1",
+      name: "毒針T1",
+      cost: { mixHerb_T1: 2 },
+      baseRate: 0.75
+    },
+    {
+      id: "poisonNeedle_T2",
+      name: "毒針T2",
+      cost: { mixHerb_T2: 3 },
+      baseRate: 0.7
+    },
+    {
+      id: "poisonNeedle_T3",
+      name: "毒針T3",
+      cost: { mixHerb_T3: 4 },
+      baseRate: 0.65
+    },
+
+    // 麻痺ガス瓶：微ダメ＋麻痺判定
+    {
+      id: "paralyzeGas_T1",
+      name: "麻痺ガス瓶T1",
+      cost: { mixHerb_T1: 1, distilledWater_T1: 1 },
+      baseRate: 0.7
+    },
+    {
+      id: "paralyzeGas_T2",
+      name: "麻痺ガス瓶T2",
+      cost: { mixHerb_T2: 2, distilledWater_T2: 1 },
+      baseRate: 0.65
+    },
+    {
+      id: "paralyzeGas_T3",
+      name: "麻痺ガス瓶T3",
+      cost: { mixHerb_T3: 3, distilledWater_T3: 2 },
       baseRate: 0.6
     }
   ]

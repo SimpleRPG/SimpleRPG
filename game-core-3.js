@@ -200,6 +200,103 @@ const STATUS_EFFECTS = {
   },
 
   // =======================
+  // ポーションバフ（料理とは別ID）
+  // =======================
+
+  // 攻撃強化ポーション（料理T1/2/3より+1〜2%強く、3ターン想定）
+  potion_atk_up_T1: {
+    id: "potion_atk_up_T1",
+    name: "ポーション:攻撃アップT1",
+    baseDuration: 3,
+    modifyAttack(mult) {
+      return mult * 1.12; // 料理T1(1.10)より+0.02
+    }
+  },
+  potion_atk_up_T2: {
+    id: "potion_atk_up_T2",
+    name: "ポーション:攻撃アップT2",
+    baseDuration: 3,
+    modifyAttack(mult) {
+      return mult * 1.20; // 料理T2(1.18)より+0.02
+    }
+  },
+  potion_atk_up_T3: {
+    id: "potion_atk_up_T3",
+    name: "ポーション:攻撃アップT3",
+    baseDuration: 3,
+    modifyAttack(mult) {
+      return mult * 1.32; // 料理T3系(1.25〜1.30)より+0.02程度
+    }
+  },
+
+  // 守護ポーション（防御アップポーション）: 被ダメさらに1〜2%減
+  potion_def_up_T1: {
+    id: "potion_def_up_T1",
+    name: "ポーション:防御アップT1",
+    baseDuration: 3,
+    modifyDefense(mult) {
+      return mult * 0.88; // 料理T1(0.90)より-0.02
+    }
+  },
+  potion_def_up_T2: {
+    id: "potion_def_up_T2",
+    name: "ポーション:防御アップT2",
+    baseDuration: 3,
+    modifyDefense(mult) {
+      return mult * 0.80; // 料理T2(0.82)より-0.02
+    }
+  },
+  potion_def_up_T3: {
+    id: "potion_def_up_T3",
+    name: "ポーション:防御アップT3",
+    baseDuration: 3,
+    modifyDefense(mult) {
+      return mult * 0.68; // 料理T3系(0.70〜0.75)より-0.02程度
+    }
+  },
+
+  // コンディションポーション用リジェネ（料理の代わりに短期強めも可）
+  potion_regen_T1: {
+    id: "potion_regen_T1",
+    name: "ポーション:リジェネT1",
+    baseDuration: 3,
+    onTurnEnd(targetCtx) {
+      const hpMax = targetCtx.hpMax();
+      const applyHp = targetCtx.applyHp;
+      const name = targetCtx.name;
+      const heal = Math.max(1, Math.floor(hpMax * 0.05)); // 通常リジェネ(0.04)より+1%
+      applyHp(heal);
+      appendLog(`${name}はポーションの効果で${heal}回復した！`);
+    }
+  },
+  potion_regen_T2: {
+    id: "potion_regen_T2",
+    name: "ポーション:リジェネT2",
+    baseDuration: 3,
+    onTurnEnd(targetCtx) {
+      const hpMax = targetCtx.hpMax();
+      const applyHp = targetCtx.applyHp;
+      const name = targetCtx.name;
+      const heal = Math.max(1, Math.floor(hpMax * 0.06));
+      applyHp(heal);
+      appendLog(`${name}はポーションの効果で${heal}回復した！`);
+    }
+  },
+  potion_regen_T3: {
+    id: "potion_regen_T3",
+    name: "ポーション:リジェネT3",
+    baseDuration: 3,
+    onTurnEnd(targetCtx) {
+      const hpMax = targetCtx.hpMax();
+      const applyHp = targetCtx.applyHp;
+      const name = targetCtx.name;
+      const heal = Math.max(1, Math.floor(hpMax * 0.07));
+      applyHp(heal);
+      appendLog(`${name}はポーションの効果で${heal}回復した！`);
+    }
+  },
+
+  // =======================
   // 料理バフ（肉＝物理・魚＝魔法）
   // =======================
 
@@ -482,6 +579,22 @@ function addDrinkStatusToPlayer(id, durationOverride) {
     ex.remain = Math.max(ex.remain, baseDur);
   } else {
     playerStatuses.push({ id, remain: baseDur, source: BUFF_SOURCE_DRINK });
+  }
+}
+
+// ポーションバフ専用
+function addPotionStatusToPlayer(id, durationOverride) {
+  const def = STATUS_EFFECTS[id];
+  if (!def) return;
+  const baseDur = (typeof durationOverride === "number" && durationOverride > 0)
+    ? durationOverride
+    : (def.baseDuration || 0);
+
+  const ex = playerStatuses.find(s => s.id === id && s.source === BUFF_SOURCE_POTION);
+  if (ex) {
+    ex.remain = Math.max(ex.remain, baseDur);
+  } else {
+    playerStatuses.push({ id, remain: baseDur, source: BUFF_SOURCE_POTION });
   }
 }
 
