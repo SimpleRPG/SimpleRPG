@@ -466,6 +466,12 @@ function useBattleItem() {
       // ★錬金術師なら戦闘用道具のダメージ2倍
       if (typeof isAlchemist === "function" && isAlchemist()) {
         dmg = Math.floor(dmg * 2);
+
+        // ★スキル「アイテムブースト」中はさらに+50%
+        if (typeof itemBoostTurnRemain === "number" &&
+            itemBoostTurnRemain > 0) {
+          dmg = Math.floor(dmg * 1.5);
+        }
       }
 
       const beforeHp = enemyHp;
@@ -990,7 +996,7 @@ function tryUpgradeGatherBase(matKey) {
       const haveStar = intermediateMats["starShard"] || 0;
       lines.push(`- starShard: 必要 ${needStar} 個 / 所持 ${haveStar} 個`);
     }
-    appendLog(lines.join("\\\\\\\\n"));
+    appendLog(lines.join("\\\\\\\\\\\\\\\\n"));
   })();
 
   for (const iid in needInter) {
