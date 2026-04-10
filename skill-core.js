@@ -1,6 +1,6 @@
 // skill-core.js
 // 職業スキル定義 ＋ スキルUI ＋ 実行ロジック ＋ ペット攻撃
-// 前提: game-core-*.js のグローバル（jobId, atkTotal, INT_, hp, mp, sp, currentEnemy, enemyHp, enemyHpMax,
+// 前提: game-core-*.js のグローバル（jobId, atkTotal, INT_, DEX_, LUK_, hp, mp, sp, currentEnemy, enemyHp, enemyHpMax,
 //        petHp, petHpMax, petAtkBase, petDefBase, petLevel, petName, shieldBlowGuardTurnRemain など）が存在
 
 // =======================
@@ -12,7 +12,7 @@ const SKILL_TYPE_PHYS  = "phys";
 const SKILL_TYPE_BUFF  = "buff";
 const SKILL_TYPE_PET   = "pet";
 
-// jobId: 0=戦士, 1=魔法使い, 2=動物使い
+// jobId: 0=戦士, 1=魔法使い, 2=動物使い, 3=錬金術師
 const JOB_SKILLS = {
   0: { // 戦士
     phys: [
@@ -104,6 +104,24 @@ const JOB_SKILLS = {
         mpCost: 5
       }
     ]
+  },
+  3: { // 錬金術師
+    phys: [
+      {
+        id: "itemBoost",
+        name: "アイテムブースト",
+        type: SKILL_TYPE_BUFF,
+        spCost: 4
+      }
+    ],
+    magic: [
+      {
+        id: "safeBrew",
+        name: "セーフブリュー",
+        type: SKILL_TYPE_MAGIC,
+        mpCost: 5
+      }
+    ]
   }
 };
 
@@ -175,6 +193,10 @@ let braveChargeRate       = 0.3;  // 攻撃+30%
 let petBuffTurnRemain = 0;
 // petBuffRate は game-core 側で宣言済み
 
+// 錬金術師用: アイテムブースト
+let itemBoostTurnRemain = 0;
+let itemBoostRate       = 0.2;   // アイテム効果さらに+20%
+
 function getCurrentAtkForSkill() {
   let base = atkTotal;
   if (braveChargeTurnRemain > 0) {
@@ -218,6 +240,9 @@ function tickSkillBuffTurns() {
     if (petBuffTurnRemain <= 0) {
       petBuffRate = 1.0;
     }
+  }
+  if (itemBoostTurnRemain > 0) {
+    itemBoostTurnRemain--;
   }
 }
 
@@ -313,7 +338,7 @@ function doPetTurn() {
 // =======================
 
 function castMagicFromUI() {
-  if (jobId !== 1 && jobId !== 2) {
+  if (jobId !== 1 && jobId !== 2 && jobId !== 3) {
     setLog("魔法を扱える職業ではない");
     return;
   }
@@ -338,8 +363,8 @@ function castMagicFromUI() {
     return;
   }
 
-  // ビーストヒール以外は敵必須
-  if (!currentEnemy && skillId !== "beastHeal") {
+  // ビーストヒール以外は敵必須（セーフブリューは自己回復なので敵不要）
+  if (!currentEnemy && skillId !== "beastHeal" && skillId !== "safeBrew") {
     setLog("敵がいない");
     return;
   }
@@ -406,11 +431,25 @@ function castMagicFromUI() {
       petHp = Math.min(petHp + heal, petHpMax);
       setLog(`ビーストヒール！ ${petName}のHPが${heal}回復した`);
     }
+  } else if (skillId === "safeBrew") {
+    // 錬金術師用：INT/DEX/LUK 複合回復
+    if (jobId !== 3) {
+      setLog("セーフブリューは錬金術師専用だ");
+    } else {
+      const baseInt = getEffectiveIntForMagic();
+      const baseDex = typeof DEX_ === "number" ? DEX_ : 0;
+      const baseLuk = typeof LUK_ === "number" ? LUK_ : 0;
+      const heal = Math.floor(baseInt * 1.0 + baseDex * 0.4 + baseLuk * 0.3) + 10;
+      const before = hp;
+      hp = Math.min(hpMax, hp + heal);
+      const actual = hp - before;
+      setLog(`セーフブリュー！ HPが${actual}回復した`);
+    }
   }
 
   // ここからターン進行
   if (!currentEnemy) {
-    // 非戦闘時: ヒールだけして終了（敵・ペットターンは進めない）
+    // 非戦闘時: セーフブリューやビーストヒールだけして終了（敵・ペットターンは進めない）
     if (typeof updateDisplay === "function") {
       updateDisplay();
     }
@@ -447,7 +486,7 @@ function castMagicFromUI() {
       }
     }
   } else {
-    // ダメージを与えない魔法（beastHeal など）: 戦闘中のみターン進行
+    // ダメージを与えない魔法（beastHeal, safeBrew など）: 戦闘中のみターン進行
     doPetTurn();
     if (enemyHp > 0) {
       enemyTurn();
@@ -470,7 +509,7 @@ function castMagicFromUI() {
 // =======================
 
 function useSkillFromUI() {
-  if (jobId !== 0 && jobId !== 2) {
+  if (jobId !== 0 && jobId !== 2 && jobId !== 3) {
     setLog("スキルを扱える職業ではない");
     return;
   }
@@ -500,7 +539,11 @@ function useSkillFromUI() {
     return;
   }
 
-  if (!currentEnemy && skillId !== "animalLink" && skillId !== "beastRoar") {
+  // アイテムブーストは敵がいなくても使える（自己バフ）
+  if (!currentEnemy &&
+      skillId !== "animalLink" &&
+      skillId !== "beastRoar" &&
+      skillId !== "itemBoost") {
     setLog("敵がいない");
     return;
   }
@@ -570,16 +613,26 @@ function useSkillFromUI() {
       petBuffTurnRemain = 3;
       setLog(`ビーストロア！ ${petName}の力がみなぎった`);
     }
+  } else if (skillId === "itemBoost") {
+    // 錬金術師専用：アイテム強化バフ（SP消費）
+    if (jobId !== 3) {
+      setLog("アイテムブーストは錬金術師専用だ");
+    } else {
+      itemBoostTurnRemain = 3;
+      setLog("アイテムブースト！ しばらくポーションと道具の効果がさらに高まった");
+    }
   }
 
-  if (skillId === "animalLink" || skillId === "braveCharge" || skillId === "beastRoar") {
+  if (skillId === "animalLink" || skillId === "braveCharge" || skillId === "beastRoar" || skillId === "itemBoost") {
     // 純バフ系スキルもターンを消費して敵ターンへ
-    enemyTurn();
-    if (typeof tickStatusesTurnEndForBoth === "function") {
-      tickStatusesTurnEndForBoth();
-    }
-    if (typeof updateEnemyStatusUI === "function") {
-      updateEnemyStatusUI();
+    if (currentEnemy) {
+      enemyTurn();
+      if (typeof tickStatusesTurnEndForBoth === "function") {
+        tickStatusesTurnEndForBoth();
+      }
+      if (typeof updateEnemyStatusUI === "function") {
+        updateEnemyStatusUI();
+      }
     }
   } else if (didDamage) {
     if (enemyHp <= 0) {
@@ -656,7 +709,7 @@ function updateBattleSkillUIByJob() {
     magicBtn.style.display   = "";
     skillBlock.style.display = "none";
     skillBtn.style.display   = "none";
-  } else if (jobId === 2) {
+  } else if (jobId === 2 || jobId === 3) {
     magicBlock.style.display = "";
     magicBtn.style.display   = "";
     skillBlock.style.display = "";
@@ -674,10 +727,10 @@ function updateSkillButtonsByJob() {
   const skillBlock = document.getElementById("skillBlock");
 
   if (magicBlock) {
-    magicBlock.style.display = (jobId === 1) ? "" : "none";
+    magicBlock.style.display = (jobId === 1 || jobId === 2 || jobId === 3) ? "" : "none";
   }
 
   if (skillBlock) {
-    skillBlock.style.display = (jobId === 0 || jobId === 2) ? "" : "none";
+    skillBlock.style.display = (jobId === 0 || jobId === 2 || jobId === 3) ? "" : "none";
   }
 }

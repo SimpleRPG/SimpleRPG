@@ -410,6 +410,12 @@ function initJobPetRebirthUI() {
     jobTamerBtn.addEventListener("click", () => applyJobChange(2));
   }
 
+  // ★追加: 錬金術師ボタン（HTML側に #jobAlchemistBtn がある前提）
+  const jobAlchemistBtn = document.getElementById("jobAlchemistBtn");
+  if (jobAlchemistBtn && typeof applyJobChange === "function") {
+    jobAlchemistBtn.addEventListener("click", () => applyJobChange(3));
+  }
+
   const changePetGrowthBtn2 = document.getElementById("changePetGrowthBtn");
   if (changePetGrowthBtn2 && typeof changePetGrowthType === "function") {
     changePetGrowthBtn2.addEventListener("click", () => {

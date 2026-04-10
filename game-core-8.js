@@ -49,10 +49,25 @@ function onEnemyDefeatedCore(enemyInst, killFlag, killSource) {
 function applyPotionEffect(p, inBattle) {
   if (!p) return;
 
+  // ★錬金術師用アイテムブースト補正を掛ける共通ヘルパ
+  function applyItemBoost(baseVal) {
+    if (typeof itemBoostTurnRemain === "number" &&
+        itemBoostTurnRemain > 0 &&
+        typeof itemBoostRate === "number" &&
+        itemBoostRate > 0) {
+      return Math.floor(baseVal * (1 + itemBoostRate));
+    }
+    return baseVal;
+  }
+
   // HP 回復
   if ((p.type === POTION_TYPE_HP || p.type === POTION_TYPE_BOTH) && typeof hp !== "undefined") {
     const max = typeof hpMax === "number" ? hpMax : hp;
-    const val = Math.floor((max * (p.power || 0)) + (p.flat || 0));
+    let val = Math.floor((max * (p.power || 0)) + (p.flat || 0));
+
+    // ★錬金術師のアイテムブースト（ポーションのみ対象）
+    val = applyItemBoost(val);
+
     if (val > 0) {
       hp = Math.max(0, Math.min(max, hp + val));
     }
@@ -61,7 +76,11 @@ function applyPotionEffect(p, inBattle) {
   // MP 回復
   if ((p.type === POTION_TYPE_MP || p.type === POTION_TYPE_BOTH) && typeof mp !== "undefined") {
     const max = typeof mpMax === "number" ? mpMax : mp;
-    const val = Math.floor((max * (p.power || 0)) + (p.flat || 0));
+    let val = Math.floor((max * (p.power || 0)) + (p.flat || 0));
+
+    // ★錬金術師のアイテムブースト（ポーションのみ対象）
+    val = applyItemBoost(val);
+
     if (val > 0) {
       mp = Math.max(0, Math.min(max, mp + val));
     }
@@ -920,7 +939,7 @@ function tryUpgradeGatherBase(matKey) {
       const haveStar = intermediateMats["starShard"] || 0;
       lines.push(`- starShard: 必要 ${needStar} 個 / 所持 ${haveStar} 個`);
     }
-    appendLog(lines.join("\\\\n"));
+    appendLog(lines.join("\\n"));
   })();
 
   for (const iid in needInter) {

@@ -1303,52 +1303,11 @@ const POTIONS_INIT = [
     flat: 0,
     cost: { mixHerb_T3: 4, distilledWater_T3: 2 },
     rate: 0.6
-  },
-
-  // 火炎瓶T1（単体ダメージ＋燃焼用の想定、ここでは固定ダメージだけ定義）
-  {
-    id: "molotov_T1",
-    name: "火炎瓶T1",
-    type: POTION_TYPE_DAMAGE,
-    power: 10,
-    flat: 0,
-    cost: { mixHerb_T1: 1, distilledWater_T1: 1, ironIngot_T1: 1 },
-    rate: 0.7
-  },
-
-  // 麻痺ガス瓶T1（状態異常付与想定、ここではダメージ0でボトル扱い）
-  {
-    id: "paralyzeGas_T1",
-    name: "麻痺ガス瓶T1",
-    type: POTION_TYPE_DAMAGE,
-    power: 0,
-    flat: 0,
-    cost: { mixHerb_T1: 2, distilledWater_T1: 1 },
-    rate: 0.7
-  },
-
-  // 毒針T1（小ダメージ＋毒付与想定）
-  {
-    id: "poisonNeedle_T1",
-    name: "毒針T1",
-    type: POTION_TYPE_DAMAGE,
-    power: 4,
-    flat: 0,
-    cost: { toughLeather_T1: 1, ironIngot_T1: 1 },
-    rate: 0.7
-  },
-
-  // ショップ用・汎用爆弾（T1相当、少し弱め）
-  // ※爆弾自体は道具として扱うが、POTIONS_INIT には既存仕様に合わせて残す
-  {
-    id: "bomb",
-    name: "爆弾",
-    type: POTION_TYPE_DAMAGE,
-    power: 7,         // 固定ダメージ
-    flat: 0,
-    cost: { ironIngot_T1: 2, mixHerb_T1: 1 },
-    rate: 0.7
   }
+
+  // ここにあった
+  //   molotov_T1 / paralyzeGas_T1 / poisonNeedle_T1 / bomb
+  // は削除し、純粋に「道具側 TOOLS_INIT のみ」で扱うようにした。
 ];
 
 // =======================
@@ -1357,8 +1316,17 @@ const POTIONS_INIT = [
 //
 // 仕様は変えず、「道具としても参照できる」ように POTSIONS_INIT の
 // 一部と同じ数値をミラーするだけ（インベントリ側で使う想定）。
+//
+// ★ここで craft-data.js の CRAFT_RECIPES.tool と ID を合わせておく。
+//   - bomb_T1/T2/T3
+//   - bomb_fire_T1/T2/T3
+//   - poisonNeedle_T1/T2/T3
+//   - paralyzeGas_T1/T2/T3
+//   既存の molotov_T1 は「bomb_fire_T1」に相当する旧IDとして残すが、
+//   新実装では bomb_fire_Tx 系を優先して使う前提。
 
 const TOOLS_INIT = [
+  // 旧仕様の火炎瓶（molotov_T1）も残す
   {
     id: "molotov_T1",
     name: "火炎瓶T1",
@@ -1368,24 +1336,124 @@ const TOOLS_INIT = [
     cost: { mixHerb_T1: 1, distilledWater_T1: 1, ironIngot_T1: 1 },
     rate: 0.7
   },
+
+  // クラフトレシピに対応した新ID群（爆弾）
   {
-    id: "paralyzeGas_T1",
-    name: "麻痺ガス瓶T1",
-    type: "status",
-    power: 0,
+    id: "bomb_T1",
+    name: "爆弾T1",
+    type: "damage",
+    power: 7,
     flat: 0,
-    cost: { mixHerb_T1: 2, distilledWater_T1: 1 },
+    cost: { ironIngot_T1: 1, mixHerb_T1: 1 },
     rate: 0.7
   },
+  {
+    id: "bomb_T2",
+    name: "爆弾T2",
+    type: "damage",
+    power: 10,
+    flat: 0,
+    cost: { ironIngot_T2: 1, mixHerb_T2: 2 },
+    rate: 0.65
+  },
+  {
+    id: "bomb_T3",
+    name: "爆弾T3",
+    type: "damage",
+    power: 13,
+    flat: 0,
+    cost: { ironIngot_T3: 2, mixHerb_T3: 2 },
+    rate: 0.6
+  },
+
+  // 火炎瓶（bomb_fire_Tx）
+  {
+    id: "bomb_fire_T1",
+    name: "火炎瓶T1",
+    type: "damage",
+    power: 10,
+    flat: 0,
+    cost: { ironIngot_T1: 1, mixHerb_T1: 2 },
+    rate: 0.7
+  },
+  {
+    id: "bomb_fire_T2",
+    name: "火炎瓶T2",
+    type: "damage",
+    power: 14,
+    flat: 0,
+    cost: { ironIngot_T2: 1, mixHerb_T2: 3 },
+    rate: 0.65
+  },
+  {
+    id: "bomb_fire_T3",
+    name: "火炎瓶T3",
+    type: "damage",
+    power: 18,
+    flat: 0,
+    cost: { ironIngot_T3: 2, mixHerb_T3: 3 },
+    rate: 0.6
+  },
+
+  // 毒針（poisonNeedle_Tx）: 少ダメ＋毒付与想定
   {
     id: "poisonNeedle_T1",
     name: "毒針T1",
     type: "damageStatus",
     power: 4,
     flat: 0,
-    cost: { toughLeather_T1: 1, ironIngot_T1: 1 },
+    cost: { mixHerb_T1: 2 },
+    rate: 0.75
+  },
+  {
+    id: "poisonNeedle_T2",
+    name: "毒針T2",
+    type: "damageStatus",
+    power: 7,
+    flat: 0,
+    cost: { mixHerb_T2: 3 },
     rate: 0.7
   },
+  {
+    id: "poisonNeedle_T3",
+    name: "毒針T3",
+    type: "damageStatus",
+    power: 10,
+    flat: 0,
+    cost: { mixHerb_T3: 4 },
+    rate: 0.65
+  },
+
+  // 麻痺ガス瓶（paralyzeGas_Tx）: 状態異常付与
+  {
+    id: "paralyzeGas_T1",
+    name: "麻痺ガス瓶T1",
+    type: "status",
+    power: 0,
+    flat: 0,
+    cost: { mixHerb_T1: 1, distilledWater_T1: 1 },
+    rate: 0.7
+  },
+  {
+    id: "paralyzeGas_T2",
+    name: "麻痺ガス瓶T2",
+    type: "status",
+    power: 0,
+    flat: 0,
+    cost: { mixHerb_T2: 2, distilledWater_T2: 1 },
+    rate: 0.65
+  },
+  {
+    id: "paralyzeGas_T3",
+    name: "麻痺ガス瓶T3",
+    type: "status",
+    power: 0,
+    flat: 0,
+    cost: { mixHerb_T3: 3, distilledWater_T3: 2 },
+    rate: 0.6
+  },
+
+  // ショップ用・汎用爆弾（旧仕様）
   {
     id: "bomb",
     name: "爆弾",

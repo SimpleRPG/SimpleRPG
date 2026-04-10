@@ -309,7 +309,7 @@ function moveWeaponToCarry(id, amount) {
   // 念のため counts をインスタンスから同期
   syncEquipmentCountsFromInstances();
 
-  const have = weaponCounts[id] || 0;
+  const have = armorCounts[id] || 0;
   if (have < amount) {
     appendLog("倉庫にその武器が足りない");
     return false;
@@ -629,22 +629,40 @@ function refreshBattleItemSelectWithCategory() {
     Object.keys(carryTools).forEach(id => {
       const cnt = carryTools[id] || 0;
       if (cnt <= 0) return;
+
+      // ★ここで ID から日本語名ラベルを決める（仕様はそのまま、表示だけ日本語）
       let label = id;
       if (id === "bomb") {
         label = "爆弾";
-      } else if (id.startsWith("bomb_T1")) {
+      } else if (id === "bomb_T1") {
         label = "爆弾T1";
-      } else if (id.startsWith("bomb_T2")) {
+      } else if (id === "bomb_T2") {
         label = "爆弾T2";
-      } else if (id.startsWith("bomb_T3")) {
+      } else if (id === "bomb_T3") {
         label = "爆弾T3";
-      } else if (id.startsWith("molotov_")) {
-        label = "火炎瓶";
-      } else if (id.startsWith("paralyzeGas_")) {
-        label = "麻痺ガス瓶";
-      } else if (id.startsWith("poisonNeedle_")) {
-        label = "毒針";
+      } else if (id === "bomb_fire_T1") {
+        label = "火炎瓶T1";
+      } else if (id === "bomb_fire_T2") {
+        label = "火炎瓶T2";
+      } else if (id === "bomb_fire_T3") {
+        label = "火炎瓶T3";
+      } else if (id === "molotov_T1") {
+        // 旧IDもフォロー
+        label = "火炎瓶T1";
+      } else if (id === "paralyzeGas_T1") {
+        label = "麻痺ガス瓶T1";
+      } else if (id === "paralyzeGas_T2") {
+        label = "麻痺ガス瓶T2";
+      } else if (id === "paralyzeGas_T3") {
+        label = "麻痺ガス瓶T3";
+      } else if (id === "poisonNeedle_T1") {
+        label = "毒針T1";
+      } else if (id === "poisonNeedle_T2") {
+        label = "毒針T2";
+      } else if (id === "poisonNeedle_T3") {
+        label = "毒針T3";
       }
+
       const opt = document.createElement("option");
       opt.value = id;
       opt.textContent = `${label}（${cnt}）`;
