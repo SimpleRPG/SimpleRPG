@@ -1,6 +1,94 @@
 // game-ui-3.js
 // 職業・ペット・転生 ＋ ステータスまわりのUI初期化
 
+// 採取拠点UIを任意コンテナに描画する共通関数
+function renderGatherBaseStatusInto(container) {
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  if (typeof getGatherBaseLevel !== "function" ||
+      typeof tryUpgradeGatherBase !== "function") {
+    return;
+  }
+
+  const materialDefs = [
+    { key: "wood",    label: "木拠点" },
+    { key: "ore",     label: "鉱石拠点" },
+    { key: "herb",    label: "草拠点" },
+    { key: "cloth",   label: "布拠点" },
+    { key: "leather", label: "皮拠点" },
+    { key: "water",   label: "水拠点" }
+  ];
+
+  materialDefs.forEach(def => {
+    const level = getGatherBaseLevel(def.key);
+    const mode  = (typeof getGatherBaseMode === "function")
+      ? getGatherBaseMode(def.key)
+      : "normal";
+
+    const row = document.createElement("div");
+    row.style.display = "flex";
+    row.style.alignItems = "center";
+    row.style.gap = "4px";
+
+    const labelSpan = document.createElement("span");
+    labelSpan.textContent = `${def.label} Lv${level}`;
+    row.appendChild(labelSpan);
+
+    const modeLabel = document.createElement("span");
+    let modeText = "ノーマル";
+    if (mode === "quantity") modeText = "量特化";
+    else if (mode === "quality") modeText = "質特化";
+    modeLabel.textContent = `（${modeText}）`;
+    row.appendChild(modeLabel);
+
+    const upBtn = document.createElement("button");
+    upBtn.textContent = "Lv+1";
+    upBtn.style.fontSize = "10px";
+    upBtn.addEventListener("click", () => {
+      tryUpgradeGatherBase(def.key);
+
+      const s1 = document.querySelector("#statusGatherMaterials #gatherBaseStatus");
+      if (s1) renderGatherBaseStatusInto(s1);
+
+      const s2 = document.querySelector("#magicPageGather #gatherBaseStatus");
+      if (s2) renderGatherBaseStatusInto(s2);
+    });
+    row.appendChild(upBtn);
+
+    if (typeof setGatherBaseMode === "function") {
+      const mkBtn = (txt, modeVal) => {
+        const b = document.createElement("button");
+        b.textContent = txt;
+        b.style.fontSize = "10px";
+        b.addEventListener("click", () => {
+          setGatherBaseMode(def.key, modeVal);
+
+          const s1 = document.querySelector("#statusGatherMaterials #gatherBaseStatus");
+          if (s1) renderGatherBaseStatusInto(s1);
+
+          const s2 = document.querySelector("#magicPageGather #gatherBaseStatus");
+          if (s2) renderGatherBaseStatusInto(s2);
+        });
+        return b;
+      };
+      row.appendChild(mkBtn("ノーマル", "normal"));
+      row.appendChild(mkBtn("量特化", "quantity"));
+      row.appendChild(mkBtn("質特化", "quality"));
+    }
+
+    container.appendChild(row);
+  });
+
+  if (typeof window.gatherBaseStockTicks !== "undefined") {
+    const stockInfo = document.createElement("div");
+    stockInfo.style.marginTop = "4px";
+    stockInfo.textContent = `自動採取ストック: ${window.gatherBaseStockTicks} tick`;
+    container.appendChild(stockInfo);
+  }
+}
+
 // ★ステータスタブHTMLを組み立てる
 function buildStatusPage() {
   const page = document.getElementById("pageStatus");
@@ -387,91 +475,12 @@ function buildStatusPage() {
       }
     }
 
-    // 採取拠点UI
+    // 採取拠点UI（ステータス画面側）
     if (typeof getGatherBaseLevel === "function" &&
         typeof tryUpgradeGatherBase === "function") {
       const container = document.getElementById("gatherBaseStatus");
       if (container) {
-        container.innerHTML = "";
-
-        const materialDefs = [
-          { key: "wood",    label: "木拠点" },
-          { key: "ore",     label: "鉱石拠点" },
-          { key: "herb",    label: "草拠点" },
-          { key: "cloth",   label: "布拠点" },
-          { key: "leather", label: "皮拠点" },
-          { key: "water",   label: "水拠点" }
-        ];
-
-        materialDefs.forEach(def => {
-          const level = getGatherBaseLevel(def.key);
-          const mode  = (typeof getGatherBaseMode === "function")
-            ? getGatherBaseMode(def.key)
-            : "normal";
-
-          const row = document.createElement("div");
-          row.style.display = "flex";
-          row.style.alignItems = "center";
-          row.style.gap = "4px";
-
-          const labelSpan = document.createElement("span");
-          labelSpan.textContent = `${def.label} Lv${level}`;
-          row.appendChild(labelSpan);
-
-          const modeLabel = document.createElement("span");
-          let modeText = "ノーマル";
-          if (mode === "quantity") modeText = "量特化";
-          else if (mode === "quality") modeText = "質特化";
-          modeLabel.textContent = `（${modeText}）`;
-          row.appendChild(modeLabel);
-
-          const upBtn = document.createElement("button");
-          upBtn.textContent = "Lv+1";
-          upBtn.style.fontSize = "10px";
-          upBtn.addEventListener("click", () => {
-            tryUpgradeGatherBase(def.key);
-            renderGatherMaterialTables();
-          });
-          row.appendChild(upBtn);
-
-          if (typeof setGatherBaseMode === "function") {
-            const normalBtn = document.createElement("button");
-            normalBtn.textContent = "ノーマル";
-            normalBtn.style.fontSize = "10px";
-            normalBtn.addEventListener("click", () => {
-              setGatherBaseMode(def.key, "normal");
-              renderGatherMaterialTables();
-            });
-            row.appendChild(normalBtn);
-
-            const quantityBtn = document.createElement("button");
-            quantityBtn.textContent = "量特化";
-            quantityBtn.style.fontSize = "10px";
-            quantityBtn.addEventListener("click", () => {
-              setGatherBaseMode(def.key, "quantity");
-              renderGatherMaterialTables();
-            });
-            row.appendChild(quantityBtn);
-
-            const qualityBtn = document.createElement("button");
-            qualityBtn.textContent = "質特化";
-            qualityBtn.style.fontSize = "10px";
-            qualityBtn.addEventListener("click", () => {
-              setGatherBaseMode(def.key, "quality");
-              renderGatherMaterialTables();
-            });
-            row.appendChild(qualityBtn);
-          }
-
-          container.appendChild(row);
-        });
-
-        if (typeof window.gatherBaseStockTicks !== "undefined") {
-          const stockInfo = document.createElement("div");
-          stockInfo.style.marginTop = "4px";
-          stockInfo.textContent = `自動採取ストック: ${window.gatherBaseStockTicks} tick`;
-          container.appendChild(stockInfo);
-        }
+        renderGatherBaseStatusInto(container);
       }
     }
   }
@@ -506,6 +515,12 @@ function buildStatusPage() {
     renamePetBtn.addEventListener("click", () => {
       promptRenamePet();
     });
+  }
+
+  // 魔巧区 採取拠点タブ側の描画（同じUIを使い回す）
+  const magicGatherBox = document.querySelector("#magicPageGather #gatherBaseStatus");
+  if (magicGatherBox) {
+    renderGatherBaseStatusInto(magicGatherBox);
   }
 }
 
