@@ -51,13 +51,22 @@ function applyPotionEffect(p, inBattle) {
 
   // ★錬金術師用アイテムブースト補正を掛ける共通ヘルパ
   function applyItemBoost(baseVal) {
+    let val = baseVal;
+
+    // 常時: 錬金術師ならポーション効果アップ
+    if (typeof isAlchemist === "function" && isAlchemist()) {
+      val = Math.floor(val * 1.3); // 常時 +30%
+    }
+
+    // スキル「アイテムブースト」で立つ一時バフ（さらに乗算）
     if (typeof itemBoostTurnRemain === "number" &&
         itemBoostTurnRemain > 0 &&
         typeof itemBoostRate === "number" &&
         itemBoostRate > 0) {
-      return Math.floor(baseVal * (1 + itemBoostRate));
+      val = Math.floor(val * (1 + itemBoostRate));
     }
-    return baseVal;
+
+    return val;
   }
 
   // HP 回復
@@ -65,7 +74,7 @@ function applyPotionEffect(p, inBattle) {
     const max = typeof hpMax === "number" ? hpMax : hp;
     let val = Math.floor((max * (p.power || 0)) + (p.flat || 0));
 
-    // ★錬金術師のアイテムブースト（ポーションのみ対象）
+    // ★錬金術師のアイテムブースト（常時＋スキル分）
     val = applyItemBoost(val);
 
     if (val > 0) {
@@ -78,7 +87,7 @@ function applyPotionEffect(p, inBattle) {
     const max = typeof mpMax === "number" ? mpMax : mp;
     let val = Math.floor((max * (p.power || 0)) + (p.flat || 0));
 
-    // ★錬金術師のアイテムブースト（ポーションのみ対象）
+    // ★錬金術師のアイテムブースト（常時＋スキル分）
     val = applyItemBoost(val);
 
     if (val > 0) {
@@ -272,6 +281,12 @@ function onBattleItemCategoryChanged() {
 // =======================
 
 function usePotionOutsideBattle() {
+  // ★戦闘中（敵がいる間）はフィールド用「使う」からは使えない
+  if (window.currentEnemy) {
+    appendLog("戦闘中はここからポーションを使えない！");
+    return;
+  }
+
   const sel = document.getElementById("useItemSelect");
   if (!sel || !sel.value) {
     appendLog("使うアイテムを選んでください");
@@ -404,6 +419,15 @@ function useBattleItem() {
       const healedHp = hp - prevHp;
       const healedMp = mp - prevMp;
       appendLog(`戦闘中に ${p.name} を使用した（HP ${prevHp} → ${hp}、+${healedHp} / MP ${prevMp} → ${mp}、+${healedMp}）`);
+    }
+
+    // ★攻撃・守護・コンディションポーションの体感強化用ログ
+    if (p.id === "buffAtk_T1" || p.id === "buffAtk_T2" || p.id === "buffAtk_T3") {
+      appendLog("身体に力が満ち、攻撃がずしりと重くなった！");
+    } else if (p.id === "buffDef_T1" || p.id === "buffDef_T2" || p.id === "buffDef_T3") {
+      appendLog("体が軽くなり、敵の攻撃をいなしやすくなった！");
+    } else if (p.id === "cleanse_T1" || p.id === "cleanse_T2" || p.id === "cleanse_T3") {
+      appendLog("澄んだ薬が体内を巡り、傷の治りが早くなった気がする…");
     }
 
   } else if (category === "tool") {
@@ -966,7 +990,7 @@ function tryUpgradeGatherBase(matKey) {
       const haveStar = intermediateMats["starShard"] || 0;
       lines.push(`- starShard: 必要 ${needStar} 個 / 所持 ${haveStar} 個`);
     }
-    appendLog(lines.join("\\\\n"));
+    appendLog(lines.join("\\\\\\\\n"));
   })();
 
   for (const iid in needInter) {

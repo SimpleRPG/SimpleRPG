@@ -196,7 +196,7 @@ function applyRebirthBonus() {
       msgList.push("LUK +1");
     }
   }
-  return "転生ボーナス:\\\\\\\\\\n" + msgList.join("\\\\\\\\\\n");
+  return "転生ボーナス:\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n" + msgList.join("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n");
 }
 
 function applyPetRebirthBonus() {
@@ -304,9 +304,9 @@ function doRebirth() {
   }
 
   setLog(
-    `転生した！ 転生回数: ${rebirthCount}\\n` +
-    `成長タイプ: ${getGrowthTypeName()}\\n` +
-    `${bonusMsg}\\n` +
+    `転生した！ 転生回数: ${rebirthCount}\\\\\\\\n` +
+    `成長タイプ: ${getGrowthTypeName()}\\\\\\\\n` +
+    `${bonusMsg}\\\\\\\\n` +
     `ペット転生回数: ${petRebirthCount}（基礎ATKとHPが強化された）`
   );
 
@@ -462,6 +462,54 @@ function getThirstValue() {
 // 職業・ペット成長タイプ
 // =======================
 
+// ★ジョブ別初期ステのヘルパー
+//   - game-core-1.js 側で定義されている initialJobStatsApplied と共有する前提。
+function applyInitialStatsForJob(selectedJobId) {
+  // すでに初期ジョブステを適用済みなら何もしない
+  if (window.initialJobStatsApplied) {
+    return;
+  }
+
+  // 職業ごとのレベル1初期ステ（指定どおり）
+  switch (selectedJobId) {
+    case 0: // 戦士（物理寄りタンク）
+      STR  = 2;
+      VIT  = 3;
+      INT_ = 1;
+      DEX_ = 1;
+      LUK_ = 1;
+      break;
+    case 1: // 魔法使い（紙装甲火力）
+      STR  = 1;
+      VIT  = 1;
+      INT_ = 3;
+      DEX_ = 2;
+      LUK_ = 1;
+      break;
+    case 2: // 動物使い（ペット寄りバランス）
+      STR  = 1;
+      VIT  = 1;
+      INT_ = 1;
+      DEX_ = 3;
+      LUK_ = 2;
+      break;
+    case 3: // 錬金術師（器用貧乏）
+    default:
+      STR  = 1;
+      VIT  = 1;
+      INT_ = 2;
+      DEX_ = 2;
+      LUK_ = 2;
+      break;
+  }
+
+  window.initialJobStatsApplied = true;
+
+  if (typeof recalcStats === "function") {
+    recalcStats();
+  }
+}
+
 function openJobModal() {
   const modal   = document.getElementById("jobModal");
   const titleEl = document.getElementById("jobModalTitle");
@@ -491,6 +539,9 @@ function applyJobChange(newJobId) {
     return;
   }
 
+  // ★「初回かどうか」で処理が変わるのは従来どおり
+  const isFirstJobChange = !jobChangedOnce;
+
   if (jobChangedOnce) {
     if (money < 100) {
       appendLog("職業変更には100G必要です");
@@ -504,6 +555,14 @@ function applyJobChange(newJobId) {
 
   jobId = newJobId;
   if (newJobId === 2) everBeastTamer = true;
+
+  // ★ 初回の職業決定時のみ、職業ごとの初期ステータスを適用する
+  //   - window.initialJobStatsApplied で二重適用防止
+  //   - 転職時（jobChangedOnce が true のとき）はここを通らないので
+  //     ステータスはリセットされない
+  if (isFirstJobChange && !window.initialJobStatsApplied) {
+    applyInitialStatsForJob(newJobId);
+  }
 
   // ★ 転生前の初回のみ、職業に応じて成長タイプを自動設定（既存仕様＋錬金術師追加）
   if (!rebirthCount) {
@@ -568,3 +627,52 @@ function updatePetMiniStatus() {
   hpEl.textContent    = (typeof petHp === "number")    ? petHp    : "-";
   hpMaxEl.textContent = (typeof petHpMax === "number") ? petHpMax : "-";
 }
+
+// =======================
+// 初回ジョブモーダル用 UI ハンドラ
+// =======================
+
+// 「世界に降り立つ」ボタンとジョブ説明は HTML 側に追加済み。
+// ここでは selectedJobTemp をローカルで持ち、applyJobChange に渡すだけで
+// 既存の職業変更仕様（初回無料・以降100G消費など）をそのまま使う。
+let selectedJobTemp = null;
+
+// 職業説明テキスト
+const JOB_DESCS = {
+  0: "前衛で戦う近接職。HPと防御が高く、安定して戦いやすい。",
+  1: "魔法で遠距離から攻撃する職。火力は高いが、打たれ弱い。",
+  2: "ペットと共に戦う職。成長するとペットが火力・盾役として活躍する。",
+  3: "アイテムやポーションに長けた職。準備したアイテムで戦いを有利にする。"
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+  const jobButtons    = document.querySelectorAll(".job-select-btn");
+  const jobDescArea   = document.getElementById("jobDescArea");
+  const jobConfirmBtn = document.getElementById("jobConfirmBtn");
+
+  if (!jobButtons.length || !jobDescArea || !jobConfirmBtn) return;
+
+  jobButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = parseInt(btn.dataset.job, 10);
+      if (Number.isNaN(id)) return;
+      selectedJobTemp = id;
+
+      // 見た目の選択状態
+      jobButtons.forEach(b => b.classList.toggle("selected", b === btn));
+
+      // 説明表示
+      jobDescArea.textContent = JOB_DESCS[id] || "";
+
+      // 決定ボタン有効化
+      jobConfirmBtn.disabled = false;
+    });
+  });
+
+  jobConfirmBtn.addEventListener("click", () => {
+    if (selectedJobTemp == null) return;
+
+    // 既存仕様どおりの職業変更処理に委譲
+    applyJobChange(selectedJobTemp);
+  });
+});

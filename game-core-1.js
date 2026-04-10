@@ -20,6 +20,11 @@ const SP_PER_DEX_POINT = 1 / 3;
 // 基本ステータス
 // =======================
 
+// ★フラグ: 「職業ごとの初期ステ」を既に適用済みかどうか
+//   既存セーブ互換のため、window から拾っておく
+window.initialJobStatsApplied = window.initialJobStatsApplied || false;
+let initialJobStatsApplied = window.initialJobStatsApplied;
+
 let level = 1;
 let exp = 0;
 let expToNext = BASE_EXP_PER_LEVEL;
@@ -27,7 +32,8 @@ let expToNext = BASE_EXP_PER_LEVEL;
 let rebirthCount = 0;
 let growthType = 4; // 0:STR,1:VIT,2:INT,3:LUK,4:バランス
 
-// 能力値
+// 能力値（ロード直後は従来どおり全部1。
+// 最初の職業決定時に applyInitialStatsForJob で上書きする想定）
 let STR = 1;
 let VIT = 1;
 let INT_ = 1;
@@ -205,6 +211,58 @@ function getJobName() {
   if (jobId === 2) return "動物使い";
   if (jobId === 3) return "錬金術師"; // ★ 追加
   return "未設定";
+}
+
+// ★ 職業ごとの初期ステータスを設定（レベル1時点専用）
+//   - 0:戦士,1:魔法使い,2:動物使い,3:錬金術師
+//   - 「最初の職業を決めたときだけ」呼ぶ想定。転職時には呼ばない。
+function applyInitialStatsForJob(selectedJobId) {
+  // 既に適用済みなら何もしない（ロード互換・多重呼び出し防止）
+  if (initialJobStatsApplied) {
+    return;
+  }
+
+  jobId = selectedJobId;
+
+  switch (selectedJobId) {
+    case 0: // 戦士（物理寄りタンク）
+      STR  = 2;
+      VIT  = 3;
+      INT_ = 1;
+      DEX_ = 1;
+      LUK_ = 1;
+      break;
+    case 1: // 魔法使い（紙装甲火力）
+      STR  = 1;
+      VIT  = 1;
+      INT_ = 3;
+      DEX_ = 2;
+      LUK_ = 1;
+      break;
+    case 2: // 動物使い（ペット寄りバランス）
+      STR  = 1;
+      VIT  = 1;
+      INT_ = 1;
+      DEX_ = 3;
+      LUK_ = 2;
+      break;
+    case 3: // 錬金術師（器用貧乏）
+    default:
+      STR  = 1;
+      VIT  = 1;
+      INT_ = 2;
+      DEX_ = 2;
+      LUK_ = 2;
+      break;
+  }
+
+  initialJobStatsApplied = true;
+  window.initialJobStatsApplied = true;
+
+  // HP/MP/SP などを再計算
+  if (typeof recalcStats === "function") {
+    recalcStats();
+  }
 }
 
 // =======================

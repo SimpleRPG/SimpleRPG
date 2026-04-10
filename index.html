@@ -766,11 +766,22 @@
           ※選ぶまでゲームは開始されません。
         </p>
         <div id="jobButtons">
-          <button id="jobWarriorBtn">戦士</button>
-          <button id="jobMageBtn">魔法使い</button>
-          <button id="jobTamerBtn">動物使い</button>
+          <!-- 既存IDを残しつつ class と data-job を追加 -->
+          <button id="jobWarriorBtn"  class="job-select-btn" data-job="0">戦士</button>
+          <button id="jobMageBtn"     class="job-select-btn" data-job="1">魔法使い</button>
+          <button id="jobTamerBtn"    class="job-select-btn" data-job="2">動物使い</button>
           <!-- ★追加: 錬金術師 -->
-          <button id="jobAlchemistBtn">錬金術師</button>
+          <button id="jobAlchemistBtn" class="job-select-btn" data-job="3">錬金術師</button>
+        </div>
+
+        <!-- 選択中ジョブの説明表示 -->
+        <div id="jobDescArea"
+             style="margin-top:8px; min-height:3em; font-size:0.85em; text-align:center;">
+        </div>
+
+        <!-- 世界に降り立つボタン（中央） -->
+        <div style="margin-top:12px; text-align:center;">
+          <button id="jobConfirmBtn" disabled>世界に降り立つ</button>
         </div>
       </div>
     </div>

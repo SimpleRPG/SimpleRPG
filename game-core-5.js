@@ -46,6 +46,17 @@ function setExploreUIVisible(visible) {
 }
 
 // =======================
+// フィールド用アイテム行の表示切替
+// =======================
+
+function setFieldItemRowsVisible(visible) {
+  const rows = document.querySelectorAll(".field-item-row");
+  rows.forEach(row => {
+    row.style.display = visible ? "" : "none";
+  });
+}
+
+// =======================
 // 探索エリアセレクト更新
 // =======================
 
@@ -255,6 +266,9 @@ function handleRetreatProgress() {
   if (typeof updateReturnTownButton === "function") {
     updateReturnTownButton();
   }
+  if (typeof setFieldItemRowsVisible === "function") {
+    setFieldItemRowsVisible(true);
+  }
   if (typeof updateDisplay === "function") {
     updateDisplay();
   }
@@ -457,6 +471,9 @@ function doExploreRandomEvent(area) {
       }
 
       updateReturnTownButton();
+      if (typeof setFieldItemRowsVisible === "function") {
+        setFieldItemRowsVisible(true);
+      }
       updateDisplay();
       return;
     }

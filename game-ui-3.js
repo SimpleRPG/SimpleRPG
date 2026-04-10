@@ -1,6 +1,5 @@
 // game-ui-3.js
-// 職業・ペット・転生まわりのUI初期化
-
+// 職業・ペット・転生 ＋ ステータスまわりのUI初期化
 
 // ★ステータスタブHTMLを組み立てる
 function buildStatusPage() {
@@ -117,16 +116,365 @@ function buildStatusPage() {
     <div id="statusPageGatherStats" class="status-sub-page" style="display:none;">
       <h3>採取統計</h3>
       <div id="gatherStatsContainer" class="status-block" style="max-height:300px; overflow:auto; font-size:12px;">
-        <!-- game-ui 側で getGatherStatsList() を使ってテーブルを描画する想定 -->
+        <!-- getGatherStatsList() を使ってテーブルを描画する -->
+      </div>
+
+      <!-- 素材タブの集計テーブル類 -->
+      <div id="statusGatherMaterials">
+        <h4>基本素材</h4>
+        <div id="gatherMaterialsList"></div>
+
+        <h4>中間素材</h4>
+        <div id="intermediateMaterialsList"></div>
+
+        <h4>料理素材</h4>
+        <div id="cookingMaterialsList"></div>
+
+        <h4>採取拠点</h4>
+        <div id="gatherBaseStatus"></div>
       </div>
     </div>
   `;
 
-  // サブタブ切り替え
+  // サブタブ切り替え＆採取統計描画
   const tabMain   = document.getElementById("statusTabMain");
   const tabGather = document.getElementById("statusTabGather");
   const pageMain  = document.getElementById("statusPageMain");
   const pageGather= document.getElementById("statusPageGatherStats");
+
+  function renderGatherStatsTable() {
+    const container = document.getElementById("gatherStatsContainer");
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    if (typeof getGatherStatsList !== "function") {
+      const p = document.createElement("p");
+      p.textContent = "採取統計データがまだありません。";
+      container.appendChild(p);
+      return;
+    }
+
+    const stats = getGatherStatsList();
+    if (!stats || !stats.length) {
+      const p = document.createElement("p");
+      p.textContent = "まだ採取統計はありません。";
+      container.appendChild(p);
+      return;
+    }
+
+    const table = document.createElement("table");
+    table.className = "mat-table";
+
+    const thead = document.createElement("thead");
+    const htr = document.createElement("tr");
+    ["種別", "素材", "累計個数", "採取回数", "一度の最大数"].forEach(label => {
+      const th = document.createElement("th");
+      th.textContent = label;
+      htr.appendChild(th);
+    });
+    thead.appendChild(htr);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    stats.forEach(row => {
+      const tr = document.createElement("tr");
+      const kindTd = document.createElement("td");
+      kindTd.textContent = row.kind === "normal" ? "採取素材" : "料理素材";
+      tr.appendChild(kindTd);
+
+      const nameTd = document.createElement("td");
+      nameTd.textContent = row.name;
+      tr.appendChild(nameTd);
+
+      const totalTd = document.createElement("td");
+      totalTd.textContent = row.total;
+      tr.appendChild(totalTd);
+
+      const timesTd = document.createElement("td");
+      timesTd.textContent = row.times;
+      tr.appendChild(timesTd);
+
+      const maxTd = document.createElement("td");
+      maxTd.textContent = row.maxOnce;
+      tr.appendChild(maxTd);
+
+      tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    container.appendChild(table);
+  }
+
+  function renderGatherMaterialTables() {
+    // 基本素材
+    const gatherMatListBox = document.getElementById("gatherMaterialsList");
+    if (gatherMatListBox && typeof window.materials !== "undefined") {
+      gatherMatListBox.innerHTML = "";
+
+      const names = {
+        wood:   "木",
+        ore:    "鉱石",
+        herb:   "草",
+        cloth:  "布",
+        leather:"皮",
+        water:  "水"
+      };
+      const keys = ["wood","ore","herb","cloth","leather","water"];
+
+      const table = document.createElement("table");
+      table.className = "mat-table";
+
+      const thead = document.createElement("thead");
+      const headTr = document.createElement("tr");
+
+      const emptyTh = document.createElement("th");
+      emptyTh.textContent = "";
+      headTr.appendChild(emptyTh);
+
+      keys.forEach(key => {
+        const th = document.createElement("th");
+        th.textContent = names[key];
+        headTr.appendChild(th);
+      });
+      thead.appendChild(headTr);
+      table.appendChild(thead);
+
+      const tbody = document.createElement("tbody");
+      ["t1", "t2", "t3"].forEach((tierKey, idx) => {
+        const tr = document.createElement("tr");
+        const tierTh = document.createElement("th");
+        tierTh.textContent = `T${idx + 1}`;
+        tr.appendChild(tierTh);
+
+        keys.forEach(key => {
+          const mat = window.materials[key] || {};
+          const td = document.createElement("td");
+          const val = mat[tierKey] || 0;
+          td.textContent = val;
+          tr.appendChild(td);
+        });
+
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(tbody);
+      gatherMatListBox.appendChild(table);
+    }
+
+    // 中間素材
+    const intermListBox = document.getElementById("intermediateMaterialsList");
+    if (intermListBox && Array.isArray(window.INTERMEDIATE_MATERIALS || INTERMEDIATE_MATERIALS)) {
+      const src  = window.INTERMEDIATE_MATERIALS || INTERMEDIATE_MATERIALS;
+      const mats = window.intermediateMats || {};
+      intermListBox.innerHTML = "";
+
+      const groups = {};
+
+      src.forEach(m => {
+        let tierKey = "t1";
+        let baseName = m.name;
+
+        if (m.name.startsWith("T1")) {
+          tierKey = "t1";
+          baseName = m.name.replace(/^T1/, "").trim();
+        } else if (m.name.startsWith("T2")) {
+          tierKey = "t2";
+          baseName = m.name.replace(/^T2/, "").trim();
+        } else if (m.name.startsWith("T3")) {
+          tierKey = "t3";
+          baseName = m.name.replace(/^T3/, "").trim();
+        }
+
+        const baseId = baseName;
+        if (!groups[baseId]) {
+          groups[baseId] = { name: baseName, t1: 0, t2: 0, t3: 0 };
+        }
+
+        const cnt = mats[m.id] || 0;
+        groups[baseId][tierKey] = cnt;
+      });
+
+      const table = document.createElement("table");
+      table.className = "mat-table";
+
+      const thead = document.createElement("thead");
+      const htr = document.createElement("tr");
+
+      const thTier = document.createElement("th");
+      thTier.textContent = "";
+      htr.appendChild(thTier);
+
+      const baseOrder = [
+        "板材",
+        "鉄インゴット",
+        "調合用薬草",
+        "布束",
+        "強化皮",
+        "蒸留水"
+      ];
+
+      baseOrder.forEach(baseName => {
+        if (groups[baseName]) {
+          const th = document.createElement("th");
+          th.textContent = baseName;
+          htr.appendChild(th);
+        }
+      });
+
+      thead.appendChild(htr);
+      table.appendChild(thead);
+
+      const tbody = document.createElement("tbody");
+      ["t1", "t2", "t3"].forEach((tierKey, idx) => {
+        const tr = document.createElement("tr");
+        const thT = document.createElement("th");
+        thT.textContent = `T${idx + 1}`;
+        tr.appendChild(thT);
+
+        baseOrder.forEach(baseName => {
+          if (groups[baseName]) {
+            const g = groups[baseName];
+            const td = document.createElement("td");
+            td.textContent = g[tierKey] || 0;
+            tr.appendChild(td);
+          }
+        });
+
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+
+      intermListBox.appendChild(table);
+    }
+
+    // 料理素材
+    const cookingMatListBox = document.getElementById("cookingMaterialsList");
+    if (cookingMatListBox) {
+      cookingMatListBox.innerHTML = "";
+
+      if (typeof COOKING_MAT_NAMES !== "undefined") {
+        const mats = window.cookingMats || {};
+
+        const table = document.createElement("table");
+        table.className = "mat-table";
+
+        const thead = document.createElement("thead");
+        const htr = document.createElement("tr");
+        const thName = document.createElement("th");
+        thName.textContent = "素材";
+        const thCount = document.createElement("th");
+        thCount.textContent = "個数";
+        htr.appendChild(thName);
+        htr.appendChild(thCount);
+        thead.appendChild(htr);
+        table.appendChild(thead);
+
+        const tbody = document.createElement("tbody");
+        Object.keys(COOKING_MAT_NAMES).forEach(id => {
+          const tr = document.createElement("tr");
+          const tdName = document.createElement("td");
+          const tdCount = document.createElement("td");
+          tdName.textContent = COOKING_MAT_NAMES[id];
+          tdCount.textContent = mats[id] || 0;
+          tr.appendChild(tdName);
+          tr.appendChild(tdCount);
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+
+        cookingMatListBox.appendChild(table);
+      }
+    }
+
+    // 採取拠点UI
+    if (typeof getGatherBaseLevel === "function" &&
+        typeof tryUpgradeGatherBase === "function") {
+      const container = document.getElementById("gatherBaseStatus");
+      if (container) {
+        container.innerHTML = "";
+
+        const materialDefs = [
+          { key: "wood",    label: "木拠点" },
+          { key: "ore",     label: "鉱石拠点" },
+          { key: "herb",    label: "草拠点" },
+          { key: "cloth",   label: "布拠点" },
+          { key: "leather", label: "皮拠点" },
+          { key: "water",   label: "水拠点" }
+        ];
+
+        materialDefs.forEach(def => {
+          const level = getGatherBaseLevel(def.key);
+          const mode  = (typeof getGatherBaseMode === "function")
+            ? getGatherBaseMode(def.key)
+            : "normal";
+
+          const row = document.createElement("div");
+          row.style.display = "flex";
+          row.style.alignItems = "center";
+          row.style.gap = "4px";
+
+          const labelSpan = document.createElement("span");
+          labelSpan.textContent = `${def.label} Lv${level}`;
+          row.appendChild(labelSpan);
+
+          const modeLabel = document.createElement("span");
+          let modeText = "ノーマル";
+          if (mode === "quantity") modeText = "量特化";
+          else if (mode === "quality") modeText = "質特化";
+          modeLabel.textContent = `（${modeText}）`;
+          row.appendChild(modeLabel);
+
+          const upBtn = document.createElement("button");
+          upBtn.textContent = "Lv+1";
+          upBtn.style.fontSize = "10px";
+          upBtn.addEventListener("click", () => {
+            tryUpgradeGatherBase(def.key);
+            renderGatherMaterialTables();
+          });
+          row.appendChild(upBtn);
+
+          if (typeof setGatherBaseMode === "function") {
+            const normalBtn = document.createElement("button");
+            normalBtn.textContent = "ノーマル";
+            normalBtn.style.fontSize = "10px";
+            normalBtn.addEventListener("click", () => {
+              setGatherBaseMode(def.key, "normal");
+              renderGatherMaterialTables();
+            });
+            row.appendChild(normalBtn);
+
+            const quantityBtn = document.createElement("button");
+            quantityBtn.textContent = "量特化";
+            quantityBtn.style.fontSize = "10px";
+            quantityBtn.addEventListener("click", () => {
+              setGatherBaseMode(def.key, "quantity");
+              renderGatherMaterialTables();
+            });
+            row.appendChild(quantityBtn);
+
+            const qualityBtn = document.createElement("button");
+            qualityBtn.textContent = "質特化";
+            qualityBtn.style.fontSize = "10px";
+            qualityBtn.addEventListener("click", () => {
+              setGatherBaseMode(def.key, "quality");
+              renderGatherMaterialTables();
+            });
+            row.appendChild(qualityBtn);
+          }
+
+          container.appendChild(row);
+        });
+
+        if (typeof window.gatherBaseStockTicks !== "undefined") {
+          const stockInfo = document.createElement("div");
+          stockInfo.style.marginTop = "4px";
+          stockInfo.textContent = `自動採取ストック: ${window.gatherBaseStockTicks} tick`;
+          container.appendChild(stockInfo);
+        }
+      }
+    }
+  }
 
   function setStatusSubPage(kind) {
     if (!tabMain || !tabGather || !pageMain || !pageGather) return;
@@ -138,6 +486,12 @@ function buildStatusPage() {
     pageGather.classList.toggle("active", !isMain);
     pageMain.style.display   = isMain ? "" : "none";
     pageGather.style.display = isMain ? "none" : "";
+
+    if (!isMain) {
+      // 採取統計タブに切り替えたときに描画
+      renderGatherStatsTable();
+      renderGatherMaterialTables();
+    }
   }
 
   if (tabMain && tabGather) {
@@ -194,13 +548,13 @@ function updateGatherMatDetailText() {
     const t3 = m.t3 || 0;
     return `${names[k]}: ${t1}/${t2}/${t3}`;
   });
-  area.textContent = lines.join("\n");
+  area.textContent = lines.join("\\n");
 
   let labelText = "所持素材：-";
 
   const info = window.lastGatherInfo;
 
-  // ▼ 通常素材（従来仕様のまま、ただし所持数を見る）
+  // ▼ 通常素材
   if (info && info.baseKey) {
     const baseKey = info.baseKey;
     const mat = window.materials[baseKey] || {};
@@ -264,7 +618,7 @@ function updateCraftMatDetailText() {
     const m = window.materials[k] || {};
     return `${names[k]}: ${formatTierNums(m)}`;
   });
-  area.textContent = lines.join("\n");
+  area.textContent = lines.join("\\n");
 
   // 中間素材の在庫一覧
   if (typeof window.intermediateMats !== "undefined" &&
@@ -279,7 +633,7 @@ function updateCraftMatDetailText() {
     });
 
     if (interLines.length > 0) {
-      area.textContent += "\n--- 中間素材 ---\n" + interLines.join("\n");
+      area.textContent += "\\n--- 中間素材 ---\\n" + interLines.join("\\n");
     }
   }
 
@@ -395,25 +749,81 @@ function initJobPetRebirthUI() {
     });
   }
 
+  // ★修正: 各職業ボタンは「選択」だけにし、確定は jobConfirmBtn 側に任せる
   const jobWarriorBtn = document.getElementById("jobWarriorBtn");
-  if (jobWarriorBtn && typeof applyJobChange === "function") {
-    jobWarriorBtn.addEventListener("click", () => applyJobChange(0));
+  if (jobWarriorBtn) {
+    jobWarriorBtn.addEventListener("click", () => {
+      const confirmBtn = document.getElementById("jobConfirmBtn");
+      const descArea   = document.getElementById("jobDescArea");
+      const allBtns    = document.querySelectorAll(".job-select-btn");
+      if (allBtns) {
+        allBtns.forEach(b => b.classList.toggle("selected", b === jobWarriorBtn));
+      }
+      if (descArea && typeof JOB_DESCS !== "undefined") {
+        descArea.textContent = JOB_DESCS[0] || "";
+      }
+      if (confirmBtn) confirmBtn.disabled = false;
+      if (typeof selectedJobTemp !== "undefined") {
+        selectedJobTemp = 0;
+      }
+    });
   }
 
   const jobMageBtn = document.getElementById("jobMageBtn");
-  if (jobMageBtn && typeof applyJobChange === "function") {
-    jobMageBtn.addEventListener("click", () => applyJobChange(1));
+  if (jobMageBtn) {
+    jobMageBtn.addEventListener("click", () => {
+      const confirmBtn = document.getElementById("jobConfirmBtn");
+      const descArea   = document.getElementById("jobDescArea");
+      const allBtns    = document.querySelectorAll(".job-select-btn");
+      if (allBtns) {
+        allBtns.forEach(b => b.classList.toggle("selected", b === jobMageBtn));
+      }
+      if (descArea && typeof JOB_DESCS !== "undefined") {
+        descArea.textContent = JOB_DESCS[1] || "";
+      }
+      if (confirmBtn) confirmBtn.disabled = false;
+      if (typeof selectedJobTemp !== "undefined") {
+        selectedJobTemp = 1;
+      }
+    });
   }
 
   const jobTamerBtn = document.getElementById("jobTamerBtn");
-  if (jobTamerBtn && typeof applyJobChange === "function") {
-    jobTamerBtn.addEventListener("click", () => applyJobChange(2));
+  if (jobTamerBtn) {
+    jobTamerBtn.addEventListener("click", () => {
+      const confirmBtn = document.getElementById("jobConfirmBtn");
+      const descArea   = document.getElementById("jobDescArea");
+      const allBtns    = document.querySelectorAll(".job-select-btn");
+      if (allBtns) {
+        allBtns.forEach(b => b.classList.toggle("selected", b === jobTamerBtn));
+      }
+      if (descArea && typeof JOB_DESCS !== "undefined") {
+        descArea.textContent = JOB_DESCS[2] || "";
+      }
+      if (confirmBtn) confirmBtn.disabled = false;
+      if (typeof selectedJobTemp !== "undefined") {
+        selectedJobTemp = 2;
+      }
+    });
   }
 
-  // ★追加: 錬金術師ボタン（HTML側に #jobAlchemistBtn がある前提）
   const jobAlchemistBtn = document.getElementById("jobAlchemistBtn");
-  if (jobAlchemistBtn && typeof applyJobChange === "function") {
-    jobAlchemistBtn.addEventListener("click", () => applyJobChange(3));
+  if (jobAlchemistBtn) {
+    jobAlchemistBtn.addEventListener("click", () => {
+      const confirmBtn = document.getElementById("jobConfirmBtn");
+      const descArea   = document.getElementById("jobDescArea");
+      const allBtns    = document.querySelectorAll(".job-select-btn");
+      if (allBtns) {
+        allBtns.forEach(b => b.classList.toggle("selected", b === jobAlchemistBtn));
+      }
+      if (descArea && typeof JOB_DESCS !== "undefined") {
+        descArea.textContent = JOB_DESCS[3] || "";
+      }
+      if (confirmBtn) confirmBtn.disabled = false;
+      if (typeof selectedJobTemp !== "undefined") {
+        selectedJobTemp = 3;
+      }
+    });
   }
 
   const changePetGrowthBtn2 = document.getElementById("changePetGrowthBtn");

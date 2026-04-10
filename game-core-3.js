@@ -871,6 +871,9 @@ function startBattleCommon(enemy, isBoss) {
 
   setBattleCommandVisible(true);
   setExploreUIVisible(false);
+  if (typeof setFieldItemRowsVisible === "function") {
+    setFieldItemRowsVisible(false); // ★戦闘開始時にフィールド用3行を隠す
+  }
 
   if (typeof refreshBattleItemSelect === "function") {
     refreshBattleItemSelect();
@@ -900,6 +903,9 @@ function endBattleCommon() {
 
   setBattleCommandVisible(false);
   setExploreUIVisible(true);
+  if (typeof setFieldItemRowsVisible === "function") {
+    setFieldItemRowsVisible(true); // ★戦闘終了時にフィールド用3行を再表示
+  }
 
   renderPlayerStatusIcons();
   updateEnemyStatusUI();
