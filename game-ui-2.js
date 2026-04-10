@@ -22,7 +22,6 @@ function refreshWarehouseUI() {
   // ヘルパ（1行描画）
   // =======================
   function createRow(name, count, moveBtnConfigs) {
-    // moveBtnConfigs: [{ label: "↑手持ちへ", onClick: () => {...} }, ...]
     const div = document.createElement("div");
     div.style.display = "flex";
     div.style.alignItems = "center";
@@ -33,6 +32,28 @@ function refreshWarehouseUI() {
     div.appendChild(span);
 
     moveBtnConfigs.forEach(cfg => {
+      const btn = document.createElement("button");
+      btn.textContent = cfg.label;
+      btn.style.fontSize = "10px";
+      btn.addEventListener("click", cfg.onClick);
+      div.appendChild(btn);
+    });
+
+    return div;
+  }
+
+  // 単品表示用（装備枠）
+  function createSingleRow(label, btnConfigs) {
+    const div = document.createElement("div");
+    div.style.display = "flex";
+    div.style.alignItems = "center";
+    div.style.gap = "4px";
+
+    const span = document.createElement("span");
+    span.textContent = label;
+    div.appendChild(span);
+
+    btnConfigs.forEach(cfg => {
       const btn = document.createElement("button");
       btn.textContent = cfg.label;
       btn.style.fontSize = "10px";
@@ -76,90 +97,150 @@ function refreshWarehouseUI() {
     return r ? r.name : id;
   }
   function getToolName(id) {
-    // とりあえずIDベース＋爆弾だけラベル補正
-    if (id === "bomb") return "爆弾";
+    if (id === "bomb")   return "爆弾";
     if (id === "bomb_T1") return "爆弾T1";
     if (id === "bomb_T2") return "爆弾T2";
     if (id === "bomb_T3") return "爆弾T3";
     return id;
   }
 
-  // インスタンス一覧から「そのIDの代表ラベル」を作る（品質/強化/耐久を反映）
-  function getWeaponInstanceLabel(id) {
-    if (!Array.isArray(window.weaponInstances)) {
-      return getWeaponName(id);
-    }
-    const base = getWeaponMaster(id);
-    const name = base ? base.name : id;
-
-    const insts = window.weaponInstances.filter(w => w.id === id);
-    if (!insts.length) return name;
-
-    // 今は代表として「最も良い1本」（quality→enhance→durability降順）を表示ラベルに使う
-    insts.sort((a, b) => {
-      const qa = a.quality || 0;
-      const qb = b.quality || 0;
-      if (qa !== qb) return qb - qa;
-      const ea = a.enhance || 0;
-      const eb = b.enhance || 0;
-      if (ea !== eb) return eb - ea;
-      const da = a.durability ?? MAX_DURABILITY;
-      const db = b.durability ?? MAX_DURABILITY;
-      return db - da;
-    });
-    const best = insts[0];
+  // インスタンスからラベルを生成（単体）
+  function buildWeaponLabelFromInstance(inst) {
+    const base = getWeaponMaster(inst.id);
+    const name = base ? base.name : inst.id;
 
     let qLabel = "";
-    if (best.quality === 2) qLabel = "【傑作】";
-    else if (best.quality === 1) qLabel = "【良品】";
+    if (inst.quality === 2) qLabel = "【傑作】";
+    else if (inst.quality === 1) qLabel = "【良品】";
 
-    const enh = best.enhance || 0;
+    const enh = inst.enhance || 0;
     const enhLabel = enh > 0 ? `+${enh}` : "";
 
-    const dur = best.durability ?? MAX_DURABILITY;
+    const dur = inst.durability ?? MAX_DURABILITY;
     const durLabel = `耐久${dur}`;
 
     return `${qLabel}${name}${enhLabel ? " " + enhLabel : ""} ${durLabel}`;
   }
 
-  function getArmorInstanceLabel(id) {
-    if (!Array.isArray(window.armorInstances)) {
-      return getArmorName(id);
-    }
-    const base = getArmorMaster(id);
-    const name = base ? base.name : id;
-
-    const insts = window.armorInstances.filter(a => a.id === id);
-    if (!insts.length) return name;
-
-    insts.sort((a, b) => {
-      const qa = a.quality || 0;
-      const qb = b.quality || 0;
-      if (qa !== qb) return qb - qa;
-      const ea = a.enhance || 0;
-      const eb = b.enhance || 0;
-      if (ea !== eb) return eb - ea;
-      const da = a.durability ?? MAX_DURABILITY;
-      const db = b.durability ?? MAX_DURABILITY;
-      return db - da;
-    });
-    const best = insts[0];
+  function buildArmorLabelFromInstance(inst) {
+    const base = getArmorMaster(inst.id);
+    const name = base ? base.name : inst.id;
 
     let qLabel = "";
-    if (best.quality === 2) qLabel = "【傑作】";
-    else if (best.quality === 1) qLabel = "【良品】";
+    if (inst.quality === 2) qLabel = "【傑作】";
+    else if (inst.quality === 1) qLabel = "【良品】";
 
-    const enh = best.enhance || 0;
+    const enh = inst.enhance || 0;
     const enhLabel = enh > 0 ? `+${enh}` : "";
 
-    const dur = best.durability ?? MAX_DURABILITY;
+    const dur = inst.durability ?? MAX_DURABILITY;
     const durLabel = `耐久${dur}`;
 
     return `${qLabel}${name}${enhLabel ? " " + enhLabel : ""} ${durLabel}`;
+  }
+
+  // location と性能でグループ化（同性能スタック用）
+  function buildWeaponGroups(location) {
+    const groups = [];
+    if (!Array.isArray(window.weaponInstances)) {
+      // 旧仕様フォールバック：idごとに counts をそのまま使う
+      const src = location === "carry" ? carryWeapons : weaponCounts;
+      Object.keys(src).forEach(id => {
+        const cnt = src[id] || 0;
+        if (cnt <= 0) return;
+        groups.push({
+          id,
+          quality: 0,
+          enhance: 0,
+          durability: MAX_DURABILITY,
+          location,
+          count: cnt
+        });
+      });
+      return groups;
+    }
+
+    const map = {};
+    window.weaponInstances.forEach((inst, index) => {
+      if (!inst || !inst.id) return;
+      const loc = inst.location || "warehouse";
+      if (loc !== location) return;
+
+      const q = inst.quality || 0;
+      const e = inst.enhance || 0;
+      const d = inst.durability ?? MAX_DURABILITY;
+      const key = `${inst.id}::${q}::${e}::${d}::${loc}`;
+
+      if (!map[key]) {
+        map[key] = {
+          id: inst.id,
+          quality: q,
+          enhance: e,
+          durability: d,
+          location: loc,
+          count: 0,
+          instanceIndexes: []
+        };
+      }
+      map[key].count++;
+      map[key].instanceIndexes.push(index);
+    });
+
+    Object.keys(map).forEach(k => groups.push(map[k]));
+    return groups;
+  }
+
+  function buildArmorGroups(location) {
+    const groups = [];
+    if (!Array.isArray(window.armorInstances)) {
+      const src = location === "carry" ? carryArmors : armorCounts;
+      Object.keys(src).forEach(id => {
+        const cnt = src[id] || 0;
+        if (cnt <= 0) return;
+        groups.push({
+          id,
+          quality: 0,
+          enhance: 0,
+          durability: MAX_DURABILITY,
+          location,
+          count: cnt
+        });
+      });
+      return groups;
+    }
+
+    const map = {};
+    window.armorInstances.forEach((inst, index) => {
+      if (!inst || !inst.id) return;
+      const loc = inst.location || "warehouse";
+      if (loc !== location) return;
+
+      const q = inst.quality || 0;
+      const e = inst.enhance || 0;
+      const d = inst.durability ?? MAX_DURABILITY;
+      const key = `${inst.id}::${q}::${e}::${d}::${loc}`;
+
+      if (!map[key]) {
+        map[key] = {
+          id: inst.id,
+          quality: q,
+          enhance: e,
+          durability: d,
+          location: loc,
+          count: 0,
+          instanceIndexes: []
+        };
+      }
+      map[key].count++;
+      map[key].instanceIndexes.push(index);
+    });
+
+    Object.keys(map).forEach(k => groups.push(map[k]));
+    return groups;
   }
 
   // =======================
-  // 手持ち側の描画
+  // 要素取得
   // =======================
 
   const carryPotionsBox = document.getElementById("carryPotionsList");
@@ -168,6 +249,112 @@ function refreshWarehouseUI() {
   const carryWeaponsBox = document.getElementById("carryWeaponsList");
   const carryArmorsBox  = document.getElementById("carryArmorsList");
   const carryToolsBox   = document.getElementById("carryToolsList");
+
+  const equippedWeaponBox = document.getElementById("equippedWeaponSlot");
+  const equippedArmorBox  = document.getElementById("equippedArmorSlot");
+
+  // =======================
+  // 装備欄の描画
+  // =======================
+
+  if (equippedWeaponBox) {
+    equippedWeaponBox.innerHTML = "";
+    let label = "武器：なし";
+    let hasEquipped = false;
+
+    if (typeof window.equippedWeaponIndex === "number" &&
+        Array.isArray(window.weaponInstances)) {
+      const inst = window.weaponInstances[window.equippedWeaponIndex];
+      if (inst) {
+        label = "武器：" + buildWeaponLabelFromInstance(inst);
+        hasEquipped = true;
+      }
+    } else if (window.equippedWeaponId) {
+      label = "武器：" + getWeaponName(window.equippedWeaponId);
+      hasEquipped = true;
+    }
+
+    const row = createSingleRow(label, hasEquipped ? [
+      {
+        label: "外す",
+        onClick: () => {
+          if (typeof equipWeaponFromCarry === "function" &&
+              typeof window.equippedWeaponIndex === "number" &&
+              Array.isArray(window.weaponInstances)) {
+            const idx = window.equippedWeaponIndex;
+            const inst = window.weaponInstances[idx];
+            if (inst) {
+              // 装備解除は倉庫に戻す（元仕様維持）
+              inst.location = "warehouse";
+            }
+            window.equippedWeaponIndex = null;
+            window.equippedWeaponId = null;
+            if (typeof recalcStats === "function") recalcStats();
+            if (typeof syncEquipmentCountsFromInstances === "function") {
+              syncEquipmentCountsFromInstances();
+            }
+            refreshWarehouseUI();
+          } else if (window.equippedWeaponId) {
+            window.equippedWeaponId = null;
+            if (typeof recalcStats === "function") recalcStats();
+            refreshWarehouseUI();
+          }
+        }
+      }
+    ] : []);
+    equippedWeaponBox.appendChild(row);
+  }
+
+  if (equippedArmorBox) {
+    equippedArmorBox.innerHTML = "";
+    let label = "防具：なし";
+    let hasEquipped = false;
+
+    if (typeof window.equippedArmorIndex === "number" &&
+        Array.isArray(window.armorInstances)) {
+      const inst = window.armorInstances[window.equippedArmorIndex];
+      if (inst) {
+        label = "防具：" + buildArmorLabelFromInstance(inst);
+        hasEquipped = true;
+      }
+    } else if (window.equippedArmorId) {
+      label = "防具：" + getArmorName(window.equippedArmorId);
+      hasEquipped = true;
+    }
+
+    const row = createSingleRow(label, hasEquipped ? [
+      {
+        label: "外す",
+        onClick: () => {
+          if (typeof equipArmorFromCarry === "function" &&
+              typeof window.equippedArmorIndex === "number" &&
+              Array.isArray(window.armorInstances)) {
+            const idx = window.equippedArmorIndex;
+            const inst = window.armorInstances[idx];
+            if (inst) {
+              inst.location = "carry";
+            }
+            window.equippedArmorIndex = null;
+            window.equippedArmorId = null;
+            if (typeof recalcStats === "function") recalcStats();
+            if (typeof syncEquipmentCountsFromInstances === "function") {
+              syncEquipmentCountsFromInstances();
+            }
+            refreshWarehouseUI();
+          } else if (window.equippedArmorId) {
+            window.equippedArmorId = null;
+            if (typeof recalcStats === "function") recalcStats();
+            refreshWarehouseUI();
+          }
+        }
+      }
+    ] : []);
+    equippedArmorBox.appendChild(row);
+  }
+
+  // =======================
+  // 手持ち側の描画
+  // =======================
 
   if (carryPotionsBox) {
     carryPotionsBox.innerHTML = "";
@@ -238,25 +425,55 @@ function refreshWarehouseUI() {
     });
   }
 
+  // 手持ち武器（location==="carry" グループ）
   if (carryWeaponsBox) {
     carryWeaponsBox.innerHTML = "";
-    Object.keys(carryWeapons).forEach(id => {
-      const cnt = carryWeapons[id] || 0;
-      if (cnt <= 0) return;
-
-      const label = getWeaponInstanceLabel(id);
-      const row = createRow(label, cnt, [
+    const groups = buildWeaponGroups("carry");
+    groups.forEach(group => {
+      const dummyInst = {
+        id: group.id,
+        quality: group.quality,
+        enhance: group.enhance,
+        durability: group.durability
+      };
+      const label = buildWeaponLabelFromInstance(dummyInst);
+      const row = createRow(label, group.count, [
         {
           label: "装備",
           onClick: () => {
-            // 手持ちから装備：コア側関数に委譲
-            if (typeof equipWeaponFromCarry === "function") {
-              equipWeaponFromCarry(id);
+            if (Array.isArray(window.weaponInstances) &&
+                typeof window.equippedWeaponIndex === "number") {
+              // 既に何か装備中なら、それを carry に戻す
+              const curIdx = window.equippedWeaponIndex;
+              const curInst = window.weaponInstances[curIdx];
+              if (curInst) {
+                curInst.location = "carry";
+              }
+            }
+
+            // このグループから1本を装備
+            if (Array.isArray(window.weaponInstances) &&
+                group.instanceIndexes &&
+                group.instanceIndexes.length > 0) {
+              const instIndex = group.instanceIndexes[0];
+              const inst = window.weaponInstances[instIndex];
+              if (inst) {
+                inst.location = "equipped";
+                window.equippedWeaponIndex = instIndex;
+                window.equippedWeaponId = inst.id;
+              }
+            } else if (typeof equipWeaponFromCarry === "function") {
+              // 旧仕様フォールバック
+              equipWeaponFromCarry(group.id);
             } else if (typeof equipWeapon === "function") {
-              // 旧仕様フォールバック（インスタンスなし版）
-              window.equippedWeaponId = id;
-              appendLog("武器を装備した");
+              window.equippedWeaponId = group.id;
+              if (typeof appendLog === "function") appendLog("武器を装備した");
               if (typeof updateDisplay === "function") updateDisplay();
+            }
+
+            if (typeof recalcStats === "function") recalcStats();
+            if (typeof syncEquipmentCountsFromInstances === "function") {
+              syncEquipmentCountsFromInstances();
             }
             refreshWarehouseUI();
           }
@@ -264,7 +481,7 @@ function refreshWarehouseUI() {
         {
           label: "↓倉庫へ",
           onClick: () => {
-            if (moveWeaponToWarehouse(id, 1)) {
+            if (moveWeaponToWarehouse(group.id, 1)) {
               refreshWarehouseUI();
             }
           }
@@ -274,24 +491,52 @@ function refreshWarehouseUI() {
     });
   }
 
+  // 手持ち防具（location==="carry" グループ）
   if (carryArmorsBox) {
     carryArmorsBox.innerHTML = "";
-    Object.keys(carryArmors).forEach(id => {
-      const cnt = carryArmors[id] || 0;
-      if (cnt <= 0) return;
-
-      const label = getArmorInstanceLabel(id);
-      const row = createRow(label, cnt, [
+    const groups = buildArmorGroups("carry");
+    groups.forEach(group => {
+      const dummyInst = {
+        id: group.id,
+        quality: group.quality,
+        enhance: group.enhance,
+        durability: group.durability
+      };
+      const label = buildArmorLabelFromInstance(dummyInst);
+      const row = createRow(label, group.count, [
         {
           label: "装備",
           onClick: () => {
-            if (typeof equipArmorFromCarry === "function") {
-              equipArmorFromCarry(id);
+            if (Array.isArray(window.armorInstances) &&
+                typeof window.equippedArmorIndex === "number") {
+              const curIdx = window.equippedArmorIndex;
+              const curInst = window.armorInstances[curIdx];
+              if (curInst) {
+                curInst.location = "carry";
+              }
+            }
+
+            if (Array.isArray(window.armorInstances) &&
+                group.instanceIndexes &&
+                group.instanceIndexes.length > 0) {
+              const instIndex = group.instanceIndexes[0];
+              const inst = window.armorInstances[instIndex];
+              if (inst) {
+                inst.location = "equipped";
+                window.equippedArmorIndex = instIndex;
+                window.equippedArmorId = inst.id;
+              }
+            } else if (typeof equipArmorFromCarry === "function") {
+              equipArmorFromCarry(group.id);
             } else if (typeof equipArmor === "function") {
-              // 旧仕様フォールバック
-              window.equippedArmorId = id;
-              appendLog("防具を装備した");
+              window.equippedArmorId = group.id;
+              if (typeof appendLog === "function") appendLog("防具を装備した");
               if (typeof updateDisplay === "function") updateDisplay();
+            }
+
+            if (typeof recalcStats === "function") recalcStats();
+            if (typeof syncEquipmentCountsFromInstances === "function") {
+              syncEquipmentCountsFromInstances();
             }
             refreshWarehouseUI();
           }
@@ -299,7 +544,7 @@ function refreshWarehouseUI() {
         {
           label: "↓倉庫へ",
           onClick: () => {
-            if (moveArmorToWarehouse(id, 1)) {
+            if (moveArmorToWarehouse(group.id, 1)) {
               refreshWarehouseUI();
             }
           }
@@ -427,32 +672,48 @@ function refreshWarehouseUI() {
     });
   }
 
+  // 倉庫武器（location==="warehouse" グループ）
   if (whWeaponsBox) {
     whWeaponsBox.innerHTML = "";
-    Object.keys(weaponCounts).forEach(id => {
-      const cnt = weaponCounts[id] || 0;
-      if (cnt <= 0) return;
-
-      const label = getWeaponInstanceLabel(id);
-      const row = createRow(label, cnt, [
+    const groups = buildWeaponGroups("warehouse");
+    groups.forEach(group => {
+      const dummyInst = {
+        id: group.id,
+        quality: group.quality,
+        enhance: group.enhance,
+        durability: group.durability
+      };
+      const label = buildWeaponLabelFromInstance(dummyInst);
+      const row = createRow(label, group.count, [
         {
           label: "装備",
           onClick: () => {
-            // 倉庫から装備：コア側関数に丸投げ
-            if (typeof equipWeaponFromWarehouse === "function") {
-              equipWeaponFromWarehouse(id);
-            } else {
-              // 旧仕様フォールバック：倉庫→手持ち→装備
-              if (!moveWeaponToCarry(id, 1)) {
-                return;
+            // 倉庫から直接装備：一対一交換
+            if (Array.isArray(window.weaponInstances)) {
+              // 既に装備中の武器は倉庫に戻す
+              if (typeof window.equippedWeaponIndex === "number") {
+                const curIdx = window.equippedWeaponIndex;
+                const curInst = window.weaponInstances[curIdx];
+                if (curInst) {
+                  curInst.location = "warehouse";
+                }
               }
-              if (typeof equipWeaponFromCarry === "function") {
-                equipWeaponFromCarry(id);
-              } else if (typeof equipWeapon === "function") {
-                window.equippedWeaponId = id;
-                appendLog("武器を装備した");
-                if (typeof updateDisplay === "function") updateDisplay();
+              // このグループから1本を装備
+              if (group.instanceIndexes && group.instanceIndexes.length > 0) {
+                const instIndex = group.instanceIndexes[0];
+                const inst = window.weaponInstances[instIndex];
+                if (inst) {
+                  inst.location = "equipped";
+                  window.equippedWeaponIndex = instIndex;
+                  window.equippedWeaponId = inst.id;
+                }
               }
+              if (typeof recalcStats === "function") recalcStats();
+              if (typeof syncEquipmentCountsFromInstances === "function") {
+                syncEquipmentCountsFromInstances();
+              }
+            } else if (typeof equipWeaponFromWarehouse === "function") {
+              equipWeaponFromWarehouse(group.id);
             }
             refreshWarehouseUI();
           }
@@ -460,7 +721,7 @@ function refreshWarehouseUI() {
         {
           label: "↑手持ちへ",
           onClick: () => {
-            if (moveWeaponToCarry(id, 1)) {
+            if (moveWeaponToCarry(group.id, 1)) {
               refreshWarehouseUI();
             }
           }
@@ -470,31 +731,45 @@ function refreshWarehouseUI() {
     });
   }
 
+  // 倉庫防具（location==="warehouse" グループ）
   if (whArmorsBox) {
     whArmorsBox.innerHTML = "";
-    Object.keys(armorCounts).forEach(id => {
-      const cnt = armorCounts[id] || 0;
-      if (cnt <= 0) return;
-
-      const label = getArmorInstanceLabel(id);
-      const row = createRow(label, cnt, [
+    const groups = buildArmorGroups("warehouse");
+    groups.forEach(group => {
+      const dummyInst = {
+        id: group.id,
+        quality: group.quality,
+        enhance: group.enhance,
+        durability: group.durability
+      };
+      const label = buildArmorLabelFromInstance(dummyInst);
+      const row = createRow(label, group.count, [
         {
           label: "装備",
           onClick: () => {
-            if (typeof equipArmorFromWarehouse === "function") {
-              equipArmorFromWarehouse(id);
-            } else {
-              // 旧仕様フォールバック：倉庫→手持ち→装備
-              if (!moveArmorToCarry(id, 1)) {
-                return;
+            if (Array.isArray(window.armorInstances)) {
+              if (typeof window.equippedArmorIndex === "number") {
+                const curIdx = window.equippedArmorIndex;
+                const curInst = window.armorInstances[curIdx];
+                if (curInst) {
+                  curInst.location = "warehouse";
+                }
               }
-              if (typeof equipArmorFromCarry === "function") {
-                equipArmorFromCarry(id);
-              } else if (typeof equipArmor === "function") {
-                window.equippedArmorId = id;
-                appendLog("防具を装備した");
-                if (typeof updateDisplay === "function") updateDisplay();
+              if (group.instanceIndexes && group.instanceIndexes.length > 0) {
+                const instIndex = group.instanceIndexes[0];
+                const inst = window.armorInstances[instIndex];
+                if (inst) {
+                  inst.location = "equipped";
+                  window.equippedArmorIndex = instIndex;
+                  window.equippedArmorId = inst.id;
+                }
               }
+              if (typeof recalcStats === "function") recalcStats();
+              if (typeof syncEquipmentCountsFromInstances === "function") {
+                syncEquipmentCountsFromInstances();
+              }
+            } else if (typeof equipArmorFromWarehouse === "function") {
+              equipArmorFromWarehouse(group.id);
             }
             refreshWarehouseUI();
           }
@@ -502,7 +777,7 @@ function refreshWarehouseUI() {
         {
           label: "↑手持ちへ",
           onClick: () => {
-            if (moveArmorToCarry(id, 1)) {
+            if (moveArmorToCarry(group.id, 1)) {
               refreshWarehouseUI();
             }
           }
@@ -514,7 +789,6 @@ function refreshWarehouseUI() {
 
   if (whToolsBox) {
     whToolsBox.innerHTML = "";
-    // 倉庫側の道具（toolCounts）を一覧表示し、手持ちへ移動可能にする
     if (typeof toolCounts === "object") {
       Object.keys(toolCounts).forEach(id => {
         const cnt = toolCounts[id] || 0;
@@ -539,7 +813,6 @@ function refreshWarehouseUI() {
   // 素材タブ用の一覧描画
   // =======================
 
-  // 採取素材テーブル（wood/ore/herb/cloth/leather/water × T1〜T3）
   const gatherMatListBox = document.getElementById("gatherMaterialsList");
   if (gatherMatListBox && typeof window.materials !== "undefined") {
     gatherMatListBox.innerHTML = "";
@@ -557,7 +830,6 @@ function refreshWarehouseUI() {
     const table = document.createElement("table");
     table.className = "mat-table";
 
-    // ヘッダー行: 空セル + 各素材名
     const thead = document.createElement("thead");
     const headTr = document.createElement("tr");
 
@@ -573,7 +845,6 @@ function refreshWarehouseUI() {
     thead.appendChild(headTr);
     table.appendChild(thead);
 
-    // 本体: T1/T2/T3 行
     const tbody = document.createElement("tbody");
     ["t1", "t2", "t3"].forEach((tierKey, idx) => {
       const tr = document.createElement("tr");
@@ -596,14 +867,13 @@ function refreshWarehouseUI() {
     gatherMatListBox.appendChild(table);
   }
 
-  // 中間素材テーブル（横=素材、縦=ティア）
   const intermListBox = document.getElementById("intermediateMaterialsList");
   if (intermListBox && Array.isArray(window.INTERMEDIATE_MATERIALS || INTERMEDIATE_MATERIALS)) {
     const src  = window.INTERMEDIATE_MATERIALS || INTERMEDIATE_MATERIALS;
     const mats = window.intermediateMats || {};
     intermListBox.innerHTML = "";
 
-    const groups = {}; // baseName -> { name, t1, t2, t3 }
+    const groups = {};
 
     src.forEach(m => {
       let tierKey = "t1";
@@ -635,19 +905,17 @@ function refreshWarehouseUI() {
     const thead = document.createElement("thead");
     const htr = document.createElement("tr");
 
-    // 「ティア」は不要なので空ヘッダにする
     const thTier = document.createElement("th");
     thTier.textContent = "";
     htr.appendChild(thTier);
 
-    // 採取素材の順番に対応した中間素材の表示順を固定
     const baseOrder = [
-      "板材",         // wood
-      "鉄インゴット", // ore
-      "調合用薬草",   // herb
-      "布束",         // cloth
-      "強化皮",       // leather
-      "蒸留水"        // water
+      "板材",
+      "鉄インゴット",
+      "調合用薬草",
+      "布束",
+      "強化皮",
+      "蒸留水"
     ];
 
     baseOrder.forEach(baseName => {
@@ -684,7 +952,6 @@ function refreshWarehouseUI() {
     intermListBox.appendChild(table);
   }
 
-  // 料理素材テーブル（素材名 × 個数）
   const cookingMatListBox = document.getElementById("cookingMaterialsList");
   if (cookingMatListBox) {
     cookingMatListBox.innerHTML = "";
@@ -724,7 +991,7 @@ function refreshWarehouseUI() {
   }
 
   // =======================
-  // 採取拠点UI（魔巧区サブページ内: #gatherBaseStatus）
+  // 採取拠点UI
   // =======================
 
   if (typeof getGatherBaseLevel === "function" &&
@@ -757,7 +1024,6 @@ function refreshWarehouseUI() {
         labelSpan.textContent = `${def.label} Lv${level}`;
         row.appendChild(labelSpan);
 
-        // モード表示ラベル
         const modeLabel = document.createElement("span");
         let modeText = "ノーマル";
         if (mode === "quantity") modeText = "量特化";
@@ -774,7 +1040,6 @@ function refreshWarehouseUI() {
         });
         row.appendChild(upBtn);
 
-        // モード切り替えボタン（ノーマル / 量 / 質）
         if (typeof setGatherBaseMode === "function") {
           const normalBtn = document.createElement("button");
           normalBtn.textContent = "ノーマル";
@@ -818,7 +1083,7 @@ function refreshWarehouseUI() {
 }
 
 // =======================
-// 倉庫から直接食べる／飲む用ヘルパ
+// 倉庫から直接食べる／飲む
 // =======================
 
 function consumeFoodFromWarehouse(id) {
@@ -876,17 +1141,14 @@ function consumeDrinkFromWarehouse(id) {
 }
 
 // =======================
-// 戦闘スキルボタンのバインド＋ショップ＋料理UIイベント
+// 戦闘スキル＋ショップ＋倉庫サブタブなど init
 // =======================
 
-// ★修正: DOMContentLoaded ではなく init 関数として定義し、game-ui.js から呼び出す
 function initBattleAndShopUI() {
-  // まず全クラフトセレクトを game-core-6 側で構築
   if (typeof refreshEquipSelects === "function") {
     refreshEquipSelects();
   }
 
-  // 料理クラフトUI（セレクトは refreshEquipSelects で生成される前提）
   const foodSelect   = document.getElementById("foodSelect");
   const drinkSelect  = document.getElementById("drinkSelect");
   const foodBtn      = document.getElementById("craftFoodBtn");
@@ -942,7 +1204,6 @@ function initBattleAndShopUI() {
     });
   }
 
-  // 初期表示：前回のレシピ or 先頭
   const costInfo = document.getElementById("craftCostInfo");
   if (costInfo && typeof updateCraftCostInfo === "function") {
     if (window.lastCraftCategory === "cookingFood" && foodSelect && foodSelect.value) {
@@ -956,7 +1217,6 @@ function initBattleAndShopUI() {
     }
   }
 
-  // 戦闘スキル
   const castMagicBtn = document.getElementById("castMagicBtn");
   if (castMagicBtn && typeof castSelectedMagic === "function") {
     castMagicBtn.addEventListener("click", () => {
@@ -971,7 +1231,6 @@ function initBattleAndShopUI() {
     });
   }
 
-  // ショップ（魔巧区サブページ内）
   if (typeof initShop === "function") {
     initShop();
   }
@@ -994,10 +1253,6 @@ function initBattleAndShopUI() {
       if (typeof updateDisplay === "function") updateDisplay();
     });
   }
-
-  // =======================
-  // 倉庫サブタブ切り替え
-  // =======================
 
   (function () {
     const tabItems      = document.getElementById("warehouseTabItems");
@@ -1026,15 +1281,10 @@ function initBattleAndShopUI() {
     tabItems.addEventListener("click", () => setWarehouseSubPage("items"));
     tabMaterials.addEventListener("click", () => setWarehouseSubPage("materials"));
 
-    // 初期は装備・アイテム側
     setWarehouseSubPage("items");
   })();
 
-  // =======================
-  // ステータス内サブタブ切り替え＋採取統計描画
-  // =======================
-
-  // 採取統計テーブルを描画するヘルパー
+  // ステータス内サブタブ切り替え＋採取統計描画（元のまま）
   function renderGatherStatsTable() {
     const container = document.getElementById("gatherStatsContainer");
     if (!container) return;
@@ -1099,7 +1349,6 @@ function initBattleAndShopUI() {
     container.appendChild(table);
   }
 
-  // ステータス内サブタブ切り替え
   (function () {
     const tabMain   = document.getElementById("statusTabMain");
     const tabGather = document.getElementById("statusTabGather");
@@ -1121,8 +1370,6 @@ function initBattleAndShopUI() {
         pageGather.style.display = "";
         tabMain.classList.remove("active");
         tabGather.classList.add("active");
-
-        // 採取統計タブを開いたタイミングでテーブル更新
         renderGatherStatsTable();
       }
     }
@@ -1130,7 +1377,6 @@ function initBattleAndShopUI() {
     tabMain.addEventListener("click", () => setStatusSubPage("main"));
     tabGather.addEventListener("click", () => setStatusSubPage("gather"));
 
-    // 初期状態は基本情報タブ
     setStatusSubPage("main");
   })();
 }

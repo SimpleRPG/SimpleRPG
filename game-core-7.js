@@ -359,98 +359,291 @@ function refreshEquipSelects(){
   }
 }
 
-// 装備時にインスタンスの location / equippedIndex を反映する
-function equipWeapon(){
-  const sel = document.getElementById("weaponEquipSelect");
-  if (!sel || !sel.value) { appendLog("装備する武器がない"); return; }
-  const id = sel.value;
-  if (weaponCounts[id] <= 0) { appendLog("その武器を所持していない"); return; }
+// =======================
+// 装備 API（コアはここに集約）
+// =======================
 
-  // 以前の装備中インスタンスを carry に戻す
-  if (Array.isArray(window.weaponInstances) &&
-      typeof window.equippedWeaponIndex === "number" &&
-      window.equippedWeaponIndex >= 0) {
-    const prevInst = window.weaponInstances[window.equippedWeaponIndex];
-    if (prevInst) {
-      prevInst.location = "carry";
+// 倉庫からの直接装備ヘルパー
+function equipWeaponFromWarehouse(weaponId) {
+  if (window.isExploring || window.currentEnemy) {
+    if (typeof appendLog === "function") {
+      appendLog("探索中は装備を変更できない！");
     }
+    return;
+  }
+  if (!weaponId) return;
+
+  const hasInstances = Array.isArray(window.weaponInstances);
+
+  // 旧装備品を倉庫に戻す
+  if (hasInstances && window.equippedWeaponIndex != null) {
+    const oldInst = window.weaponInstances[window.equippedWeaponIndex];
+    if (oldInst) {
+      oldInst.location = "warehouse";
+      if (typeof weaponCounts === "object") {
+        weaponCounts[oldInst.id] = (weaponCounts[oldInst.id] || 0) + 1;
+      }
+    }
+    window.equippedWeaponIndex = null;
+    window.equippedWeaponId    = null;
+  } else if (!hasInstances && window.equippedWeaponId) {
+    weaponCounts[window.equippedWeaponId] = (weaponCounts[window.equippedWeaponId] || 0) + 1;
+    window.equippedWeaponId = null;
   }
 
-  // 新しく装備するインスタンスを探す（carry優先、なければwarehouse）
-  let foundIndex = null;
-  if (Array.isArray(window.weaponInstances)) {
-    for (let i = 0; i < window.weaponInstances.length; i++) {
-      const inst = window.weaponInstances[i];
-      if (!inst || inst.id !== id) continue;
-      const loc = inst.location || "warehouse";
-      if (loc !== "carry" && loc !== "warehouse") continue;
-      foundIndex = i;
+  if (!hasInstances) {
+    // インスタンス未使用フォールバック
+    if (!weaponCounts[weaponId] || weaponCounts[weaponId] <= 0) {
+      appendLog("倉庫に装備可能な武器がない");
+      return;
+    }
+    weaponCounts[weaponId] = Math.max(0, (weaponCounts[weaponId] || 0) - 1);
+    window.equippedWeaponId = weaponId;
+    appendLog("武器を装備した。");
+    if (typeof recalcStats === "function") recalcStats();
+    if (typeof refreshWarehouseUI === "function") refreshWarehouseUI();
+    return;
+  }
+
+  // 倉庫(location: warehouse)にあるインスタンスから1本だけ装備にする
+  let idx = -1;
+  for (let i = 0; i < window.weaponInstances.length; i++) {
+    const inst = window.weaponInstances[i];
+    if (!inst || inst.id !== weaponId) continue;
+    const loc = inst.location || "warehouse";
+    if (loc === "warehouse") {
+      idx = i;
       break;
     }
   }
-
-  if (foundIndex === null) {
-    // インスタンスが見つからない場合は旧仕様どおりIDだけ装備
-    equippedWeaponId = id;
-    window.equippedWeaponIndex = null;
-  } else {
-    const inst = window.weaponInstances[foundIndex];
-    inst.location = "equipped";
-    equippedWeaponId = id;
-    window.equippedWeaponIndex = foundIndex;
+  if (idx < 0) {
+    appendLog("倉庫に装備可能な武器インスタンスが見つからない");
+    return;
   }
 
-  appendLog("武器を装備した");
+  const inst = window.weaponInstances[idx];
+  inst.location = "equipped";
+  window.equippedWeaponIndex = idx;
+  window.equippedWeaponId    = weaponId;
+
+  if (typeof weaponCounts === "object") {
+    weaponCounts[weaponId] = Math.max(0, (weaponCounts[weaponId] || 0) - 1);
+  }
+
+  appendLog("武器を装備した。");
   if (typeof recalcStats === "function") recalcStats();
-  updateDisplay();
+  if (typeof refreshWarehouseUI === "function") refreshWarehouseUI();
 }
 
-function equipArmor(){
-  const sel = document.getElementById("armorEquipSelect");
-  if (!sel || !sel.value) { appendLog("装備する防具がない"); return; }
-  const id = sel.value;
-  if (armorCounts[id] <= 0) { appendLog("その防具を所持していない"); return; }
-
-  // 以前の装備中インスタンスを carry に戻す
-  if (Array.isArray(window.armorInstances) &&
-      typeof window.equippedArmorIndex === "number" &&
-      window.equippedArmorIndex >= 0) {
-    const prevInst = window.armorInstances[window.equippedArmorIndex];
-    if (prevInst) {
-      prevInst.location = "carry";
+function equipArmorFromWarehouse(armorId) {
+  if (window.isExploring || window.currentEnemy) {
+    if (typeof appendLog === "function") {
+      appendLog("探索中は装備を変更できない！");
     }
+    return;
+  }
+  if (!armorId) return;
+
+  const hasInstances = Array.isArray(window.armorInstances);
+
+  // 旧装備品を倉庫に戻す
+  if (hasInstances && window.equippedArmorIndex != null &&
+      Array.isArray(window.armorInstances)) {
+    const oldInst = window.armorInstances[window.equippedArmorIndex];
+    if (oldInst) {
+      oldInst.location = "warehouse";
+      if (typeof armorCounts === "object") {
+        armorCounts[oldInst.id] = (armorCounts[oldInst.id] || 0) + 1;
+      }
+    }
+    window.equippedArmorIndex = null;
+    window.equippedArmorId    = null;
+  } else if (!hasInstances && window.equippedArmorId) {
+    armorCounts[window.equippedArmorId] =
+      (armorCounts[window.equippedArmorId] || 0) + 1;
+    window.equippedArmorId = null;
   }
 
-  // 新しく装備するインスタンスを探す（carry優先、なければwarehouse）
-  let foundIndex = null;
-  if (Array.isArray(window.armorInstances)) {
-    for (let i = 0; i < window.armorInstances.length; i++) {
-      const inst = window.armorInstances[i];
-      if (!inst || inst.id !== id) continue;
-      const loc = inst.location || "warehouse";
-      if (loc !== "carry" && loc !== "warehouse") continue;
-      foundIndex = i;
+  if (!hasInstances) {
+    // インスタンス未使用フォールバック
+    if (!armorCounts[armorId] || armorCounts[armorId] <= 0) {
+      appendLog("倉庫に装備可能な防具がない");
+      return;
+    }
+    armorCounts[armorId] = Math.max(0, (armorCounts[armorId] || 0) - 1);
+    window.equippedArmorId = armorId;
+    appendLog("防具を装備した。");
+    if (typeof recalcStats === "function") recalcStats();
+    if (typeof refreshWarehouseUI === "function") refreshWarehouseUI();
+    return;
+  }
+
+  let idx = -1;
+  for (let i = 0; i < window.armorInstances.length; i++) {
+    const inst = window.armorInstances[i];
+    if (!inst || inst.id !== armorId) continue;
+    const loc = inst.location || "warehouse";
+    if (loc === "warehouse") {
+      idx = i;
       break;
     }
   }
-
-  if (foundIndex === null) {
-    equippedArmorId = id;
-    window.equippedArmorIndex = null;
-  } else {
-    const inst = window.armorInstances[foundIndex];
-    inst.location = "equipped";
-    equippedArmorId = id;
-    window.equippedArmorIndex = foundIndex;
+  if (idx < 0) {
+    appendLog("倉庫に装備可能な防具インスタンスが見つからない");
+    return;
   }
 
-  appendLog("防具を装備した");
+  const inst = window.armorInstances[idx];
+  inst.location = "equipped";
+  window.equippedArmorIndex = idx;
+  window.equippedArmorId    = armorId;
+
+  if (typeof armorCounts === "object") {
+    armorCounts[armorId] = Math.max(0, (armorCounts[armorId] || 0) - 1);
+  }
+
+  appendLog("防具を装備した。");
   if (typeof recalcStats === "function") recalcStats();
-  updateDisplay();
+  if (typeof refreshWarehouseUI === "function") refreshWarehouseUI();
+}
+
+// 手持ちからの装備ヘルパー
+function equipWeaponFromCarry(weaponId) {
+  if (window.isExploring || window.currentEnemy) {
+    if (typeof appendLog === "function") {
+      appendLog("探索中は装備を変更できない！");
+    }
+    return;
+  }
+  if (!weaponId) return;
+
+  const hasInstances = Array.isArray(window.weaponInstances);
+
+  // 旧装備を手持ちに戻す
+  if (hasInstances && window.equippedWeaponIndex != null) {
+    const oldInst = window.weaponInstances[window.equippedWeaponIndex];
+    if (oldInst) {
+      oldInst.location = "carry";
+    }
+    window.equippedWeaponIndex = null;
+    window.equippedWeaponId    = null;
+  } else if (!hasInstances && window.equippedWeaponId) {
+    const oldId = window.equippedWeaponId;
+    if (typeof window.carryWeapons === "object") {
+      window.carryWeapons[oldId] = (window.carryWeapons[oldId] || 0) + 1;
+    }
+    window.equippedWeaponId = null;
+  }
+
+  if (!hasInstances) {
+    // インスタンス未使用フォールバック:
+    // carryWeapons にあれば 1 本消費して装備IDにする
+    if (!window.carryWeapons || !(window.carryWeapons[weaponId] > 0)) {
+      appendLog("手持ちに装備可能な武器がない");
+      return;
+    }
+    window.carryWeapons[weaponId] = Math.max(0, (window.carryWeapons[weaponId] || 0) - 1);
+    if (window.carryWeapons[weaponId] <= 0) delete window.carryWeapons[weaponId];
+    window.equippedWeaponId = weaponId;
+    appendLog("武器を装備した。");
+    if (typeof recalcStats === "function") recalcStats();
+    if (typeof refreshWarehouseUI === "function") refreshWarehouseUI();
+    return;
+  }
+
+  // インスタンスあり: carry から指定IDのインスタンスを1本探して装備
+  let idx = -1;
+  for (let i = 0; i < window.weaponInstances.length; i++) {
+    const inst = window.weaponInstances[i];
+    if (!inst || inst.id !== weaponId) continue;
+    const loc = inst.location || "warehouse";
+    if (loc === "carry") {
+      idx = i;
+      break;
+    }
+  }
+  if (idx < 0) {
+    appendLog("手持ちに装備可能な武器がない");
+    return;
+  }
+
+  const inst = window.weaponInstances[idx];
+  inst.location = "equipped";
+  window.equippedWeaponIndex = idx;
+  window.equippedWeaponId    = weaponId;
+
+  appendLog("武器を装備した。");
+  if (typeof recalcStats === "function") recalcStats();
+  if (typeof refreshWarehouseUI === "function") refreshWarehouseUI();
+}
+
+function equipArmorFromCarry(armorId) {
+  if (window.isExploring || window.currentEnemy) {
+    if (typeof appendLog === "function") {
+      appendLog("探索中は装備を変更できない！");
+    }
+    return;
+  }
+  if (!armorId) return;
+
+  const hasInstances = Array.isArray(window.armorInstances);
+
+  if (hasInstances && window.equippedArmorIndex != null) {
+    const oldInst = window.armorInstances[window.equippedArmorIndex];
+    if (oldInst) {
+      oldInst.location = "carry";
+    }
+    window.equippedArmorIndex = null;
+    window.equippedArmorId    = null;
+  } else if (!hasInstances && window.equippedArmorId) {
+    const oldId = window.equippedArmorId;
+    if (typeof window.carryArmors === "object") {
+      window.carryArmors[oldId] = (window.carryArmors[oldId] || 0) + 1;
+    }
+    window.equippedArmorId = null;
+  }
+
+  if (!hasInstances) {
+    if (!window.carryArmors || !(window.carryArmors[armorId] > 0)) {
+      appendLog("手持ちに装備可能な防具がない");
+      return;
+    }
+    window.carryArmors[armorId] = Math.max(0, (window.carryArmors[armorId] || 0) - 1);
+    if (window.carryArmors[armorId] <= 0) delete window.carryArmors[armorId];
+    window.equippedArmorId = armorId;
+    appendLog("防具を装備した。");
+    if (typeof recalcStats === "function") recalcStats();
+    if (typeof refreshWarehouseUI === "function") refreshWarehouseUI();
+    return;
+  }
+
+  let idx = -1;
+  for (let i = 0; i < window.armorInstances.length; i++) {
+    const inst = window.armorInstances[i];
+    if (!inst || inst.id !== armorId) continue;
+    const loc = inst.location || "warehouse";
+    if (loc === "carry") {
+      idx = i;
+      break;
+    }
+  }
+  if (idx < 0) {
+    appendLog("手持ちに装備可能な防具がない");
+    return;
+  }
+
+  const inst = window.armorInstances[idx];
+  inst.location = "equipped";
+  window.equippedArmorIndex = idx;
+  window.equippedArmorId    = armorId;
+
+  appendLog("防具を装備した。");
+  if (typeof recalcStats === "function") recalcStats();
+  if (typeof refreshWarehouseUI === "function") refreshWarehouseUI();
 }
 
 // =======================
-// 強化対象セレクト用ヘルパ
+// ここから下は元の強化ロジック
 // =======================
 
 function makeWeaponInstanceKey(index, inst) {
@@ -503,7 +696,6 @@ function refreshEnhanceTargetSelects(prevWeaponKey, prevArmorKey) {
         wSel.appendChild(opt);
       });
 
-      // 以前の選択を復元
       if (prevWeaponKey &&
           Array.from(wSel.options).some(o => o.value === prevWeaponKey)) {
         wSel.value = prevWeaponKey;
@@ -551,7 +743,6 @@ function refreshEnhanceTargetSelects(prevWeaponKey, prevArmorKey) {
   }
 }
 
-// ここからが変更ポイント：インスタンスを1本消費＋警告ログ
 function consumeOneWeaponInstanceAsMaterial(weaponId){
   let usedQuality = 0;
   let usedEnh = 0;
@@ -560,9 +751,9 @@ function consumeOneWeaponInstanceAsMaterial(weaponId){
     if (!inst || inst.id !== weaponId) continue;
 
     const loc = inst.location || "warehouse";
-    if (loc !== "warehouse") continue;              // 倉庫だけ素材候補
+    if (loc !== "warehouse") continue;
     if (typeof equippedWeaponIndex === "number" &&
-        equippedWeaponIndex === i) continue;        // 念のため装備中は除外
+        equippedWeaponIndex === i) continue;
 
     usedQuality = inst.quality || 0;
     usedEnh     = inst.enhance || 0;
@@ -689,7 +880,6 @@ function enhanceWeapon(){
     appendLog(`武器強化失敗…（同名武器は消費された${inst.enhance >= STAR_SHARD_NEED_LV ? "／星屑の結晶も消費された" : ""}）`);
   }
 
-  // ★ ギルド依頼カウント（鍛冶ギルド: smith_enhance）
   if (typeof onEquipEnhancedForGuild === "function") {
     onEquipEnhancedForGuild({ type: "weapon" });
   }
@@ -763,7 +953,6 @@ function enhanceArmor(){
     appendLog(`防具強化失敗…（同名防具は消費された${inst.enhance >= STAR_SHARD_NEED_LV ? "／星屑の結晶も消費された" : ""}）`);
   }
 
-  // ★ ギルド依頼カウント（鍛冶ギルド: smith_enhance）
   if (typeof onEquipEnhancedForGuild === "function") {
     onEquipEnhancedForGuild({ type: "armor" });
   }

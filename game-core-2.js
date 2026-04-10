@@ -196,7 +196,7 @@ function applyRebirthBonus() {
       msgList.push("LUK +1");
     }
   }
-  return "転生ボーナス:\\\\\\n" + msgList.join("\\\\\\n");
+  return "転生ボーナス:\\\\\\\\\\n" + msgList.join("\\\\\\\\\\n");
 }
 
 function applyPetRebirthBonus() {
@@ -551,10 +551,12 @@ function changePetGrowthType() {
     modal.classList.remove("hidden");
   }
 }
+
 // ★職業ヘルパ
 function isAlchemist() {
   return jobId === 3;
 }
+
 // ペット簡易ステータス（上部バー下のミニ表示）更新
 function updatePetMiniStatus() {
   const lvEl    = document.getElementById("petLevelMini");
