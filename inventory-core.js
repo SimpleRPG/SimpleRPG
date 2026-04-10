@@ -9,23 +9,21 @@ const CARRY_LIMIT = {
   potions: 10,   // 全ポーション合計本数
   foods:   3,    // 食べ物合計数
   drinks:  3,    // 飲み物合計数
-  weapons: 2,    // 手持ち武器本数
-  armors:  2,    // 手持ち防具枚数
+  weapons: 2,    // 手持ち武器本数（装備中も含めた「手持ち総数」で判定）
+  armors:  2,    // 手持ち防具枚数（装備中も含めた「手持ち総数」で判定）
   tools:   3     // 手持ち道具数（爆弾など）
 };
 
 // =======================
 // 手持ちインベントリ構造
 // =======================
-//
-// 他ファイルやコンソールから参照できるように window 配下に出す。
 
 window.carryPotions = window.carryPotions || {}; // { potionId: count }
 window.carryFoods   = window.carryFoods   || {}; // { foodId:   count }
 window.carryDrinks  = window.carryDrinks  || {}; // { drinkId:  count }
-window.carryWeapons = window.carryWeapons || {}; // { weaponId: count } // ★ IDごとの本数カウンタ（インスタンスとは別）
+window.carryWeapons = window.carryWeapons || {}; // { weaponId: count }
 window.carryArmors  = window.carryArmors  || {}; // { armorId:  count }
-window.carryTools   = window.carryTools   || {}; // { toolId:   count } // 現状は bomb_T1 などを想定
+window.carryTools   = window.carryTools   || {}; // { toolId:   count }
 
 const carryPotions = window.carryPotions;
 const carryFoods   = window.carryFoods;
@@ -37,8 +35,6 @@ const carryTools   = window.carryTools;
 // =======================
 // 倉庫側道具インベントリ構造
 // =======================
-//
-// 爆弾などの道具を倉庫で管理するための counts。
 
 window.toolCounts = window.toolCounts || {}; // { toolId: count }
 const toolCounts  = window.toolCounts;
@@ -51,14 +47,43 @@ function getCarryTotal(obj) {
   return Object.values(obj).reduce((a, b) => a + (b || 0), 0);
 }
 
+// 武器/防具の「手持ち総数」（carry + equipped）ヘルパ
+function getWeaponOnHandTotal() {
+  let total = getCarryTotal(carryWeapons);
+  if (Array.isArray(window.weaponInstances)) {
+    window.weaponInstances.forEach(inst => {
+      if (!inst || !inst.id) return;
+      const loc = inst.location || "warehouse";
+      if (loc === "equipped") {
+        total += 1;
+      }
+    });
+  } else if (window.equippedWeaponId) {
+    // 非インスタンス版：装備中 1 本を加算
+    total += 1;
+  }
+  return total;
+}
+
+function getArmorOnHandTotal() {
+  let total = getCarryTotal(carryArmors);
+  if (Array.isArray(window.armorInstances)) {
+    window.armorInstances.forEach(inst => {
+      if (!inst || !inst.id) return;
+      const loc = inst.location || "warehouse";
+      if (loc === "equipped") {
+        total += 1;
+      }
+    });
+  } else if (window.equippedArmorId) {
+    total += 1;
+  }
+  return total;
+}
+
 // =======================
 // 倉庫＝既存データの扱い
 // =======================
-//
-// ・ポーション: potionCounts がそのまま倉庫。
-// ・武器/防具: weaponCounts / armorCounts が倉庫。
-// ・道具: toolCounts が倉庫。
-// ・料理: cook-data.js で新しく cookedFoods / cookedDrinks を導入する前提。
 
 window.cookedFoods  = window.cookedFoods  || {}; // { foodId:  count }
 window.cookedDrinks = window.cookedDrinks || {}; // { drinkId: count }
@@ -70,7 +95,6 @@ const cookedDrinks = window.cookedDrinks;
 // 汎用アイテム追加（クラフト・ドロップ用）
 // =======================
 
-// COOKING_RECIPES がまだ読み込まれていないケースでも落ちないようにガード
 const COOKING_DRINK_IDS = (typeof COOKING_RECIPES !== "undefined" &&
                            COOKING_RECIPES &&
                            Array.isArray(COOKING_RECIPES.drink))
@@ -83,7 +107,7 @@ const COOKING_FOOD_IDS = (typeof COOKING_RECIPES !== "undefined" &&
   ? COOKING_RECIPES.food.map(r => r.id)
   : [];
 
-// ★追加: weaponCounts / armorCounts をインスタンス配列から再計算して同期するヘルパ
+// weaponCounts / armorCounts をインスタンス配列から再計算して同期するヘルパ
 function syncEquipmentCountsFromInstances() {
   // 武器
   if (Array.isArray(window.weaponInstances) && typeof window.weaponCounts === "object") {
@@ -95,7 +119,6 @@ function syncEquipmentCountsFromInstances() {
         newWeaponCounts[inst.id] = (newWeaponCounts[inst.id] || 0) + 1;
       }
     });
-    // 既存オブジェクトに上書き（参照は維持）
     Object.keys(window.weaponCounts).forEach(k => delete window.weaponCounts[k]);
     Object.keys(newWeaponCounts).forEach(k => {
       window.weaponCounts[k] = newWeaponCounts[k];
@@ -123,19 +146,19 @@ function syncEquipmentCountsFromInstances() {
 function addItemToInventory(itemId, amount) {
   amount = Math.max(1, amount | 0);
 
-  // 1. 料理（飲み物） → cookedDrinks
+  // 1. 料理（飲み物）
   if (COOKING_DRINK_IDS.includes(itemId)) {
     window.cookedDrinks[itemId] = (window.cookedDrinks[itemId] || 0) + amount;
     return;
   }
 
-  // 2. 料理（食べ物） → cookedFoods
+  // 2. 料理（食べ物）
   if (COOKING_FOOD_IDS.includes(itemId)) {
     window.cookedFoods[itemId] = (window.cookedFoods[itemId] || 0) + amount;
     return;
   }
 
-  // 3. ポーション → potionCounts
+  // 3. ポーション
   if (typeof potionCounts !== "undefined" && Array.isArray(potions)) {
     const p = potions.find(x => x.id === itemId);
     if (p) {
@@ -144,13 +167,11 @@ function addItemToInventory(itemId, amount) {
     }
   }
 
-  // 4. 武器 → weaponCounts + weaponInstances（品質・強化・耐久初期値で追加）
+  // 4. 武器
   if (typeof weaponCounts !== "undefined" && Array.isArray(weapons)) {
     const w = weapons.find(x => x.id === itemId);
     if (w) {
-      // 倉庫本数カウンタ
       weaponCounts[itemId] = (weaponCounts[itemId] || 0) + amount;
-      // インスタンスも追加（品質0, 強化はマスタ基準, 耐久MAX, location=warehouse）
       if (Array.isArray(window.weaponInstances) && typeof MAX_DURABILITY !== "undefined") {
         const baseEnh = w.enhance || 0;
         for (let i = 0; i < amount; i++) {
@@ -167,7 +188,7 @@ function addItemToInventory(itemId, amount) {
     }
   }
 
-  // 5. 防具 → armorCounts + armorInstances
+  // 5. 防具
   if (typeof armorCounts !== "undefined" && Array.isArray(armors)) {
     const a = armors.find(x => x.id === itemId);
     if (a) {
@@ -188,8 +209,7 @@ function addItemToInventory(itemId, amount) {
     }
   }
 
-  // 6. 道具（爆弾・火炎瓶・ガス・毒針など） → toolCounts
-  //    仕様を変えず、equip-data.js の TOOLS_INIT と同じIDだけを「道具」として扱う。
+  // 6. 道具
   if (typeof toolCounts !== "undefined" &&
       typeof TOOLS_INIT !== "undefined" &&
       Array.isArray(TOOLS_INIT)) {
@@ -200,7 +220,7 @@ function addItemToInventory(itemId, amount) {
     }
   }
 
-  // 7. その他（未分類）はログだけ
+  // 7. 未分類
   if (typeof appendLog === "function") {
     appendLog(`addItemToInventory: 未対応ID ${itemId} に${amount}追加しようとしました`);
   }
@@ -306,21 +326,21 @@ function moveDrinkToWarehouse(id, amount) {
 function moveWeaponToCarry(id, amount) {
   amount = Math.max(1, amount | 0);
 
-  // 念のため counts をインスタンスから同期
+  // counts をインスタンスから同期
   syncEquipmentCountsFromInstances();
 
-  const have = armorCounts[id] || 0;
+  const have = weaponCounts[id] || 0;
   if (have < amount) {
     appendLog("倉庫にその武器が足りない");
     return false;
   }
-  const totalCarry = getCarryTotal(carryWeapons);
-  if (totalCarry + amount > CARRY_LIMIT.weapons) {
+
+  const totalOnHand = getWeaponOnHandTotal();
+  if (totalOnHand + amount > CARRY_LIMIT.weapons) {
     appendLog("これ以上武器を持ち歩けない（上限2本）");
     return false;
   }
 
-  // 倉庫にあるインスタンスから amount 本取り出す
   let moved = 0;
   if (Array.isArray(window.weaponInstances)) {
     for (let i = 0; i < window.weaponInstances.length && moved < amount; i++) {
@@ -332,9 +352,7 @@ function moveWeaponToCarry(id, amount) {
       moved++;
     }
     if (moved < amount) {
-      // インスタンス側に十分な "warehouse" が無い → 完了扱いにしない
       appendLog(`警告: 武器インスタンス数と倉庫カウントが一致していません（id=${id}, amount=${amount}）`);
-      // location を戻す（ロールバック）ことで、これ以上ズレを悪化させない
       for (let i = 0; i < window.weaponInstances.length && moved > 0; i++) {
         const inst = window.weaponInstances[i];
         if (!inst || inst.id !== id) continue;
@@ -346,7 +364,6 @@ function moveWeaponToCarry(id, amount) {
       return false;
     }
   } else {
-    // インスタンス配列がない場合は counts だけで処理（旧仕様互換）
     moved = amount;
   }
 
@@ -365,20 +382,20 @@ function moveWeaponToWarehouse(id, amount) {
 
   let moved = 0;
 
-  // 手持ちインスタンスから amount 本倉庫に戻す
   if (Array.isArray(window.weaponInstances)) {
     for (let i = 0; i < window.weaponInstances.length && moved < amount; i++) {
       const inst = window.weaponInstances[i];
       if (!inst || inst.id !== id) continue;
       const loc = inst.location || "warehouse";
-      // ★ carry と equipped を手持ち扱いにする
       if (loc !== "carry" && loc !== "equipped") continue;
 
-      // ★装備中インスタンスだった場合は装備解除する
-      if (typeof window.equippedWeaponIndex === "number" &&
-          window.equippedWeaponIndex === i) {
-        window.equippedWeaponIndex = null;
-        window.equippedWeaponId = null;
+      // 装備中のものを倉庫に戻す場合は装備解除する
+      if (loc === "equipped") {
+        if (typeof window.equippedWeaponIndex === "number" &&
+            window.equippedWeaponIndex === i) {
+          window.equippedWeaponIndex = null;
+          window.equippedWeaponId = null;
+        }
       }
 
       inst.location = "warehouse";
@@ -386,11 +403,13 @@ function moveWeaponToWarehouse(id, amount) {
     }
     if (moved < amount) {
       appendLog(`警告: 武器インスタンス数と手持ちカウントが一致していません（id=${id}, amount=${amount}）`);
-      // ここは「手持ちにそんなに無い」ケースなので、すでに上で have チェック済み。
-      // インスタンスの location をこれ以上いじらないで終了。
       if (moved === 0) return false;
     }
   } else {
+    // 非インスタンス版：装備中かつ同じIDなら解除
+    if (window.equippedWeaponId === id) {
+      window.equippedWeaponId = null;
+    }
     moved = amount;
   }
 
@@ -398,7 +417,6 @@ function moveWeaponToWarehouse(id, amount) {
   if (carryWeapons[id] <= 0) delete carryWeapons[id];
   weaponCounts[id] = (weaponCounts[id] || 0) + moved;
 
-  // ★装備解除が起きた可能性があるのでステ再計算
   if (typeof recalcStats === "function") {
     recalcStats();
   }
@@ -410,7 +428,6 @@ function moveWeaponToWarehouse(id, amount) {
 function moveArmorToCarry(id, amount) {
   amount = Math.max(1, amount | 0);
 
-  // 念のため counts をインスタンスから同期
   syncEquipmentCountsFromInstances();
 
   const have = armorCounts[id] || 0;
@@ -418,8 +435,9 @@ function moveArmorToCarry(id, amount) {
     appendLog("倉庫にその防具が足りない");
     return false;
   }
-  const totalCarry = getCarryTotal(carryArmors);
-  if (totalCarry + amount > CARRY_LIMIT.armors) {
+
+  const totalOnHand = getArmorOnHandTotal();
+  if (totalOnHand + amount > CARRY_LIMIT.armors) {
     appendLog("これ以上防具を持ち歩けない（上限2着）");
     return false;
   }
@@ -438,7 +456,6 @@ function moveArmorToCarry(id, amount) {
     }
     if (remaining > 0) {
       appendLog(`警告: 防具インスタンス数と倉庫カウントが一致していません（id=${id}, amount=${amount}）`);
-      // ロールバック
       for (let i = 0; i < window.armorInstances.length && moved > 0; i++) {
         const inst = window.armorInstances[i];
         if (!inst || inst.id !== id) continue;
@@ -473,14 +490,15 @@ function moveArmorToWarehouse(id, amount) {
       const inst = window.armorInstances[i];
       if (!inst || inst.id !== id) continue;
       const loc = inst.location || "warehouse";
-      // ★ carry と equipped を手持ち扱いにする
       if (loc !== "carry" && loc !== "equipped") continue;
 
-      // ★装備中インスタンスだった場合は装備解除する
-      if (typeof window.equippedArmorIndex === "number" &&
-          window.equippedArmorIndex === i) {
-        window.equippedArmorIndex = null;
-        window.equippedArmorId = null;
+      // 装備中のものを倉庫に戻す場合は装備解除する
+      if (loc === "equipped") {
+        if (typeof window.equippedArmorIndex === "number" &&
+            window.equippedArmorIndex === i) {
+          window.equippedArmorIndex = null;
+          window.equippedArmorId = null;
+        }
       }
 
       inst.location = "warehouse";
@@ -492,6 +510,9 @@ function moveArmorToWarehouse(id, amount) {
       if (moved === 0) return false;
     }
   } else {
+    if (window.equippedArmorId === id) {
+      window.equippedArmorId = null;
+    }
     moved = amount;
   }
 
@@ -499,7 +520,6 @@ function moveArmorToWarehouse(id, amount) {
   if (carryArmors[id] <= 0) delete carryArmors[id];
   armorCounts[id] = (armorCounts[id] || 0) + moved;
 
-  // ★装備解除が起きた可能性があるのでステ再計算
   if (typeof recalcStats === "function") {
     recalcStats();
   }
@@ -548,11 +568,6 @@ window.lastBattleItemId       = window.lastBattleItemId       || null;
 // =======================
 // 手持ちインベントリのUI更新フック
 // =======================
-//
-// ・フィールド用ポーションセレクト（useItemSelect）
-// ・戦闘アイテムセレクト（battleItemSelect, battleItemCategory）
-// ・フィールド料理セレクト（fieldFoodSelect）
-// ・フィールド飲み物セレクト（fieldDrinkSelect）
 
 function refreshCarryPotionSelects() {
   const fieldSel  = document.getElementById("useItemSelect");
@@ -586,7 +601,6 @@ function refreshCarryPotionSelects() {
 
   fillField(fieldSel);
 
-  // 戦闘用はカテゴリ付き専用関数で更新する
   if (battleSel) {
     refreshBattleItemSelectWithCategory();
   }
@@ -606,7 +620,6 @@ function refreshBattleItemSelectWithCategory() {
   sel.innerHTML = "";
 
   if (category === "potion") {
-    // 手持ちポーションのみ
     Object.keys(carryPotions).forEach(id => {
       const cnt = carryPotions[id] || 0;
       if (cnt <= 0) return;
@@ -625,12 +638,10 @@ function refreshBattleItemSelectWithCategory() {
       sel.appendChild(opt);
     }
   } else if (category === "tool") {
-    // 手持ち道具のみ（爆弾など）
     Object.keys(carryTools).forEach(id => {
       const cnt = carryTools[id] || 0;
       if (cnt <= 0) return;
 
-      // ★ここで ID から日本語名ラベルを決める（仕様はそのまま、表示だけ日本語）
       let label = id;
       if (id === "bomb") {
         label = "爆弾";
@@ -647,7 +658,6 @@ function refreshBattleItemSelectWithCategory() {
       } else if (id === "bomb_fire_T3") {
         label = "火炎瓶T3";
       } else if (id === "molotov_T1") {
-        // 旧IDもフォロー
         label = "火炎瓶T1";
       } else if (id === "paralyzeGas_T1") {
         label = "麻痺ガス瓶T1";
@@ -676,14 +686,12 @@ function refreshBattleItemSelectWithCategory() {
       sel.appendChild(opt);
     }
   } else {
-    // 未知カテゴリの場合はポーション扱い
     const opt = document.createElement("option");
     opt.value = "";
     opt.textContent = "アイテムなし";
     sel.appendChild(opt);
   }
 
-  // 前回選択を復元（なければ先頭）
   if (prevId && Array.from(sel.options).some(o => o.value === prevId)) {
     sel.value = prevId;
   } else if (sel.options.length > 0) {
@@ -693,13 +701,11 @@ function refreshBattleItemSelectWithCategory() {
   window.lastBattleItemCategory = category;
   window.lastBattleItemId = sel.value || null;
 
-  // カテゴリセレクト側にも反映
   if (categorySel) {
     categorySel.value = category;
   }
 }
 
-// カテゴリ変更時に呼ぶ想定
 function onBattleItemCategoryChanged() {
   refreshBattleItemSelectWithCategory();
 }
@@ -772,9 +778,6 @@ function refreshCarryFoodDrinkSelects() {
 // =======================
 // save-system.js 向けラッパー
 // =======================
-//
-// セーブデータ適用後にセレクト類をまとめて更新するための薄いラッパー。
-// 既存仕様は変えず、未定義エラーを防ぎつつ UI を同期する。
 
 function refreshBattleItemSelect() {
   if (typeof refreshBattleItemSelectWithCategory === "function") {
@@ -783,7 +786,6 @@ function refreshBattleItemSelect() {
 }
 
 function refreshUseItemSelect() {
-  // フィールド用ポーション + 食べ物/飲み物セレクトをまとめて更新
   if (typeof refreshCarryPotionSelects === "function") {
     refreshCarryPotionSelects();
   }
