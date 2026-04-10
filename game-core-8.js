@@ -203,6 +203,12 @@ function refreshBattleItemSelect() {
           label = "爆弾T2";
         } else if (id.startsWith("bomb_T3")) {
           label = "爆弾T3";
+        } else if (id === "molotov_T1") {
+          label = "火炎瓶T1";
+        } else if (id === "paralyzeGas_T1") {
+          label = "麻痺ガス瓶T1";
+        } else if (id === "poisonNeedle_T1") {
+          label = "毒針T1";
         }
         const opt = document.createElement("option");
         opt.value = id;
@@ -395,16 +401,14 @@ function useBattleItem() {
     }
 
     // 爆弾・毒針・火炎瓶・麻痺ガスなどの「戦闘用道具」はここで処理。
-    // 既存の爆弾ダメージに加えて、将来的に状態異常付与する場合は
-    // game-core-3.js 側の addStatusToEnemy を呼ぶ形にする。
-
     const BOMB_DAMAGE_TABLE = {
-      bomb:    7,
-      bomb_T1: 15,
-      bomb_T2: 30,
-      bomb_T3: 60
+      bomb:           7,
+      bomb_T1:       15,
+      bomb_T2:       30,
+      bomb_T3:       60,
+      molotov_T1:    12, // 火炎瓶T1
+      poisonNeedle_T1: 4  // 毒針T1
     };
-    let dmg = BOMB_DAMAGE_TABLE[id] || 5;
 
     carryTools[id] = have - 1;
     if (carryTools[id] <= 0) {
@@ -414,16 +418,36 @@ function useBattleItem() {
     if (!currentEnemy) {
       appendLog("攻撃する敵がいない");
     } else {
+      let dmg = BOMB_DAMAGE_TABLE[id] || 5;
       const beforeHp = enemyHp;
-      enemyHp = Math.max(0, enemyHp - dmg);
-      appendLog(`爆弾を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
 
-      // 将来拡張用: ID に応じて状態異常を付与したい場合
-      // if (typeof addStatusToEnemy === "function") {
-      //   if (id.startsWith("bombFire")) addStatusToEnemy("burn");
-      //   if (id.startsWith("poisonNeedle")) addStatusToEnemy("poison");
-      //   if (id.startsWith("paralyzeGas")) addStatusToEnemy("paralyze");
-      // }
+      // 基本ダメージ
+      enemyHp = Math.max(0, enemyHp - dmg);
+
+      // IDごとにログ＆状態異常
+      if (id === "molotov_T1") {
+        appendLog(`火炎瓶を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
+        if (typeof addStatusToEnemy === "function") {
+          addStatusToEnemy("burn");
+        }
+      } else if (id === "poisonNeedle_T1") {
+        appendLog(`毒針を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
+        if (typeof addStatusToEnemy === "function") {
+          addStatusToEnemy("poison");
+        }
+      } else if (id === "paralyzeGas_T1") {
+        // 麻痺ガスはダメージ0でもOK、dmg はテーブル未定義なので 5 → 0 にしたければここで上書き
+        if (beforeHp === enemyHp && dmg === 0) {
+          appendLog(`麻痺ガス瓶を投げつけた！ ${currentEnemy.name}をガスで包んだ！`);
+        } else {
+          appendLog(`麻痺ガス瓶を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
+        }
+        if (typeof addStatusToEnemy === "function") {
+          addStatusToEnemy("paralyze");
+        }
+      } else {
+        appendLog(`爆弾を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
+      }
 
       if (enemyHp <= 0) {
         enemyHp = 0;
@@ -896,7 +920,7 @@ function tryUpgradeGatherBase(matKey) {
       const haveStar = intermediateMats["starShard"] || 0;
       lines.push(`- starShard: 必要 ${needStar} 個 / 所持 ${haveStar} 個`);
     }
-    appendLog(lines.join("\\n"));
+    appendLog(lines.join("\\\\n"));
   })();
 
   for (const iid in needInter) {

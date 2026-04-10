@@ -188,12 +188,16 @@ function addItemToInventory(itemId, amount) {
     }
   }
 
-  // 6. 道具（爆弾など） → toolCounts
-  //    bomb_T1 / bomb_T2 / bomb_T3 や "bomb" などを想定
+  // 6. 道具（爆弾・火炎瓶・ガス・毒針など） → toolCounts
+  //    仕様を変えず、equip-data.js の TOOLS_INIT と同じIDだけを「道具」として扱う。
   if (typeof toolCounts !== "undefined" &&
-      (itemId === "bomb" || itemId.startsWith("bomb_"))) {
-    toolCounts[itemId] = (toolCounts[itemId] || 0) + amount;
-    return;
+      typeof TOOLS_INIT !== "undefined" &&
+      Array.isArray(TOOLS_INIT)) {
+    const t = TOOLS_INIT.find(x => x.id === itemId);
+    if (t) {
+      toolCounts[itemId] = (toolCounts[itemId] || 0) + amount;
+      return;
+    }
   }
 
   // 7. その他（未分類）はログだけ
@@ -634,6 +638,12 @@ function refreshBattleItemSelectWithCategory() {
         label = "爆弾T2";
       } else if (id.startsWith("bomb_T3")) {
         label = "爆弾T3";
+      } else if (id.startsWith("molotov_")) {
+        label = "火炎瓶";
+      } else if (id.startsWith("paralyzeGas_")) {
+        label = "麻痺ガス瓶";
+      } else if (id.startsWith("poisonNeedle_")) {
+        label = "毒針";
       }
       const opt = document.createElement("option");
       opt.value = id;

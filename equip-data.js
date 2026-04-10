@@ -1145,7 +1145,7 @@ const ARMORS_INIT = [
 ];
 
 // =======================
-// ポーションマスタ（爆弾含む）
+// ポーションマスタ（爆弾・ボトル系含む）
 // =======================
 //
 // クラフトは中間素材（mixHerb_Tx / distilledWater_Tx など）を想定。
@@ -1218,6 +1218,126 @@ const POTIONS_INIT = [
     rate: 0.5
   },
 
+  // 攻撃強化ポーション（料理よりバフ値少し高め・ターン数短い想定）
+  {
+    id: "buffAtk_T1",
+    name: "攻撃強化ポーションT1",
+    type: POTION_TYPE_BOTH,
+    power: 0,
+    flat: 0,
+    cost: { mixHerb_T1: 1, ironIngot_T1: 1 },
+    rate: 0.8
+  },
+  {
+    id: "buffAtk_T2",
+    name: "攻撃強化ポーションT2",
+    type: POTION_TYPE_BOTH,
+    power: 0,
+    flat: 0,
+    cost: { mixHerb_T2: 2, ironIngot_T2: 1 },
+    rate: 0.7
+  },
+  {
+    id: "buffAtk_T3",
+    name: "攻撃強化ポーションT3",
+    type: POTION_TYPE_BOTH,
+    power: 0,
+    flat: 0,
+    cost: { mixHerb_T3: 3, ironIngot_T3: 2 },
+    rate: 0.6
+  },
+
+  // 守護ポーション（防御寄り、小回復付き想定だが、ここでは回復0でバフ専用）
+  {
+    id: "buffDef_T1",
+    name: "守護ポーションT1",
+    type: POTION_TYPE_BOTH,
+    power: 0,
+    flat: 0,
+    cost: { toughLeather_T1: 1, distilledWater_T1: 1 },
+    rate: 0.8
+  },
+  {
+    id: "buffDef_T2",
+    name: "守護ポーションT2",
+    type: POTION_TYPE_BOTH,
+    power: 0,
+    flat: 0,
+    cost: { toughLeather_T2: 2, distilledWater_T2: 1 },
+    rate: 0.7
+  },
+  {
+    id: "buffDef_T3",
+    name: "守護ポーションT3",
+    type: POTION_TYPE_BOTH,
+    power: 0,
+    flat: 0,
+    cost: { toughLeather_T3: 3, distilledWater_T3: 2 },
+    rate: 0.6
+  },
+
+  // コンディションポーション（状態異常解除＋リジェネ寄り）
+  {
+    id: "cleanse_T1",
+    name: "コンディションポーションT1",
+    type: POTION_TYPE_BOTH,
+    power: 0,
+    flat: 0,
+    cost: { mixHerb_T1: 2, distilledWater_T1: 1 },
+    rate: 0.8
+  },
+  {
+    id: "cleanse_T2",
+    name: "コンディションポーションT2",
+    type: POTION_TYPE_BOTH,
+    power: 0,
+    flat: 0,
+    cost: { mixHerb_T2: 3, distilledWater_T2: 2 },
+    rate: 0.7
+  },
+  {
+    id: "cleanse_T3",
+    name: "コンディションポーションT3",
+    type: POTION_TYPE_BOTH,
+    power: 0,
+    flat: 0,
+    cost: { mixHerb_T3: 4, distilledWater_T3: 2 },
+    rate: 0.6
+  },
+
+  // 火炎瓶T1（単体ダメージ＋燃焼用の想定、ここでは固定ダメージだけ定義）
+  {
+    id: "molotov_T1",
+    name: "火炎瓶T1",
+    type: POTION_TYPE_DAMAGE,
+    power: 10,
+    flat: 0,
+    cost: { mixHerb_T1: 1, distilledWater_T1: 1, ironIngot_T1: 1 },
+    rate: 0.7
+  },
+
+  // 麻痺ガス瓶T1（状態異常付与想定、ここではダメージ0でボトル扱い）
+  {
+    id: "paralyzeGas_T1",
+    name: "麻痺ガス瓶T1",
+    type: POTION_TYPE_DAMAGE,
+    power: 0,
+    flat: 0,
+    cost: { mixHerb_T1: 2, distilledWater_T1: 1 },
+    rate: 0.7
+  },
+
+  // 毒針T1（小ダメージ＋毒付与想定）
+  {
+    id: "poisonNeedle_T1",
+    name: "毒針T1",
+    type: POTION_TYPE_DAMAGE,
+    power: 4,
+    flat: 0,
+    cost: { toughLeather_T1: 1, ironIngot_T1: 1 },
+    rate: 0.7
+  },
+
   // ショップ用・汎用爆弾（T1相当、少し弱め）
   // ※爆弾自体は道具として扱うが、POTIONS_INIT には既存仕様に合わせて残す
   {
@@ -1230,6 +1350,53 @@ const POTIONS_INIT = [
     rate: 0.7
   }
 ];
+
+// =======================
+// 道具マスタ（投げ物・爆弾など）
+// =======================
+//
+// 仕様は変えず、「道具としても参照できる」ように POTSIONS_INIT の
+// 一部と同じ数値をミラーするだけ（インベントリ側で使う想定）。
+
+const TOOLS_INIT = [
+  {
+    id: "molotov_T1",
+    name: "火炎瓶T1",
+    type: "damage",
+    power: 10,
+    flat: 0,
+    cost: { mixHerb_T1: 1, distilledWater_T1: 1, ironIngot_T1: 1 },
+    rate: 0.7
+  },
+  {
+    id: "paralyzeGas_T1",
+    name: "麻痺ガス瓶T1",
+    type: "status",
+    power: 0,
+    flat: 0,
+    cost: { mixHerb_T1: 2, distilledWater_T1: 1 },
+    rate: 0.7
+  },
+  {
+    id: "poisonNeedle_T1",
+    name: "毒針T1",
+    type: "damageStatus",
+    power: 4,
+    flat: 0,
+    cost: { toughLeather_T1: 1, ironIngot_T1: 1 },
+    rate: 0.7
+  },
+  {
+    id: "bomb",
+    name: "爆弾",
+    type: "damage",
+    power: 7,
+    flat: 0,
+    cost: { ironIngot_T1: 2, mixHerb_T1: 1 },
+    rate: 0.7
+  }
+];
+
 // ★ここから追加（ファイル末尾あたりに置く）
 // インスタンス配列の初期化と location デフォルト付け
 

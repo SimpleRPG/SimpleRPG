@@ -19,8 +19,8 @@ const shopData = {
   item: [
     { id: "potionT1_shop", potionId: "potionT1", name: "ポーションT1",     price: 60,  desc: "HPを少し回復する基本の回復薬。" },
     { id: "manaT1_shop",   potionId: "manaT1",   name: "マナポーションT1", price: 80,  desc: "MPを少し回復する基本のマナ薬。" },
-    // 爆弾は道具扱いにするため potionId は使わず、id だけで判別する
-    { id: "bomb_shop",     potionId: null,       name: "爆弾",             price: 100, desc: "敵にダメージを与える攻撃アイテム（道具）。" }
+    // 爆弾は道具扱い（T1固定）とし、potionId は使わず、id だけで判別する
+    { id: "bomb_T1_shop",  potionId: null,       name: "爆弾T1",           price: 100, desc: "敵にダメージを与える攻撃アイテム（道具,T1）。" }
   ],
   service: [
     { id: "inn_hp",   name: "宿屋で休む(HP)",      price: 500,  desc: "HPを全回復します。",             type: "service", kind: "innHP" },
@@ -92,9 +92,18 @@ function getCookedDrinkSellPrice(drinkId) {
 function getToolSellPrice(toolId) {
   // 必要なら道具マスタを参照する形に拡張
   let base = 0;
-  if (toolId === "bomb" || toolId === "bomb_T1") base = 100;
+  if (toolId === "bomb_T1") base = 100;
   else if (toolId === "bomb_T2") base = 300;
   else if (toolId === "bomb_T3") base = 900;
+  else if (toolId === "bomb_fire_T1") base = 120;
+  else if (toolId === "bomb_fire_T2") base = 360;
+  else if (toolId === "bomb_fire_T3") base = 1080;
+  else if (toolId === "poisonNeedle_T1") base = 80;
+  else if (toolId === "poisonNeedle_T2") base = 240;
+  else if (toolId === "poisonNeedle_T3") base = 720;
+  else if (toolId === "paralyzeGas_T1") base = 90;
+  else if (toolId === "paralyzeGas_T2") base = 270;
+  else if (toolId === "paralyzeGas_T3") base = 810;
   return getSellPriceFromValue(base);
 }
 
@@ -203,10 +212,18 @@ function buildSellableList() {
       const cnt = toolCounts[id] || 0;
       if (cnt <= 0) return;
       let label = id;
-      if (id === "bomb") label = "爆弾";
-      else if (id === "bomb_T1") label = "爆弾T1";
+      if (id === "bomb_T1") label = "爆弾T1";
       else if (id === "bomb_T2") label = "爆弾T2";
       else if (id === "bomb_T3") label = "爆弾T3";
+      else if (id === "bomb_fire_T1") label = "火炎瓶T1";
+      else if (id === "bomb_fire_T2") label = "火炎瓶T2";
+      else if (id === "bomb_fire_T3") label = "火炎瓶T3";
+      else if (id === "poisonNeedle_T1") label = "毒針T1";
+      else if (id === "poisonNeedle_T2") label = "毒針T2";
+      else if (id === "poisonNeedle_T3") label = "毒針T3";
+      else if (id === "paralyzeGas_T1") label = "麻痺ガス瓶T1";
+      else if (id === "paralyzeGas_T2") label = "麻痺ガス瓶T2";
+      else if (id === "paralyzeGas_T3") label = "麻痺ガス瓶T3";
       const price = getToolSellPrice(id);
       if (price <= 0) return;
       list.push({
@@ -452,7 +469,7 @@ function buyShopItem(item) {
 
   if (shopCurrentCategory === "item") {
     // 通常ポーション
-    if (item.id !== "bomb_shop") {
+    if (item.id !== "bomb_T1_shop") {
       const p = potions.find(x => x.id === item.potionId);
       if (!p) {
         appendLog("この商品はまだ実装されていない。");
@@ -461,9 +478,8 @@ function buyShopItem(item) {
         appendLog(`${item.name} を購入した。`);
       }
     } else {
-      // 爆弾（道具）購入: 道具倉庫に追加
+      // 爆弾T1（道具）購入: 道具倉庫に追加
       if (typeof toolCounts === "object") {
-        // ショップ品は T1 爆弾として扱う想定
         const toolId = "bomb_T1";
         toolCounts[toolId] = (toolCounts[toolId] || 0) + 1;
         appendLog(`${item.name} を購入した（道具として倉庫に追加された）。`);
