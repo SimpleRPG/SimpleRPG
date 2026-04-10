@@ -48,6 +48,14 @@ window.guildQuestProgress.battle_boss_1        = window.guildQuestProgress.battl
 let playerStatuses = [];
 let enemyStatuses  = [];
 
+// ★錬金術師用: 状態異常ダメージボーナス
+function applyAlchemistDotBonus(dmg) {
+  if (typeof isAlchemist === "function" && isAlchemist()) {
+    return Math.max(1, Math.floor(dmg * 1.5)); // +50%
+  }
+  return dmg;
+}
+
 // 共通定義テーブル
 const STATUS_EFFECTS = {
   poison: {
@@ -58,7 +66,11 @@ const STATUS_EFFECTS = {
       const hpMax = targetCtx.hpMax();
       const applyHp = targetCtx.applyHp;
       const name = targetCtx.name;
-      const dmg = Math.max(1, Math.floor(hpMax * 0.04));
+      let dmg = Math.max(1, Math.floor(hpMax * 0.04));
+
+      // ★錬金術師なら状態異常ダメージ+50%
+      dmg = applyAlchemistDotBonus(dmg);
+
       applyHp(-dmg);
       appendLog(`${name}は毒で${dmg}ダメージを受けた！`);
     }
@@ -71,7 +83,11 @@ const STATUS_EFFECTS = {
       const hpMax = targetCtx.hpMax();
       const applyHp = targetCtx.applyHp;
       const name = targetCtx.name;
-      const dmg = Math.max(1, Math.floor(hpMax * 0.03));
+      let dmg = Math.max(1, Math.floor(hpMax * 0.03));
+
+      // ★錬金術師なら状態異常ダメージ+50%
+      dmg = applyAlchemistDotBonus(dmg);
+
       applyHp(-dmg);
       appendLog(`${name}はやけどで${dmg}ダメージを受けた！`);
     },
@@ -87,7 +103,11 @@ const STATUS_EFFECTS = {
       const hpNow = targetCtx.hp();
       const applyHp = targetCtx.applyHp;
       const name = targetCtx.name;
-      const dmg = Math.max(1, Math.floor(hpNow * 0.06));
+      let dmg = Math.max(1, Math.floor(hpNow * 0.06));
+
+      // ★錬金術師なら状態異常ダメージ+50%
+      dmg = applyAlchemistDotBonus(dmg);
+
       applyHp(-dmg);
       appendLog(`${name}は出血で${dmg}ダメージを受けた！`);
     }
@@ -542,11 +562,19 @@ function addStatusToPlayer(id) {
 function addStatusToEnemy(id) {
   const def = STATUS_EFFECTS[id];
   if (!def || !currentEnemy) return;
+
+  let baseDur = def.baseDuration || 0;
+
+  // ★錬金術師なら状態異常ターン+25%
+  if (typeof isAlchemist === "function" && isAlchemist()) {
+    baseDur = Math.max(1, Math.floor(baseDur * 1.25));
+  }
+
   const ex = enemyStatuses.find(s => s.id === id);
   if (ex) {
-    ex.remain = Math.max(ex.remain, def.baseDuration);
+    ex.remain = Math.max(ex.remain, baseDur);
   } else {
-    enemyStatuses.push({ id, remain: def.baseDuration, source: BUFF_SOURCE_OTHER });
+    enemyStatuses.push({ id, remain: baseDur, source: BUFF_SOURCE_OTHER });
   }
 }
 
@@ -993,6 +1021,10 @@ function enemyTurn() {
     if (hp <= 0) {
       hp = 0;
       appendLog("あなたは倒れてしまった…");
+
+      // ★死亡時は撤退状態も必ずリセット（罠死亡と同じ挙動に揃える）
+      window.isRetreating     = false;
+      window.retreatTurnsLeft = 0;
 
       window.isExploring   = false;
       window.exploringArea = "field";

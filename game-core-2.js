@@ -551,7 +551,10 @@ function changePetGrowthType() {
     modal.classList.remove("hidden");
   }
 }
-
+// ★職業ヘルパ
+function isAlchemist() {
+  return jobId === 3;
+}
 // ペット簡易ステータス（上部バー下のミニ表示）更新
 function updatePetMiniStatus() {
   const lvEl    = document.getElementById("petLevelMini");

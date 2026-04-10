@@ -438,21 +438,44 @@ function useBattleItem() {
       appendLog("攻撃する敵がいない");
     } else {
       let dmg = BOMB_DAMAGE_TABLE[id] || 5;
+
+      // ★錬金術師なら戦闘用道具のダメージ2倍
+      if (typeof isAlchemist === "function" && isAlchemist()) {
+        dmg = Math.floor(dmg * 2);
+      }
+
       const beforeHp = enemyHp;
 
       // 基本ダメージ
       enemyHp = Math.max(0, enemyHp - dmg);
 
+      // 状態異常付与率判定（基礎70％＋錬金術師なら+30％＝最大100％）
+      function rollStatusApply(baseRate) {
+        let rate = baseRate;
+        if (typeof isAlchemist === "function" && isAlchemist()) {
+          rate = Math.min(1, rate + 0.3);
+        }
+        return Math.random() < rate;
+      }
+
       // IDごとにログ＆状態異常
       if (id === "molotov_T1") {
         appendLog(`火炎瓶を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
         if (typeof addStatusToEnemy === "function") {
-          addStatusToEnemy("burn");
+          if (rollStatusApply(0.7)) {
+            addStatusToEnemy("burn");
+          } else {
+            appendLog("しかし炎はうまく相手を傷つけなかった…");
+          }
         }
       } else if (id === "poisonNeedle_T1") {
         appendLog(`毒針を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
         if (typeof addStatusToEnemy === "function") {
-          addStatusToEnemy("poison");
+          if (rollStatusApply(0.7)) {
+            addStatusToEnemy("poison");
+          } else {
+            appendLog("しかし毒はうまく効かなかった…");
+          }
         }
       } else if (id === "paralyzeGas_T1") {
         // 麻痺ガスはダメージ0でもOK、dmg はテーブル未定義なので 5 → 0 にしたければここで上書き
@@ -462,7 +485,11 @@ function useBattleItem() {
           appendLog(`麻痺ガス瓶を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
         }
         if (typeof addStatusToEnemy === "function") {
-          addStatusToEnemy("paralyze");
+          if (rollStatusApply(0.7)) {
+            addStatusToEnemy("paralyze");
+          } else {
+            appendLog("しかし麻痺はうまく効かなかった…");
+          }
         }
       } else {
         appendLog(`爆弾を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
@@ -939,7 +966,7 @@ function tryUpgradeGatherBase(matKey) {
       const haveStar = intermediateMats["starShard"] || 0;
       lines.push(`- starShard: 必要 ${needStar} 個 / 所持 ${haveStar} 個`);
     }
-    appendLog(lines.join("\\n"));
+    appendLog(lines.join("\\\\n"));
   })();
 
   for (const iid in needInter) {
