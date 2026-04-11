@@ -691,45 +691,66 @@ window.addEventListener("DOMContentLoaded", () => {
     setGatherSubTab("normal");
   }
 
-  // ★追加: 食材調達内サブタブ（郊外 / 農園）
-  const gatherCookTabField  = document.getElementById("gatherCookTabField");
-  const gatherCookTabFarm   = document.getElementById("gatherCookTabFarm");
-  const gatherCookPageField = document.getElementById("gatherCookPageField");
-  const gatherCookPageFarm  = document.getElementById("gatherCookPageFarm");
+  // ★修正: 食材調達内サブタブ（狩猟 / 釣り / 農園）
+  const gatherCookTabHunt = document.getElementById("gatherCookTabHunt");
+  const gatherCookTabFish = document.getElementById("gatherCookTabFish");
+  const gatherCookTabFarm = document.getElementById("gatherCookTabFarm");
+
+  const gatherCookPageHunt = document.getElementById("gatherCookPageHunt");
+  const gatherCookPageFish = document.getElementById("gatherCookPageFish");
+  const gatherCookPageFarm = document.getElementById("gatherCookPageFarm");
 
   function setGatherCookingSubTab(kind) {
-    if (!gatherCookPageField || !gatherCookPageFarm) return;
+    if (!gatherCookPageHunt || !gatherCookPageFish || !gatherCookPageFarm) return;
 
-    const tabs = [gatherCookTabField, gatherCookTabFarm];
+    const tabs = [gatherCookTabHunt, gatherCookTabFish, gatherCookTabFarm];
     tabs.forEach(btn => {
       if (!btn) return;
       const isActive =
-        (kind === "field" && btn === gatherCookTabField) ||
-        (kind === "farm"  && btn === gatherCookTabFarm);
+        (kind === "hunt" && btn === gatherCookTabHunt) ||
+        (kind === "fish" && btn === gatherCookTabFish) ||
+        (kind === "farm" && btn === gatherCookTabFarm);
       btn.classList.toggle("active", isActive);
     });
 
-    if (kind === "field") {
-      gatherCookPageField.style.display = "";
-      gatherCookPageFarm.style.display  = "none";
-    } else {
-      gatherCookPageField.style.display = "none";
-      gatherCookPageFarm.style.display  = "";
-      // 農園タブを開いたときに農園UI表示を整える
+    gatherCookPageHunt.style.display = (kind === "hunt") ? "" : "none";
+    gatherCookPageFish.style.display = (kind === "fish") ? "" : "none";
+    gatherCookPageFarm.style.display = (kind === "farm") ? "" : "none";
+
+    if (kind === "farm") {
       if (typeof updateFarmAreaVisibility === "function") {
         updateFarmAreaVisibility();
       }
     }
   }
 
-  if (gatherCookTabField && gatherCookTabFarm) {
-    gatherCookTabField.addEventListener("click", () => setGatherCookingSubTab("field"));
+  if (gatherCookTabHunt && gatherCookTabFish && gatherCookTabFarm) {
+    gatherCookTabHunt.addEventListener("click", () => setGatherCookingSubTab("hunt"));
+    gatherCookTabFish.addEventListener("click", () => setGatherCookingSubTab("fish"));
     gatherCookTabFarm.addEventListener("click", () => setGatherCookingSubTab("farm"));
-    // デフォルトは郊外
-    setGatherCookingSubTab("field");
+    // デフォルトは狩猟
+    setGatherCookingSubTab("hunt");
   }
 
-  // ★修正: 食材調達ボタン（郊外タブのみ）→ gatherCooking(hunt/fish)
+  // 釣り場・餌セレクトの状態
+  window.currentFishingArea = window.currentFishingArea || "river";
+  window.currentFishingBait = window.currentFishingBait || "default"; // ★ normal → default
+
+  const fishingAreaSelect = document.getElementById("fishingAreaSelect");
+  const fishingBaitSelect = document.getElementById("fishingBaitSelect");
+
+  if (fishingAreaSelect) {
+    fishingAreaSelect.addEventListener("change", () => {
+      window.currentFishingArea = fishingAreaSelect.value || "river";
+    });
+  }
+  if (fishingBaitSelect) {
+    fishingBaitSelect.addEventListener("change", () => {
+      window.currentFishingBait = fishingBaitSelect.value || "default"; // ★ normal → default
+    });
+  }
+
+  // ★修正: 食材調達ボタン → gatherCooking(hunt/fish)
   const gatherHuntBtn = document.getElementById("gatherHuntBtn");
   const gatherFishBtn = document.getElementById("gatherFishBtn");
 

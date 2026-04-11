@@ -133,20 +133,50 @@
                 狩猟・釣り・農園から料理用の素材を集めます。
               </p>
 
-              <!-- 食材調達内サブタブ（郊外 / 農園） -->
+              <!-- 食材調達内サブタブ（狩猟 / 釣り / 農園） -->
               <div class="gather-cook-sub-tabs" style="margin-bottom:4px;">
-                <button id="gatherCookTabField" class="gather-cook-tab-btn active">郊外</button>
-                <button id="gatherCookTabFarm"  class="gather-cook-tab-btn">農園</button>
+                <button id="gatherCookTabHunt" class="gather-cook-tab-btn active">狩猟</button>
+                <button id="gatherCookTabFish" class="gather-cook-tab-btn">釣り</button>
+                <button id="gatherCookTabFarm" class="gather-cook-tab-btn">農園</button>
               </div>
 
-              <!-- 郊外タブ: 狩猟・釣り -->
-              <div id="gatherCookPageField">
+              <!-- 狩猟タブ -->
+              <div id="gatherCookPageHunt">
                 <div class="gather-cooking-buttons" style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:4px;">
                   <button id="gatherHuntBtn">狩猟で食材を集める</button>
-                  <button id="gatherFishBtn">釣りで食材を集める</button>
                 </div>
                 <p style="font-size:11px; color:#ccc;">
-                  狩猟と釣りでは、肉や魚などの料理素材を入手できます。
+                  狩猟では肉などの料理素材を入手できます。
+                </p>
+              </div>
+
+              <!-- 釣りタブ -->
+              <div id="gatherCookPageFish" style="display:none;">
+                <div style="display:flex; flex-direction:column; gap:4px; margin-bottom:4px;">
+                  <div style="display:flex; gap:4px; align-items:center;">
+                    <label style="font-size:12px;">釣り場:</label>
+                    <select id="fishingAreaSelect">
+                      <option value="river">川辺</option>
+                      <option value="lake">湖</option>
+                      <option value="sea">海辺</option>
+                    </select>
+                  </div>
+                  <div style="display:flex; gap:4px; align-items:center;">
+                    <label style="font-size:12px;">餌:</label>
+                    <select id="fishingBaitSelect">
+                      <!-- ★ここだけ修正: value を変換後キーに統一 -->
+                      <option value="default">ふつうの餌</option>
+                      <option value="worm">虫の餌</option>
+                      <option value="deep">重り付きの餌</option>
+                      <option value="strong">肉の餌</option>
+                    </select>
+                  </div>
+                  <div class="gather-cooking-buttons" style="display:flex; gap:4px; flex-wrap:wrap;">
+                    <button id="gatherFishBtn">釣りで食材を集める</button>
+                  </div>
+                </div>
+                <p style="font-size:11px; color:#ccc;">
+                  釣り場と餌によって釣れる魚が変わります。
                 </p>
               </div>
 
@@ -218,7 +248,7 @@
               </div>
 
               <!-- 装備種別フィルタ -->
-              <div id="craftKindRow" style="margin:4px 0;">
+              <div id="craftKindRow" style="margin:4px 0%;">
                 <label style="font-size:12px;">装備種別:</label>
                 <select id="craftKindSelect">
                   <option value="all">すべて</option>
@@ -835,7 +865,7 @@
     </div>
 
   </div><!-- /#appRoot -->
-
+  
   <script src="enemy-data.js"></script>
   <script src="gather-data.js"></script>
   <script src="equip-data.js"></script>
@@ -844,6 +874,7 @@
   <script src="cook-data.js"></script>
   <script src="inventory-core.js"></script>
   <script src="farm-core.js"></script>
+  <script src="fish-data.js"></script>
 
   <script src="game-core-1.js"></script>
   <script src="game-core-2.js"></script>
@@ -865,7 +896,7 @@
   <script src="game-ui-3.js"></script>
   
   <script src="asobikata.js"></script>
-
+  
   <script>
     // ギルド内タブ切り替え（仕様はそのまま、中身の表示を切り替えるだけ）
     document.addEventListener("DOMContentLoaded", () => {

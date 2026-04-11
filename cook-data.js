@@ -251,6 +251,31 @@ const COOKING_RECIPES = {
         thirstRecover: 10
       }
     },
+    // ★伝説魚T3料理（追加）
+    {
+      id: 'food_fish_legend_T3',
+      name: '伝説魚の豪華フルコース',
+      tier: 'T3',
+      requires: [
+        { id: 'fish_legend',   amount: 1 }, // 新レア魚
+        { id: 'fish_sea',      amount: 1 }, // 既存海魚
+        { id: 'spice_secret',  amount: 1 },
+        { id: 'veg_mountain',  amount: 1 },
+        { id: 'grain_ancient', amount: 1 }
+      ],
+      effect: {
+        kind: 'food',
+        atkUp: 8,
+        defUp: 8,
+        intUp: 8,
+        mpRegen: 10,
+        duration: 120,
+        statusId: 'food_fish_legend_T3',
+        durationTurns: 60,
+        hungerRecover: 25,
+        thirstRecover: 10
+      }
+    },
 
     {
       id: 'food_meat_t3_steak',

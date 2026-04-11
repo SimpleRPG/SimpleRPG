@@ -113,7 +113,7 @@ function getGatherStatsList() {
       id,
       name: COOKING_MAT_NAMES[id] || id,
       total: stats.total,
-      times: stats.times,
+      times: stats.maxOnce,
       maxOnce: stats.maxOnce,
       kind: "cook"
     });
@@ -267,15 +267,18 @@ function refreshGatherFieldSelect() {
 // 食材調達（狩猟 / 釣り / 農園）
 // =======================
 
+// currentFishingArea / currentFishingBait は、
+// HTML 側のセレクト value をそのまま使って、
+// area: "river" | "lake" | "sea"
+// bait: "default" | "worm" | "deep" | "strong"
+// になる前提（index.html の value と一致）。
+
 // 食材調達タブから呼ぶ想定
 // mode: "hunt" / "fish" / "farm"
 function gatherCooking(mode) {
   // 農園は farm-core 側で処理・経験値付与する
   if (mode === "farm") {
     appendLog("農園の管理・収穫は農園メニューで行ってください。");
-    // 畑(fieldFarm)・菜園(garden)の採取スキル経験値は
-    // farm-core.js の careFarmAll() / harvestFarmSlot() 内で
-    // addGatherSkillExp("fieldFarm") / addGatherSkillExp("garden") を呼んで付与する想定
     return;
   }
 
@@ -290,6 +293,14 @@ function gatherCooking(mode) {
 
   let added = calcGatherAmount(skillKey);
 
+  // ★肉の餌ペナルティ: 釣りかつ currentFishingBait が strong のとき
+  // 50% の確率で採れたスタックから 1 個減らす（最低1個保証なし）
+  if (mode === "fish" && window.currentFishingBait === "strong") {
+    if (Math.random() < 0.5) {
+      added -= 1;
+    }
+  }
+
   const GATHER_COOK_HUNT = [
     "meat_hard",
     "meat_soft",
@@ -297,22 +308,16 @@ function gatherCooking(mode) {
     "meat_premium",
     "meat_magic"
   ];
-  const GATHER_COOK_FISH = [
-    "fish_small",
-    "fish_river",
-    "fish_sea",
-    "fish_big",
-    "fish_deep"
-  ];
+
+  // 釣りは fish-data.js のテーブルを使うので、ここでは固定テーブルを使わない
+  // 旧釣りテーブルは廃止（フォールバック用途も含めて未使用にする）
 
   let pool = [];
   if (mode === "hunt") {
     pool = GATHER_COOK_HUNT;
-  } else if (mode === "fish") {
-    pool = GATHER_COOK_FISH;
   }
 
-  if (!pool.length) {
+  if (!pool.length && mode === "hunt") {
     appendLog("今は料理素材を採取できない");
     return;
   }
@@ -357,10 +362,74 @@ function gatherCooking(mode) {
   }
 
   let gained = {};
-  for (let i = 0; i < added; i++) {
-    const id = pool[Math.floor(Math.random() * pool.length)];
-    cookingMats[id] = (cookingMats[id] || 0) + 1;
-    gained[id] = (gained[id] || 0) + 1;
+  let hasRareFish = false; // ★レア食材フラグ（大物・深海・伝説）
+
+  // ========== 狩猟 or 釣りでの素材決定 ==========
+  if (mode === "hunt") {
+    // 旧仕様そのまま：肉テーブルからランダム
+    for (let i = 0; i < added; i++) {
+      const id = pool[Math.floor(Math.random() * pool.length)];
+      cookingMats[id] = (cookingMats[id] || 0) + 1;
+      gained[id] = (gained[id] || 0) + 1;
+    }
+  } else if (mode === "fish") {
+    // ★新仕様：fish-data.js のテーブルと図鑑を使う（旧釣りロジック廃止）
+    const area = window.currentFishingArea || "river";      // river / lake / sea など
+    const bait = window.currentFishingBait || "default";    // default / worm / deep / strong
+
+    for (let i = 0; i < added; i++) {
+      let fishId;
+
+      if (typeof rollFishKind === "function") {
+        fishId = rollFishKind(area, bait);
+      } else {
+        // rollFishKind が存在しない場合でも、何も取れずに終わるよりは
+        // 小魚1匹だけでも返しておく（旧仕様「必ず何かは釣れる」を維持）
+        fishId = "fish_small";
+      }
+
+      if (!fishId) {
+        fishId = "fish_small";
+      }
+
+      // ★ここで同時に「伝説上書き抽選」を行う
+      let finalFishId = fishId;
+
+      let legendRate = 0.0004;
+      if (bait === "strong") {
+        legendRate *= 2; // 肉餌だけ2倍
+      }
+      if (Math.random() < legendRate) {
+        finalFishId = "fish_legend";
+      }
+
+      cookingMats[finalFishId] = (cookingMats[finalFishId] || 0) + 1;
+      gained[finalFishId] = (gained[finalFishId] || 0) + 1;
+
+      // サイズ＆図鑑更新（rollFishSize があれば）
+      let size = null;
+      if (typeof rollFishSize === "function") {
+        size = rollFishSize(finalFishId);
+      }
+      if (typeof updateFishDex === "function") {
+        updateFishDex(finalFishId, {
+          area,
+          bait,
+          size,
+          date: new Date()
+        });
+      }
+
+      // レアフラグ（大物・深海・伝説）
+      if (finalFishId === "fish_big" || finalFishId === "fish_deep" || finalFishId === "fish_legend") {
+        hasRareFish = true;
+      }
+
+      // ★伝説を釣ったときは、テーブル直撃でも追加抽選でも必ず特別ログ
+      if (finalFishId === "fish_legend") {
+        appendLog("🌟 伝説の魚を釣り上げた！");
+      }
+    }
   }
 
   // 料理素材ごとの統計更新
@@ -380,9 +449,14 @@ function gatherCooking(mode) {
     const name = COOKING_MAT_NAMES[id] || id;
     return `${name}×${gained[id]}`;
   });
-  const gainedText = parts.length ? parts.join("、") : `料理素材×${added}`;
 
-  appendLog(`【${modeLabel}】で ${gainedText} を採取した`);
+  // ★追加: 釣りで何も得られなかった場合のメッセージ
+  if (mode === "fish" && parts.length === 0) {
+    appendLog("【釣り】何も釣れなかった…");
+  } else {
+    const gainedText = parts.length ? parts.join("、") : `料理素材×${added}`;
+    appendLog(`【${modeLabel}】で ${gainedText} を採取した`);
+  }
 
   lastGatherInfo = {
     kind: "cooking",
@@ -398,7 +472,7 @@ function gatherCooking(mode) {
     onGatherCompletedForGuild({
       kind: "food",
       total: totalCount,
-      rare: false // レアフラグは通常側で扱うのでここでは false
+      rare: hasRareFish
     });
   }
 
@@ -481,6 +555,7 @@ const COOKING_MAT_NAMES = {
   fish_sea: "海魚",
   fish_big: "大きな魚",
   fish_deep: "深海魚",
+  fish_legend: "伝説の魚",
   veg_root_rough: "ゴロゴロ根菜",
   veg_leaf_crisp: "シャキシャキ葉菜",
   veg_mushroom_aroma: "香るキノコ",
@@ -623,6 +698,21 @@ function gather(){
   const lukBonus = (Math.random() < LUK_ * 0.01) ? 1 : 0;
   added += jobBonus + lukBonus;
   if (added < 0) added = 0;
+
+  // ★ 空腹・水分による「採取失敗」抽選（ボーナスとは別）
+  if (typeof currentHunger === "number" && typeof currentThirst === "number") {
+    let failChance = 0;
+    if (currentHunger < 25 || currentThirst < 25) {
+      failChance = 0.20;
+    }
+    if (currentHunger < 10 || currentThirst < 10) {
+      failChance = 0.50;
+    }
+    if (failChance > 0 && Math.random() < failChance) {
+      added = 0;
+      appendLog("体力がもたず、採取に失敗してしまった…");
+    }
+  }
 
   if (!materials || !materials[target]) {
     appendLog("採取素材の定義が見つかりません");

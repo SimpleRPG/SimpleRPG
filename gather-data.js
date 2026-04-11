@@ -68,4 +68,4 @@ const GATHER_AMOUNT_PARAMS = {
 
 const RARE_GATHER_ITEM_ID   = "starShard";
 const RARE_GATHER_ITEM_NAME = "星屑の結晶";
-const RARE_GATHER_DROP_RATE = 0.00001;
+const RARE_GATHER_DROP_RATE = 0.0002;

@@ -51,7 +51,7 @@ const JOB_SKILLS = {
         id: "fireBolt",
         name: "ファイアボルト",
         type: SKILL_TYPE_MAGIC,
-        mpCost: 5
+        mpCost: 3
       },
       {
         id: "iceLance",
@@ -339,33 +339,33 @@ function doPetTurn() {
 
 function castMagicFromUI() {
   if (jobId !== 1 && jobId !== 2 && jobId !== 3) {
-    setLog("魔法を扱える職業ではない");
+    appendLog("魔法を扱える職業ではない");
     return;
   }
   const sel = document.getElementById("magicSelect");
   if (!sel) return;
   const skillId = sel.value;
   if (!skillId) {
-    setLog("使用する魔法を選んでください");
+    appendLog("使用する魔法を選んでください");
     return;
   }
   const jobSkills = JOB_SKILLS[jobId] || { magic: [] };
   const skill = jobSkills.magic.find(s => s.id === skillId);
   if (!skill) {
-    setLog("その魔法は使用できない");
+    appendLog("その魔法は使用できない");
     return;
   }
 
   const guildId = typeof window !== "undefined" ? window.playerGuildId : null;
   // ★ マナバーストは魔法ギルド所属中のみ使用可能
   if (skillId === "manaBurst" && guildId !== "mage") {
-    setLog("この魔法は今は使えない（対応するギルドに所属していない）");
+    appendLog("この魔法は今は使えない（対応するギルドに所属していない）");
     return;
   }
 
   // ビーストヒール以外は敵必須（セーフブリューは自己回復なので敵不要）
   if (!currentEnemy && skillId !== "beastHeal" && skillId !== "safeBrew") {
-    setLog("敵がいない");
+    appendLog("敵がいない");
     return;
   }
 
@@ -385,7 +385,7 @@ function castMagicFromUI() {
 
   const mpCost = skill.mpCost || 0;
   if (mp < mpCost) {
-    setLog("MPが足りない");
+    appendLog("MPが足りない");
     return;
   }
   mp -= mpCost;
@@ -396,13 +396,13 @@ function castMagicFromUI() {
     const baseInt = getEffectiveIntForMagic();
     const dmg = 10 + baseInt * 2;
     enemyHp = Math.max(0, enemyHp - dmg);
-    setLog(`ファイアボルト！ ${currentEnemy.name} に${dmg}ダメージ`);
+    appendLog(`ファイアボルト！ ${currentEnemy.name} に${dmg}ダメージ`);
     didDamage = true;
   } else if (skillId === "iceLance") {
     const baseInt = getEffectiveIntForMagic();
     const dmg = 8 + Math.floor(baseInt * 1.8);
     enemyHp = Math.max(0, enemyHp - dmg);
-    setLog(`アイスランス！ ${currentEnemy.name} に${dmg}ダメージ（防御が下がった気がする）`);
+    appendLog(`アイスランス！ ${currentEnemy.name} に${dmg}ダメージ（防御が下がった気がする）`);
     didDamage = true;
   } else if (skillId === "chainLightning") {
     const baseInt = getEffectiveIntForMagic();
@@ -413,7 +413,7 @@ function castMagicFromUI() {
       total += one;
     }
     enemyHp = Math.max(0, enemyHp - total);
-    setLog(`チェインライトニング！ ${currentEnemy.name} に${hits}ヒット合計${total}ダメージ`);
+    appendLog(`チェインライトニング！ ${currentEnemy.name} に${hits}ヒット合計${total}ダメージ`);
     didDamage = true;
   } else if (skillId === "manaBurst") {
     const baseInt = getEffectiveIntForMagic();
@@ -421,20 +421,20 @@ function castMagicFromUI() {
     enemyHp = Math.max(0, enemyHp - dmg);
     const extra = Math.floor(mpMax * 0.1);
     mp = Math.max(0, mp - extra);
-    setLog(`マナバースト！ ${currentEnemy.name} に${dmg}ダメージ（反動でMPを${extra}消費）`);
+    appendLog(`マナバースト！ ${currentEnemy.name} に${dmg}ダメージ（反動でMPを${extra}消費）`);
     didDamage = true;
   } else if (skillId === "beastHeal") {
     if (jobId !== 2) {
-      setLog("この魔法は動物使い専用だ");
+      appendLog("この魔法は動物使い専用だ");
     } else {
       const heal = Math.floor(petHpMax * 0.4) + 5;
       petHp = Math.min(petHp + heal, petHpMax);
-      setLog(`ビーストヒール！ ${petName}のHPが${heal}回復した`);
+      appendLog(`ビーストヒール！ ${petName}のHPが${heal}回復した`);
     }
   } else if (skillId === "safeBrew") {
     // 錬金術師用：INT/DEX/LUK 複合回復
     if (jobId !== 3) {
-      setLog("セーフブリューは錬金術師専用だ");
+      appendLog("セーフブリューは錬金術師専用だ");
     } else {
       const baseInt = getEffectiveIntForMagic();
       const baseDex = typeof DEX_ === "number" ? DEX_ : 0;
@@ -443,7 +443,7 @@ function castMagicFromUI() {
       const before = hp;
       hp = Math.min(hpMax, hp + heal);
       const actual = hp - before;
-      setLog(`セーフブリュー！ HPが${actual}回復した`);
+      appendLog(`セーフブリュー！ HPが${actual}回復した`);
     }
   }
 
@@ -510,32 +510,32 @@ function castMagicFromUI() {
 
 function useSkillFromUI() {
   if (jobId !== 0 && jobId !== 2 && jobId !== 3) {
-    setLog("スキルを扱える職業ではない");
+    appendLog("スキルを扱える職業ではない");
     return;
   }
   const sel = document.getElementById("skillSelect");
   if (!sel) return;
   const skillId = sel.value;
   if (!skillId) {
-    setLog("使用するスキルを選んでください");
+    appendLog("使用するスキルを選んでください");
     return;
   }
   const jobSkills = JOB_SKILLS[jobId] || { phys: [] };
   const skill = jobSkills.phys.find(s => s.id === skillId);
   if (!skill) {
-    setLog("そのスキルは使用できない");
+    appendLog("そのスキルは使用できない");
     return;
   }
 
   const guildId = typeof window !== "undefined" ? window.playerGuildId : null;
   // ★ ガードインパクトは戦士ギルド所属中のみ使用可能
   if (skillId === "guardImpact" && guildId !== "warrior") {
-    setLog("このスキルは今は使えない（対応するギルドに所属していない）");
+    appendLog("このスキルは今は使えない（対応するギルドに所属していない）");
     return;
   }
   // ★ ビーストロアは動物使いギルド所属中のみ使用可能
   if (skillId === "beastRoar" && guildId !== "tamer") {
-    setLog("このスキルは今は使えない（対応するギルドに所属していない）");
+    appendLog("このスキルは今は使えない（対応するギルドに所属していない）");
     return;
   }
 
@@ -544,7 +544,7 @@ function useSkillFromUI() {
       skillId !== "animalLink" &&
       skillId !== "beastRoar" &&
       skillId !== "itemBoost") {
-    setLog("敵がいない");
+    appendLog("敵がいない");
     return;
   }
 
@@ -564,7 +564,7 @@ function useSkillFromUI() {
 
   const spCost = skill.spCost || 0;
   if (sp < spCost) {
-    setLog("SPが足りない");
+    appendLog("SPが足りない");
     return;
   }
   sp -= spCost;
@@ -574,52 +574,52 @@ function useSkillFromUI() {
   if (skillId === "powerSlash") {
     const dmg = Math.floor(getCurrentAtkForSkill() * 1.5);
     enemyHp = Math.max(0, enemyHp - dmg);
-    setLog(`パワースラッシュ！ ${currentEnemy.name} に${dmg}ダメージ`);
+    appendLog(`パワースラッシュ！ ${currentEnemy.name} に${dmg}ダメージ`);
     didDamage = true;
   } else if (skillId === "shieldBlow") {
     const dmg = Math.floor(getCurrentAtkForSkill() * 1.2);
     enemyHp = Math.max(0, enemyHp - dmg);
     shieldBlowGuardTurnRemain = 1;
-    setLog(`シールドブロウ！ ${currentEnemy.name} に${dmg}ダメージ（次の被ダメージ軽減）`);
+    appendLog(`シールドブロウ！ ${currentEnemy.name} に${dmg}ダメージ（次の被ダメージ軽減）`);
     didDamage = true;
   } else if (skillId === "braveCharge") {
     braveChargeTurnRemain = 2;
-    setLog("ブレイブチャージ！ しばらく攻撃力が上がった");
+    appendLog("ブレイブチャージ！ しばらく攻撃力が上がった");
   } else if (skillId === "guardImpact") {
     const dmg = Math.floor(getCurrentAtkForSkill() * 1.1);
     enemyHp = Math.max(0, enemyHp - dmg);
     // シールドブロウより長くガード
     shieldBlowGuardTurnRemain = 2;
-    setLog(`ガードインパクト！ ${currentEnemy.name} に${dmg}ダメージ（しばらく被ダメージ軽減）`);
+    appendLog(`ガードインパクト！ ${currentEnemy.name} に${dmg}ダメージ（しばらく被ダメージ軽減）`);
     didDamage = true;
   } else if (skillId === "beastSlash") {
     const dmg = Math.floor(getCurrentAtkForSkill() * 1.3);
     enemyHp = Math.max(0, enemyHp - dmg);
-    setLog(`ビーストスラッシュ！ ${currentEnemy.name} に${dmg}ダメージ`);
+    appendLog(`ビーストスラッシュ！ ${currentEnemy.name} に${dmg}ダメージ`);
     didDamage = true;
   } else if (skillId === "animalLink") {
     if (jobId !== 2) {
-      setLog("アニマルリンクは動物使い専用だ");
+      appendLog("アニマルリンクは動物使い専用だ");
     } else {
       petBuffRate = 1.4;
       petBuffTurnRemain = 2;
-      setLog(`アニマルリンク！ ${petName}の攻撃力が上がった`);
+      appendLog(`アニマルリンク！ ${petName}の攻撃力が上がった`);
     }
   } else if (skillId === "beastRoar") {
     if (jobId !== 2) {
-      setLog("ビーストロアは動物使い専用だ");
+      appendLog("ビーストロアは動物使い専用だ");
     } else {
       petBuffRate = 1.6;
       petBuffTurnRemain = 3;
-      setLog(`ビーストロア！ ${petName}の力がみなぎった`);
+      appendLog(`ビーストロア！ ${petName}の力がみなぎった`);
     }
   } else if (skillId === "itemBoost") {
     // 錬金術師専用：アイテム強化バフ（SP消費）
     if (jobId !== 3) {
-      setLog("アイテムブーストは錬金術師専用だ");
+      appendLog("アイテムブーストは錬金術師専用だ");
     } else {
       itemBoostTurnRemain = 3;
-      setLog("アイテムブースト！ しばらくポーションと道具の効果がさらに高まった");
+      appendLog("アイテムブースト！ しばらくポーションと道具の効果がさらに高まった");
     }
   }
 

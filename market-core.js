@@ -557,12 +557,104 @@ function doMarketBuy(stackKey, mode, amount){
   refreshMarketSellItems();
 }
 
-// ★ NPC 購入ロジック用：内部基準価格を返す（暫定実装）
-// ここでは仕様をまだ変えず、「最安出品価格のみ」を使う状態を維持している。
-// 素材・クラフト原価を使った理論値を組み込みたくなったら、
-// ここに getItemTheoreticalBaseValue(category, itemId) を足して
-// min/ max を取る実装を追加する。
+// -----------------------
+// 原価（理論価値）計算ヘルパー
+// -----------------------
+
+// category: "weapon" / "armor" / "potion" / "tool" / "material"
+// itemId: CRAFT_RECIPES/INTERMEDIATE_MATERIALS/素材ID
+function getTheoreticalCost(category, itemId) {
+  function getBaseMaterialCost(baseKey, tier) {
+    const tbl = MATERIAL_TIER_VALUES || {};
+    if (tier === "t1") return tbl.t1 || 3;
+    if (tier === "t2") return tbl.t2 || 5;
+    if (tier === "t3") return tbl.t3 || 10;
+    return 0;
+  }
+
+  function getIntermediateCost(id) {
+    if (!Array.isArray(INTERMEDIATE_MATERIALS)) return 0;
+    const mat = INTERMEDIATE_MATERIALS.find(m => m.id === id);
+    if (!mat || !mat.from) return 0;
+
+    let total = 0;
+    Object.keys(mat.from).forEach(baseKey => {
+      const tiers = mat.from[baseKey];
+      Object.keys(tiers).forEach(tier => {
+        const amount = tiers[tier] || 0;
+        total += getBaseMaterialCost(baseKey, tier) * amount;
+      });
+    });
+    return total;
+  }
+
+  function getRecipeCost(cat, id) {
+    if (typeof CRAFT_RECIPES !== "object" || !CRAFT_RECIPES[cat]) return 0;
+    const list = CRAFT_RECIPES[cat];
+    const r = list.find(x => x.id === id);
+    if (!r || !r.cost) return 0;
+
+    let total = 0;
+    Object.keys(r.cost).forEach(key => {
+      const amount = r.cost[key] || 0;
+
+      const isIntermediate =
+        Array.isArray(INTERMEDIATE_MATERIALS) &&
+        INTERMEDIATE_MATERIALS.some(m => m.id === key);
+
+      if (isIntermediate) {
+        total += getIntermediateCost(key) * amount;
+      } else {
+        let baseKey = key;
+        let tier = "t1";
+
+        const m = key.match(/(.+)_T([123])/);
+        if (m) {
+          baseKey = m[1];
+          tier = "t" + m[2];
+        }
+
+        total += getBaseMaterialCost(baseKey, tier) * amount;
+      }
+    });
+
+    let avgRate = 0.7;
+    if (/_T1$/.test(id)) avgRate = 0.8;
+    else if (/_T2$/.test(id)) avgRate = 0.7;
+    else if (/_T3$/.test(id)) avgRate = 0.6;
+
+    if (avgRate <= 0) avgRate = 0.7;
+
+    const v = total / avgRate;
+    return Math.ceil(v);
+  }
+
+  if (category === "material") {
+    if (itemId === "wood" || itemId === "ore" || itemId === "herb" ||
+        itemId === "cloth" || itemId === "leather" || itemId === "water") {
+      return getBaseMaterialCost(itemId, "t1");
+    }
+    if (itemId === RARE_GATHER_ITEM_ID) {
+      return 50;
+    }
+    if (Array.isArray(INTERMEDIATE_MATERIALS) &&
+        INTERMEDIATE_MATERIALS.some(m => m.id === itemId)) {
+      return getIntermediateCost(itemId);
+    }
+    return 0;
+  } else if (category === "weapon" || category === "armor" ||
+             category === "potion" || category === "tool") {
+    return getRecipeCost(category, itemId);
+  }
+
+  return 0;
+}
+
+// ★ NPC 購入ロジック用：内部基準価格を返す
 function getMarketBaseValue(category, itemId) {
+  const theoretical = getTheoreticalCost(category, itemId);
+  if (theoretical > 0) return theoretical;
+
   const stacks = buildMarketStacks();
   const st = stacks.find(s => s.category === category && s.itemId === itemId);
   if (!st) return 0;
@@ -622,7 +714,6 @@ function rotateMarketHotCategories() {
   if (window._marketEventTimerStarted) return;
   window._marketEventTimerStarted = true;
 
-  // 起動直後に一度決める
   rotateMarketHotCategories();
 
   const THIRTY_MIN_MS = 30 * 60 * 1000;
@@ -631,43 +722,42 @@ function rotateMarketHotCategories() {
   }, THIRTY_MIN_MS);
 })();
 
-// ★ NPC 購入確率（プレイヤー優先・安いときたまに・イベント時そこそこ）
+// ★ NPC 購入確率（原価割れはお得としてそこそこ買う）
 function getNpcBuyProb(baseValue, price, category) {
   if (price <= 0 || baseValue <= 0) return 0;
 
-  const ratio = price / baseValue; // 高いほど ratio↑
+  const ratio = price / baseValue;
+  let prob = 0;
 
-  // かなり安い（半額以下）: たまに売れる
-  if (ratio <= 0.5) {
-    return applyMarketEventBoost(0.03, category); // 3%
+  if (ratio < 0.5) {
+    prob = 0.05;
+  } else if (ratio < 1.0) {
+    prob = 0.02;
+  } else if (ratio < 1.5) {
+    prob = 0.005;
+  } else if (ratio < 2.5) {
+    prob = 0.001;
+  } else {
+    prob = 0.0001;
   }
-  // 少し安い〜適正
-  if (ratio <= 1.0) {
-    return applyMarketEventBoost(0.01, category); // 1%
-  }
 
-  // 高め〜ボッタクリは急減衰（プレイヤー向け価格帯）
-  const k = 1.5;
-  let prob = 0.01 * Math.exp(-k * (ratio - 1));
+  prob = applyMarketEventBoost(prob, category);
+  if (prob > 0.25) prob = 0.25;
 
-  const MIN_PROB = 0.0000001; // 超低い下限（理論上はいつか売れる）
-  if (prob < MIN_PROB) prob = MIN_PROB;
-
-  return applyMarketEventBoost(prob, category);
+  return prob;
 }
 
 // ★ NPC が市場からたまに購入する処理
 function rollNpcMarketBuy() {
   if (!marketListings.length) return;
 
-  // 出品をシャッフルして数件だけ見る
   const indices = [...marketListings.keys()];
   for (let i = indices.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [indices[i], indices[j]] = [indices[j], indices[i]];
   }
 
-  const MAX_CHECK = Math.min(5, indices.length); // 一度に見る出品数上限
+  const MAX_CHECK = Math.min(5, indices.length);
   for (let idx = 0; idx < MAX_CHECK; idx++) {
     const li = marketListings[indices[idx]];
     if (!li || li.amount <= 0) continue;
@@ -678,14 +768,12 @@ function rollNpcMarketBuy() {
     const prob = getNpcBuyProb(baseValue, li.price, li.category);
     if (Math.random() >= prob) continue;
 
-    // NPC が 1〜少数だけ購入（全部は買い取らない）
     const buyAmount = Math.max(1, Math.floor(li.amount * 0.2)) || 1;
     const actualBuy = Math.min(li.amount, buyAmount);
     if (actualBuy <= 0) continue;
 
     const totalPrice = actualBuy * li.price;
 
-    // プレイヤーにお金を渡す（手数料などがあればここで調整）
     money += totalPrice;
 
     const label = getItemLabel(li.category, li.itemId);
@@ -693,10 +781,6 @@ function rollNpcMarketBuy() {
     addMarketLog(`${npcName}が ${label} を市場から購入した（x${actualBuy} / ${totalPrice}G）`);
 
     li.amount -= actualBuy;
-    if (li.amount <= 0) {
-      // 出品枠削除
-      // filter でまとめて整理するのでここではそのまま
-    }
   }
 
   marketListings = marketListings.filter(l => l.amount > 0);
@@ -716,7 +800,7 @@ function doMarketBuyOrder(){
   const amtEl   = document.getElementById("marketOrderAmount");
   if(!sel || !priceEl || !amtEl) return;
 
-  const val = sel.value; // "weapon:dagger" など
+  const val = sel.value;
   const [category, itemId] = val.split(":");
   const price = parseInt(priceEl.value,10) || 0;
   const amount= parseInt(amtEl.value,10) || 0;
@@ -756,7 +840,6 @@ function doMarketBuyOrder(){
   refreshMarketOrderList();
 }
 
-// game-ui.js から呼ばれている名前に合わせるラッパー
 function doMarketOrder() {
   doMarketBuyOrder();
 }
@@ -794,7 +877,6 @@ function refreshMarketOrderList(){
 // UI連動用 追加実装
 // =======================
 
-// 売り候補カテゴリとアイテムセレクト
 function refreshMarketSellCandidates(){
   const catSel  = document.getElementById("marketSellCategory");
   if (!catSel) return;
@@ -824,7 +906,6 @@ function refreshMarketSellItems(){
   const itemSel = document.getElementById("marketSellItem");
   if (!catSel || !itemSel) return;
 
-  // 起動直後に core がまだなら、安全に抜ける（ログだけ出しておく）
   if (typeof weapons === "undefined" ||
       typeof armors  === "undefined" ||
       typeof potions === "undefined") {
@@ -864,7 +945,6 @@ function refreshMarketSellItems(){
       }
     });
   } else if (category === "tool") {
-    // 倉庫の道具（toolCounts）を出品候補に
     if (typeof toolCounts === "object") {
       Object.keys(toolCounts).forEach(id => {
         const cnt = toolCounts[id] || 0;
@@ -883,7 +963,6 @@ function refreshMarketSellItems(){
       { id:"water",   name:"水",    count: getMatTotal("water") }
     ];
 
-    // 星屑の結晶
     if (typeof itemCounts === "object") {
       const starCount = itemCounts[RARE_GATHER_ITEM_ID] || 0;
       if (starCount > 0) {
@@ -919,7 +998,6 @@ function refreshMarketSellItems(){
       const foods  = window.cookedFoods  || {};
       const drinks = window.cookedDrinks || {};
 
-      // 食べ物（レシピ基準で走査）
       COOKING_RECIPES.food.forEach(r => {
         const id  = r.id;
         const cnt = foods[id] || 0;
@@ -927,7 +1005,6 @@ function refreshMarketSellItems(){
         appendOption(id, `${r.name}（所持${cnt}）`);
       });
 
-      // 飲み物
       COOKING_RECIPES.drink.forEach(r => {
         const id  = r.id;
         const cnt = drinks[id] || 0;
@@ -1020,7 +1097,6 @@ window.addEventListener("DOMContentLoaded", () => {
 
   if (tabSell) {
     tabSell.addEventListener("click", () => {
-      // 出品タブを開いたときに候補を更新
       if (typeof refreshMarketSellCandidates === "function") {
         refreshMarketSellCandidates();
       }
@@ -1029,7 +1105,6 @@ window.addEventListener("DOMContentLoaded", () => {
 
   if (tabBuy) {
     tabBuy.addEventListener("click", () => {
-      // 購入タブを開いたときに一覧を更新
       if (typeof refreshMarketBuyList === "function") {
         refreshMarketBuyList();
       }
