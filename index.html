@@ -949,8 +949,9 @@
     });
   </script>
 
-  <!-- ★ Socket.io クライアントと接続 -->
-  <script src="http://localhost:3001/socket.io/socket.io.js"></script>
+  <!-- ★ Socket.io クライアントと接続（Render / 本番対応版） -->
+  <!-- 同一オリジンから配信される socket.io を使用する -->
+  <script src="/socket.io/socket.io.js"></script>
   <script>
     // 他のファイル（market-core.js / game-ui.js など）から参照するグローバル
     window.globalSocket = null;
@@ -962,8 +963,11 @@
           return;
         }
 
-        // 必要に応じて localhost を LAN IP に変更する
-        const socket = io("http://localhost:3001");
+        // 同一オリジンに接続（Render 本番でも localhost でも両対応）
+        const socket = io({
+          transports: ["websocket"],
+          withCredentials: false,
+        });
         window.globalSocket = socket;
 
         socket.on("connect", () => {
@@ -971,7 +975,7 @@
           // 簡単な疎通テスト
           socket.emit("ping-from-client");
 
-          // ★ ここを追加: 接続完了後に市場の同期処理を呼ぶ
+          // 接続完了後に市場の同期処理を呼ぶ
           if (typeof window.setupMarketSocketSync === "function") {
             window.setupMarketSocketSync();
           }

@@ -1,15 +1,27 @@
 // server.js
+const path = require("path");
 const http = require("http");
+const express = require("express");
 const { Server } = require("socket.io");
 
 // 環境変数から許可オリジンを指定できるようにする（未設定なら *）
 const ALLOWED_ORIGIN = process.env.CORS_ORIGIN || "*";
 
-// シンプルな HTTP サーバー（動作確認用）
-const httpServer = http.createServer((req, res) => {
-  res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
-  res.end("Simple RPG server with Socket.io is running.\n");
+// Express アプリケーションを作成
+const app = express();
+
+// public ディレクトリ（または実際のフロント配置先）を静的配信
+// 例: server.js と同じ階層に index.html 等がある場合は __dirname を使う
+const PUBLIC_DIR = path.join(__dirname);
+app.use(express.static(PUBLIC_DIR));
+
+// ルートアクセスで index.html を返す（念のため明示）
+app.get("/", (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, "index.html"));
 });
+
+// HTTP サーバーを Express アプリから作成
+const httpServer = http.createServer(app);
 
 // Socket.io サーバー
 const io = new Server(httpServer, {
@@ -156,7 +168,7 @@ io.on("connection", (socket) => {
   });
 });
 
-// ポート 3001 で待機（Render では PORT は環境変数で渡される）
+// ポート（Render では PORT は環境変数で渡される）
 const port = process.env.PORT || 3001;
 httpServer.listen(port, () => {
   console.log("Server (HTTP + Socket.io) listening on port " + port);
