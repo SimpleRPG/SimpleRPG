@@ -73,6 +73,9 @@ function makeSaveData() {
     cookingMats,         // 料理素材
     lastGatherInfo,      // 直近の採取結果（なくても良いがデバッグ用に保存）
 
+    // ★ 追加: 採取統計（gather-core 側で管理）
+    gatherStats: (typeof window !== "undefined" && window.gatherStats) ? window.gatherStats : {},
+
     // --------------------------------
     // インベントリ・装備（倉庫・手持ち・装備インスタンス）
     // --------------------------------
@@ -141,6 +144,16 @@ function makeSaveData() {
     gatherBaseStockTicks,
 
     // --------------------------------
+    // 農園（farm-core.js）
+    // --------------------------------
+    farm: (typeof getFarmSaveData === "function") ? getFarmSaveData() : null,
+
+    // --------------------------------
+    // 釣り図鑑（fish-data.js）
+    // --------------------------------
+    fishDex: (typeof window !== "undefined" && window.fishDex) ? window.fishDex : {},
+
+    // --------------------------------
     // 市場（market-core.js 側にある想定）
     // --------------------------------
     marketListings,
@@ -155,7 +168,7 @@ function makeSaveData() {
     playerGuildId: (typeof window !== "undefined") ? window.playerGuildId : null,
     guildFame: (typeof window !== "undefined") ? (window.guildFame || {}) : {},
     guildQuestProgress: (typeof window !== "undefined") ? (window.guildQuestProgress || {}) : {},
-    // ★ 追加: 戦闘ギルドスキルツリー
+    // ★ 戦闘ギルドスキルツリー
     combatGuildTreeUnlocked: (typeof window !== "undefined") ? (window.combatGuildTreeUnlocked || {}) : {},
     combatGuildSkillPoints: (typeof window !== "undefined") ? (window.combatGuildSkillPoints || 0) : 0
   };
@@ -334,6 +347,15 @@ function applySaveData(data) {
     lastGatherInfo = data.lastGatherInfo;
   }
 
+  // ★ 採取統計
+  if (data.gatherStats && typeof window !== "undefined") {
+    window.gatherStats = window.gatherStats || {};
+    Object.keys(window.gatherStats).forEach(k => delete window.gatherStats[k]);
+    Object.keys(data.gatherStats).forEach(k => {
+      window.gatherStats[k] = data.gatherStats[k];
+    });
+  }
+
   // -------- インベントリ・装備 --------
   if (data.itemCounts && typeof itemCounts === "object") {
     Object.keys(itemCounts).forEach(k => delete itemCounts[k]);
@@ -474,6 +496,23 @@ function applySaveData(data) {
   }
   if (typeof data.gatherBaseStockTicks === "number") {
     gatherBaseStockTicks = data.gatherBaseStockTicks;
+  }
+
+  // -------- 農園 --------
+  if (data.farm && typeof applyFarmSaveData === "function") {
+    applyFarmSaveData(data.farm);
+  } else if (typeof initFarmSystem === "function") {
+    // セーブが無いときは初期化だけ
+    initFarmSystem();
+  }
+
+  // -------- 釣り図鑑 --------
+  if (data.fishDex && typeof window !== "undefined") {
+    window.fishDex = window.fishDex || {};
+    Object.keys(window.fishDex).forEach(k => delete window.fishDex[k]);
+    Object.keys(data.fishDex).forEach(k => {
+      window.fishDex[k] = data.fishDex[k];
+    });
   }
 
   // -------- 市場 --------
