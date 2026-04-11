@@ -95,12 +95,12 @@ window.addEventListener("DOMContentLoaded", () => {
 
   const tabButtonsMap = {
     tabGather:    "pageGather",
-    tabEquip:     "pageEquip",
+    // tabEquip は HTML 上コメントアウトのまま
     tabExplore:   "pageExplore",
     tabMagicDist: "pageMagicDist",
     tabWarehouse: "pageWarehouse",
     tabStatus:    "pageStatus",
-    tabGuild:     "pageGuild",   // ★ ギルドタブを追加
+    tabGuild:     "pageGuild",
     tabHelp:      "pageHelp"
   };
 
@@ -193,6 +193,14 @@ window.addEventListener("DOMContentLoaded", () => {
       }
       if (typeof refreshMarketBuyList === "function") {
         refreshMarketBuyList();
+      }
+      if (typeof refreshMarketOrderList === "function") {
+        refreshMarketOrderList();
+      }
+
+      // ★装備強化の横の修理UIも、魔巧区タブを開いたタイミングで更新しておく
+      if (typeof refreshRepairUI === "function") {
+        refreshRepairUI();
       }
     }
 
@@ -306,6 +314,11 @@ window.addEventListener("DOMContentLoaded", () => {
       if (typeof refreshWarehouseUI === "function") {
         refreshWarehouseUI();
       }
+    } else if (key === "magic-enhance") {
+      // ★装備強化タブを開いたときに修理UIも更新
+      if (typeof refreshRepairUI === "function") {
+        refreshRepairUI();
+      }
     }
   }
 
@@ -347,7 +360,7 @@ window.addEventListener("DOMContentLoaded", () => {
     guildPageQuest.style.display  = (kind === "quest")  ? "" : "none";
     guildPageReward.style.display = (kind === "reward") ? "" : "none";
 
-    // 中身の再描画（仕様は guild.js にある renderX を呼ぶだけ）
+    // 中身の再描画
     if (kind === "list") {
       if (typeof renderGuildList === "function") renderGuildList();
     } else if (kind === "quest") {
@@ -479,7 +492,9 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  initMarketOrderItemSelect();
+  if (typeof initMarketOrderItemSelect === "function") {
+    initMarketOrderItemSelect();
+  }
 
   // =======================
   // ステータス詳細 ON/OFF
@@ -555,7 +570,7 @@ window.addEventListener("DOMContentLoaded", () => {
     bossBtn.addEventListener("click", () => startBossBattleFromUI());
   }
 
-  // ★ ここを撤退仕様に合わせて修正
+  // ★ 撤退ボタン
   const returnTownBtn = document.getElementById("returnTownBtn");
   if (returnTownBtn) {
     returnTownBtn.addEventListener("click", () => {
@@ -568,7 +583,6 @@ window.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // game-core-5.js 側の撤退フラグを使う前提
       if (window.isRetreating) {
         appendLog(`すでに撤退中だ… 街に着くまであと${window.retreatTurnsLeft}ターン。`);
       } else {
@@ -628,7 +642,6 @@ window.addEventListener("DOMContentLoaded", () => {
       if (typeof refreshGatherTargetSelect === "function") {
         refreshGatherTargetSelect();
       }
-      // 農園UIの表示更新（実体は game-ui-3.js の updateFarmAreaVisibility）
       if (typeof updateFarmAreaVisibility === "function") {
         updateFarmAreaVisibility();
       }
@@ -636,7 +649,6 @@ window.addEventListener("DOMContentLoaded", () => {
     gatherFieldSel.addEventListener("change", onFieldChange);
   }
 
-  // 農園セレクトの change でも表示更新
   const farmSelect = document.getElementById("farmSelect");
   if (farmSelect && typeof updateFarmAreaVisibility === "function") {
     farmSelect.addEventListener("change", () => {
@@ -657,7 +669,7 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ★追加: 採取タブ内サブタブ（通常採取 / 食材調達）
+  // 採取タブ内サブタブ
   const gatherTabNormal  = document.getElementById("gatherTabNormal");
   const gatherTabCooking = document.getElementById("gatherTabCooking");
   const gatherPageNormal  = document.getElementById("gatherPageNormal");
@@ -687,11 +699,10 @@ window.addEventListener("DOMContentLoaded", () => {
   if (gatherTabNormal && gatherTabCooking) {
     gatherTabNormal.addEventListener("click", () => setGatherSubTab("normal"));
     gatherTabCooking.addEventListener("click", () => setGatherSubTab("cooking"));
-    // 初期は通常採取タブ
     setGatherSubTab("normal");
   }
 
-  // ★修正: 食材調達内サブタブ（狩猟 / 釣り / 農園）
+  // 食材調達内サブタブ
   const gatherCookTabHunt = document.getElementById("gatherCookTabHunt");
   const gatherCookTabFish = document.getElementById("gatherCookTabFish");
   const gatherCookTabFarm = document.getElementById("gatherCookTabFarm");
@@ -728,13 +739,12 @@ window.addEventListener("DOMContentLoaded", () => {
     gatherCookTabHunt.addEventListener("click", () => setGatherCookingSubTab("hunt"));
     gatherCookTabFish.addEventListener("click", () => setGatherCookingSubTab("fish"));
     gatherCookTabFarm.addEventListener("click", () => setGatherCookingSubTab("farm"));
-    // デフォルトは狩猟
     setGatherCookingSubTab("hunt");
   }
 
-  // 釣り場・餌セレクトの状態
+  // 釣り場・餌セレクト
   window.currentFishingArea = window.currentFishingArea || "river";
-  window.currentFishingBait = window.currentFishingBait || "default"; // ★ normal → default
+  window.currentFishingBait = window.currentFishingBait || "default";
 
   const fishingAreaSelect = document.getElementById("fishingAreaSelect");
   const fishingBaitSelect = document.getElementById("fishingBaitSelect");
@@ -746,11 +756,10 @@ window.addEventListener("DOMContentLoaded", () => {
   }
   if (fishingBaitSelect) {
     fishingBaitSelect.addEventListener("change", () => {
-      window.currentFishingBait = fishingBaitSelect.value || "default"; // ★ normal → default
+      window.currentFishingBait = fishingBaitSelect.value || "default";
     });
   }
 
-  // ★修正: 食材調達ボタン → gatherCooking(hunt/fish)
   const gatherHuntBtn = document.getElementById("gatherHuntBtn");
   const gatherFishBtn = document.getElementById("gatherFishBtn");
 
@@ -779,7 +788,6 @@ window.addEventListener("DOMContentLoaded", () => {
   if (typeof refreshGatherFieldSelect === "function") {
     refreshGatherFieldSelect();
   }
-  // 初期ロード時にも一度農園表示を整える
   if (typeof updateFarmAreaVisibility === "function") {
     updateFarmAreaVisibility();
   }
@@ -1082,7 +1090,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   // =======================
-  // 装備関連
+  // 装備関連（強化＋修理）
   // =======================
 
   const enhanceWeaponBtn = document.getElementById("enhanceWeaponBtn");
@@ -1107,6 +1115,22 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // ★追加: 装備修理（装備強化の横に置いたセレクト＆ボタンをバインド）
+  const repairTargetSelect = document.getElementById("repairTargetSelect");
+  const repairExecBtn      = document.getElementById("repairExecBtn");
+
+  if (repairTargetSelect && typeof updateRepairInfoFromSelect === "function") {
+    repairTargetSelect.addEventListener("change", () => {
+      updateRepairInfoFromSelect();
+    });
+  }
+
+  if (repairExecBtn && typeof execRepairSelected === "function") {
+    repairExecBtn.addEventListener("click", () => {
+      execRepairSelected();
+    });
+  }
+
   // =======================
   // 分割UI初期化呼び出し
   // =======================
@@ -1121,12 +1145,12 @@ window.addEventListener("DOMContentLoaded", () => {
     initJobPetRebirthUI();
   }
 
-  // ★追加: 農園システム初期化（farm-core.js 側のスロット生成を1回実行）
+  // 農園システム初期化
   if (typeof initFarmSystem === "function") {
     initFarmSystem();
   }
 
-  // ★追加: 最初の職業未選択ならジョブモーダルを自動表示（仕様維持）
+  // 最初の職業未選択ならジョブモーダル自動表示
   if (typeof openJobModal === "function" && typeof jobId !== "undefined" && jobId === null) {
     openJobModal();
   }

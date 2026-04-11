@@ -384,7 +384,7 @@ function doExploreRandomEvent(area) {
           const inst = window.weaponInstances[idx];
           if (inst) {
             const MAX_DURABILITY_LOCAL = typeof MAX_DURABILITY === "number" ? MAX_DURABILITY : 10;
-            inst.durability = Math.max(0, (inst.durability ?? MAX_DURABILITY_LOCAL) - 1);
+            inst.durability = Math.max(0, (inst.durability ?? MAX_DURABILITY_LOCAL) - 30);
             if (inst.durability <= 0) {
               const wName = (weapons.find(w => w.id === inst.id)?.name) || inst.id;
               appendLog(`${wName} は壊れて消滅した…`);
@@ -406,7 +406,7 @@ function doExploreRandomEvent(area) {
           const inst = window.armorInstances[idx];
           if (inst) {
             const MAX_DURABILITY_LOCAL = typeof MAX_DURABILITY === "number" ? MAX_DURABILITY : 10;
-            inst.durability = Math.max(0, (inst.durability ?? MAX_DURABILITY_LOCAL) - 1);
+            inst.durability = Math.max(0, (inst.durability ?? MAX_DURABILITY_LOCAL) - 30);
             if (inst.durability <= 0) {
               const aName = (armors.find(a => a.id === inst.id)?.name) || inst.id;
               appendLog(`${aName} は壊れて消滅した…`);
@@ -425,7 +425,7 @@ function doExploreRandomEvent(area) {
         if (!Array.isArray(window.weaponInstances) && equippedWeaponId && Array.isArray(weapons)) {
           const w = weapons.find(x => x.id === equippedWeaponId);
           if (w && typeof w.durability === "number") {
-            w.durability = Math.max(0, w.durability - 1);
+            w.durability = Math.max(0, w.durability - 30);
             if (w.durability <= 0) {
               const cnt = weaponCounts[w.id] || 0;
               weaponCounts[w.id] = Math.max(0, cnt - 1);
@@ -443,7 +443,7 @@ function doExploreRandomEvent(area) {
         if (!Array.isArray(window.armorInstances) && equippedArmorId && Array.isArray(armors)) {
           const a = armors.find(x => x.id === equippedArmorId);
           if (a && typeof a.durability === "number") {
-            a.durability = Math.max(0, a.durability - 1);
+            a.durability = Math.max(0, a.durability - 30);
             if (a.durability <= 0) {
               const cnt = armorCounts[a.id] || 0;
               armorCounts[a.id] = Math.max(0, cnt - 1);
@@ -465,7 +465,7 @@ function doExploreRandomEvent(area) {
       reduceDurabilityOnEquipTrap();
 
       if (brokeSomething) {
-        appendLog("街に戻った… 休んで回復し、所持ゴールドを半分失い、装備の耐久度が1減少した。");
+        appendLog("街に戻った… 休んで回復し、所持ゴールドを半分失い、装備の耐久度が30減少した。");
       } else {
         appendLog("街に戻った… 休んで回復し、所持ゴールドを半分失った。");
       }

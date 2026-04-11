@@ -6,6 +6,9 @@
 // 撃破処理（経験値・お金・ボスフラグ）
 // =======================
 
+// ★戦闘勝利カウンタ（装備耐久用）
+window.battleCountSinceDurability = window.battleCountSinceDurability || 0;
+
 function onEnemyDefeatedCore(enemyInst, killFlag, killSource) {
   if (!enemyInst) return;
 
@@ -28,6 +31,39 @@ function onEnemyDefeatedCore(enemyInst, killFlag, killSource) {
 
   if (typeof handleHungerThirstOnAction === "function") {
     handleHungerThirstOnAction("battleWin");
+  }
+
+  // ★勝利回数をカウントし、30勝ごとに装備中の武器・防具の耐久を1減らす
+  window.battleCountSinceDurability = (window.battleCountSinceDurability || 0) + 1;
+
+  if (window.battleCountSinceDurability >= 30) {
+    window.battleCountSinceDurability = 0;
+
+    let reduced = false;
+
+    // 装備中武器インスタンス
+    if (typeof equippedWeaponIndex === "number" &&
+        Array.isArray(window.weaponInstances)) {
+      const inst = window.weaponInstances[equippedWeaponIndex];
+      if (inst) {
+        inst.durability = Math.max(0, (inst.durability ?? MAX_DURABILITY) - 1);
+        reduced = true;
+      }
+    }
+
+    // 装備中防具インスタンス
+    if (typeof equippedArmorIndex === "number" &&
+        Array.isArray(window.armorInstances)) {
+      const inst = window.armorInstances[equippedArmorIndex];
+      if (inst) {
+        inst.durability = Math.max(0, (inst.durability ?? MAX_DURABILITY) - 1);
+        reduced = true;
+      }
+    }
+
+    if (reduced) {
+      appendLog("戦いを重ね、装備の耐久が少し消耗した。");
+    }
   }
 
   // ここでは「誰がトドメを刺したか」は扱わず、ギルド依頼のカウントは
@@ -996,7 +1032,7 @@ function tryUpgradeGatherBase(matKey) {
       const haveStar = intermediateMats["starShard"] || 0;
       lines.push(`- starShard: 必要 ${needStar} 個 / 所持 ${haveStar} 個`);
     }
-    appendLog(lines.join("\\\\\\\\\\\\\\\\n"));
+    appendLog(lines.join("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n"));
   })();
 
   for (const iid in needInter) {

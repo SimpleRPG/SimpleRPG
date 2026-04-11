@@ -55,6 +55,7 @@ let marketBuyOrders = [];
 let marketTradeLogs = [];
 
 let marketOrderIdSeq = 1;
+// クライアント側のローカルIDはあまり意味がなくなるが互換のため残す
 let marketListingIdSeq = 1;
 
 function addMarketLog(msg){
@@ -81,7 +82,6 @@ function getMatTotal(key) {
 }
 
 // 合計から指定量を減らす（T1→T2→T3 の順で消費）
-// ※ゲーム全体の consumeMaterials(cost) と衝突しないように、市場専用の別名にする
 function consumeBaseMaterials(key, amount) {
   if (typeof materials !== "object") return false;
   const m = materials[key];
@@ -125,7 +125,7 @@ function removeItemForSell(category, itemId, amount){
         const inst = weaponInstances[i];
         if (!inst || inst.id !== itemId) continue;
         const loc = inst.location || "warehouse";
-        if (loc !== "warehouse") continue;   // 倉庫分だけ売る
+        if (loc !== "warehouse") continue;
 
         weaponInstances.splice(i, 1);
         i--;
@@ -178,12 +178,10 @@ function removeItemForSell(category, itemId, amount){
     if(have < amount) return false;
     potionCounts[itemId] = have - amount;
   } else if(category === "tool"){
-    // 道具（爆弾など）は toolCounts を倉庫として扱う
     const have = toolCounts[itemId] || 0;
     if (have < amount) return false;
     toolCounts[itemId] = have - amount;
   } else if(category === "materialBase"){
-    // 基本素材＋星屑: materials.xxx / itemCounts を利用
     if (itemId === "wood" || itemId === "ore" || itemId === "herb" ||
         itemId === "cloth" || itemId === "leather" || itemId === "water") {
       if (!consumeBaseMaterials(itemId, amount)) return false;
@@ -196,13 +194,11 @@ function removeItemForSell(category, itemId, amount){
       return false;
     }
   } else if(category === "materialInter"){
-    // 中間素材（intermediateMats）
     if (typeof intermediateMats !== "object" || intermediateMats[itemId] == null) return false;
     const have = intermediateMats[itemId] || 0;
     if (have < amount) return false;
     intermediateMats[itemId] = have - amount;
   } else if(category === "cooking"){
-    // 料理（倉庫の cookedFoods / cookedDrinks）
     if (typeof cookedFoods === "object" && cookedFoods[itemId]) {
       const have = cookedFoods[itemId] || 0;
       if (have < amount) return false;
@@ -215,7 +211,6 @@ function removeItemForSell(category, itemId, amount){
       return false;
     }
   } else if(category === "material"){
-    // 旧仕様との互換用（内部カテゴリとして来る可能性がある）
     if (itemId === "wood" || itemId === "ore" || itemId === "herb" ||
         itemId === "cloth" || itemId === "leather" || itemId === "water") {
       if (!consumeBaseMaterials(itemId, amount)) return false;
@@ -258,7 +253,6 @@ function getItemLabel(category, itemId){
     const p = potions.find(x => x.id === itemId);
     return p ? p.name : itemId;
   } else if(category === "tool"){
-    // 道具（爆弾など）は簡易ラベル
     if (itemId === "bomb") return "爆弾";
     if (itemId === "bomb_T1") return "爆弾T1";
     if (itemId === "bomb_T2") return "爆弾T2";
@@ -295,8 +289,8 @@ function getItemLabel(category, itemId){
 
     if (typeof COOKING_RECIPES !== "undefined") {
       const fr = COOKING_RECIPES.food.find(r => r.id === itemId);
-      if (fr) return fr.name;
       const dr = COOKING_RECIPES.drink.find(r => r.id === itemId);
+      if (fr) return fr.name;
       if (dr) return dr.name;
     }
     return itemId;
@@ -318,7 +312,7 @@ function doMarketSell(){
   const priceEl= document.getElementById("marketSellPrice");
   if(!catSel || !itemSel || !amtEl || !priceEl) return;
 
-  const uiCategory = catSel.value; // weapon / armor / potion / materialBase / materialInter / cooking / tool
+  const uiCategory = catSel.value;
   const itemId     = itemSel.value;
   const amount     = parseInt(amtEl.value,10) || 0;
   const price      = parseInt(priceEl.value,10) || 0;
@@ -336,7 +330,6 @@ function doMarketSell(){
     return;
   }
 
-  // 市場内部カテゴリ（一覧表示・購入側のフィルタ用）
   let categoryForMarket = uiCategory;
   if (uiCategory === "materialBase" || uiCategory === "materialInter" || uiCategory === "cooking") {
     categoryForMarket = "material";
@@ -347,17 +340,53 @@ function doMarketSell(){
     return;
   }
 
+  const label = getItemLabel(uiCategory, itemId);
+
+  if (window.globalSocket) {
+    try {
+      const itemKey = itemId;
+
+      window.globalSocket.emit(
+        "market:sell",
+        { itemKey, category: categoryForMarket, amount, price },
+        (res) => {
+          if (!res || !res.ok) {
+            addItemForBuy(categoryForMarket, itemId, amount);
+            const errMsg = res && res.error ? res.error : "出品に失敗しました";
+            setLog(errMsg);
+            return;
+          }
+
+          setLog(`${label} を ${amount}個、1個${price}Gで出品した（オンライン市場）`);
+          addMarketLog(`出品: ${label} x${amount} @${price}G`);
+
+          // サーバー側の market:update を待つが、保険でリスト要求
+          try {
+            window.globalSocket.emit("market:list");
+          } catch (e2) {
+            console.log("market:list emit error after sell", e2);
+          }
+        }
+      );
+      return;
+    } catch (e) {
+      console.log("market:sell emit error", e);
+      addItemForBuy(categoryForMarket, itemId, amount);
+      setLog("オンライン市場への出品に失敗しました");
+      return;
+    }
+  }
+
   const listing = {
     id: marketListingIdSeq++,
     category: categoryForMarket,
     itemId,
-    price,       // 1個単価
-    amount,      // 残り個数
-    owner: "player" // 一人用なので固定
+    price,
+    amount,
+    owner: "player"
   };
   marketListings.push(listing);
 
-  const label = getItemLabel(uiCategory, itemId);
   setLog(`${label} を ${amount}個、1個${price}Gで出品した`);
   addMarketLog(`出品: ${label} x${amount} @${price}G`);
 
@@ -368,18 +397,23 @@ function doMarketSell(){
 }
 
 // -----------------------
-// 出品リストをまとめる（購入側表示用）
+// 出品リストをまとめる
 // -----------------------
 function buildMarketStacks(){
   const map = new Map();
   marketListings.forEach(l => {
-    const key = buildStackKey(l.category, l.itemId);
+    // サーバーから来る listing に itemKey が入っている場合への保険
+    const category = l.category;
+    const itemId = l.itemId || l.itemKey;
+    if (!category || !itemId) return;
+
+    const key = buildStackKey(category, itemId);
     let st = map.get(key);
     if(!st){
       st = {
         key,
-        category: l.category,
-        itemId: l.itemId,
+        category,
+        itemId,
         totalAmount: 0,
         minPrice: Infinity,
         maxPrice: 0,
@@ -387,10 +421,19 @@ function buildMarketStacks(){
       };
       map.set(key, st);
     }
-    st.totalAmount += l.amount;
-    st.minPrice = Math.min(st.minPrice, l.price);
-    st.maxPrice = Math.max(st.maxPrice, l.price);
-    st.listings.push(l);
+    const amt = l.amount || 0;
+    const price = l.price || 0;
+    st.totalAmount += amt;
+    st.minPrice = Math.min(st.minPrice, price);
+    st.maxPrice = Math.max(st.maxPrice, price);
+    st.listings.push({
+      id: l.id,
+      category,
+      itemId,
+      price,
+      amount: amt,
+      owner: l.owner || l.sellerId || "server"
+    });
   });
 
   const arr = Array.from(map.values());
@@ -420,7 +463,11 @@ function getStackLabel(st){
 function simulateMarketBuy(stackKey, mode, amount){
   const [category, itemId] = stackKey.split(":");
   const listings = marketListings
-    .filter(l => l.category === category && l.itemId === itemId && l.amount > 0)
+    .filter(l => {
+      const cat = l.category;
+      const id  = l.itemId || l.itemKey;
+      return cat === category && id === itemId && l.amount > 0;
+    })
     .sort((a,b)=>a.price - b.price);
 
   if(listings.length === 0) return null;
@@ -469,7 +516,6 @@ function simulateMarketBuy(stackKey, mode, amount){
 }
 
 function addItemForBuy(category, itemId, amount){
-  // 武器・防具・ポーション・道具・料理・素材はまとめて addItemToInventory に任せる
   if (typeof addItemToInventory === "function" &&
       (category === "weapon" || category === "armor" ||
        category === "potion" || category === "tool"  ||
@@ -481,7 +527,6 @@ function addItemForBuy(category, itemId, amount){
     return;
   }
 
-  // フォールバック（念のため残すなら）
   if(category === "weapon"){
     weaponCounts[itemId] = (weaponCounts[itemId] || 0) + amount;
   } else if(category === "armor"){
@@ -491,22 +536,18 @@ function addItemForBuy(category, itemId, amount){
   } else if(category === "tool"){
     toolCounts[itemId] = (toolCounts[itemId] || 0) + amount;
   } else if(category === "material"){
-    // 基本素材は materials.xxx に追加
     if (itemId === "wood" || itemId === "ore" || itemId === "herb" ||
         itemId === "cloth" || itemId === "leather" || itemId === "water") {
       addBaseMaterials(itemId, amount);
     }
-    // 星屑の結晶
     else if (itemId === RARE_GATHER_ITEM_ID) {
       if (typeof itemCounts === "object") {
         itemCounts[itemId] = (itemCounts[itemId] || 0) + amount;
       }
     }
-    // 中間素材
     else if (typeof intermediateMats === "object" && intermediateMats[itemId] != null) {
       intermediateMats[itemId] = (intermediateMats[itemId] || 0) + amount;
     }
-    // 料理（倉庫に入れる）
     else if (typeof COOKING_RECIPES !== "undefined") {
       const fr = COOKING_RECIPES.food.find(r => r.id === itemId);
       const dr = COOKING_RECIPES.drink.find(r => r.id === itemId);
@@ -523,13 +564,74 @@ function doMarketBuy(stackKey, mode, amount){
   const sim = simulateMarketBuy(stackKey, mode, amount);
   if(!sim || sim.buyableCount <= 0) return;
 
+  if (money < sim.totalPrice) {
+    setLog("お金が足りません");
+    return;
+  }
+
   const [category, itemId] = stackKey.split(":");
   let remain = sim.buyableCount;
   let costLeft = sim.totalPrice;
 
   const listings = marketListings
-    .filter(l => l.category === category && l.itemId === itemId && l.amount > 0)
+    .filter(l => {
+      const cat = l.category;
+      const id  = l.itemId || l.itemKey;
+      return cat === category && id === itemId && l.amount > 0;
+    })
     .sort((a,b)=>a.price - b.price);
+
+  const consumeList = [];
+  for(const l of listings){
+    if(remain <= 0) break;
+    const canBuyFromThis = Math.min(l.amount, remain);
+    const cost = canBuyFromThis * l.price;
+    if(cost > costLeft) break;
+
+    consumeList.push({ id: l.id, amount: canBuyFromThis, price: l.price });
+    remain -= canBuyFromThis;
+    costLeft -= cost;
+  }
+
+  if (!consumeList.length) return;
+
+  if (window.globalSocket) {
+    try {
+      let index = 0;
+      const doNext = () => {
+        if (index >= consumeList.length) {
+          money -= sim.totalPrice;
+          addItemForBuy(category, itemId, sim.buyableCount);
+          const label = getItemLabel(category, itemId);
+          setLog(`${label} を ${sim.buyableCount}個購入した（合計${sim.totalPrice}G）`);
+          addMarketLog(`購入: ${label} x${sim.buyableCount} @合計${sim.totalPrice}G`);
+
+          try {
+            window.globalSocket.emit("market:list");
+          } catch (e2) {
+            console.log("market:list emit error after buy", e2);
+          }
+          return;
+        }
+        const c = consumeList[index++];
+        window.globalSocket.emit(
+          "market:consume",
+          { id: c.id, consumeAmount: c.amount },
+          (res) => {
+            if (!res || !res.ok) {
+              setLog("購入処理に失敗しました");
+              return;
+            }
+            doNext();
+          }
+        );
+      };
+      doNext();
+      return;
+    } catch (e) {
+      console.log("market:consume emit error", e);
+    }
+  }
 
   for(const l of listings){
     if(remain <= 0) break;
@@ -560,9 +662,6 @@ function doMarketBuy(stackKey, mode, amount){
 // -----------------------
 // 原価（理論価値）計算ヘルパー
 // -----------------------
-
-// category: "weapon" / "armor" / "potion" / "tool" / "material"
-// itemId: CRAFT_RECIPES/INTERMEDIATE_MATERIALS/素材ID
 function getTheoreticalCost(category, itemId) {
   function getBaseMaterialCost(baseKey, tier) {
     const tbl = MATERIAL_TIER_VALUES || {};
@@ -650,7 +749,6 @@ function getTheoreticalCost(category, itemId) {
   return 0;
 }
 
-// ★ NPC 購入ロジック用：内部基準価格を返す
 function getMarketBaseValue(category, itemId) {
   const theoretical = getTheoreticalCost(category, itemId);
   if (theoretical > 0) return theoretical;
@@ -664,11 +762,8 @@ function getMarketBaseValue(category, itemId) {
 // =======================
 // 市場イベント（ホットカテゴリ）
 // =======================
-
-// イベント候補カテゴリ
 const MARKET_HOT_CATEGORY_CANDIDATES = ["potion", "material", "weapon", "armor", "cooking", "tool"];
 
-// カテゴリ表示名（ニュース用）
 const MARKET_CATEGORY_LABELS_JA = {
   weapon: "武器",
   armor: "防具",
@@ -678,20 +773,17 @@ const MARKET_CATEGORY_LABELS_JA = {
   tool: "道具"
 };
 
-// 現在ホットなカテゴリ
-let currentMarketHotCats = []; // 例: ["potion","cooking"]
+let currentMarketHotCats = [];
 
-// 需要フェーズ補正（人気カテゴリがあれば確率を上げる）
 function applyMarketEventBoost(prob, itemCategory) {
   if (Array.isArray(currentMarketHotCats) &&
       currentMarketHotCats.includes(itemCategory)) {
-    prob *= 4;              // 4倍くらい
-    if (prob > 0.25) prob = 0.25; // 上限 25%
+    prob *= 4;
+    if (prob > 0.25) prob = 0.25;
   }
   return prob;
 }
 
-// ホットカテゴリをランダム更新
 function rotateMarketHotCategories() {
   if (!Array.isArray(MARKET_HOT_CATEGORY_CANDIDATES) ||
       MARKET_HOT_CATEGORY_CANDIDATES.length === 0) {
@@ -708,7 +800,6 @@ function rotateMarketHotCategories() {
   addMarketLog(`市場ニュース: 現在「${labelJa}」カテゴリの取引が活況だ！`);
 }
 
-// 現実時間30分ごとにホットカテゴリを切り替える
 (function startMarketEventTimerIfNeeded() {
   if (typeof window === "undefined") return;
   if (window._marketEventTimerStarted) return;
@@ -722,7 +813,6 @@ function rotateMarketHotCategories() {
   }, THIRTY_MIN_MS);
 })();
 
-// ★ NPC 購入確率（原価割れはお得としてそこそこ買う）
 function getNpcBuyProb(baseValue, price, category) {
   if (price <= 0 || baseValue <= 0) return 0;
 
@@ -747,7 +837,6 @@ function getNpcBuyProb(baseValue, price, category) {
   return prob;
 }
 
-// ★ NPC が市場からたまに購入する処理
 function rollNpcMarketBuy() {
   if (!marketListings.length) return;
 
@@ -762,7 +851,7 @@ function rollNpcMarketBuy() {
     const li = marketListings[indices[idx]];
     if (!li || li.amount <= 0) continue;
 
-    const baseValue = getMarketBaseValue(li.category, li.itemId);
+    const baseValue = getMarketBaseValue(li.category, li.itemId || li.itemKey);
     if (baseValue <= 0) continue;
 
     const prob = getNpcBuyProb(baseValue, li.price, li.category);
@@ -776,7 +865,7 @@ function rollNpcMarketBuy() {
 
     money += totalPrice;
 
-    const label = getItemLabel(li.category, li.itemId);
+    const label = getItemLabel(li.category, li.itemId || li.itemKey);
     const npcName = getRandomNpcMerchantName();
     addMarketLog(`${npcName}が ${label} を市場から購入した（x${actualBuy} / ${totalPrice}G）`);
 
@@ -1089,6 +1178,64 @@ function filterMarketBuyListByCategory(cat){
 }
 
 // =======================
+// サーバー市場との同期（Socket.io）
+// =======================
+function setupMarketSocketSync() {
+  if (typeof window === "undefined") return;
+
+  if (!window.globalSocket) {
+    console.log("market-core: globalSocket not ready yet");
+    return;
+  }
+
+  console.log("market-core: setupMarketSocketSync start");
+
+  try {
+    window.globalSocket.on("market:listResult", (serverListings) => {
+      console.log("market:listResult", serverListings);
+
+      marketListings = (Array.isArray(serverListings) ? serverListings : []).map(l => ({
+        id: l.id,
+        category: l.category,
+        itemId: l.itemKey || l.itemId,
+        price: l.price,
+        amount: l.amount,
+        owner: l.sellerId || "server"
+      }));
+
+      refreshMarketBuyList();
+    });
+
+    window.globalSocket.on("market:update", (serverListings) => {
+      console.log("market:update", serverListings);
+
+      marketListings = (Array.isArray(serverListings) ? serverListings : []).map(l => ({
+        id: l.id,
+        category: l.category,
+        itemId: l.itemKey || l.itemId,
+        price: l.price,
+        amount: l.amount,
+        owner: l.sellerId || "server"
+      }));
+
+      refreshMarketBuyList();
+    });
+
+    // 接続済みなら初期リストを要求
+    try {
+      window.globalSocket.emit("market:list");
+    } catch (e2) {
+      console.log("initial market:list emit error (inside socket sync)", e2);
+    }
+  } catch (e) {
+    console.log("market socket handlers error", e);
+  }
+}
+
+// 読み込み時に「一度だけ」試す（globalSocket が既にあれば登録される）
+setupMarketSocketSync();
+
+// =======================
 // 市場タブ表示時の更新フック
 // =======================
 window.addEventListener("DOMContentLoaded", () => {
@@ -1107,6 +1254,14 @@ window.addEventListener("DOMContentLoaded", () => {
     tabBuy.addEventListener("click", () => {
       if (typeof refreshMarketBuyList === "function") {
         refreshMarketBuyList();
+      }
+
+      if (window.globalSocket) {
+        try {
+          window.globalSocket.emit("market:list");
+        } catch (e) {
+          console.log("market:list emit error on tab click", e);
+        }
       }
     });
   }

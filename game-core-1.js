@@ -9,7 +9,7 @@
 let BASE_EXP_PER_LEVEL = 100;
 
 // ★ 装備耐久（武器・防具共通）
-let MAX_DURABILITY = 3;
+let MAX_DURABILITY = 100;
 
 // ★ ステータス→HP/MP/SP 変換係数（VIT3でHP+1, INT3でMP+1, DEX3でSP+1）
 const HP_PER_VIT_POINT = 1 / 3;

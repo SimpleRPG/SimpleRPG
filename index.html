@@ -205,7 +205,8 @@
             <!-- 魔巧区内サブタブ -->
             <div id="magicDistTabs" style="margin:4px 0;">
               <button class="magic-tab-button active" data-page="magic-craft">クラフト</button>
-              <button class="magic-tab-button" data-page="magic-enhance">装備強化</button>
+              <!-- ★ここを「装備手入れ場」に名称変更 -->
+              <button class="magic-tab-button" data-page="magic-enhance">装備手入れ場</button>
               <button class="magic-tab-button" data-page="magic-shop">ショップ</button>
               <button class="magic-tab-button" data-page="magic-market">市場</button>
               <button class="magic-tab-button" data-page="magic-gather">採取拠点</button>
@@ -334,8 +335,9 @@
               </div>
             </div>
 
-            <!-- サブページ: 装備強化 -->
+            <!-- サブページ: 装備強化（中身の仕様はそのまま） -->
             <div id="magicPageEnhance" class="magic-sub-page" style="display:none;">
+              <!-- h3 はページ内見出しなのでそのまま「装備強化」 -->
               <h3>装備強化</h3>
               <p>強化したい装備と、素材にする同名装備を所持している必要があります。</p>
 
@@ -362,6 +364,20 @@
               <p style="font-size:11px; color:#ccc; margin-top:6px;">
                 ※強化済みや高品質の装備を素材にするときはログに警告が表示されます。
               </p>
+
+              <!-- ★ここから修理UI -->
+              <hr style="margin:8px 0;">
+
+              <h3>装備修理</h3>
+              <div style="margin-bottom:4px;">
+                <label style="font-size:12px;">修理対象:</label>
+                <select id="repairTargetSelect" style="min-width:200px;"></select>
+              </div>
+              <div id="repairInfoText" style="font-size:11px; color:#ccc; margin-bottom:4px;">
+                修理対象を選択してください。
+              </div>
+              <button id="repairExecBtn">修理する</button>
+              <!-- ★ここまで修理UI -->
             </div>
 
             <!-- サブページ: ショップ -->
@@ -891,6 +907,9 @@
   <script src="guild.js"></script>
   <script src="guildskill.js"></script>
 
+  <!-- 修理ロジックを別ファイルにしている場合はここで読み込む -->
+  <!-- <script src="repair-core.js"></script> -->
+
   <script src="game-ui.js"></script>
   <script src="game-ui-2.js"></script>
   <script src="game-ui-3.js"></script>
@@ -928,6 +947,47 @@
       // 初期状態は「ギルド一覧」タブを表示
       setGuildTab("list");
     });
+  </script>
+
+  <!-- ★ Socket.io クライアントと接続 -->
+  <script src="http://localhost:3001/socket.io/socket.io.js"></script>
+  <script>
+    // 他のファイル（market-core.js / game-ui.js など）から参照するグローバル
+    window.globalSocket = null;
+
+    (function () {
+      try {
+        if (typeof io === "undefined") {
+          console.log("Socket.io client library not loaded (io is undefined)");
+          return;
+        }
+
+        // 必要に応じて localhost を LAN IP に変更する
+        const socket = io("http://localhost:3001");
+        window.globalSocket = socket;
+
+        socket.on("connect", () => {
+          console.log("Socket.io connected:", socket.id);
+          // 簡単な疎通テスト
+          socket.emit("ping-from-client");
+
+          // ★ ここを追加: 接続完了後に市場の同期処理を呼ぶ
+          if (typeof window.setupMarketSocketSync === "function") {
+            window.setupMarketSocketSync();
+          }
+        });
+
+        socket.on("pong-from-server", () => {
+          console.log("Received pong-from-server");
+        });
+
+        socket.on("connect_error", (err) => {
+          console.log("Socket.io connect_error:", err.message);
+        });
+      } catch (e) {
+        console.log("Socket.io init error:", e);
+      }
+    })();
   </script>
 </body>
 </html>
