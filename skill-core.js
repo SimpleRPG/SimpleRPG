@@ -195,7 +195,7 @@ let petBuffTurnRemain = 0;
 
 // 錬金術師用: アイテムブースト
 let itemBoostTurnRemain = 0;
-let itemBoostRate       = 0.2;   // アイテム効果さらに+20%
+let itemBoostRate       = 0.5;   // アイテム効果さらに+50%
 
 function getCurrentAtkForSkill() {
   let base = atkTotal;

@@ -249,13 +249,14 @@ const STATUS_EFFECTS = {
     }
   },
 
-  // 守護ポーション（防御アップポーション）: 被ダメさらに1〜2%減
+  // 守護ポーション（防御アップポーション）
   potion_def_up_T1: {
     id: "potion_def_up_T1",
     name: "ポーション:防御アップT1",
     baseDuration: 3,
     modifyDefense(mult) {
-      return mult * 0.88; // 料理T1(0.90)より-0.02
+      // ★ここだけ変更: 被ダメージ×0.70（30%カット）
+      return mult * 0.70;
     }
   },
   potion_def_up_T2: {
@@ -263,7 +264,7 @@ const STATUS_EFFECTS = {
     name: "ポーション:防御アップT2",
     baseDuration: 3,
     modifyDefense(mult) {
-      return mult * 0.80; // 料理T2(0.82)より-0.02
+      return mult * 0.60; // 料理T2(0.82)より-0.02
     }
   },
   potion_def_up_T3: {
@@ -271,7 +272,7 @@ const STATUS_EFFECTS = {
     name: "ポーション:防御アップT3",
     baseDuration: 3,
     modifyDefense(mult) {
-      return mult * 0.68; // 料理T3系(0.70〜0.75)より-0.02程度
+      return mult * 0.50; // 料理T3系(0.70〜0.75)より-0.02程度
     }
   },
 

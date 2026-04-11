@@ -6,6 +6,10 @@ const ENEMIES = {
   slime: {
     id: "slime",
     name: "スライム",
+    name: "スライム",
+    name: "スライム",
+    name: "スライム",
+    name: "スライム",
     hp: 12,   // ほんの少しだけ増やす
     atk: 4,   // HP30に対して8発前後
     def: 0,
@@ -125,10 +129,10 @@ const ENEMIES = {
   kingSlime: {
     id: "kingSlime",
     name: "キングスライム？",
-    hp: 420,   // HP228＋装備込ATK/DEF想定で10T前後
-    atk: 60,   // 0転生DEF＋料理で3〜5発耐える程度
-    def: 18,
-    exp: 800,
+    hp: 450,   // HP228＋装備込ATK/DEF想定で10T前後
+    atk: 160,   // 0転生DEF＋料理で3〜5発耐える程度
+    def: 50,
+    
     money: 200,
     isBoss: true
   },
@@ -136,10 +140,10 @@ const ENEMIES = {
   hundredWolfKing: {
     id: "hundredWolfKing",
     name: "百狼の王",
-    hp: 900,   // 10転生想定、与ダメも被ダメも10T前後
-    atk: 110,
-    def: 40,
-    exp: 1600,
+    hp: 5000,   // 10転生想定、与ダメも被ダメも10T前後
+    atk: 1900,
+    def: 600,
+    
     money: 450,
     isBoss: true
   },
@@ -147,10 +151,10 @@ const ENEMIES = {
   goblinKing: {
     id: "goblinKing",
     name: "ゴブリンキング",
-    hp: 1500,
-    atk: 150,
-    def: 60,
-    exp: 2800,
+    hp: 9000,
+    atk: 3900,
+    def: 1000,
+    
     money: 800,
     isBoss: true
   },
@@ -158,10 +162,11 @@ const ENEMIES = {
   berserkOgre: {
     id: "berserkOgre",
     name: "バーサークオーガー",
-    hp: 2600,  // 40転生STR/スキル/料理フルで10T前後を想定
-    atk: 210,  // DEF237＋装備＋防御料理でも2〜4発は食らう
-    def: 90,   // 1転生T1装備ではまともに通らない程度
-    exp: 4500,
+    hp: 21000,  // 40転生STR/スキル/料理フルで10T前後を想定
+    atk: 9000,  // DEF237＋装備＋防御料理でも2〜4発は食らう
+    def: 1500,   // 1転生T1装備ではまともに通らない程度
+    
+     
     money: 1400,
     isBoss: true
   }
