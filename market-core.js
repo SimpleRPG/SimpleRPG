@@ -4,14 +4,7 @@
 // =======================
 // 市場（売り注文＋買い注文）
 // =======================
-// 素材ティアごとのベース価値
-// T1: 3G, T2: 5G, T3: 10G
-window.MATERIAL_TIER_VALUES = window.MATERIAL_TIER_VALUES || {
-  t1: 3,
-  t2: 5,
-  t3: 10
-};
-const MATERIAL_TIER_VALUES = window.MATERIAL_TIER_VALUES;
+// ※ MATERIAL_TIER_VALUES は craft-data.js 側で window.MATERIAL_TIER_VALUES として定義される前提
 
 // 料理素材（レシピに使う素材）は一律 5G 相当
 const COOKING_INGREDIENT_BASE_VALUE = 5;
@@ -697,7 +690,7 @@ function doMarketBuy(stackKey, mode, amount){
 // -----------------------
 function getTheoreticalCost(category, itemId) {
   function getBaseMaterialCost(baseKey, tier) {
-    const tbl = MATERIAL_TIER_VALUES || {};
+    const tbl = window.MATERIAL_TIER_VALUES || {};
     if (tier === "t1") return tbl.t1 || 3;
     if (tier === "t2") return tbl.t2 || 5;
     if (tier === "t3") return tbl.t3 || 10;
@@ -1347,4 +1340,4 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
-});
+})
