@@ -786,8 +786,8 @@ function setupMarketSocketSync() {
 
     try {
       window.globalSocket.emit("market:list");
-      // 必要なら初期の買い注文一覧も取得
-      // window.globalSocket.emit("market:buyOrder:list");
+      // 初期の買い注文一覧も取得
+      window.globalSocket.emit("market:buyOrder:list");
     } catch (e2) {
       console.log("initial market:list emit error (inside socket sync)", e2);
     }
@@ -823,8 +823,8 @@ window.addEventListener("DOMContentLoaded", () => {
       if (window.globalSocket) {
         try {
           window.globalSocket.emit("market:list");
-          // 買い注文タブで自分の注文も最新化したい場合
-          // window.globalSocket.emit("market:buyOrder:list");
+          // 買い注文タブで自分の注文も最新化
+          window.globalSocket.emit("market:buyOrder:list");
         } catch (e) {
           console.log("market:list emit error on tab click", e);
         }
