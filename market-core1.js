@@ -429,7 +429,7 @@ function doMarketSell(){
 
   const label = getItemLabel(uiCategory, itemId);
 
-  // オンライン時: サーバ成功後に在庫を減らす
+  // オンライン時: サーバ成功後に在庫を減らし、UIを更新
   if (window.globalSocket) {
     try {
       const itemKey = itemId;
@@ -454,6 +454,18 @@ function doMarketSell(){
           }
           if (typeof refreshWarehouseUI === "function") {
             refreshWarehouseUI();
+          }
+          if (typeof refreshMarketSellCandidates === "function") {
+            refreshMarketSellCandidates();
+          }
+          if (typeof refreshMarketSellItems === "function") {
+            refreshMarketSellItems();
+          }
+          if (typeof refreshMarketBuyList === "function") {
+            refreshMarketBuyList();
+          }
+          if (typeof renderMyListings === "function") {
+            renderMyListings();
           }
 
           const msg = `${label} を ${amount}個、1個${price}Gで出品した`;
