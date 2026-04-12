@@ -1,12 +1,19 @@
 // market-core2.js
 // market-core.js で定義されたグローバル（marketListings など）を前提にした後半ロジック
 
+// ここを追加（グローバルを必ず生やしておく）
+window.marketListings = window.marketListings || [];
+window.prevServerMarketListings = window.prevServerMarketListings || [];
+
 // -----------------------
 // 出品リストをまとめる
 // -----------------------
 function buildMarketStacks(){
   const map = new Map();
-  marketListings.forEach(l => {
+  const src = (typeof marketListings !== "undefined")
+    ? marketListings
+    : (Array.isArray(window.marketListings) ? window.marketListings : []);
+  src.forEach(l => {
     const category = l.category;
     const itemId = l.itemId || l.itemKey;
     if (!category || !itemId) return;
@@ -66,7 +73,10 @@ function getStackLabel(st){
 // -----------------------
 function simulateMarketBuy(stackKey, mode, amount){
   const [category, itemId] = stackKey.split(":");
-  const listings = marketListings
+  const src = (typeof marketListings !== "undefined")
+    ? marketListings
+    : (Array.isArray(window.marketListings) ? window.marketListings : []);
+  const listings = src
     .filter(l => {
       const cat = l.category;
       const id  = l.itemId || l.itemKey;
@@ -181,7 +191,10 @@ function doMarketBuy(stackKey, mode, amount){
   let remain = sim.buyableCount;
   let costLeft = sim.totalPrice;
 
-  const listings = marketListings
+  const src = (typeof marketListings !== "undefined")
+    ? marketListings
+    : (Array.isArray(window.marketListings) ? window.marketListings : []);
+  const listings = src
     .filter(l => {
       const cat = l.category;
       const id  = l.itemId || l.itemKey;
@@ -252,7 +265,11 @@ function doMarketBuy(stackKey, mode, amount){
     costLeft -= cost;
   }
 
-  marketListings = marketListings.filter(l => l.amount > 0);
+  // marketListings が未定義環境でも落ちないようにガード
+  // ★再代入は const ではなく常に window.marketListings に対して行う
+  if (Array.isArray(window.marketListings)) {
+    window.marketListings = window.marketListings.filter(l => l.amount > 0);
+  }
 
   money -= sim.totalPrice;
   addItemForBuy(category, itemId, sim.buyableCount);
@@ -448,91 +465,8 @@ function getNpcBuyProb(baseValue, price, category) {
 // detectSellFromDiff などで結果だけ反映する。
 
 // -----------------------
-// 買い注文（予約）
-// -----------------------
-function doMarketBuyOrder(){
-  const sel = document.getElementById("marketOrderItem");
-  const priceEl = document.getElementById("marketOrderPrice");
-  const amtEl   = document.getElementById("marketOrderAmount");
-  if(!sel || !priceEl || !amtEl) return;
-
-  const val = sel.value;
-  const [category, itemId] = val.split(":");
-  const price = parseInt(priceEl.value,10) || 0;
-  const amount= parseInt(amtEl.value,10) || 0;
-
-  if(!category || !itemId){
-    if (typeof appendLog === "function") appendLog("注文するアイテムを選んでください");
-    return;
-  }
-  if(price <= 0 || amount <= 0){
-    if (typeof appendLog === "function") appendLog("価格と最大個数は1以上にしてください");
-    return;
-  }
-
-  const reservedMoney = price * amount;
-  if(money < reservedMoney){
-    if (typeof appendLog === "function") appendLog("注文用のお金が足りない");
-    return;
-  }
-  money -= reservedMoney;
-
-  const order = {
-    id: marketOrderIdSeq++,
-    category,
-    itemId,
-    price,
-    maxAmount: amount,
-    remainAmount: amount,
-    reservedMoney
-  };
-  marketBuyOrders.push(order);
-
-  const label = getItemLabel(category, itemId);
-  const msg = `${label} を「1個${price}Gで${amount}個まで」注文として出した（${reservedMoney}G拘束）`;
-  if (typeof appendLog === "function") appendLog(msg);
-
-  updateDisplay();
-  refreshMarketOrderList();
-  renderMyListings();
-}
-
-function doMarketOrder() {
-  doMarketBuyOrder();
-}
-
-function refreshMarketOrderList(){
-  const el = document.getElementById("marketOrderList");
-  if(!el) return;
-  el.innerHTML = "";
-
-  if(marketBuyOrders.length === 0){
-    el.textContent = "現在、あなたの注文はありません。";
-    return;
-  }
-
-  marketBuyOrders.forEach(order=>{
-    const row = document.createElement("div");
-    row.style.borderBottom = "1px dashed #4b3f72";
-    row.style.padding = "2px 0";
-
-    const label = getItemLabel(order.category, order.itemId);
-    const usedAmount = order.maxAmount - order.remainAmount;
-    const usedMoney  = usedAmount * order.price;
-    const remainMoney= order.reservedMoney - usedMoney;
-
-    row.textContent =
-      `#${order.id} ${label} / 価格:${order.price}G / `+
-      `最大${order.maxAmount}個（残り${order.remainAmount}個）/ `+
-      `予約G:${order.reservedMoney}（未使用${remainMoney}G）`;
-
-    el.appendChild(row);
-  });
-}
-
-// =======================
 // UI連動用 追加実装
-// =======================
+// ----------------------
 
 function refreshMarketSellCandidates(){
   const catSel  = document.getElementById("marketSellCategory");

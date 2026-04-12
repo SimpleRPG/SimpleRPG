@@ -35,6 +35,10 @@ const io = new Server(httpServer, {
 // listing 形式: { id, sellerId, itemKey, category, amount, price }
 let marketListings = [];
 
+// ★サーバー共通の買い注文データ（プレイヤー同士用）
+// order 形式: { id, buyerId, itemKey, category, price, maxAmount, remainAmount, createdAt }
+let marketBuyOrders = [];
+
 // =======================
 // NPC 買いロジック（サーバ側）
 // =======================
@@ -158,6 +162,108 @@ const NPC_BUY_INTERVAL_MS = 30 * 1000;
 setInterval(serverSideRollNpcBuy, NPC_BUY_INTERVAL_MS);
 
 // =======================
+// 買い注文ヘルパー（プレイヤー同士用）
+// =======================
+
+// 新しい買い注文を登録
+function addBuyOrder(buyerId, category, itemKey, price, amount) {
+  const now = Date.now();
+  const order = {
+    id: now.toString() + ":" + Math.random().toString(16).slice(2),
+    buyerId,
+    category,
+    itemKey,
+    price,
+    maxAmount: amount,
+    remainAmount: amount,
+    createdAt: now
+  };
+  marketBuyOrders.push(order);
+  return order;
+}
+
+// 買い注文一覧を（オプションでフィルタして）返す
+function getBuyOrders(filter = {}) {
+  const { buyerId, category, itemKey } = filter;
+  return marketBuyOrders.filter(o => {
+    if (!o) return false;
+    if (buyerId && o.buyerId !== buyerId) return false;
+    if (category && o.category !== category) return false;
+    if (itemKey && o.itemKey !== itemKey) return false;
+    return true;
+  });
+}
+
+// 買い注文をキャンセル（buyerId が自分のものだけ消せる）
+function cancelBuyOrder(buyerId, orderId) {
+  const idx = marketBuyOrders.findIndex(o => o && o.id === orderId && o.buyerId === buyerId);
+  if (idx === -1) return false;
+  marketBuyOrders.splice(idx, 1);
+  return true;
+}
+
+// 出品時に、同じアイテムの買い注文にだけマッチングする
+// 戻り値: { matchedAmount, remainingAmount, matchedOrders: [{ orderId, buyerId, price, amount }] }
+function matchBuyOrdersForListing(listing) {
+  const { category, itemKey, price: sellPrice } = listing;
+  let remain = listing.amount;
+  const matchedOrders = [];
+
+  // 対象アイテムの買い注文を抽出
+  const candidates = getBuyOrders({ category, itemKey });
+
+  if (!candidates.length) {
+    return {
+      matchedAmount: 0,
+      remainingAmount: remain,
+      matchedOrders
+    };
+  }
+
+  // 高い価格優先、同値は古い順
+  candidates.sort((a, b) => {
+    if (b.price !== a.price) return b.price - a.price;
+    return a.createdAt - b.createdAt;
+  });
+
+  for (const order of candidates) {
+    if (remain <= 0) break;
+
+    // 注文価格が出品価格より低ければマッチしない
+    if (order.price < sellPrice) continue;
+
+    if (order.remainAmount <= 0) continue;
+
+    const use = Math.min(order.remainAmount, remain);
+    if (use <= 0) continue;
+
+    order.remainAmount -= use;
+    remain -= use;
+
+    matchedOrders.push({
+      orderId: order.id,
+      buyerId: order.buyerId,
+      price: order.price,
+      amount: use
+    });
+
+    // 残量ゼロの注文はここではそのままにしておき、
+    // 別途クリーンアップする（必要なら）
+  }
+
+  // remainAmount <= 0 の注文を掃除
+  marketBuyOrders = marketBuyOrders.filter(o => o && o.remainAmount > 0);
+
+  const matchedAmount = listing.amount - remain;
+
+  return {
+    matchedAmount,
+    remainingAmount: remain,
+    matchedOrders
+  };
+}
+
+// =======================
 // Socket.io 接続ハンドラ
 // =======================
 
@@ -187,7 +293,90 @@ io.on("connection", (socket) => {
     }
   });
 
-  // ★マーケット: 出品する
+  // ★買い注文: 一覧要求（必要ならクライアントから呼ぶ前提）
+  socket.on("market:buyOrder:list", () => {
+    try {
+      const myOrders = getBuyOrders({ buyerId: socket.id });
+      socket.emit("market:buyOrder:listResult", myOrders);
+    } catch (e) {
+      console.error("market:buyOrder:list error", e);
+    }
+  });
+
+  // ★買い注文: 登録
+  // payload: { category, itemKey, price, amount }
+  socket.on("market:buyOrder", (payload, ack) => {
+    try {
+      console.log("market:buyOrder payload:", payload);
+      const { category, itemKey, price, amount } = payload || {};
+
+      if (!category || !itemKey ||
+          typeof price !== "number" || typeof amount !== "number") {
+        if (typeof ack === "function") {
+          ack({ ok: false, error: "invalid_payload" });
+        }
+        return;
+      }
+      if (price <= 0 || amount <= 0) {
+        if (typeof ack === "function") {
+          ack({ ok: false, error: "invalid_value" });
+        }
+        return;
+      }
+
+      const order = addBuyOrder(socket.id, category, itemKey, price, amount);
+
+      if (typeof ack === "function") {
+        ack({ ok: true, order });
+      }
+
+      // 自分の最新注文一覧を返しておく（UI用）
+      const myOrders = getBuyOrders({ buyerId: socket.id });
+      socket.emit("market:buyOrder:listResult", myOrders);
+    } catch (e) {
+      console.error("market:buyOrder error", e);
+      if (typeof ack === "function") {
+        ack({ ok: false, error: "server_error" });
+      }
+    }
+  });
+
+  // ★買い注文: キャンセル
+  // payload: { orderId }
+  socket.on("market:buyOrder:cancel", (payload, ack) => {
+    try {
+      console.log("market:buyOrder:cancel payload:", payload);
+      const { orderId } = payload || {};
+      if (!orderId) {
+        if (typeof ack === "function") {
+          ack({ ok: false, error: "invalid_payload" });
+        }
+        return;
+      }
+
+      const ok = cancelBuyOrder(socket.id, orderId);
+      if (!ok) {
+        if (typeof ack === "function") {
+          ack({ ok: false, error: "not_found" });
+        }
+        return;
+      }
+
+      if (typeof ack === "function") {
+        ack({ ok: true });
+      }
+
+      const myOrders = getBuyOrders({ buyerId: socket.id });
+      socket.emit("market:buyOrder:listResult", myOrders);
+    } catch (e) {
+      console.error("market:buyOrder:cancel error", e);
+      if (typeof ack === "function") {
+        ack({ ok: false, error: "server_error" });
+      }
+    }
+  });
+
+  // ★マーケット: 出品する（買い注文とマッチングしてから残りを掲載）
   socket.on("market:sell", (payload, ack) => {
     // payload: { itemKey, category, amount, price }
     try {
@@ -212,8 +401,9 @@ io.on("connection", (socket) => {
         return;
       }
 
-      const listing = {
-        id: Date.now().toString() + ":" + Math.random().toString(16).slice(2),
+      // まず仮の listing を作って、買い注文とマッチングを試みる
+      const tempListing = {
+        id: "temp",
         sellerId: socket.id,
         itemKey,
         category,
@@ -221,12 +411,39 @@ io.on("connection", (socket) => {
         price
       };
 
-      marketListings.push(listing);
+      const matchResult = matchBuyOrdersForListing(tempListing);
+      const matchedAmount = matchResult.matchedAmount || 0;
+      let remainingAmount = matchResult.remainingAmount || 0;
+
+      console.log(
+        "market:sell match result:",
+        { matchedAmount, remainingAmount, matchedOrders: matchResult.matchedOrders }
+      );
+
+      // matchedOrders の内容（誰がいくつ買えたか）は、
+      // 現時点ではサーバ側に保持しておくだけで、
+      // money やログの処理はクライアント側の detectSellFromDiff に任せる。
+
+      let listing = null;
+
+      // 残りがあれば、残量だけを通常の出品として marketListings に追加
+      if (remainingAmount > 0) {
+        listing = {
+          id: Date.now().toString() + ":" + Math.random().toString(16).slice(2),
+          sellerId: socket.id,
+          itemKey,
+          category,
+          amount: remainingAmount,
+          price
+        };
+        marketListings.push(listing);
+      }
+
       console.log("marketListings now:", marketListings);
 
-      // 要求元にACK
+      // 要求元にACK（残量の listing だけ返す）
       if (typeof ack === "function") {
-        ack({ ok: true, listing });
+        ack({ ok: true, listing, matchedAmount });
       }
 
       // 全クライアントへ最新リストを通知
