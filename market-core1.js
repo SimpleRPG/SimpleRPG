@@ -602,7 +602,7 @@ function doMarketBuyOrder(){
 
           updateDisplay();
 
-          // 出した直後にサーバ側の最新版で上書き（仕様はそのまま）
+          // 出した直後にサーバ側の最新版で上書き
           try {
             window.globalSocket.emit("market:buyOrder:list");
           } catch (e2) {
