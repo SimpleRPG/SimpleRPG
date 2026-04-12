@@ -825,6 +825,11 @@ window.addEventListener("DOMContentLoaded", () => {
         refreshMarketBuyList();
       }
 
+      // 市場購入タブに来たときは、買い注文用セレクトも最新状態にしておく
+      if (typeof initMarketOrderItemSelect === "function") {
+        initMarketOrderItemSelect();
+      }
+
       if (window.globalSocket) {
         try {
           window.globalSocket.emit("market:list");

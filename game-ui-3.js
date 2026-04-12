@@ -749,6 +749,11 @@ function initJobPetRebirthUI() {
   // まずステータスページを構築
   buildStatusPage();
 
+  // ステータスページ構築後に買い注文セレクトを初期化
+  if (typeof initMarketOrderItemSelect === "function") {
+    initMarketOrderItemSelect();
+  }
+
   // =======================
   // 職業・ペット
   // =======================
