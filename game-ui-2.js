@@ -960,12 +960,12 @@ function initBattleAndShopUI() {
       }
       const price = 80;
       if (money < price) {
-        setLog("お金が足りない（宿屋 80G）");
+        appendLog("お金が足りない（宿屋 80G）");
         return;
       }
       money -= price;
       hp = hpMax;
-      setLog("宿屋で休んだ。HPが全回復した。");
+      appendLog("宿屋で休んだ。HPが全回復した。");
       if (typeof updateDisplay === "function") updateDisplay();
     });
   }

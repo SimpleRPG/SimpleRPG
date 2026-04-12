@@ -524,7 +524,7 @@ function initGame() {
 // ログ表示ヘルパー
 // =======================
 
-function setLog(msg) {
+function appendLog(msg) {
   let el = document.getElementById("log");
   if (!el) return;
   el.textContent = msg;
