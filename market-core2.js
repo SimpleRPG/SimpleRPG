@@ -778,6 +778,9 @@ function setupMarketSocketSync() {
 
     // 自分の買い注文一覧の同期
     window.globalSocket.on("market:buyOrder:listResult", (orders) => {
+      
+      console.log("RECV market:buyOrder:listResult", orders); // ← 追加
+      
       window.marketBuyOrders = Array.isArray(orders) ? orders : [];
       if (typeof refreshMarketOrderList === "function") {
         refreshMarketOrderList();
