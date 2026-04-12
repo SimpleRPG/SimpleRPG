@@ -316,7 +316,7 @@ function renderMyListings() {
     myId = window.globalSocket.id;
   }
 
-  // ★修正: sellerId が自分のものだけを対象にする（オンライン/ローカル両対応）
+  // sellerId が自分の listing だけを見る（オンライン / ローカル両対応）
   const myListings = marketListings.filter(l => l.sellerId === myId);
 
   if (myListings.length === 0) {
@@ -358,7 +358,6 @@ function renderMyListings() {
     return `${nameCol}  x${amountCol}  @${priceCol}`;
   });
 
-  // ★修正: 実際の改行コードで join する
   el.textContent = ["出品中", header].concat(rows).join("\n");
   el.style.whiteSpace = "pre";
   el.style.fontFamily = "monospace";
@@ -487,7 +486,7 @@ function doMarketSell(){
           const msg = `${label} を ${amount}個、1個${price}Gで出品した`;
           if (typeof appendLog === "function") appendLog(msg);
 
-          // ★削除済み: サーバ側が market:update を emit するので、ここからは呼ばない
+          // ここは呼ばない: サーバ側が market:update を全員にemitする
           // try {
           //   window.globalSocket.emit("market:list");
           // } catch (e2) {
