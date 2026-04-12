@@ -316,12 +316,15 @@ function renderMyListings() {
     myId = window.globalSocket.id;
   }
 
+  // ★ 常に最新の window.marketListings を参照する
+  const src = Array.isArray(window.marketListings) ? window.marketListings : [];
+
   if (typeof appendLog === "function") {
-    appendLog("renderMyListings myId=" + myId + " totalListings=" + marketListings.length);
+    appendLog("renderMyListings myId=" + myId + " totalListings=" + src.length);
   }
 
   // sellerId が自分の listing だけを見る（オンライン / ローカル両対応）
-  const myListings = marketListings.filter(l => l.sellerId === myId);
+  const myListings = src.filter(l => l.sellerId === myId);
 
   if (typeof appendLog === "function") {
     appendLog("renderMyListings myListings.length=" + myListings.length);
@@ -412,7 +415,8 @@ function doMarketSell(){
       myId = window.globalSocket.id;
     }
 
-    const myListings = marketListings.filter(l => l.sellerId === myId);
+    const src = Array.isArray(window.marketListings) ? window.marketListings : [];
+    const myListings = src.filter(l => l.sellerId === myId);
 
     const kindSet = new Set();
     for (const l of myListings) {
