@@ -928,3 +928,25 @@ function initJobPetRebirthUI() {
     refreshWarehouseUI();
   }
 }
+const MAX_LOG_LINES = 1;
+
+function appendLog(msg) {
+  const el = document.getElementById("log");
+  if (!el) return;
+
+  // 既存ログを行に分割（上から「新しい→古い」の順に並べる前提）
+  let lines = el.textContent.split("\n").filter(line => line.trim() !== "");
+
+  // 新しいログを先頭に追加
+  lines.unshift(msg);
+
+  // 最大行数を超えたら「末尾（＝一番古い）」から削る
+  if (lines.length > MAX_LOG_LINES) {
+    lines = lines.slice(0, MAX_LOG_LINES); // 先頭10件だけ残す
+  }
+
+  el.textContent = lines.join("\n");
+
+  // 一番上が最新なのでスクロール位置はそのままでOK（好みで調整）
+  el.scrollTop = 0;
+}

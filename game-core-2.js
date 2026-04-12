@@ -326,7 +326,7 @@ function doRebirth() {
     onRebirthForGuild({ jobId });
   }
 
-  setLog(
+  appendLog(
     `転生した！ 転生回数: ${rebirthCount}\\\\\\\\\\\\\\\\n` +
     `成長タイプ: ${getGrowthTypeName()}\\\\\\\\\\\\\\\\n` +
     `${bonusMsg}\\\\\\\\\\\\\\\\n` +

@@ -443,49 +443,9 @@ function getNpcBuyProb(baseValue, price, category) {
   return prob;
 }
 
-function rollNpcMarketBuy() {
-  if (!marketListings.length) return;
-
-  const indices = [...marketListings.keys()];
-  for (let i = indices.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [indices[i], indices[j]] = [indices[j], indices[i]];
-  }
-
-  const MAX_CHECK = Math.min(5, indices.length);
-  for (let idx = 0; idx < MAX_CHECK; idx++) {
-    const li = marketListings[indices[idx]];
-    if (!li || li.amount <= 0) continue;
-
-    const baseValue = getMarketBaseValue(li.category, li.itemId || li.itemKey);
-    if (baseValue <= 0) continue;
-
-    const prob = getNpcBuyProb(baseValue, li.price, li.category);
-    if (Math.random() >= prob) continue;
-
-    const buyAmount = Math.max(1, Math.floor(li.amount * 0.2)) || 1;
-    const actualBuy = Math.min(li.amount, buyAmount);
-    if (actualBuy <= 0) continue;
-
-    const totalPrice = actualBuy * li.price;
-
-    money += totalPrice;
-
-    const label = getItemLabel(li.category, li.itemId || li.itemKey);
-    const npcName = getRandomNpcMerchantName();
-    addSellLog(npcName, li.category, li.itemId || li.itemKey, actualBuy, totalPrice);
-
-    li.amount -= actualBuy;
-  }
-
-  marketListings = marketListings.filter(l => l.amount > 0);
-
-  updateDisplay();
-  refreshMarketBuyList();
-  refreshMarketSellCandidates();
-  refreshMarketSellItems();
-  renderMyListings();
-}
+// ※ rollNpcMarketBuy はサーバ側に移したので、クライアント版は削除済み
+// クライアントでは NPC 買いは行わず、サーバからの market:update を受けて
+// detectSellFromDiff などで結果だけ反映する。
 
 // -----------------------
 // 買い注文（予約）
@@ -804,6 +764,9 @@ function detectSellFromDiff(prevList, newList) {
       const soldAmount = prev.amount;
       if (soldAmount > 0) {
         const totalPrice = soldAmount * prev.price;
+        if (typeof money === "number") {
+          money += totalPrice;
+        }
         addSellLog("プレイヤー", prev.category, prev.itemId, soldAmount, totalPrice);
       }
       return;
@@ -813,6 +776,9 @@ function detectSellFromDiff(prevList, newList) {
       const diff = prev.amount - now.amount;
       if (diff > 0) {
         const totalPrice = diff * prev.price;
+        if (typeof money === "number") {
+          money += totalPrice;
+        }
         addSellLog("プレイヤー", prev.category, prev.itemId, diff, totalPrice);
       }
     }

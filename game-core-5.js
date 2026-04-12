@@ -231,7 +231,7 @@ function tryFindBossOnExplore() {
   if (areaBossAvailable[area]) return;
 
   const roll = Math.random();
-  if (roll < 0.0005) {
+  if (roll < 0.001) {
     areaBossAvailable[area] = true;
     appendLog("強い気配を感じる… このエリアのボスに挑めるようになった！");
     updateBossButtonUI();

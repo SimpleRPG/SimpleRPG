@@ -35,6 +35,132 @@ const io = new Server(httpServer, {
 // listing 形式: { id, sellerId, itemKey, category, amount, price }
 let marketListings = [];
 
+// =======================
+// NPC 買いロジック（サーバ側）
+// =======================
+
+// NPC が一度にチェックする最大件数
+const MAX_NPC_CHECK = 20;
+
+// 基準価格の簡易取得（クライアント版の getMarketBaseValue の超簡略版）
+// ここでは「同じ itemKey の現在の最安値」を基準として使う。
+function getMarketBaseValueServer(category, itemKey) {
+  if (!Array.isArray(marketListings) || !marketListings.length) return 0;
+  let minPrice = Infinity;
+  for (const l of marketListings) {
+    if (!l) continue;
+    if (l.category !== category) continue;
+    if (l.itemKey !== itemKey) continue;
+    if (typeof l.price !== "number") continue;
+    if (l.price < minPrice) {
+      minPrice = l.price;
+    }
+  }
+  if (!isFinite(minPrice)) return 0;
+  return minPrice;
+}
+
+// クライアント版と同じ確率テーブルをサーバ側にも再現
+function getNpcBuyProbServer(baseValue, price, category) {
+  if (price <= 0 || baseValue <= 0) return 0;
+
+  const ratio = price / baseValue;
+  let prob = 0;
+
+  if (ratio < 0.5) {
+    prob = 0.05;
+  } else if (ratio < 1.0) {
+    prob = 0.02;
+  } else if (ratio < 1.5) {
+    prob = 0.005;
+  } else if (ratio < 2.5) {
+    prob = 0.001;
+  } else {
+    prob = 0.0001;
+  }
+
+  // ホットカテゴリなどのイベント補正はクライアント側だけにあり、
+  // サーバ側では特に持っていないので、ここでは何もしない。
+  // 必要になったらイベント状態をサーバにも持たせて同様の補正をかける。
+
+  if (prob > 0.25) prob = 0.25;
+  return prob;
+}
+
+// サーバ側で NPC が市場から買う処理
+function serverSideRollNpcBuy() {
+  try {
+    if (!Array.isArray(marketListings) || marketListings.length === 0) return;
+
+    // index 配列を作ってシャッフル
+    const indices = [...marketListings.keys()];
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+
+    const maxCheck = Math.min(MAX_NPC_CHECK, indices.length);
+    let updated = false;
+
+    for (let idx = 0; idx < maxCheck; idx++) {
+      const li = marketListings[indices[idx]];
+      if (!li || li.amount <= 0) continue;
+
+      const category = li.category;
+      const itemKey = li.itemKey;
+      if (!category || !itemKey) continue;
+
+      const baseValue = getMarketBaseValueServer(category, itemKey);
+      if (baseValue <= 0) continue;
+
+      const prob = getNpcBuyProbServer(baseValue, li.price, category);
+      if (prob <= 0) continue;
+
+      if (Math.random() >= prob) continue;
+
+      // 買う量: 在庫の20%（最低1個）
+      const buyAmount = Math.max(1, Math.floor(li.amount * 0.2)) || 1;
+      const actualBuy = Math.min(li.amount, buyAmount);
+      if (actualBuy <= 0) continue;
+
+      // 金額はここでは使わない（money はクライアントで管理）
+      // const totalPrice = actualBuy * li.price;
+
+      li.amount -= actualBuy;
+      if (li.amount <= 0) {
+        // 実際に削除するのはループの外で filter してもよいが、
+        // ここでは簡単に null マークして最後に一括フィルタ
+        marketListings[indices[idx]] = null;
+      }
+
+      updated = true;
+    }
+
+    if (updated) {
+      // null を取り除きつつ amount > 0 のものだけ残す
+      marketListings = marketListings.filter(
+        (l) => l && typeof l.amount === "number" && l.amount > 0
+      );
+      console.log(
+        "[NPC] market updated by NPC buy, remaining listings:",
+        marketListings.length
+      );
+      // 全クライアントへ最新リストを通知
+      io.emit("market:update", marketListings);
+    }
+  } catch (e) {
+    console.error("serverSideRollNpcBuy error:", e);
+  }
+}
+
+// サーバ起動後、一定間隔で NPC 買いを実行（例: 30秒ごと）
+const NPC_BUY_INTERVAL_MS = 30 * 1000;
+setInterval(serverSideRollNpcBuy, NPC_BUY_INTERVAL_MS);
+
+// =======================
+// Socket.io 接続ハンドラ
+// =======================
+
 // クライアント接続時
 io.on("connection", (socket) => {
   console.log("Player connected:", socket.id);
@@ -129,7 +255,7 @@ io.on("connection", (socket) => {
         return;
       }
 
-      const idx = marketListings.findIndex(l => l.id === id);
+      const idx = marketListings.findIndex(l => l && l.id === id);
       if (idx === -1) {
         console.log("market:consume not_found:", id);
         if (typeof ack === "function") {
