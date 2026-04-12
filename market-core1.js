@@ -361,7 +361,7 @@ function renderMyListings() {
     return `${nameCol}  x${amountCol}  @${priceCol}`;
   });
 
-  el.textContent = ["出品中", header].concat(rows).join("\\n");
+  el.textContent = ["出品中", header].concat(rows).join("\n");
   el.style.whiteSpace = "pre";
   el.style.fontFamily = "monospace";
 }
@@ -569,6 +569,30 @@ function doMarketBuyOrder(){
             if (typeof appendLog === "function") appendLog(errMsg);
             updateDisplay();
             return;
+          }
+
+          // サーバ成功時、ローカルにも1件分の注文を積んで UI に即反映
+          try {
+            let buyerId = "player";
+            if (window.globalSocket && window.globalSocket.id) {
+              buyerId = window.globalSocket.id;
+            }
+            const order = {
+              id: res.id != null ? res.id : res.orderId || (marketOrderIdSeq++),
+              buyerId,
+              category,
+              itemKey: itemId,
+              price,
+              maxAmount: amount,
+              remainAmount: amount,
+              reservedMoney
+            };
+            window.marketBuyOrders.push(order);
+            if (typeof refreshMarketOrderList === "function") {
+              refreshMarketOrderList();
+            }
+          } catch (ePushOrder) {
+            console.log("push local market buy order failed", ePushOrder);
           }
 
           const label = getItemLabel(category, itemId);

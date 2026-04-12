@@ -776,7 +776,7 @@ function setupMarketSocketSync() {
       renderMyListings();
     });
 
-    // ★自分の買い注文一覧の同期
+    // 自分の買い注文一覧の同期
     window.globalSocket.on("market:buyOrder:listResult", (orders) => {
       window.marketBuyOrders = Array.isArray(orders) ? orders : [];
       if (typeof refreshMarketOrderList === "function") {
