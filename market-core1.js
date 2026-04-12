@@ -319,8 +319,16 @@ function renderMyListings() {
   // 常に最新の window.marketListings を参照する
   const src = Array.isArray(window.marketListings) ? window.marketListings : [];
 
+  if (typeof appendLog === "function") {
+    appendLog("renderMyListings myId=" + myId + " totalListings=" + src.length);
+  }
+
   // sellerId / owner で自分の listing を抽出（サーバ/ローカル両対応）
   const myListings = src.filter(l => l.sellerId === myId || l.owner === myId);
+
+  if (typeof appendLog === "function") {
+    appendLog("renderMyListings myListings.length=" + myListings.length);
+  }
 
   if (myListings.length === 0) {
     el.textContent = "あなたの現在の出品はありません。";
@@ -439,9 +447,12 @@ function doMarketSell(){
         (res) => {
           if (!res || !res.ok) {
             const errMsg = res && res.error ? res.error : "出品に失敗しました";
+            if (typeof appendLog === "function") appendLog("SELL ACK NG");
             if (typeof appendLog === "function") appendLog(errMsg);
             return;
           }
+
+          if (typeof appendLog === "function") appendLog("SELL ACK OK");
 
           if(!removeItemForSell(uiCategory, itemId, amount)){
             if (typeof appendLog === "function") appendLog("手持ちの個数が足りません");
@@ -452,6 +463,9 @@ function doMarketSell(){
             let myId = "player";
             if (window.globalSocket && window.globalSocket.id) {
               myId = window.globalSocket.id;
+            }
+            if (typeof appendLog === "function") {
+              appendLog("PUSH LOCAL LISTING sellerId=" + myId);
             }
             const newListing = {
               id: res.id != null ? res.id : res.listingId || ("local-" + (marketListingIdSeq++)),
@@ -466,6 +480,7 @@ function doMarketSell(){
             window.marketListings.push(newListing);
           } catch (ePush) {
             console.log("push local market listing failed", ePush);
+            if (typeof appendLog === "function") appendLog("PUSH LOCAL LISTING ERROR");
           }
 
           if (typeof updateDisplay === "function") {
@@ -489,6 +504,8 @@ function doMarketSell(){
 
           const msg = `${label} を ${amount}個、1個${price}Gで出品した`;
           if (typeof appendLog === "function") appendLog(msg);
+
+          // ここは呼ばない: サーバ側が market:update を全員にemitする
         }
       );
       return;
