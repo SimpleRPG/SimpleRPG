@@ -317,7 +317,7 @@ function renderMyListings() {
   }
 
   const myListings = marketListings.filter(l => {
-    const sellerId = l.sellerId || "player";
+    const sellerId = l.sellerId || l.owner || "player";
     return sellerId === myId || sellerId === "player";
   });
 
@@ -332,7 +332,7 @@ function renderMyListings() {
   const grouped = new Map();
   for (const l of myListings) {
     const category = l.category;
-    const itemKey  = l.itemKey;      // サーバ形式に統一
+    const itemKey  = l.itemKey || l.itemId;      // サーバ形式に統一
     const price    = l.price || 0;
     const key = `${category}:${itemKey}:${price}`;
 
@@ -360,7 +360,8 @@ function renderMyListings() {
     return `${nameCol}  x${amountCol}  @${priceCol}`;
   });
 
-  el.textContent = ["出品中", header].concat(rows).join("\\n");
+  // ★ここを修正: 実際の改行コードで join する
+  el.textContent = ["出品中", header].concat(rows).join("\n");
   el.style.whiteSpace = "pre";
   el.style.fontFamily = "monospace";
 }
@@ -406,14 +407,14 @@ function doMarketSell(){
     }
 
     const myListings = marketListings.filter(l => {
-      const sellerId = l.sellerId || "player";
+      const sellerId = l.sellerId || l.owner || "player";
       return sellerId === myId || sellerId === "player";
     });
 
     const kindSet = new Set();
     for (const l of myListings) {
       const cat = l.category;
-      const id  = l.itemKey;
+      const id  = l.itemKey || l.itemId;
       const p   = l.price || 0;
       kindSet.add(`${cat}:${id}:${p}`);
     }
@@ -429,7 +430,7 @@ function doMarketSell(){
 
   const label = getItemLabel(uiCategory, itemId);
 
-  // オンライン時: サーバ成功後に在庫を減らし、UIを更新
+  // オンライン時: サーバ成功後に在庫を減らし、ローカル marketListings にも1件追加してからUIを更新
   if (window.globalSocket) {
     try {
       const itemKey = itemId;
@@ -447,6 +448,26 @@ function doMarketSell(){
           if(!removeItemForSell(uiCategory, itemId, amount)){
             if (typeof appendLog === "function") appendLog("手持ちの個数が足りません");
             return;
+          }
+
+          try {
+            let myId = "player";
+            if (window.globalSocket && window.globalSocket.id) {
+              myId = window.globalSocket.id;
+            }
+            const newListing = {
+              id: res.id != null ? res.id : res.listingId || ("local-" + (marketListingIdSeq++)),
+              category: categoryForMarket,
+              itemId: itemKey,
+              itemKey: itemKey,
+              price: price,
+              amount: amount,
+              sellerId: myId,
+              owner: myId
+            };
+            window.marketListings.push(newListing);
+          } catch (ePush) {
+            console.log("push local market listing failed", ePush);
           }
 
           if (typeof updateDisplay === "function") {
