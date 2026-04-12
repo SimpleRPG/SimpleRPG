@@ -751,6 +751,7 @@ function setupMarketSocketSync() {
         itemId: l.itemKey || l.itemId,
         price: l.price,
         amount: l.amount,
+        sellerId: l.sellerId,             // ★ sellerId を保持
         owner: l.sellerId || "server"
       }));
 
@@ -770,6 +771,7 @@ function setupMarketSocketSync() {
         itemId: l.itemKey || l.itemId,
         price: l.price,
         amount: l.amount,
+        sellerId: l.sellerId,             // ★ sellerId を保持
         owner: l.sellerId || "server"
       }));
 
