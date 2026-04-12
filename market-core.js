@@ -6,11 +6,12 @@
 // =======================
 // 素材ティアごとのベース価値
 // T1: 3G, T2: 5G, T3: 10G
-const MATERIAL_TIER_VALUES = {
+window.MATERIAL_TIER_VALUES = window.MATERIAL_TIER_VALUES || {
   t1: 3,
   t2: 5,
   t3: 10
 };
+const MATERIAL_TIER_VALUES = window.MATERIAL_TIER_VALUES;
 
 // 料理素材（レシピに使う素材）は一律 5G 相当
 const COOKING_INGREDIENT_BASE_VALUE = 5;
@@ -73,9 +74,14 @@ function addMarketLog(msg){
 }
 
 // 売り手視点の売却ログ（誰に・何を・いくつ・いくらで売ったか）
+// メインログにも出す
 function addSellLog(buyerLabel, category, itemId, amount, totalPrice) {
   const label = getItemLabel(category, itemId);
-  addMarketLog(`${buyerLabel} に ${label} を ${amount}個売った（${totalPrice}G）`);
+  const msg = `${buyerLabel} に ${label} を ${amount}個売った（${totalPrice}G）`;
+  addMarketLog(msg);
+  if (typeof appendLog === "function") {
+    appendLog(msg);
+  }
 }
 
 // -----------------------
@@ -366,10 +372,13 @@ function doMarketSell(){
             return;
           }
 
-          setLog(`${label} を ${amount}個、1個${price}Gで出品した（オンライン市場）`);
+          const msg = `${label} を ${amount}個、1個${price}Gで出品した（オンライン市場）`;
+          setLog(msg);
           addMarketLog(`出品: ${label} x${amount} @${price}G`);
+          if (typeof appendLog === "function") {
+            appendLog(msg);
+          }
 
-          // サーバー側の market:update を待つが、保険でリスト要求
           try {
             window.globalSocket.emit("market:list");
           } catch (e2) {
@@ -396,8 +405,12 @@ function doMarketSell(){
   };
   marketListings.push(listing);
 
-  setLog(`${label} を ${amount}個、1個${price}Gで出品した`);
+  const msg = `${label} を ${amount}個、1個${price}Gで出品した`;
+  setLog(msg);
   addMarketLog(`出品: ${label} x${amount} @${price}G`);
+  if (typeof appendLog === "function") {
+    appendLog(msg);
+  }
 
   updateDisplay();
   refreshMarketSellCandidates();
@@ -411,7 +424,6 @@ function doMarketSell(){
 function buildMarketStacks(){
   const map = new Map();
   marketListings.forEach(l => {
-    // サーバーから来る listing に itemKey が入っている場合への保険
     const category = l.category;
     const itemId = l.itemId || l.itemKey;
     if (!category || !itemId) return;
@@ -554,8 +566,12 @@ function addItemForBuy(category, itemId, amount){
         itemCounts[itemId] = (itemCounts[itemId] || 0) + amount;
       }
     }
-    else if (typeof intermediateMats === "object" && intermediateMats[itemId] != null) {
-      intermediateMats[itemId] = (intermediateMats[itemId] || 0) + amount;
+    // INTERMEDIATE_MATERIALS に載っているIDは中間素材ストックに積む
+    else if (Array.isArray(INTERMEDIATE_MATERIALS)
+          && INTERMEDIATE_MATERIALS.some(m => m.id === itemId)) {
+      if (typeof intermediateMats === "object") {
+        intermediateMats[itemId] = (intermediateMats[itemId] || 0) + amount;
+      }
     }
     else if (typeof COOKING_RECIPES !== "undefined") {
       const fr = COOKING_RECIPES.food.find(r => r.id === itemId);
@@ -612,8 +628,12 @@ function doMarketBuy(stackKey, mode, amount){
           money -= sim.totalPrice;
           addItemForBuy(category, itemId, sim.buyableCount);
           const label = getItemLabel(category, itemId);
-          setLog(`${label} を ${sim.buyableCount}個購入した（合計${sim.totalPrice}G）`);
+          const msg = `${label} を ${sim.buyableCount}個購入した（合計${sim.totalPrice}G）`;
+          setLog(msg);
           addMarketLog(`購入: ${label} x${sim.buyableCount} @合計${sim.totalPrice}G`);
+          if (typeof appendLog === "function") {
+            appendLog(msg);
+          }
 
           try {
             window.globalSocket.emit("market:list");
@@ -659,8 +679,12 @@ function doMarketBuy(stackKey, mode, amount){
   addItemForBuy(category, itemId, sim.buyableCount);
 
   const label = getItemLabel(category, itemId);
-  setLog(`${label} を ${sim.buyableCount}個購入した（合計${sim.totalPrice}G）`);
+  const msg = `${label} を ${sim.buyableCount}個購入した（合計${sim.totalPrice}G）`;
+  setLog(msg);
   addMarketLog(`購入: ${label} x${sim.buyableCount} @合計${sim.totalPrice}G`);
+  if (typeof appendLog === "function") {
+    appendLog(msg);
+  }
 
   updateDisplay();
   refreshMarketBuyList();
@@ -877,7 +901,6 @@ function rollNpcMarketBuy() {
     const label = getItemLabel(li.category, li.itemId || li.itemKey);
     const npcName = getRandomNpcMerchantName();
     addMarketLog(`${npcName}が ${label} を市場から購入した（x${actualBuy} / ${totalPrice}G）`);
-    // NPCに売れたことを売り手視点でも記録
     addSellLog(npcName, li.category, li.itemId || li.itemKey, actualBuy, totalPrice);
 
     li.amount -= actualBuy;
@@ -933,8 +956,12 @@ function doMarketBuyOrder(){
   marketBuyOrders.push(order);
 
   const label = getItemLabel(category, itemId);
-  setLog(`${label} を「1個${price}Gで${amount}個まで」注文として出した（${reservedMoney}G拘束）`);
+  const msg = `${label} を「1個${price}Gで${amount}個まで」注文として出した（${reservedMoney}G拘束）`;
+  setLog(msg);
   addMarketLog(`買い注文: ${label} x${amount} @${price}G`);
+  if (typeof appendLog === "function") {
+    appendLog(msg);
+  }
 
   updateDisplay();
   refreshMarketOrderList();
@@ -1278,7 +1305,6 @@ function setupMarketSocketSync() {
       refreshMarketBuyList();
     });
 
-    // 接続済みなら初期リストを要求
     try {
       window.globalSocket.emit("market:list");
     } catch (e2) {
@@ -1289,7 +1315,6 @@ function setupMarketSocketSync() {
   }
 }
 
-// 読み込み時に「一度だけ」試す（globalSocket が既にあれば登録される）
 setupMarketSocketSync();
 
 // =======================
