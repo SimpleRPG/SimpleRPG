@@ -360,7 +360,7 @@ function renderMyListings() {
     return `${nameCol}  x${amountCol}  @${priceCol}`;
   });
 
-  el.textContent = ["出品中", header].concat(rows).join("\n");
+  el.textContent = ["出品中", header].concat(rows).join("\\n");
   el.style.whiteSpace = "pre";
   el.style.fontFamily = "monospace";
 }
@@ -427,11 +427,7 @@ function doMarketSell(){
     }
   }
 
-  if(!removeItemForSell(uiCategory, itemId, amount)){
-    if (typeof appendLog === "function") appendLog("手持ちの個数が足りません");
-    return;
-  }
-
+  // ここではまだ在庫を減らさない（オンライン失敗時のため）
   const label = getItemLabel(uiCategory, itemId);
 
   if (window.globalSocket) {
@@ -443,13 +439,25 @@ function doMarketSell(){
         { itemKey, category: categoryForMarket, amount, price },
         (res) => {
           if (!res || !res.ok) {
-            addItemForBuy(categoryForMarket, itemId, amount);
             const errMsg = res && res.error ? res.error : "出品に失敗しました";
             if (typeof appendLog === "function") appendLog(errMsg);
             return;
           }
 
-          const msg = `${label} を ${amount}個、1個${price}Gで出品した（オンライン市場）`;
+          // ★ここで初めて在庫を減らす（サーバ成功後）
+          if(!removeItemForSell(uiCategory, itemId, amount)){
+            if (typeof appendLog === "function") appendLog("手持ちの個数が足りません");
+            return;
+          }
+
+          if (typeof updateDisplay === "function") {
+            updateDisplay();
+          }
+          if (typeof refreshWarehouseUI === "function") {
+            refreshWarehouseUI();
+          }
+
+          const msg = `${label} を ${amount}個、1個${price}Gで出品した`;
           if (typeof appendLog === "function") appendLog(msg);
 
           try {
@@ -462,13 +470,17 @@ function doMarketSell(){
       return;
     } catch (e) {
       console.log("market:sell emit error", e);
-      addItemForBuy(categoryForMarket, itemId, amount);
       if (typeof appendLog === "function") appendLog("オンライン市場への出品に失敗しました");
       return;
     }
   }
 
   // オフライン時: サーバ仕様に合わせたローカル listing
+  if(!removeItemForSell(uiCategory, itemId, amount)){
+    if (typeof appendLog === "function") appendLog("手持ちの個数が足りません");
+    return;
+  }
+
   const listing = {
     id: marketListingIdSeq++,
     sellerId: "player",
