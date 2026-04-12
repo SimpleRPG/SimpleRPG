@@ -571,20 +571,21 @@ function doMarketBuyOrder(){
             return;
           }
 
-          // サーバ成功時、ローカルにも1件分の注文を積んで UI に即反映
+          // サーバから返ってきた order をそのまま使う
           try {
             let buyerId = "player";
             if (window.globalSocket && window.globalSocket.id) {
               buyerId = window.globalSocket.id;
             }
+            const serverOrder = res.order || {};
             const order = {
-              id: res.id != null ? res.id : res.orderId || (marketOrderIdSeq++),
+              id: serverOrder.id != null ? serverOrder.id : (marketOrderIdSeq++),
               buyerId,
-              category,
-              itemKey: itemId,
-              price,
-              maxAmount: amount,
-              remainAmount: amount,
+              category: serverOrder.category || category,
+              itemKey: serverOrder.itemKey || itemId,
+              price: serverOrder.price != null ? serverOrder.price : price,
+              maxAmount: serverOrder.maxAmount != null ? serverOrder.maxAmount : amount,
+              remainAmount: serverOrder.remainAmount != null ? serverOrder.remainAmount : amount,
               reservedMoney
             };
             window.marketBuyOrders.push(order);
