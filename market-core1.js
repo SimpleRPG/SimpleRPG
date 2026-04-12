@@ -427,9 +427,9 @@ function doMarketSell(){
     }
   }
 
-  // ここではまだ在庫を減らさない（オンライン失敗時のため）
   const label = getItemLabel(uiCategory, itemId);
 
+  // オンライン時: サーバ成功後に在庫を減らす
   if (window.globalSocket) {
     try {
       const itemKey = itemId;
@@ -444,7 +444,6 @@ function doMarketSell(){
             return;
           }
 
-          // ★ここで初めて在庫を減らす（サーバ成功後）
           if(!removeItemForSell(uiCategory, itemId, amount)){
             if (typeof appendLog === "function") appendLog("手持ちの個数が足りません");
             return;
@@ -475,7 +474,7 @@ function doMarketSell(){
     }
   }
 
-  // オフライン時: サーバ仕様に合わせたローカル listing
+  // オフライン時: 先に在庫を減らしてからローカル listing を追加
   if(!removeItemForSell(uiCategory, itemId, amount)){
     if (typeof appendLog === "function") appendLog("手持ちの個数が足りません");
     return;
