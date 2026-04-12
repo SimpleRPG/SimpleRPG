@@ -601,6 +601,13 @@ function doMarketBuyOrder(){
           if (typeof appendLog === "function") appendLog(msg);
 
           updateDisplay();
+
+          // 出した直後にサーバ側の最新版で上書き（仕様はそのまま）
+          try {
+            window.globalSocket.emit("market:buyOrder:list");
+          } catch (e2) {
+            console.log("market:buyOrder:list emit error after buyOrder ack", e2);
+          }
         }
       );
       return;
