@@ -54,6 +54,9 @@ let marketBuyOrders = [];
 // 取引ログ
 let marketTradeLogs = [];
 
+// 前回サーバーから受け取った出品一覧（売れた判定用ローカルスナップショット）
+let prevServerMarketListings = [];
+
 let marketOrderIdSeq = 1;
 // クライアント側のローカルIDはあまり意味がなくなるが互換のため残す
 let marketListingIdSeq = 1;
@@ -67,6 +70,12 @@ function addMarketLog(msg){
   if(el){
     el.textContent = marketTradeLogs.slice(0,3).join(" / ");
   }
+}
+
+// 売り手視点の売却ログ（誰に・何を・いくつ・いくらで売ったか）
+function addSellLog(buyerLabel, category, itemId, amount, totalPrice) {
+  const label = getItemLabel(category, itemId);
+  addMarketLog(`${buyerLabel} に ${label} を ${amount}個売った（${totalPrice}G）`);
 }
 
 // -----------------------
@@ -868,6 +877,8 @@ function rollNpcMarketBuy() {
     const label = getItemLabel(li.category, li.itemId || li.itemKey);
     const npcName = getRandomNpcMerchantName();
     addMarketLog(`${npcName}が ${label} を市場から購入した（x${actualBuy} / ${totalPrice}G）`);
+    // NPCに売れたことを売り手視点でも記録
+    addSellLog(npcName, li.category, li.itemId || li.itemKey, actualBuy, totalPrice);
 
     li.amount -= actualBuy;
   }
@@ -1177,6 +1188,40 @@ function filterMarketBuyListByCategory(cat){
   renderMarketBuyList(filtered);
 }
 
+// -----------------------
+// 自分の出品が売れたかをローカルだけで判定
+// -----------------------
+function detectSellFromDiff(prevList, newList) {
+  if (!window.globalSocket || !window.globalSocket.id) return;
+
+  const myId = window.globalSocket.id;
+  const newMap = new Map();
+  newList.forEach(l => newMap.set(l.id, l));
+
+  prevList.forEach(prev => {
+    if (prev.owner !== myId) return;
+
+    const now = newMap.get(prev.id);
+
+    if (!now) {
+      const soldAmount = prev.amount;
+      if (soldAmount > 0) {
+        const totalPrice = soldAmount * prev.price;
+        addSellLog("プレイヤー", prev.category, prev.itemId, soldAmount, totalPrice);
+      }
+      return;
+    }
+
+    if (now.amount < prev.amount) {
+      const diff = prev.amount - now.amount;
+      if (diff > 0) {
+        const totalPrice = diff * prev.price;
+        addSellLog("プレイヤー", prev.category, prev.itemId, diff, totalPrice);
+      }
+    }
+  });
+}
+
 // =======================
 // サーバー市場との同期（Socket.io）
 // =======================
@@ -1194,7 +1239,7 @@ function setupMarketSocketSync() {
     window.globalSocket.on("market:listResult", (serverListings) => {
       console.log("market:listResult", serverListings);
 
-      marketListings = (Array.isArray(serverListings) ? serverListings : []).map(l => ({
+      const newList = (Array.isArray(serverListings) ? serverListings : []).map(l => ({
         id: l.id,
         category: l.category,
         itemId: l.itemKey || l.itemId,
@@ -1202,6 +1247,9 @@ function setupMarketSocketSync() {
         amount: l.amount,
         owner: l.sellerId || "server"
       }));
+
+      marketListings = newList;
+      prevServerMarketListings = newList.map(l => ({ ...l }));
 
       refreshMarketBuyList();
     });
@@ -1209,7 +1257,7 @@ function setupMarketSocketSync() {
     window.globalSocket.on("market:update", (serverListings) => {
       console.log("market:update", serverListings);
 
-      marketListings = (Array.isArray(serverListings) ? serverListings : []).map(l => ({
+      const newList = (Array.isArray(serverListings) ? serverListings : []).map(l => ({
         id: l.id,
         category: l.category,
         itemId: l.itemKey || l.itemId,
@@ -1217,6 +1265,15 @@ function setupMarketSocketSync() {
         amount: l.amount,
         owner: l.sellerId || "server"
       }));
+
+      try {
+        detectSellFromDiff(prevServerMarketListings, newList);
+      } catch (e) {
+        console.log("detectSellFromDiff error", e);
+      }
+
+      marketListings = newList;
+      prevServerMarketListings = newList.map(l => ({ ...l }));
 
       refreshMarketBuyList();
     });

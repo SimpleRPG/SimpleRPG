@@ -5,6 +5,10 @@
 // レベル・転生
 // =======================
 
+// ★ レベル上限
+const MAX_LEVEL     = 100;
+const MAX_PET_LEVEL = 100;
+
 // ★ レベルに応じた最大HP加算量を返す関数
 // Lv1 は +0、Lv2 以降は +2ずつ伸ばす（Lv2: +2, Lv3: +4, ...）。
 function getHpLevelBonus() {
@@ -49,12 +53,20 @@ function getLevelUpRolls() {
 }
 
 function addExp(amount) {
+  // ★ すでに上限なら経験値だけ溜めてレベルアップ処理は行わない
+  if (level >= MAX_LEVEL) {
+    exp += amount;
+    updateDisplay();
+    return;
+  }
+
   exp += amount;
   let leveled = false;
   // ★ レベルアップ中に増えたステータスを集計する
   let totalUp = { STR: 0, VIT: 0, INT: 0, DEX: 0, LUK: 0 };
 
-  while (exp >= expToNext) {
+  // ★ レベルが上限に達するまでレベルアップ
+  while (exp >= expToNext && level < MAX_LEVEL) {
     exp -= expToNext;
     level++;
     leveled = true;
@@ -77,6 +89,9 @@ function addExp(amount) {
     // ★ 必要経験値をレベルアップごとに再設定
     expToNext = BASE_EXP_PER_LEVEL;
   }
+
+  // ★ Lv100 到達後にさらにEXPがある場合は、そのまま保持するが、
+  //    これ以上は while の条件でレベルアップしない（仕様として打ち止め）。
   if (leveled) {
     appendLog(`レベルアップ！ Lv${level}になった（成長タイプ: ${getGrowthTypeName()}）`);
 
@@ -131,9 +146,17 @@ function promptRenamePet() {
 // ★ ペット経験値：プレイヤーと同じ 100 固定＆LvUpでHP再計算
 function addPetExp(amount) {
   if (jobId !== 2) return;
+
+  // ★ ペットも上限に達していたら経験値だけ加算して終了
+  if (petLevel >= MAX_PET_LEVEL) {
+    petExp += amount;
+    updateDisplay();
+    return;
+  }
+
   petExp += amount;
   let leveled = false;
-  while (petExp >= petExpToNext) {
+  while (petExp >= petExpToNext && petLevel < MAX_PET_LEVEL) {
     petExp -= petExpToNext;
     petLevel++;
     leveled = true;
@@ -196,7 +219,7 @@ function applyRebirthBonus() {
       msgList.push("LUK +1");
     }
   }
-  return "転生ボーナス:\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n" + msgList.join("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n");
+  return "転生ボーナス:\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n" + msgList.join("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n");
 }
 
 function applyPetRebirthBonus() {
@@ -304,9 +327,9 @@ function doRebirth() {
   }
 
   setLog(
-    `転生した！ 転生回数: ${rebirthCount}\\\\\\\\n` +
-    `成長タイプ: ${getGrowthTypeName()}\\\\\\\\n` +
-    `${bonusMsg}\\\\\\\\n` +
+    `転生した！ 転生回数: ${rebirthCount}\\\\\\\\\\\\\\\\n` +
+    `成長タイプ: ${getGrowthTypeName()}\\\\\\\\\\\\\\\\n` +
+    `${bonusMsg}\\\\\\\\\\\\\\\\n` +
     `ペット転生回数: ${petRebirthCount}（基礎ATKとHPが強化された）`
   );
 

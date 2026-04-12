@@ -20,31 +20,34 @@ const CRAFT_SKILLS_INIT = {
 // =======================
 // 中間素材定義
 // =======================
+//
+// T2以降は「前のTierの中間素材を＋1個」要求するように変更。
+// それ以外の仕様・レシピ構造はそのまま。
 
 const INTERMEDIATE_MATERIALS = [
-  { id: "woodPlank_T1",    name: "T1板材",          from: { wood:    { t1: 3 } } },
-  { id: "woodPlank_T2",    name: "T2板材",          from: { wood:    { t2: 3 } } },
-  { id: "woodPlank_T3",    name: "T3板材",          from: { wood:    { t3: 3 } } },
+  { id: "woodPlank_T1",    name: "T1板材",          from: { wood:  { t1: 3 } } },
+  { id: "woodPlank_T2",    name: "T2板材",          from: { wood:  { t2: 3 }, woodPlank_T1: 1 } },
+  { id: "woodPlank_T3",    name: "T3板材",          from: { wood:  { t3: 3 }, woodPlank_T2: 1 } },
 
-  { id: "ironIngot_T1",    name: "T1鉄インゴット",  from: { ore:     { t1: 4 } } },
-  { id: "ironIngot_T2",    name: "T2鉄インゴット",  from: { ore:     { t2: 4 } } },
-  { id: "ironIngot_T3",    name: "T3鉄インゴット",  from: { ore:     { t3: 4 } } },
+  { id: "ironIngot_T1",    name: "T1鉄インゴット",  from: { ore:   { t1: 4 } } },
+  { id: "ironIngot_T2",    name: "T2鉄インゴット",  from: { ore:   { t2: 4 }, ironIngot_T1: 1 } },
+  { id: "ironIngot_T3",    name: "T3鉄インゴット",  from: { ore:   { t3: 4 }, ironIngot_T2: 1 } },
 
-  { id: "clothBolt_T1",    name: "T1布束",          from: { cloth:   { t1: 3 } } },
-  { id: "clothBolt_T2",    name: "T2布束",          from: { cloth:   { t2: 3 } } },
-  { id: "clothBolt_T3",    name: "T3布束",          from: { cloth:   { t3: 3 } } },
+  { id: "clothBolt_T1",    name: "T1布束",          from: { cloth: { t1: 3 } } },
+  { id: "clothBolt_T2",    name: "T2布束",          from: { cloth: { t2: 3 }, clothBolt_T1: 1 } },
+  { id: "clothBolt_T3",    name: "T3布束",          from: { cloth: { t3: 3 }, clothBolt_T2: 1 } },
 
   { id: "toughLeather_T1", name: "T1強化皮",        from: { leather: { t1: 3 } } },
-  { id: "toughLeather_T2", name: "T1強化皮",        from: { leather: { t2: 3 } } },
-  { id: "toughLeather_T3", name: "T1強化皮",        from: { leather: { t3: 3 } } },
+  { id: "toughLeather_T2", name: "T2強化皮",        from: { leather: { t2: 3 }, toughLeather_T1: 1 } },
+  { id: "toughLeather_T3", name: "T3強化皮",        from: { leather: { t3: 3 }, toughLeather_T2: 1 } },
 
-  { id: "mixHerb_T1",      name: "T1調合用薬草",    from: { herb:    { t1: 3 } } },
-  { id: "mixHerb_T2",      name: "T2調合用薬草",    from: { herb:    { t2: 3 } } },
-  { id: "mixHerb_T3",      name: "T3調合用薬草",    from: { herb:    { t3: 3 } } },
+  { id: "mixHerb_T1",      name: "T1調合用薬草",    from: { herb:  { t1: 3 } } },
+  { id: "mixHerb_T2",      name: "T2調合用薬草",    from: { herb:  { t2: 3 }, mixHerb_T1: 1 } },
+  { id: "mixHerb_T3",      name: "T3調合用薬草",    from: { herb:  { t3: 3 }, mixHerb_T2: 1 } },
 
-  { id: "distilledWater_T1", name: "T1蒸留水",      from: { water:   { t1: 3 } } },
-  { id: "distilledWater_T2", name: "T2蒸留水",      from: { water:   { t2: 3 } } },
-  { id: "distilledWater_T3", name: "T3蒸留水",      from: { water:   { t3: 3 } } }
+  { id: "distilledWater_T1", name: "T1蒸留水",      from: { water: { t1: 3 } } },
+  { id: "distilledWater_T2", name: "T2蒸留水",      from: { water: { t2: 3 }, distilledWater_T1: 1 } },
+  { id: "distilledWater_T3", name: "T3蒸留水",      from: { water: { t3: 3 }, distilledWater_T2: 1 } }
 ];
 
 // =======================
