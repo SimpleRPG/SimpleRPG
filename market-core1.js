@@ -316,10 +316,8 @@ function renderMyListings() {
     myId = window.globalSocket.id;
   }
 
-  const myListings = marketListings.filter(l => {
-    const sellerId = l.sellerId || l.owner || "player";
-    return sellerId === myId || sellerId === "player";
-  });
+  // ★修正: sellerId が自分のものだけを対象にする（オンライン/ローカル両対応）
+  const myListings = marketListings.filter(l => l.sellerId === myId);
 
   if (myListings.length === 0) {
     el.textContent = "あなたの現在の出品はありません。";
@@ -360,7 +358,7 @@ function renderMyListings() {
     return `${nameCol}  x${amountCol}  @${priceCol}`;
   });
 
-  // ★ここを修正: 実際の改行コードで join する
+  // ★修正: 実際の改行コードで join する
   el.textContent = ["出品中", header].concat(rows).join("\n");
   el.style.whiteSpace = "pre";
   el.style.fontFamily = "monospace";
@@ -406,10 +404,7 @@ function doMarketSell(){
       myId = window.globalSocket.id;
     }
 
-    const myListings = marketListings.filter(l => {
-      const sellerId = l.sellerId || l.owner || "player";
-      return sellerId === myId || sellerId === "player";
-    });
+    const myListings = marketListings.filter(l => l.sellerId === myId);
 
     const kindSet = new Set();
     for (const l of myListings) {
@@ -492,7 +487,7 @@ function doMarketSell(){
           const msg = `${label} を ${amount}個、1個${price}Gで出品した`;
           if (typeof appendLog === "function") appendLog(msg);
 
-          // ★ここを削除: サーバ側が market:update を emit するので、二重リクエストしない
+          // ★削除済み: サーバ側が market:update を emit するので、ここからは呼ばない
           // try {
           //   window.globalSocket.emit("market:list");
           // } catch (e2) {
