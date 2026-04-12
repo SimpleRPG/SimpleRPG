@@ -10,9 +10,7 @@ window.prevServerMarketListings = window.prevServerMarketListings || [];
 // -----------------------
 function buildMarketStacks(){
   const map = new Map();
-  const src = (typeof marketListings !== "undefined")
-    ? marketListings
-    : (Array.isArray(window.marketListings) ? window.marketListings : []);
+  const src = Array.isArray(window.marketListings) ? window.marketListings : [];
   src.forEach(l => {
     const category = l.category;
     const itemId = l.itemId || l.itemKey;
@@ -69,13 +67,11 @@ function getStackLabel(st){
 }
 
 // -----------------------
-// 購入シミュレーション＆実行
+// 購入シミュレーション
 // -----------------------
 function simulateMarketBuy(stackKey, mode, amount){
   const [category, itemId] = stackKey.split(":");
-  const src = (typeof marketListings !== "undefined")
-    ? marketListings
-    : (Array.isArray(window.marketListings) ? window.marketListings : []);
+  const src = Array.isArray(window.marketListings) ? window.marketListings : [];
   const listings = src
     .filter(l => {
       const cat = l.category;
@@ -178,6 +174,9 @@ function addItemForBuy(category, itemId, amount){
   }
 }
 
+// -----------------------
+// 購入実行
+// -----------------------
 function doMarketBuy(stackKey, mode, amount){
   const sim = simulateMarketBuy(stackKey, mode, amount);
   if(!sim || sim.buyableCount <= 0) return;
@@ -191,9 +190,7 @@ function doMarketBuy(stackKey, mode, amount){
   let remain = sim.buyableCount;
   let costLeft = sim.totalPrice;
 
-  const src = (typeof marketListings !== "undefined")
-    ? marketListings
-    : (Array.isArray(window.marketListings) ? window.marketListings : []);
+  const src = Array.isArray(window.marketListings) ? window.marketListings : [];
   const listings = src
     .filter(l => {
       const cat = l.category;
@@ -216,6 +213,7 @@ function doMarketBuy(stackKey, mode, amount){
 
   if (!consumeList.length) return;
 
+  // オンライン（サーバ経由）の場合
   if (window.globalSocket) {
     try {
       let index = 0;
@@ -254,6 +252,19 @@ function doMarketBuy(stackKey, mode, amount){
     }
   }
 
+  // -----------------------
+  // オフライン購入（ローカル市場）
+  // -----------------------
+
+  // 購入前のスナップショット（自分出品の売却判定用に使っていたが、オフライン自家買いでは売却扱いしない）
+  // const prevList = Array.isArray(window.marketListings)
+  //   ? window.marketListings.map(l => ({ ...l }))
+  //   : [];
+
+  // ローカル配列を書き換え
+  remain = sim.buyableCount;
+  costLeft = sim.totalPrice;
+
   for(const l of listings){
     if(remain <= 0) break;
     const canBuyFromThis = Math.min(l.amount, remain);
@@ -265,12 +276,14 @@ function doMarketBuy(stackKey, mode, amount){
     costLeft -= cost;
   }
 
-  // marketListings が未定義環境でも落ちないようにガード
-  // ★再代入は const ではなく常に window.marketListings に対して行う
+  // 0 個になった出品を削除
   if (Array.isArray(window.marketListings)) {
     window.marketListings = window.marketListings.filter(l => l.amount > 0);
   }
 
+  // ★オフラインでは「自分出品の売却加算」は行わない（自家買いで二重計上させない）
+
+  // プレイヤー側の支払い＆在庫追加
   money -= sim.totalPrice;
   addItemForBuy(category, itemId, sim.buyableCount);
 
@@ -459,10 +472,6 @@ function getNpcBuyProb(baseValue, price, category) {
 
   return prob;
 }
-
-// ※ rollNpcMarketBuy はサーバ側に移したので、クライアント版は削除済み
-// クライアントでは NPC 買いは行わず、サーバからの market:update を受けて
-// detectSellFromDiff などで結果だけ反映する。
 
 // -----------------------
 // UI連動用 追加実装
@@ -745,8 +754,8 @@ function setupMarketSocketSync() {
         owner: l.sellerId || "server"
       }));
 
-      marketListings = newList;
-      prevServerMarketListings = newList.map(l => ({ ...l }));
+      window.marketListings = newList;
+      window.prevServerMarketListings = newList.map(l => ({ ...l }));
 
       refreshMarketBuyList();
       renderMyListings();
@@ -765,13 +774,13 @@ function setupMarketSocketSync() {
       }));
 
       try {
-        detectSellFromDiff(prevServerMarketListings, newList);
+        detectSellFromDiff(window.prevServerMarketListings, newList);
       } catch (e) {
         console.log("detectSellFromDiff error", e);
       }
 
-      marketListings = newList;
-      prevServerMarketListings = newList.map(l => ({ ...l }));
+      window.marketListings = newList;
+      window.prevServerMarketListings = newList.map(l => ({ ...l }));
 
       refreshMarketBuyList();
       renderMyListings();

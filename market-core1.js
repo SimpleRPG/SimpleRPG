@@ -317,8 +317,8 @@ function renderMyListings() {
   }
 
   const myListings = marketListings.filter(l => {
-    const owner = l.owner || l.sellerId || "server";
-    return owner === myId || owner === "player";
+    const sellerId = l.sellerId || "player";
+    return sellerId === myId || sellerId === "player";
   });
 
   if (myListings.length === 0) {
@@ -328,15 +328,15 @@ function renderMyListings() {
     return;
   }
 
-  // (category,itemId,price) ごとに集約
+  // (category,itemKey,price) ごとに集約
   const grouped = new Map();
   for (const l of myListings) {
     const category = l.category;
-    const itemId   = l.itemId || l.itemKey;
+    const itemKey  = l.itemKey;      // サーバ形式に統一
     const price    = l.price || 0;
-    const key = `${category}:${itemId}:${price}`;
+    const key = `${category}:${itemKey}:${price}`;
 
-    const cur = grouped.get(key) || { category, itemId, price, amount: 0 };
+    const cur = grouped.get(key) || { category, itemId: itemKey, price, amount: 0 };
     cur.amount += l.amount || 0;
     grouped.set(key, cur);
   }
@@ -406,14 +406,14 @@ function doMarketSell(){
     }
 
     const myListings = marketListings.filter(l => {
-      const owner = l.owner || l.sellerId || "server";
-      return owner === myId || owner === "player";
+      const sellerId = l.sellerId || "player";
+      return sellerId === myId || sellerId === "player";
     });
 
     const kindSet = new Set();
     for (const l of myListings) {
       const cat = l.category;
-      const id  = l.itemId || l.itemKey;
+      const id  = l.itemKey;
       const p   = l.price || 0;
       kindSet.add(`${cat}:${id}:${p}`);
     }
@@ -468,13 +468,14 @@ function doMarketSell(){
     }
   }
 
+  // オフライン時: サーバ仕様に合わせたローカル listing
   const listing = {
     id: marketListingIdSeq++,
+    sellerId: "player",
+    itemKey: itemId,
     category: categoryForMarket,
-    itemId,
-    price,
     amount,
-    owner: "player"
+    price
   };
   marketListings.push(listing);
 
@@ -551,11 +552,12 @@ function doMarketBuyOrder(){
     }
   }
 
-  // オフライン時: これまで通りローカル専用
+  // オフライン時: サーバ仕様に合わせたローカル注文
   const order = {
     id: marketOrderIdSeq++,
+    buyerId: "player",
     category,
-    itemId,
+    itemKey: itemId,
     price,
     maxAmount: amount,
     remainAmount: amount,
@@ -591,7 +593,7 @@ function refreshMarketOrderList(){
     row.style.borderBottom = "1px dashed #4b3f72";
     row.style.padding = "2px 0";
 
-    const label = getItemLabel(order.category, order.itemId);
+    const label = getItemLabel(order.category, order.itemKey);
     const usedAmount = order.maxAmount - order.remainAmount;
     const usedMoney  = usedAmount * order.price;
     const remainMoney= order.reservedMoney - usedMoney;
