@@ -316,15 +316,15 @@ function renderMyListings() {
     myId = window.globalSocket.id;
   }
 
-  // ★ 常に最新の window.marketListings を参照する
+  // 常に最新の window.marketListings を参照する
   const src = Array.isArray(window.marketListings) ? window.marketListings : [];
 
   if (typeof appendLog === "function") {
     appendLog("renderMyListings myId=" + myId + " totalListings=" + src.length);
   }
 
-  // sellerId が自分の listing だけを見る（オンライン / ローカル両対応）
-  const myListings = src.filter(l => l.sellerId === myId);
+  // sellerId / owner で自分の listing を抽出（サーバ/ローカル両対応）
+  const myListings = src.filter(l => l.sellerId === myId || l.owner === myId);
 
   if (typeof appendLog === "function") {
     appendLog("renderMyListings myListings.length=" + myListings.length);
@@ -369,7 +369,6 @@ function renderMyListings() {
     return `${nameCol}  x${amountCol}  @${priceCol}`;
   });
 
-  // 改行は実際の改行に修正
   el.textContent = ["出品中", header].concat(rows).join("\n");
   el.style.whiteSpace = "pre";
   el.style.fontFamily = "monospace";
@@ -416,7 +415,7 @@ function doMarketSell(){
     }
 
     const src = Array.isArray(window.marketListings) ? window.marketListings : [];
-    const myListings = src.filter(l => l.sellerId === myId);
+    const myListings = src.filter(l => l.sellerId === myId || l.owner === myId);
 
     const kindSet = new Set();
     for (const l of myListings) {
@@ -507,11 +506,6 @@ function doMarketSell(){
           if (typeof appendLog === "function") appendLog(msg);
 
           // ここは呼ばない: サーバ側が market:update を全員にemitする
-          // try {
-          //   window.globalSocket.emit("market:list");
-          // } catch (e2) {
-          //   console.log("market:list emit error after sell", e2);
-          // }
         }
       );
       return;
