@@ -126,8 +126,6 @@ function simulateMarketBuy(stackKey, mode, amount){
 }
 
 function addItemForBuy(category, itemId, amount){
-  console.log("addItemForBuy called", category, itemId, amount);
-
   if (typeof addItemToInventory === "function" &&
       (category === "weapon" || category === "armor" ||
        category === "potion" || category === "tool")) {
@@ -736,15 +734,13 @@ function setupMarketSocketSync() {
 
   try {
     window.globalSocket.on("market:listResult", (serverListings) => {
-      console.log("market:listResult", serverListings);
-
       const newList = (Array.isArray(serverListings) ? serverListings : []).map(l => ({
         id: l.id,
         category: l.category,
         itemId: l.itemKey || l.itemId,
         price: l.price,
         amount: l.amount,
-        sellerId: l.sellerId,             // sellerId を保持
+        sellerId: l.sellerId,
         owner: l.sellerId || "server"
       }));
 
@@ -756,23 +752,15 @@ function setupMarketSocketSync() {
     });
 
     window.globalSocket.on("market:update", (serverListings) => {
-      console.log("market:update", serverListings);
-
       const newList = (Array.isArray(serverListings) ? serverListings : []).map(l => ({
         id: l.id,
         category: l.category,
         itemId: l.itemKey || l.itemId,
         price: l.price,
         amount: l.amount,
-        sellerId: l.sellerId,             // sellerId を保持
+        sellerId: l.sellerId,
         owner: l.sellerId || "server"
       }));
-
-      if (typeof appendLog === "function") {
-        const myId = window.globalSocket && window.globalSocket.id;
-        const mine = newList.filter(l => l.sellerId === myId);
-        appendLog("RECV market:update count=" + newList.length + " myListings(server)=" + mine.length);
-      }
 
       try {
         detectSellFromDiff(window.prevServerMarketListings, newList);
