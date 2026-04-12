@@ -256,11 +256,6 @@ function doMarketBuy(stackKey, mode, amount){
   // オフライン購入（ローカル市場）
   // -----------------------
 
-  // 購入前のスナップショット（自分出品の売却判定用に使っていたが、オフライン自家買いでは売却扱いしない）
-  // const prevList = Array.isArray(window.marketListings)
-  //   ? window.marketListings.map(l => ({ ...l }))
-  //   : [];
-
   // ローカル配列を書き換え
   remain = sim.buyableCount;
   costLeft = sim.totalPrice;
@@ -280,8 +275,6 @@ function doMarketBuy(stackKey, mode, amount){
   if (Array.isArray(window.marketListings)) {
     window.marketListings = window.marketListings.filter(l => l.amount > 0);
   }
-
-  // ★オフラインでは「自分出品の売却加算」は行わない（自家買いで二重計上させない）
 
   // プレイヤー側の支払い＆在庫追加
   money -= sim.totalPrice;
@@ -751,7 +744,7 @@ function setupMarketSocketSync() {
         itemId: l.itemKey || l.itemId,
         price: l.price,
         amount: l.amount,
-        sellerId: l.sellerId,             // ★ sellerId を保持
+        sellerId: l.sellerId,             // sellerId を保持
         owner: l.sellerId || "server"
       }));
 
@@ -771,9 +764,15 @@ function setupMarketSocketSync() {
         itemId: l.itemKey || l.itemId,
         price: l.price,
         amount: l.amount,
-        sellerId: l.sellerId,             // ★ sellerId を保持
+        sellerId: l.sellerId,             // sellerId を保持
         owner: l.sellerId || "server"
       }));
+
+      if (typeof appendLog === "function") {
+        const myId = window.globalSocket && window.globalSocket.id;
+        const mine = newList.filter(l => l.sellerId === myId);
+        appendLog("RECV market:update count=" + newList.length + " myListings(server)=" + mine.length);
+      }
 
       try {
         detectSellFromDiff(window.prevServerMarketListings, newList);
