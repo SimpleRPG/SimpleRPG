@@ -492,11 +492,12 @@ function doMarketSell(){
           const msg = `${label} を ${amount}個、1個${price}Gで出品した`;
           if (typeof appendLog === "function") appendLog(msg);
 
-          try {
-            window.globalSocket.emit("market:list");
-          } catch (e2) {
-            console.log("market:list emit error after sell", e2);
-          }
+          // ★ここを削除: サーバ側が market:update を emit するので、二重リクエストしない
+          // try {
+          //   window.globalSocket.emit("market:list");
+          // } catch (e2) {
+          //   console.log("market:list emit error after sell", e2);
+          // }
         }
       );
       return;
