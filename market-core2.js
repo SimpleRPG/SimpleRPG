@@ -4,6 +4,7 @@
 // ここを追加（グローバルを必ず生やしておく）
 window.marketListings = window.marketListings || [];
 window.prevServerMarketListings = window.prevServerMarketListings || [];
+window.marketBuyOrders = window.marketBuyOrders || [];
 
 // -----------------------
 // 出品リストをまとめる
@@ -775,8 +776,18 @@ function setupMarketSocketSync() {
       renderMyListings();
     });
 
+    // ★自分の買い注文一覧の同期（サーバ仕様に合わせた最小追加）
+    window.globalSocket.on("market:buyOrder:listResult", (orders) => {
+      window.marketBuyOrders = Array.isArray(orders) ? orders : [];
+      if (typeof refreshMarketOrderList === "function") {
+        refreshMarketOrderList();
+      }
+    });
+
     try {
       window.globalSocket.emit("market:list");
+      // 必要に応じて初回の買い注文一覧も要求するなら:
+      // window.globalSocket.emit("market:buyOrder:list");
     } catch (e2) {
       console.log("initial market:list emit error (inside socket sync)", e2);
     }
@@ -812,6 +823,8 @@ window.addEventListener("DOMContentLoaded", () => {
       if (window.globalSocket) {
         try {
           window.globalSocket.emit("market:list");
+          // 買い注文タブで自分の注文も最新化したい場合:
+          // window.globalSocket.emit("market:buyOrder:list");
         } catch (e) {
           console.log("market:list emit error on tab click", e);
         }
