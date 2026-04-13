@@ -61,9 +61,10 @@ let marketOrderIdSeq = 1;
 let marketListingIdSeq = 1;
 
 // 売り手視点の売却ログ（誰に・何を・いくつ・いくらで売ったか）
+// 重要ログを [市] で強調
 function addSellLog(buyerLabel, category, itemId, amount, totalPrice) {
   const label = getItemLabel(category, itemId);
-  const msg = `${buyerLabel} に ${label} を ${amount}個売った（${totalPrice}G）`;
+  const msg = `[市] ${buyerLabel} に ${label} を ${amount}個売った（${totalPrice}G）`;
   if (typeof appendLog === "function") {
     appendLog(msg);
   }
@@ -133,7 +134,7 @@ function removeItemForSell(category, itemId, amount){
       }
       if (removed < amount) {
         if (typeof appendLog === "function") {
-          appendLog(`警告: 市場出品時に倉庫内の武器インスタンスが不足しています（id=${itemId}）`);
+          appendLog(`[市] 警告: 市場出品時に倉庫内の武器インスタンスが不足しています（id=${itemId}）`);
         }
         return false;
       }
@@ -164,7 +165,7 @@ function removeItemForSell(category, itemId, amount){
       }
       if (removed < amount) {
         if (typeof appendLog === "function") {
-          appendLog(`警告: 市場出品時に倉庫内の防具インスタンスが不足しています（id=${itemId}）`);
+          appendLog(`[市] 警告: 市場出品時に倉庫内の防具インスタンスが不足しています（id=${itemId}）`);
         }
         return false;
       }
@@ -257,14 +258,11 @@ function getItemLabel(category, itemId){
     const p = potions.find(x => x.id === itemId);
     return p ? p.name : itemId;
   } else if(category === "tool"){
-    // 仕様を変えず、まず従来の爆弾IDを優先して解決
     if (itemId === "bomb")   return "爆弾";
     if (itemId === "bomb_T1") return "爆弾T1";
     if (itemId === "bomb_T2") return "爆弾T2";
     if (itemId === "bomb_T3") return "爆弾T3";
 
-    // それ以外のツールは、equip-data.js 側で window.tools として公開された
-    // TOOLS_INIT から名前を引く（存在しない場合は従来どおり itemId をそのまま表示）
     if (Array.isArray(window.tools)) {
       const t = window.tools.find(x => x.id === itemId);
       if (t && t.name) return t.name;
@@ -421,15 +419,15 @@ function doMarketSell(){
   const price      = parseInt(priceEl.value,10) || 0;
 
   if(!itemId){
-    if (typeof appendLog === "function") appendLog("出品するアイテムを選んでください");
+    if (typeof appendLog === "function") appendLog("[市] 出品するアイテムを選んでください");
     return;
   }
   if(amount <= 0){
-    if (typeof appendLog === "function") appendLog("出品個数は1以上にしてください");
+    if (typeof appendLog === "function") appendLog("[市] 出品個数は1以上にしてください");
     return;
   }
   if(price <= 0){
-    if (typeof appendLog === "function") appendLog("価格は1G以上にしてください");
+    if (typeof appendLog === "function") appendLog("[市] 価格は1G以上にしてください");
     return;
   }
 
@@ -458,7 +456,7 @@ function doMarketSell(){
     const newKey = `${categoryForMarket}:${itemId}:${price}`;
     if (!kindSet.has(newKey) && kindSet.size >= 5) {
       if (typeof appendLog === "function") {
-        appendLog("出品枠は5種類までです（価格違いも別枠として数えられます）");
+        appendLog("[市] 出品枠は5種類までです（価格違いも別枠として数えられます）");
       }
       return;
     }
@@ -476,19 +474,19 @@ function doMarketSell(){
         (res) => {
           if (!res || !res.ok) {
             const errMsg = res && res.error ? res.error : "出品に失敗しました";
-            if (typeof appendLog === "function") appendLog(errMsg);
+            if (typeof appendLog === "function") appendLog(`[市] ${errMsg}`);
             return;
           }
 
           if(!removeItemForSell(uiCategory, itemId, amount)){
-            if (typeof appendLog === "function") appendLog("手持ちの個数が足りません");
+            if (typeof appendLog === "function") appendLog("[市] 手持ちの個数が足りません");
             return;
           }
 
           if (res.matchedAmount && res.matchedAmount > 0) {
             const immediateEarning = res.matchedAmount * price;
             money += immediateEarning;
-            const matchMsg = `${label} が買い注文に ${res.matchedAmount}個 即売れした（${immediateEarning}G）`;
+            const matchMsg = `[市] ${label} が買い注文に ${res.matchedAmount}個 即売れした（${immediateEarning}G）`;
             if (typeof appendLog === "function") appendLog(matchMsg);
           }
 
@@ -533,19 +531,19 @@ function doMarketSell(){
             renderMyListings();
           }
 
-          const msg = `${label} を ${amount}個、1個${price}Gで出品した`;
+          const msg = `[市] ${label} を ${amount}個、1個${price}Gで出品した`;
           if (typeof appendLog === "function") appendLog(msg);
         }
       );
       return;
     } catch (e) {
-      if (typeof appendLog === "function") appendLog("オンライン市場への出品に失敗しました");
+      if (typeof appendLog === "function") appendLog("[市] オンライン市場への出品に失敗しました");
       return;
     }
   }
 
   if(!removeItemForSell(uiCategory, itemId, amount)){
-    if (typeof appendLog === "function") appendLog("手持ちの個数が足りません");
+    if (typeof appendLog === "function") appendLog("[市] 手持ちの個数が足りません");
     return;
   }
 
@@ -559,7 +557,7 @@ function doMarketSell(){
   };
   marketListings.push(listing);
 
-  const msg = `${label} を ${amount}個、1個${price}Gで出品した`;
+  const msg = `[市] ${label} を ${amount}個、1個${price}Gで出品した`;
   if (typeof appendLog === "function") appendLog(msg);
 
   updateDisplay();
@@ -572,6 +570,10 @@ function doMarketSell(){
 // -----------------------
 // 買い注文（予約）
 // -----------------------
+
+// 「自分だけ表示」トグル状態を保存
+let marketOrderShowMineOnly = false;
+
 function doMarketBuyOrder(){
   const sel = document.getElementById("marketOrderItem");
   const priceEl = document.getElementById("marketOrderPrice");
@@ -584,17 +586,17 @@ function doMarketBuyOrder(){
   const amount= parseInt(amtEl.value,10) || 0;
 
   if(!category || !itemId){
-    if (typeof appendLog === "function") appendLog("注文するアイテムを選んでください");
+    if (typeof appendLog === "function") appendLog("[市] 注文するアイテムを選んでください");
     return;
   }
   if(price <= 0 || amount <= 0){
-    if (typeof appendLog === "function") appendLog("価格と最大個数は1以上にしてください");
+    if (typeof appendLog === "function") appendLog("[市] 価格と最大個数は1以上にしてください");
     return;
   }
 
   const reservedMoney = price * amount;
   if(money < reservedMoney){
-    if (typeof appendLog === "function") appendLog("注文用のお金が足りない");
+    if (typeof appendLog === "function") appendLog("[市] 注文用のお金が足りない");
     return;
   }
   money -= reservedMoney;
@@ -610,7 +612,7 @@ function doMarketBuyOrder(){
           if (!res || !res.ok) {
             money += reservedMoneyLocal;
             const errMsg = res && res.error ? res.error : "買い注文の登録に失敗しました";
-            if (typeof appendLog === "function") appendLog(errMsg);
+            if (typeof appendLog === "function") appendLog(`[市] ${errMsg}`);
             updateDisplay();
             return;
           }
@@ -642,7 +644,7 @@ function doMarketBuyOrder(){
           }
 
           const label = getItemLabel(category, itemId);
-          const msg = `${label} を「1個${price}Gで${amount}個まで」注文として出した（${reservedMoneyLocal}G拘束・オンライン）`;
+          const msg = `[市] ${label} を「1個${price}Gで${amount}個まで」注文として出した（${reservedMoneyLocal}G拘束・オンライン）`;
           if (typeof appendLog === "function") appendLog(msg);
 
           updateDisplay();
@@ -651,7 +653,7 @@ function doMarketBuyOrder(){
       return;
     } catch (e) {
       money += reservedMoney;
-      if (typeof appendLog === "function") appendLog("オンライン買い注文の登録に失敗しました");
+      if (typeof appendLog === "function") appendLog("[市] オンライン買い注文の登録に失敗しました");
       updateDisplay();
       return;
     }
@@ -670,7 +672,7 @@ function doMarketBuyOrder(){
   marketBuyOrders.push(order);
 
   const label = getItemLabel(category, itemId);
-  const msg = `${label} を「1個${price}Gで${amount}個まで」注文として出した（${reservedMoney}G拘束）`;
+  const msg = `[市] ${label} を「1個${price}Gで${amount}個まで」注文として出した（${reservedMoney}G拘束）`;
   if (typeof appendLog === "function") appendLog(msg);
 
   updateDisplay();
@@ -689,12 +691,57 @@ function refreshMarketOrderList(){
   const el = document.getElementById("marketOrderList");
   if (!el) return;
 
-  const src = Array.isArray(window.marketAllBuyOrders) ? window.marketAllBuyOrders : [];
+  const srcAll = Array.isArray(window.marketAllBuyOrders) ? window.marketAllBuyOrders : [];
+
+  // 自分のID
+  let myId = "player";
+  if (window.globalSocket && window.globalSocket.id) {
+    myId = window.globalSocket.id;
+  }
+
+  // トグル要素を用意
+  const toggleId = "marketOrderShowMineOnly";
+  let toggle = document.getElementById(toggleId);
+  if (!toggle) {
+    const parent = el.parentNode || document.body;
+    const wrapper = document.createElement("div");
+    wrapper.style.marginBottom = "4px";
+
+    toggle = document.createElement("input");
+    toggle.type = "checkbox";
+    toggle.id = toggleId;
+
+    const label = document.createElement("label");
+    label.htmlFor = toggleId;
+    label.textContent = "自分の買い注文だけ表示";
+
+    wrapper.appendChild(toggle);
+    wrapper.appendChild(label);
+
+    parent.insertBefore(wrapper, el);
+  }
+
+  // トグル状態を反映
+  toggle.checked = marketOrderShowMineOnly;
+  toggle.onchange = () => {
+    marketOrderShowMineOnly = !!toggle.checked;
+    refreshMarketOrderList();
+  };
+
+  // 実際に表示するリスト
+  let src = srcAll;
+  if (marketOrderShowMineOnly) {
+    src = srcAll.filter(order => !order.buyerId || order.buyerId === myId);
+  }
 
   if (!src.length) {
-    el.textContent = "現在、買い注文はありません。";
+    el.textContent = marketOrderShowMineOnly
+      ? "現在、自分の買い注文はありません。"
+      : "現在、買い注文はありません。";
     el.style.whiteSpace = "normal";
     el.style.fontFamily = "";
+    const cancelContainer = document.getElementById("marketOrderCancelContainer");
+    if (cancelContainer) cancelContainer.innerHTML = "";
     return;
   }
 
@@ -728,11 +775,6 @@ function refreshMarketOrderList(){
   }
   cancelContainer.innerHTML = "";
 
-  let myId = "player";
-  if (window.globalSocket && window.globalSocket.id) {
-    myId = window.globalSocket.id;
-  }
-
   src.forEach(order => {
     if (order.buyerId && order.buyerId !== myId) return;
 
@@ -747,7 +789,7 @@ function refreshMarketOrderList(){
     btn.textContent = "取消";
     btn.addEventListener("click", () => {
       if (!window.globalSocket) {
-        if (typeof appendLog === "function") appendLog("オンライン接続されていないため取消できません");
+        if (typeof appendLog === "function") appendLog("[市] オンライン接続されていないため取消できません");
         return;
       }
       try {
@@ -757,14 +799,14 @@ function refreshMarketOrderList(){
           (res) => {
             if (!res || !res.ok) {
               const errMsg = res && res.error ? res.error : "買い注文の取消に失敗しました";
-              if (typeof appendLog === "function") appendLog(errMsg);
+              if (typeof appendLog === "function") appendLog(`[市] ${errMsg}`);
               return;
             }
 
             if (typeof res.returnMoney === "number" && res.returnMoney > 0) {
               money += res.returnMoney;
               if (typeof appendLog === "function") {
-                appendLog(`買い注文の取消により ${res.returnMoney}G が返金されました`);
+                appendLog(`[市] 買い注文の取消により ${res.returnMoney}G が返金されました`);
               }
             }
 
@@ -780,7 +822,7 @@ function refreshMarketOrderList(){
           }
         );
       } catch (e) {
-        if (typeof appendLog === "function") appendLog("買い注文の取消要求に失敗しました");
+        if (typeof appendLog === "function") appendLog("[市] 買い注文の取消要求に失敗しました");
       }
     });
 
@@ -788,4 +830,179 @@ function refreshMarketOrderList(){
     row.appendChild(btn);
     cancelContainer.appendChild(row);
   });
+}
+
+// -----------------------
+// 原価（理論価値）計算ヘルパー
+// -----------------------
+function getTheoreticalCost(category, itemId) {
+  function getBaseMaterialCost(baseKey, tier) {
+    const tbl = window.MATERIAL_TIER_VALUES || {};
+    if (tier === "t1") return tbl.t1 || 3;
+    if (tier === "t2") return tbl.t2 || 5;
+    if (tier === "t3") return tbl.t3 || 10;
+    return 0;
+  }
+
+  function getIntermediateCost(id) {
+    if (!Array.isArray(INTERMEDIATE_MATERIALS)) return 0;
+    const mat = INTERMEDIATE_MATERIALS.find(m => m.id === id);
+    if (!mat || !mat.from) return 0;
+
+    let total = 0;
+    Object.keys(mat.from).forEach(baseKey => {
+      const tiers = mat.from[baseKey];
+      Object.keys(tiers).forEach(tier => {
+        const amount = tiers[tier] || 0;
+        total += getBaseMaterialCost(baseKey, tier) * amount;
+      });
+    });
+    return total;
+  }
+
+  function getRecipeCost(cat, id) {
+    if (typeof CRAFT_RECIPES !== "object" || !CRAFT_RECIPES[cat]) return 0;
+    const list = CRAFT_RECIPES[cat];
+    const r = list.find(x => x.id === id);
+    if (!r || !r.cost) return 0;
+
+    let total = 0;
+    Object.keys(r.cost).forEach(key => {
+      const amount = r.cost[key] || 0;
+
+      const isIntermediate =
+        Array.isArray(INTERMEDIATE_MATERIALS) &&
+        INTERMEDIATE_MATERIALS.some(m => m.id === key);
+
+      if (isIntermediate) {
+        total += getIntermediateCost(key) * amount;
+      } else {
+        let baseKey = key;
+        let tier = "t1";
+
+        const m = key.match(/(.+)_T([123])/);
+        if (m) {
+          baseKey = m[1];
+          tier = "t" + m[2];
+        }
+
+        total += getBaseMaterialCost(baseKey, tier) * amount;
+      }
+    });
+
+    let avgRate = 0.7;
+    if (/_T1$/.test(id)) avgRate = 0.8;
+    else if (/_T2$/.test(id)) avgRate = 0.7;
+    else if (/_T3$/.test(id)) avgRate = 0.6;
+
+    if (avgRate <= 0) avgRate = 0.7;
+
+    const v = total / avgRate;
+    return Math.ceil(v);
+  }
+
+  if (category === "material") {
+    if (itemId === "wood" || itemId === "ore" || itemId === "herb" ||
+        itemId === "cloth" || itemId === "leather" || itemId === "water") {
+      return getBaseMaterialCost(itemId, "t1");
+    }
+    if (itemId === RARE_GATHER_ITEM_ID) {
+      return 50;
+    }
+    if (Array.isArray(INTERMEDIATE_MATERIALS) &&
+        INTERMEDIATE_MATERIALS.some(m => m.id === itemId)) {
+      return getIntermediateCost(itemId);
+    }
+    return 0;
+  } else if (category === "weapon" || category === "armor" ||
+             category === "potion" || category === "tool") {
+    return getRecipeCost(category, itemId);
+  }
+
+  return 0;
+}
+
+function getMarketBaseValue(category, itemId) {
+  const theoretical = getTheoreticalCost(category, itemId);
+  if (theoretical > 0) return theoretical;
+
+  const stacks = buildMarketStacks();
+  const st = stacks.find(s => s.category === category && s.itemId === itemId);
+  if (!st) return 0;
+  return st.minPrice || 0;
+}
+
+// =======================
+// 市場イベント（ホットカテゴリ）
+// =======================
+const MARKET_HOT_CATEGORY_CANDIDATES = ["potion", "material", "weapon", "armor", "cooking", "tool"];
+
+const MARKET_CATEGORY_LABELS_JA = {
+  weapon: "武器",
+  armor: "防具",
+  potion: "ポーション",
+  material: "素材",
+  cooking: "料理",
+  tool: "道具"
+};
+
+let currentMarketHotCats = [];
+
+function applyMarketEventBoost(prob, itemCategory) {
+  if (Array.isArray(currentMarketHotCats) &&
+      currentMarketHotCats.includes(itemCategory)) {
+    prob *= 4;
+    if (prob > 0.25) prob = 0.25;
+  }
+  return prob;
+}
+
+function rotateMarketHotCategories() {
+  if (!Array.isArray(MARKET_HOT_CATEGORY_CANDIDATES) ||
+      MARKET_HOT_CATEGORY_CANDIDATES.length === 0) {
+    currentMarketHotCats = [];
+    return;
+  }
+
+  const i = Math.floor(Math.random() * MARKET_HOT_CATEGORY_CANDIDATES.length);
+  const hot = MARKET_HOT_CATEGORY_CANDIDATES[i];
+
+  currentMarketHotCats = [hot];
+}
+
+(function startMarketEventTimerIfNeeded() {
+  if (typeof window === "undefined") return;
+  if (window._marketEventTimerStarted) return;
+  window._marketEventTimerStarted = true;
+
+  rotateMarketHotCategories();
+
+  const THIRTY_MIN_MS = 30 * 60 * 1000;
+  setInterval(() => {
+    rotateMarketHotCategories();
+  }, THIRTY_MIN_MS);
+})();
+
+function getNpcBuyProb(baseValue, price, category) {
+  if (price <= 0 || baseValue <= 0) return 0;
+
+  const ratio = price / baseValue;
+  let prob = 0;
+
+  if (ratio < 0.5) {
+    prob = 0.05;
+  } else if (ratio < 1.0) {
+    prob = 0.02;
+  } else if (ratio < 1.5) {
+    prob = 0.005;
+  } else if (ratio < 2.5) {
+    prob = 0.001;
+  } else {
+    prob = 0.0001;
+  }
+
+  prob = applyMarketEventBoost(prob, category);
+  if (prob > 0.25) prob = 0.25;
+
+  return prob;
 }

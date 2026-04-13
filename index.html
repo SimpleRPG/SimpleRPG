@@ -443,6 +443,7 @@
                 <div style="margin-bottom:4px;">
                   <label>個数:</label>
                   <input id="marketSellAmount" type="number" value="1" min="1" style="width:60px;">
+                  <button id="marketSellAmountMax">最大</button>
                 </div>
 
                 <div style="margin-bottom:4px;">
@@ -466,7 +467,7 @@
                     <button id="marketBuyRefreshBtn">出品更新</button>
                   </div>
 
-                  <div style="margin-bottom:4px;">
+                  <div style="margin-bottom:4px%;">
                     <button class="market-cat-tab active" data-cat="all">すべて</button>
                     <button class="market-cat-tab" data-cat="weapon">武器</button>
                     <button class="market-cat-tab" data-cat="armor">防具</button>
@@ -493,6 +494,9 @@
                   <div style="margin-bottom:4px;">
                     <label>個数:</label>
                     <input id="marketOrderAmount" type="number" value="1" min="1" style="width:60px;">
+                  </div>
+                  <div style="margin-bottom:4px;">
+                    <span id="marketOrderReservedPreview" style="font-size:11px; color:#ccc;"></span>
                   </div>
                   <button id="marketOrderBtn">買い注文を出す</button>
 
@@ -922,88 +926,11 @@
   <script src="game-ui-3.js"></script>
   
   <script src="asobikata.js"></script>
-  
-  <script>
-    // ギルド内タブ切り替え（仕様はそのまま、中身の表示を切り替えるだけ）
-    document.addEventListener("DOMContentLoaded", () => {
-      const guildTabButtons = document.querySelectorAll(".guildTabBtn");
-      const guildPaneList   = document.getElementById("guildTab_list");
-      const guildPaneQuests = document.getElementById("guildTab_quests");
-      const guildPaneRewards= document.getElementById("guildTab_rewards");
 
-      function setGuildTab(tab) {
-        if (!guildPaneList || !guildPaneQuests || !guildPaneRewards) return;
-
-        guildTabButtons.forEach(btn => {
-          const t = btn.dataset.guildTab;
-          btn.classList.toggle("active", t === tab);
-        });
-
-        guildPaneList.style.display    = (tab === "list")   ? "" : "none";
-        guildPaneQuests.style.display  = (tab === "quests") ? "" : "none";
-        guildPaneRewards.style.display = (tab === "rewards")? "" : "none";
-      }
-
-      guildTabButtons.forEach(btn => {
-        btn.addEventListener("click", () => {
-          const t = btn.dataset.guildTab || "list";
-          setGuildTab(t);
-        });
-      });
-
-      // 初期状態は「ギルド一覧」タブを表示
-      setGuildTab("list");
-    });
-  </script>
-
-  <!-- ★ Socket.io クライアントと接続（Render / 本番対応版） -->
-  <!-- 同一オリジンから配信される socket.io を使用する -->
+  <!-- Socket.io クライアント -->
   <script src="/socket.io/socket.io.js"></script>
-  <script>
-    // 他のファイル（market-core.js / game-ui.js など）から参照するグローバル
-    window.globalSocket = null;
 
-    (function () {
-      try {
-        if (typeof io === "undefined") {
-          console.log("Socket.io client library not loaded (io is undefined)");
-          if (typeof appendLog === "function") appendLog("[SYS] Socket.ioクライアントが読み込まれていません");
-          return;
-        }
-
-        // 同一オリジンに接続（Render 本番でも localhost でも両対応）
-        const socket = io({
-          transports: ["websocket"],
-          withCredentials: false,
-        });
-        window.globalSocket = socket;
-
-        socket.on("connect", () => {
-          console.log("Socket.io connected:", socket.id);
-          if (typeof appendLog === "function") appendLog("[SYS] Socket.io接続: " + socket.id);
-          // 簡単な疎通テスト
-          socket.emit("ping-from-client");
-
-          // 接続完了後に市場の同期処理を呼ぶ
-          if (typeof window.setupMarketSocketSync === "function") {
-            window.setupMarketSocketSync();
-          }
-        });
-
-        socket.on("pong-from-server", () => {
-          console.log("Received pong-from-server");
-          if (typeof appendLog === "function") appendLog("[SYS] サーバーからpong受信");
-        });
-
-        socket.on("connect_error", (err) => {
-          console.log("Socket.io connect_error:", err.message);
-          if (typeof appendLog === "function") appendLog("[SYS] Socket接続エラー: " + err.message);
-        });
-      } catch (e) {
-        console.log("Socket.io init error:", e);
-        if (typeof appendLog === "function") appendLog("[SYS] Socket.io初期化エラー: " + e.message);
-      }
-    })();
-  </script>
+  <!-- HTMLまわりの初期化・タブ切り替え・Socket初期化 -->
+  <script src="html.js"></script>
 </body>
 </html>

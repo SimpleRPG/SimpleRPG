@@ -675,81 +675,11 @@ function updateCraftMatDetailText() {
   label.textContent = labelText;
 }
 
-// 買い注文用セレクトの初期化
-function initMarketOrderItemSelect() {
-  const sel = document.getElementById("marketOrderItem");
-  if (!sel) return;
-
-  sel.innerHTML = "";
-
-  const addOpt = (value, label) => {
-    const opt = document.createElement("option");
-    opt.value = value;
-    opt.textContent = label;
-    sel.appendChild(opt);
-  };
-
-  // 武器
-  if (Array.isArray(window.weapons)) {
-    weapons.forEach(w => {
-      addOpt(`weapon:${w.id}`, `武器: ${w.name}`);
-    });
-  }
-
-  // 防具
-  if (Array.isArray(window.armors)) {
-    armors.forEach(a => {
-      addOpt(`armor:${a.id}`, `防具: ${a.name}`);
-    });
-  }
-
-  // ポーション
-  if (Array.isArray(window.potions)) {
-    potions.forEach(p => {
-      addOpt(`potion:${p.id}`, `ポーション: ${p.name}`);
-    });
-  }
-
-  // 基本素材
-  const baseNames = {
-    wood:   "木",
-    ore:    "鉱石",
-    herb:   "草",
-    cloth:  "布",
-    leather:"皮",
-    water:  "水"
-  };
-  Object.keys(baseNames).forEach(id => {
-    addOpt(`material:${id}`, `素材: ${baseNames[id]}`);
-  });
-  if (typeof RARE_GATHER_ITEM_ID !== "undefined" && typeof RARE_GATHER_ITEM_NAME !== "undefined") {
-    addOpt(`material:${RARE_GATHER_ITEM_ID}`, `素材: ${RARE_GATHER_ITEM_NAME}`);
-  }
-
-  // 中間素材
-  if (Array.isArray(window.INTERMEDIATE_MATERIALS)) {
-    INTERMEDIATE_MATERIALS.forEach(m => {
-      addOpt(`material:${m.id}`, `中間素材: ${m.name}`);
-    });
-  }
-
-  // 料理
-  if (typeof COOKING_RECIPES !== "undefined") {
-    COOKING_RECIPES.food.forEach(r => {
-      addOpt(`material:${r.id}`, `料理: ${r.name}`);
-    });
-    COOKING_RECIPES.drink.forEach(r => {
-      addOpt(`material:${r.id}`, `飲み物: ${r.name}`);
-    });
-  }
-}
-
-
 function initJobPetRebirthUI() {
   // まずステータスページを構築
   buildStatusPage();
 
-  // ステータスページ構築後に買い注文セレクトを初期化
+  // ステータスページ構築後に買い注文セレクトを初期化（実体は market-core2.js 側）
   if (typeof initMarketOrderItemSelect === "function") {
     initMarketOrderItemSelect();
   }
@@ -933,6 +863,7 @@ function initJobPetRebirthUI() {
     refreshWarehouseUI();
   }
 }
+
 const MAX_LOG_LINES = 50;
 
 function appendLog(msg) {
@@ -947,11 +878,11 @@ function appendLog(msg) {
 
   // 最大行数を超えたら「末尾（＝一番古い）」から削る
   if (lines.length > MAX_LOG_LINES) {
-    lines = lines.slice(0, MAX_LOG_LINES); // 先頭10件だけ残す
+    lines = lines.slice(0, MAX_LOG_LINES);
   }
 
   el.textContent = lines.join("\n");
 
-  // 一番上が最新なのでスクロール位置はそのままでOK（好みで調整）
+  // 一番上が最新なのでスクロール位置は先頭へ
   el.scrollTop = 0;
 }

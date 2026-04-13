@@ -183,7 +183,7 @@ function doMarketBuy(stackKey, mode, amount){
   if(!sim || sim.buyableCount <= 0) return;
 
   if (money < sim.totalPrice) {
-    if (typeof appendLog === "function") appendLog("お金が足りません");
+    if (typeof appendLog === "function") appendLog("[市] お金が足りません");
     return;
   }
 
@@ -226,8 +226,8 @@ function doMarketBuy(stackKey, mode, amount){
           addItemForBuy(category, itemId, successCount.amount);
           const label = getItemLabel(category, itemId);
           const msg = partialFailed
-            ? `${label} を ${successCount.amount}個購入した（合計${successCount.cost}G、一部失敗）`
-            : `${label} を ${successCount.amount}個購入した（合計${successCount.cost}G）`;
+            ? `[市] ${label} を ${successCount.amount}個購入した（合計${successCount.cost}G、一部失敗）`
+            : `[市] ${label} を ${successCount.amount}個購入した（合計${successCount.cost}G）`;
           if (typeof appendLog === "function") appendLog(msg);
           if (typeof updateDisplay === "function") updateDisplay();
           if (typeof refreshMarketBuyList === "function") refreshMarketBuyList();
@@ -240,7 +240,6 @@ function doMarketBuy(stackKey, mode, amount){
           window.globalSocket.emit("market:buyOrder:list");
           window.globalSocket.emit("market:buyOrder:listAll");
         } catch (e2) {
-          // emit 失敗はコンソールのみ想定
         }
       };
 
@@ -255,7 +254,7 @@ function doMarketBuy(stackKey, mode, amount){
           { id: c.id, consumeAmount: c.amount },
           (res) => {
             if (!res || !res.ok) {
-              if (typeof appendLog === "function") appendLog("購入処理が途中で失敗しました");
+              if (typeof appendLog === "function") appendLog("[市] 購入処理が途中で失敗しました");
               finalizeSuccess(true);
               return;
             }
@@ -268,15 +267,12 @@ function doMarketBuy(stackKey, mode, amount){
       doNext();
       return;
     } catch (e) {
-      // 通信エラー系はコンソール想定（ここでは何もしない）
     }
   }
 
   // -----------------------
   // オフライン購入（ローカル市場）
   // -----------------------
-
-  // ローカル配列を書き換え
   remain = sim.buyableCount;
   costLeft = sim.totalPrice;
 
@@ -291,7 +287,6 @@ function doMarketBuy(stackKey, mode, amount){
     costLeft -= cost;
   }
 
-  // 0 個になった出品を削除
   if (Array.isArray(window.marketListings)) {
     window.marketListings = window.marketListings.filter(l => l.amount > 0);
   }
@@ -300,7 +295,7 @@ function doMarketBuy(stackKey, mode, amount){
   addItemForBuy(category, itemId, sim.buyableCount);
 
   const label = getItemLabel(category, itemId);
-  const msg = `${label} を ${sim.buyableCount}個購入した（合計${sim.totalPrice}G）`;
+  const msg = `[市] ${label} を ${sim.buyableCount}個購入した（合計${sim.totalPrice}G）`;
   if (typeof appendLog === "function") appendLog(msg);
 
   updateDisplay();
@@ -308,181 +303,6 @@ function doMarketBuy(stackKey, mode, amount){
   refreshMarketSellCandidates();
   refreshMarketSellItems();
   renderMyListings();
-}
-
-// -----------------------
-// 原価（理論価値）計算ヘルパー
-// -----------------------
-function getTheoreticalCost(category, itemId) {
-  function getBaseMaterialCost(baseKey, tier) {
-    const tbl = window.MATERIAL_TIER_VALUES || {};
-    if (tier === "t1") return tbl.t1 || 3;
-    if (tier === "t2") return tbl.t2 || 5;
-    if (tier === "t3") return tbl.t3 || 10;
-    return 0;
-  }
-
-  function getIntermediateCost(id) {
-    if (!Array.isArray(INTERMEDIATE_MATERIALS)) return 0;
-    const mat = INTERMEDIATE_MATERIALS.find(m => m.id === id);
-    if (!mat || !mat.from) return 0;
-
-    let total = 0;
-    Object.keys(mat.from).forEach(baseKey => {
-      const tiers = mat.from[baseKey];
-      Object.keys(tiers).forEach(tier => {
-        const amount = tiers[tier] || 0;
-        total += getBaseMaterialCost(baseKey, tier) * amount;
-      });
-    });
-    return total;
-  }
-
-  function getRecipeCost(cat, id) {
-    if (typeof CRAFT_RECIPES !== "object" || !CRAFT_RECIPES[cat]) return 0;
-    const list = CRAFT_RECIPES[cat];
-    const r = list.find(x => x.id === id);
-    if (!r || !r.cost) return 0;
-
-    let total = 0;
-    Object.keys(r.cost).forEach(key => {
-      const amount = r.cost[key] || 0;
-
-      const isIntermediate =
-        Array.isArray(INTERMEDIATE_MATERIALS) &&
-        INTERMEDIATE_MATERIALS.some(m => m.id === key);
-
-      if (isIntermediate) {
-        total += getIntermediateCost(key) * amount;
-      } else {
-        let baseKey = key;
-        let tier = "t1";
-
-        const m = key.match(/(.+)_T([123])/);
-        if (m) {
-          baseKey = m[1];
-          tier = "t" + m[2];
-        }
-
-        total += getBaseMaterialCost(baseKey, tier) * amount;
-      }
-    });
-
-    let avgRate = 0.7;
-    if (/_T1$/.test(id)) avgRate = 0.8;
-    else if (/_T2$/.test(id)) avgRate = 0.7;
-    else if (/_T3$/.test(id)) avgRate = 0.6;
-
-    if (avgRate <= 0) avgRate = 0.7;
-
-    const v = total / avgRate;
-    return Math.ceil(v);
-  }
-
-  if (category === "material") {
-    if (itemId === "wood" || itemId === "ore" || itemId === "herb" ||
-        itemId === "cloth" || itemId === "leather" || itemId === "water") {
-      return getBaseMaterialCost(itemId, "t1");
-    }
-    if (itemId === RARE_GATHER_ITEM_ID) {
-      return 50;
-    }
-    if (Array.isArray(INTERMEDIATE_MATERIALS) &&
-        INTERMEDIATE_MATERIALS.some(m => m.id === itemId)) {
-      return getIntermediateCost(itemId);
-    }
-    return 0;
-  } else if (category === "weapon" || category === "armor" ||
-             category === "potion" || category === "tool") {
-    return getRecipeCost(category, itemId);
-  }
-
-  return 0;
-}
-
-function getMarketBaseValue(category, itemId) {
-  const theoretical = getTheoreticalCost(category, itemId);
-  if (theoretical > 0) return theoretical;
-
-  const stacks = buildMarketStacks();
-  const st = stacks.find(s => s.category === category && s.itemId === itemId);
-  if (!st) return 0;
-  return st.minPrice || 0;
-}
-
-// =======================
-// 市場イベント（ホットカテゴリ）
-// =======================
-const MARKET_HOT_CATEGORY_CANDIDATES = ["potion", "material", "weapon", "armor", "cooking", "tool"];
-
-const MARKET_CATEGORY_LABELS_JA = {
-  weapon: "武器",
-  armor: "防具",
-  potion: "ポーション",
-  material: "素材",
-  cooking: "料理",
-  tool: "道具"
-};
-
-let currentMarketHotCats = [];
-
-function applyMarketEventBoost(prob, itemCategory) {
-  if (Array.isArray(currentMarketHotCats) &&
-      currentMarketHotCats.includes(itemCategory)) {
-    prob *= 4;
-    if (prob > 0.25) prob = 0.25;
-  }
-  return prob;
-}
-
-function rotateMarketHotCategories() {
-  if (!Array.isArray(MARKET_HOT_CATEGORY_CANDIDATES) ||
-      MARKET_HOT_CATEGORY_CANDIDATES.length === 0) {
-    currentMarketHotCats = [];
-    return;
-  }
-
-  const i = Math.floor(Math.random() * MARKET_HOT_CATEGORY_CANDIDATES.length);
-  const hot = MARKET_HOT_CATEGORY_CANDIDATES[i];
-
-  currentMarketHotCats = [hot];
-}
-
-(function startMarketEventTimerIfNeeded() {
-  if (typeof window === "undefined") return;
-  if (window._marketEventTimerStarted) return;
-  window._marketEventTimerStarted = true;
-
-  rotateMarketHotCategories();
-
-  const THIRTY_MIN_MS = 30 * 60 * 1000;
-  setInterval(() => {
-    rotateMarketHotCategories();
-  }, THIRTY_MIN_MS);
-})();
-
-function getNpcBuyProb(baseValue, price, category) {
-  if (price <= 0 || baseValue <= 0) return 0;
-
-  const ratio = price / baseValue;
-  let prob = 0;
-
-  if (ratio < 0.5) {
-    prob = 0.05;
-  } else if (ratio < 1.0) {
-    prob = 0.02;
-  } else if (ratio < 1.5) {
-    prob = 0.005;
-  } else if (ratio < 2.5) {
-    prob = 0.001;
-  } else {
-    prob = 0.0001;
-  }
-
-  prob = applyMarketEventBoost(prob, category);
-  if (prob > 0.25) prob = 0.25;
-
-  return prob;
 }
 
 // -----------------------
@@ -516,7 +336,8 @@ function refreshMarketSellCandidates(){
 function refreshMarketSellItems(){
   const catSel  = document.getElementById("marketSellCategory");
   const itemSel = document.getElementById("marketSellItem");
-  if (!catSel || !itemSel) return;
+  const amountInput = document.getElementById("marketSellAmount");
+  if (!catSel || !itemSel || !amountInput) return;
 
   if (typeof weapons === "undefined" ||
       typeof armors  === "undefined" ||
@@ -534,6 +355,8 @@ function refreshMarketSellItems(){
     itemSel.appendChild(opt);
   };
 
+  let maxCountForSelected = 0;
+
   if (category === "weapon") {
     let warehouseCounts = {};
     if (Array.isArray(window.weaponInstances)) {
@@ -548,6 +371,12 @@ function refreshMarketSellItems(){
         appendOption(w.id, `${w.name}（倉庫${cnt}）`);
       }
     });
+
+    if (itemSel.value) {
+      const id = itemSel.value;
+      const cnt = warehouseCounts[id] != null ? warehouseCounts[id] : (weaponCounts[id] || 0);
+      maxCountForSelected = cnt || 0;
+    }
   } else if (category === "armor") {
     let warehouseCounts = {};
     if (Array.isArray(window.armorInstances)) {
@@ -562,6 +391,12 @@ function refreshMarketSellItems(){
         appendOption(a.id, `${a.name}（倉庫${cnt}）`);
       }
     });
+
+    if (itemSel.value) {
+      const id = itemSel.value;
+      const cnt = warehouseCounts[id] != null ? warehouseCounts[id] : (armorCounts[id] || 0);
+      maxCountForSelected = cnt || 0;
+    }
   } else if (category === "potion") {
     potions.forEach(p=>{
       const cnt = potionCounts[p.id] || 0;
@@ -569,6 +404,11 @@ function refreshMarketSellItems(){
         appendOption(p.id, `${p.name}（所持${cnt}）`);
       }
     });
+
+    if (itemSel.value) {
+      const id = itemSel.value;
+      maxCountForSelected = potionCounts[id] || 0;
+    }
   } else if (category === "tool") {
     if (typeof toolCounts === "object") {
       Object.keys(toolCounts).forEach(id => {
@@ -577,6 +417,10 @@ function refreshMarketSellItems(){
         const label = getItemLabel("tool", id);
         appendOption(id, `${label}（所持${cnt}）`);
       });
+    }
+
+    if (itemSel.value && typeof toolCounts === "object") {
+      maxCountForSelected = toolCounts[itemSel.value] || 0;
     }
   } else if (category === "materialBase") {
     const mats = [
@@ -600,6 +444,12 @@ function refreshMarketSellItems(){
         appendOption(m.id, `${m.name}（所持${m.count}）`);
       }
     });
+
+    if (itemSel.value) {
+      const id = itemSel.value;
+      const base = mats.find(m => m.id === id);
+      maxCountForSelected = base ? base.count : 0;
+    }
   } else if (category === "materialInter") {
     if (typeof intermediateMats === "object") {
       if (Array.isArray(INTERMEDIATE_MATERIALS)) {
@@ -617,6 +467,10 @@ function refreshMarketSellItems(){
           }
         });
       }
+    }
+
+    if (itemSel.value && typeof intermediateMats === "object") {
+      maxCountForSelected = intermediateMats[itemSel.value] || 0;
     }
   } else if (category === "cooking") {
     if (typeof COOKING_RECIPES !== "undefined") {
@@ -637,6 +491,13 @@ function refreshMarketSellItems(){
         appendOption(id, `${r.name}（所持${cnt}）`);
       });
     }
+
+    if (itemSel.value) {
+      const id = itemSel.value;
+      const foods  = window.cookedFoods  || {};
+      const drinks = window.cookedDrinks || {};
+      maxCountForSelected = (foods[id] || drinks[id] || 0);
+    }
   }
 
   if (!itemSel.options.length) {
@@ -644,7 +505,66 @@ function refreshMarketSellItems(){
     opt.value = "";
     opt.textContent = "出品できるアイテムがありません";
     itemSel.appendChild(opt);
+    maxCountForSelected = 0;
   }
+
+  amountInput.max = maxCountForSelected > 0 ? String(maxCountForSelected) : "";
+  const maxBtn = document.getElementById("marketSellAmountMax");
+  if (maxBtn) {
+    maxBtn.onclick = () => {
+      if (maxCountForSelected > 0) {
+        amountInput.value = String(maxCountForSelected);
+      }
+    };
+  }
+
+  itemSel.onchange = () => {
+    let newMax = 0;
+    const id = itemSel.value;
+    if (!id) {
+      amountInput.max = "";
+      return;
+    }
+    if (category === "weapon") {
+      let warehouseCounts = {};
+      if (Array.isArray(window.weaponInstances)) {
+        weaponInstances.forEach(inst => {
+          if (!inst || inst.location !== "warehouse") return;
+          warehouseCounts[inst.id] = (warehouseCounts[inst.id] || 0) + 1;
+        });
+      }
+      newMax = warehouseCounts[id] != null ? warehouseCounts[id] : (weaponCounts[id] || 0);
+    } else if (category === "armor") {
+      let warehouseCounts = {};
+      if (Array.isArray(window.armorInstances)) {
+        armorInstances.forEach(inst => {
+          if (!inst || inst.location !== "warehouse") return;
+          warehouseCounts[inst.id] = (warehouseCounts[inst.id] || 0) + 1;
+        });
+      }
+      newMax = warehouseCounts[id] != null ? warehouseCounts[id] : (armorCounts[id] || 0);
+    } else if (category === "potion") {
+      newMax = potionCounts[id] || 0;
+    } else if (category === "tool") {
+      newMax = (typeof toolCounts === "object" ? (toolCounts[id] || 0) : 0);
+    } else if (category === "materialBase") {
+      if (id === "wood" || id === "ore" || id === "herb" ||
+          id === "cloth" || id === "leather" || id === "water") {
+        newMax = getMatTotal(id);
+      } else if (id === RARE_GATHER_ITEM_ID && typeof itemCounts === "object") {
+        newMax = itemCounts[id] || 0;
+      }
+    } else if (category === "materialInter") {
+      if (typeof intermediateMats === "object") {
+        newMax = intermediateMats[id] || 0;
+      }
+    } else if (category === "cooking") {
+      const foods  = window.cookedFoods  || {};
+      const drinks = window.cookedDrinks || {};
+      newMax = (foods[id] || drinks[id] || 0);
+    }
+    amountInput.max = newMax > 0 ? String(newMax) : "";
+  };
 }
 
 // -----------------------
@@ -652,6 +572,9 @@ function refreshMarketSellItems(){
 // -----------------------
 function initMarketOrderItemSelect() {
   const sel = document.getElementById("marketOrderItem");
+  const priceEl = document.getElementById("marketOrderPrice");
+  const amtEl = document.getElementById("marketOrderAmount");
+  const reservePreview = document.getElementById("marketOrderReservedPreview");
   if (!sel) return;
 
   sel.innerHTML = "";
@@ -714,10 +637,32 @@ function initMarketOrderItemSelect() {
     opt.textContent = "買い注文できるアイテムがありません";
     sel.appendChild(opt);
   }
+
+  // 拘束Gプレビュー（クライアント計算だけ）
+  const updateReservePreview = () => {
+    if (!reservePreview || !priceEl || !amtEl) return;
+    const price = parseInt(priceEl.value, 10) || 0;
+    const amount = parseInt(amtEl.value, 10) || 0;
+    const reserved = price > 0 && amount > 0 ? price * amount : 0;
+    if (reserved > 0) {
+      reservePreview.textContent = `拘束予定: ${reserved}G`;
+    } else {
+      reservePreview.textContent = "";
+    }
+  };
+
+  if (priceEl) {
+    priceEl.addEventListener("input", updateReservePreview);
+  }
+  if (amtEl) {
+    amtEl.addEventListener("input", updateReservePreview);
+  }
+  updateReservePreview();
 }
 
 // 買いリスト表示＋カテゴリフィルタ
 let marketBuyStacksCache = [];
+let lastMarketBuyCategory = "all";
 
 function renderMarketBuyList(stacks){
   const container = document.getElementById("marketBuyListContainer");
@@ -729,7 +674,13 @@ function renderMarketBuyList(stacks){
     return;
   }
 
-  stacks.forEach(st=>{
+  // 現在表示中カテゴリでフィルタ
+  let targetStacks = stacks;
+  if (lastMarketBuyCategory && lastMarketBuyCategory !== "all") {
+    targetStacks = stacks.filter(st => st.category === lastMarketBuyCategory);
+  }
+
+  targetStacks.forEach(st=>{
     const row = document.createElement("div");
     row.className = "market-buy-row";
 
@@ -754,8 +705,27 @@ function renderMarketBuyList(stacks){
     btnAll.textContent = "全部買う";
     btnAll.addEventListener("click", () => doMarketBuy(st.key, "all"));
 
+    // 任意個数入力＋ボタン
+    const amountInput = document.createElement("input");
+    amountInput.type = "number";
+    amountInput.min = "1";
+    amountInput.placeholder = "個数";
+
+    const btnAmount = document.createElement("button");
+    btnAmount.textContent = "指定数買う";
+    btnAmount.addEventListener("click", () => {
+      const n = parseInt(amountInput.value, 10) || 0;
+      if (n <= 0) {
+        if (typeof appendLog === "function") appendLog("[市] 購入個数は1以上にしてください");
+        return;
+      }
+      doMarketBuy(st.key, "amount", n);
+    });
+
     controls.appendChild(btnOne);
     controls.appendChild(btnAll);
+    controls.appendChild(amountInput);
+    controls.appendChild(btnAmount);
 
     row.appendChild(controls);
 
@@ -770,16 +740,12 @@ function refreshMarketBuyList(){
 }
 
 function filterMarketBuyListByCategory(cat){
+  lastMarketBuyCategory = cat || "all";
   if (!marketBuyStacksCache || !marketBuyStacksCache.length) {
     refreshMarketBuyList();
     return;
   }
-  if (cat === "all") {
-    renderMarketBuyList(marketBuyStacksCache);
-    return;
-  }
-  const filtered = marketBuyStacksCache.filter(st => st.category === cat);
-  renderMarketBuyList(filtered);
+  renderMarketBuyList(marketBuyStacksCache);
 }
 
 // -----------------------
@@ -847,7 +813,6 @@ function setupMarketSocketSync() {
       try {
         detectSellFromDiff(window.prevServerMarketListings, newList);
       } catch (e) {
-        // 差分検出エラーはコンソールのみ想定
       }
 
       window.marketListings = newList;
@@ -871,7 +836,6 @@ function setupMarketSocketSync() {
       try {
         detectSellFromDiff(window.prevServerMarketListings, newList);
       } catch (e) {
-        // 差分検出エラーはコンソールのみ想定
       }
 
       window.marketListings = newList;
@@ -905,10 +869,8 @@ function setupMarketSocketSync() {
       window.globalSocket.emit("market:buyOrder:list");
       window.globalSocket.emit("market:buyOrder:listAll");
     } catch (e2) {
-      // 初期 emit 失敗はコンソールのみ想定
     }
   } catch (e) {
-    // ソケットハンドラ全体の例外もコンソールのみ想定
   }
 }
 
@@ -952,7 +914,6 @@ window.addEventListener("DOMContentLoaded", () => {
           window.globalSocket.emit("market:buyOrder:list");
           window.globalSocket.emit("market:buyOrder:listAll");
         } catch (e) {
-          // emit エラーはコンソールのみ想定
         }
       } else {
         if (typeof renderMyListings === "function") {
