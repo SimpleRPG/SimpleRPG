@@ -11,7 +11,6 @@ const ALLOWED_ORIGIN = process.env.CORS_ORIGIN || "*";
 const app = express();
 
 // public ディレクトリ（または実際のフロント配置先）を静的配信
-// 例: server.js と同じ階層に index.html 等がある場合は __dirname を使う
 const PUBLIC_DIR = path.join(__dirname);
 app.use(express.static(PUBLIC_DIR));
 
@@ -43,11 +42,8 @@ let marketBuyOrders = [];
 // NPC 買いロジック（サーバ側）
 // =======================
 
-// NPC が一度にチェックする最大件数
 const MAX_NPC_CHECK = 20;
 
-// 基準価格の簡易取得（クライアント版の getMarketBaseValue の超簡略版）
-// ここでは「同じ itemKey の現在の最安値」を基準として使う。
 function getMarketBaseValueServer(category, itemKey) {
   if (!Array.isArray(marketListings) || !marketListings.length) return 0;
   let minPrice = Infinity;
@@ -64,7 +60,6 @@ function getMarketBaseValueServer(category, itemKey) {
   return minPrice;
 }
 
-// クライアント版と同じ確率テーブルをサーバ側にも再現
 function getNpcBuyProbServer(baseValue, price, category) {
   if (price <= 0 || baseValue <= 0) return 0;
 
@@ -83,20 +78,14 @@ function getNpcBuyProbServer(baseValue, price, category) {
     prob = 0.0001;
   }
 
-  // ホットカテゴリなどのイベント補正はクライアント側だけにあり、
-  // サーバ側では特に持っていないので、ここでは何もしない。
-  // 必要になったらイベント状態をサーバにも持たせて同様の補正をかける。
-
   if (prob > 0.25) prob = 0.25;
   return prob;
 }
 
-// サーバ側で NPC が市場から買う処理
 function serverSideRollNpcBuy() {
   try {
     if (!Array.isArray(marketListings) || marketListings.length === 0) return;
 
-    // index 配列を作ってシャッフル
     const indices = [...marketListings.keys()];
     for (let i = indices.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -119,10 +108,8 @@ function serverSideRollNpcBuy() {
 
       const prob = getNpcBuyProbServer(baseValue, li.price, category);
       if (prob <= 0) continue;
-
       if (Math.random() >= prob) continue;
 
-      // 買う量: 在庫の20%（最低1個）
       const buyAmount = Math.max(1, Math.floor(li.amount * 0.2)) || 1;
       const actualBuy = Math.min(li.amount, buyAmount);
       if (actualBuy <= 0) continue;
@@ -150,15 +137,13 @@ function serverSideRollNpcBuy() {
   }
 }
 
-// サーバ起動後、一定間隔で NPC 買いを実行（例: 30秒ごと）
 const NPC_BUY_INTERVAL_MS = 30 * 1000;
 setInterval(serverSideRollNpcBuy, NPC_BUY_INTERVAL_MS);
 
 // =======================
-// 買い注文ヘルパー（プレイヤー同士用）
+// 買い注文ヘルパー
 // =======================
 
-// 新しい買い注文を登録
 function addBuyOrder(buyerId, category, itemKey, price, amount) {
   const now = Date.now();
   const order = {
@@ -175,7 +160,6 @@ function addBuyOrder(buyerId, category, itemKey, price, amount) {
   return order;
 }
 
-// 買い注文一覧を（オプションでフィルタして）返す
 function getBuyOrders(filter = {}) {
   const { buyerId, category, itemKey } = filter;
   return marketBuyOrders.filter(o => {
@@ -187,16 +171,15 @@ function getBuyOrders(filter = {}) {
   });
 }
 
-// 買い注文をキャンセル（buyerId が自分のものだけ消せる）
+// キャンセル時に返金額を計算できるよう、対象 order を返すように変更
 function cancelBuyOrder(buyerId, orderId) {
   const idx = marketBuyOrders.findIndex(o => o && o.id === orderId && o.buyerId === buyerId);
-  if (idx === -1) return false;
+  if (idx === -1) return null;
+  const order = marketBuyOrders[idx];
   marketBuyOrders.splice(idx, 1);
-  return true;
+  return order;
 }
 
-// 出品時に、同じアイテムの買い注文にだけマッチングする
-// 戻り値: { matchedAmount, remainingAmount, matchedOrders: [{ orderId, buyerId, price, amount }] }
 function matchBuyOrdersForListing(listing) {
   const { category, itemKey, price: sellPrice } = listing;
   let remain = listing.amount;
@@ -287,7 +270,6 @@ io.on("connection", (socket) => {
   // ★買い注文: 全体一覧要求（全プレイヤー分）
   socket.on("market:buyOrder:listAll", () => {
     try {
-      // フィルタなしで全件返す
       const allOrders = getBuyOrders({});
       socket.emit("market:buyOrder:listAllResult", allOrders);
     } catch (e) {
@@ -296,7 +278,6 @@ io.on("connection", (socket) => {
   });
 
   // ★買い注文: 登録
-  // payload: { category, itemKey, price, amount }
   socket.on("market:buyOrder", (payload, ack) => {
     try {
       console.log("market:buyOrder payload:", payload);
@@ -322,11 +303,9 @@ io.on("connection", (socket) => {
         ack({ ok: true, order });
       }
 
-      // 自分の最新注文一覧を返す
       const myOrders = getBuyOrders({ buyerId: socket.id });
       socket.emit("market:buyOrder:listResult", myOrders);
 
-      // 全体板用に、全プレイヤー分の一覧も更新
       const allOrders = getBuyOrders({});
       io.emit("market:buyOrder:listAllResult", allOrders);
     } catch (e) {
@@ -338,7 +317,6 @@ io.on("connection", (socket) => {
   });
 
   // ★買い注文: キャンセル
-  // payload: { orderId }
   socket.on("market:buyOrder:cancel", (payload, ack) => {
     try {
       console.log("market:buyOrder:cancel payload:", payload);
@@ -350,22 +328,28 @@ io.on("connection", (socket) => {
         return;
       }
 
-      const ok = cancelBuyOrder(socket.id, orderId);
-      if (!ok) {
+      // 対象 order を取得してから削除
+      const order = cancelBuyOrder(socket.id, orderId);
+      if (!order) {
         if (typeof ack === "function") {
           ack({ ok: false, error: "not_found" });
         }
         return;
       }
 
+      // ここで「未使用分の返金額」を計算して ack で返す
+      const usedAmount = (order.maxAmount || 0) - (order.remainAmount || 0);
+      const usedMoney  = usedAmount * (order.price || 0);
+      const reservedMoney = (order.price || 0) * (order.maxAmount || 0);
+      const returnMoney = Math.max(0, reservedMoney - usedMoney);
+
       if (typeof ack === "function") {
-        ack({ ok: true });
+        ack({ ok: true, returnMoney });
       }
 
       const myOrders = getBuyOrders({ buyerId: socket.id });
       socket.emit("market:buyOrder:listResult", myOrders);
 
-      // 全体板も更新
       const allOrders = getBuyOrders({});
       io.emit("market:buyOrder:listAllResult", allOrders);
     } catch (e) {
@@ -440,7 +424,6 @@ io.on("connection", (socket) => {
       console.log("emitting market:update, count =", marketListings.length);
       io.emit("market:update", marketListings);
 
-      // 買い注文側も変動している可能性があるので、全体板を更新
       const allOrders = getBuyOrders({});
       io.emit("market:buyOrder:listAllResult", allOrders);
     } catch (e) {

@@ -427,6 +427,7 @@
                     <option value="weapon">武器</option>
                     <option value="armor">防具</option>
                     <option value="potion">ポーション</option>
+                    <option value="tool">道具</option>
                     <option value="materialBase">素材</option>
                     <option value="materialInter">中間素材</option>
                     <!-- 料理カテゴリを追加（仕様どおり） -->
@@ -498,6 +499,8 @@
                   <h4 style="margin-top:8px;">現在の買い注文</h4>
                   <div id="marketOrderList">
                   </div>
+                  <!-- ★追加: 自分の買い注文サマリー表示領域（marketInfoとの競合回避） -->
+                  <div id="marketMyOrderSummary" style="margin-top:6px; font-size:12px; color:#ccc; white-space:pre; font-family:monospace;"></div>
                 </div>
               </div>
 

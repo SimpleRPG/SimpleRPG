@@ -366,10 +366,11 @@ function renderMyListings() {
 }
 
 // =======================
-// 自分の買い注文一覧サマリ（marketInfo 用）
+// 自分の買い注文一覧サマリ（専用要素 marketMyOrderSummary 用）
 // =======================
 function renderMyBuyOrdersSummary() {
-  const el = document.getElementById("marketInfo");
+  // ★修正: marketInfo ではなく専用要素を使う
+  const el = document.getElementById("marketMyOrderSummary");
   if (!el) return;
 
   const src = Array.isArray(window.marketBuyOrders) ? window.marketBuyOrders : [];
@@ -691,7 +692,11 @@ function refreshMarketOrderList(){
   }
 
   const header = "名前           残数/最大  価格    予約G";
-  const rows = src.map(order => {
+
+  // 文字表示に加えて、「自分の注文にはキャンセルボタン」を付ける
+  // （サーバの market:buyOrder:cancel ACK で returnMoney を受け取り、拘束Gを返金する）
+  const lines = ["買い注文一覧", header];
+  src.forEach(order => {
     const label = getItemLabel(order.category, order.itemKey || order.itemId);
     const nameCol = (label + "              ").slice(0, 12);
 
@@ -702,10 +707,85 @@ function refreshMarketOrderList(){
     const reserved   = order.reservedMoney || 0;
     const reservedCol = (String(reserved) + "G").padStart(6, " ");
 
-    return `${nameCol}  ${remainCol}/${maxCol}  @${priceCol}  ${reservedCol}`;
+    lines.push(`${nameCol}  ${remainCol}/${maxCol}  @${priceCol}  ${reservedCol}`);
   });
 
-  el.textContent = ["買い注文一覧", header].concat(rows).join("\n");
+  el.textContent = lines.join("\n");
   el.style.whiteSpace = "pre";
   el.style.fontFamily = "monospace";
+
+  // ここから下は、キャンセルボタン用の簡易 UI を別要素に作る（仕様を変えず「機能追加」のみ）
+  const cancelContainerId = "marketOrderCancelContainer";
+  let cancelContainer = document.getElementById(cancelContainerId);
+  if (!cancelContainer) {
+    cancelContainer = document.createElement("div");
+    cancelContainer.id = cancelContainerId;
+    el.parentNode.insertBefore(cancelContainer, el.nextSibling);
+  }
+  cancelContainer.innerHTML = "";
+
+  // 自分のソケットID
+  let myId = "player";
+  if (window.globalSocket && window.globalSocket.id) {
+    myId = window.globalSocket.id;
+  }
+
+  src.forEach(order => {
+    // server 側では buyerId を持っているので、それが自分のものだけキャンセルボタンを出す前提
+    if (order.buyerId && order.buyerId !== myId) return;
+
+    const row = document.createElement("div");
+    row.className = "market-order-row";
+
+    const label = getItemLabel(order.category, order.itemKey || order.itemId);
+    const info = document.createElement("span");
+    info.textContent = `${label} 残${order.remainAmount}/${order.maxAmount} @${order.price}G`;
+
+    const btn = document.createElement("button");
+    btn.textContent = "取消";
+    btn.addEventListener("click", () => {
+      if (!window.globalSocket) {
+        if (typeof appendLog === "function") appendLog("オンライン接続されていないため取消できません");
+        return;
+      }
+      try {
+        window.globalSocket.emit(
+          "market:buyOrder:cancel",
+          { orderId: order.id },
+          (res) => {
+            if (!res || !res.ok) {
+              const errMsg = res && res.error ? res.error : "買い注文の取消に失敗しました";
+              if (typeof appendLog === "function") appendLog(errMsg);
+              return;
+            }
+
+            // サーバー ACK で返ってきた returnMoney を返金（server.js 側修正前提）
+            if (typeof res.returnMoney === "number" && res.returnMoney > 0) {
+              money += res.returnMoney;
+              if (typeof appendLog === "function") {
+                appendLog(`買い注文の取消により ${res.returnMoney}G が返金されました`);
+              }
+            }
+
+            // ローカル一覧も更新要求
+            try {
+              window.globalSocket.emit("market:buyOrder:list");
+              window.globalSocket.emit("market:buyOrder:listAll");
+            } catch (e2) {
+            }
+
+            if (typeof updateDisplay === "function") {
+              updateDisplay();
+            }
+          }
+        );
+      } catch (e) {
+        if (typeof appendLog === "function") appendLog("買い注文の取消要求に失敗しました");
+      }
+    });
+
+    row.appendChild(info);
+    row.appendChild(btn);
+    cancelContainer.appendChild(row);
+  });
 }
