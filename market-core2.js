@@ -473,12 +473,13 @@ function refreshMarketSellCandidates(){
   const catSel  = document.getElementById("marketSellCategory");
   if (!catSel) return;
 
+  // HTML 初期値に合わせたカテゴリ構成にする
   catSel.innerHTML = "";
+  // ★ index.html に合わせて「素材」と「中間素材」を分離
   const cats = [
     { value: "weapon",       label: "武器" },
     { value: "armor",        label: "防具" },
     { value: "potion",       label: "ポーション" },
-    { value: "tool",         label: "道具" },
     { value: "materialBase", label: "素材" },
     { value: "materialInter",label: "中間素材" },
     { value: "cooking",      label: "料理" }
@@ -536,16 +537,8 @@ function refreshMarketSellItems(){
         appendOption(p.id, `${p.name}（所持${cnt}）`);
       }
     });
-  } else if (category === "tool") {
-    if (typeof toolCounts === "object") {
-      Object.keys(toolCounts).forEach(id => {
-        const cnt = toolCounts[id] || 0;
-        if (cnt <= 0) return;
-        const label = getItemLabel("tool", id);
-        appendOption(id, `${label}（所持${cnt}）`);
-      });
-    }
   } else if (category === "materialBase") {
+    // 採取素材のみ
     const mats = [
       { id:"wood",    name:"木",    count: getMatTotal("wood") },
       { id:"ore",     name:"鉱石",  count: getMatTotal("ore") },
@@ -568,6 +561,7 @@ function refreshMarketSellItems(){
       }
     });
   } else if (category === "materialInter") {
+    // 中間素材のみ
     if (typeof intermediateMats === "object") {
       if (Array.isArray(INTERMEDIATE_MATERIALS)) {
         INTERMEDIATE_MATERIALS.forEach(m => {
@@ -580,7 +574,7 @@ function refreshMarketSellItems(){
         Object.keys(intermediateMats).forEach(id => {
           const cnt = intermediateMats[id] || 0;
           if (cnt > 0) {
-            appendOption(id, `${getItemLabel("materialInter", id)}（所持${cnt}）`);
+            appendOption(id, `${getItemLabel("material", id)}（所持${cnt}）`);
           }
         });
       }
@@ -611,6 +605,56 @@ function refreshMarketSellItems(){
     opt.value = "";
     opt.textContent = "出品できるアイテムがありません";
     itemSel.appendChild(opt);
+  }
+}
+
+// -----------------------
+// 買い注文用アイテムセレクト初期化
+// -----------------------
+function initMarketOrderItemSelect() {
+  const sel = document.getElementById("marketOrderItem");
+  if (!sel) return;
+
+  sel.innerHTML = "";
+
+  const append = (cat, id, label) => {
+    const opt = document.createElement("option");
+    opt.value = `${cat}:${id}`;
+    opt.textContent = label;
+    sel.appendChild(opt);
+  };
+
+  // 素材（ベース）
+  const baseNames = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
+  Object.keys(baseNames).forEach(key => {
+    append("material", key, `素材: ${baseNames[key]}`);
+  });
+  if (typeof RARE_GATHER_ITEM_ID === "string" && typeof RARE_GATHER_ITEM_NAME === "string") {
+    append("material", RARE_GATHER_ITEM_ID, `素材: ${RARE_GATHER_ITEM_NAME}`);
+  }
+
+  // 中間素材
+  if (Array.isArray(INTERMEDIATE_MATERIALS)) {
+    INTERMEDIATE_MATERIALS.forEach(m => {
+      append("material", m.id, `素材: ${m.name}`);
+    });
+  }
+
+  // 料理（食べ物・飲み物）
+  if (typeof COOKING_RECIPES !== "undefined") {
+    COOKING_RECIPES.food.forEach(r => {
+      append("material", r.id, `料理: ${r.name}`);
+    });
+    COOKING_RECIPES.drink.forEach(r => {
+      append("material", r.id, `飲み物: ${r.name}`);
+    });
+  }
+
+  if (!sel.options.length) {
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "買い注文できるアイテムがありません";
+    sel.appendChild(opt);
   }
 }
 
@@ -698,7 +742,7 @@ function detectSellFromDiff(prevList, newList) {
     if (!now) {
       const soldAmount = prev.amount;
       if (soldAmount > 0) {
-        const totalPrice = soldAmount * prev.price;
+        const totalPrice = prev.price * soldAmount;
         if (typeof money === "number") {
           money += totalPrice;
         }
@@ -710,7 +754,7 @@ function detectSellFromDiff(prevList, newList) {
     if (now.amount < prev.amount) {
       const diff = prev.amount - now.amount;
       if (diff > 0) {
-        const totalPrice = diff * prev.price;
+        const totalPrice = prev.price * diff;
         if (typeof money === "number") {
           money += totalPrice;
         }
@@ -750,10 +794,6 @@ function setupMarketSocketSync() {
 
       refreshMarketBuyList();
       renderMyListings();
-
-      if (typeof appendLog === "function") {
-        appendLog("[SYS] market:listResult 受信 count=" + newList.length);
-      }
     });
 
     window.globalSocket.on("market:update", (serverListings) => {
@@ -778,10 +818,6 @@ function setupMarketSocketSync() {
 
       refreshMarketBuyList();
       renderMyListings();
-
-      if (typeof appendLog === "function") {
-        appendLog("[SYS] market:update 受信 count=" + newList.length);
-      }
     });
 
     // 自分の買い注文一覧の同期
@@ -791,9 +827,6 @@ function setupMarketSocketSync() {
       if (typeof refreshMarketOrderList === "function") {
         refreshMarketOrderList();
       }
-      if (typeof appendLog === "function") {
-        appendLog("[SYS] buyOrder:listResult 受信 count=" + window.marketBuyOrders.length);
-      }
     });
 
     try {
@@ -802,15 +835,9 @@ function setupMarketSocketSync() {
       window.globalSocket.emit("market:buyOrder:list");
     } catch (e2) {
       console.log("initial market:list emit error (inside socket sync)", e2);
-      if (typeof appendLog === "function") {
-        appendLog("[SYS] market:list 初期要求エラー: " + e2.message);
-      }
     }
   } catch (e) {
     console.log("market socket handlers error", e);
-    if (typeof appendLog === "function") {
-      appendLog("[SYS] 市場ソケットハンドラ初期化エラー: " + e.message);
-    }
   }
 }
 
@@ -854,9 +881,6 @@ window.addEventListener("DOMContentLoaded", () => {
           window.globalSocket.emit("market:buyOrder:list");
         } catch (e) {
           console.log("market:list emit error on tab click", e);
-          if (typeof appendLog === "function") {
-            appendLog("[SYS] market:list タブクリック時エラー: " + e.message);
-          }
         }
       } else {
         renderMyListings();

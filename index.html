@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <title>しんぷるRPG</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" " />
+  >
 </head>
 <body>
   <div id="appRoot">
@@ -107,7 +107,7 @@
             <div id="gatherPageNormal" class="gather-sub-page active">
               <p>採取対象を選んで採取（待ち時間なし）。</p>
 
-              <label class="text-caption">フィールド:</label>
+              abel class="text-caption">フィールド:</label>
               <!-- option は JS 側で全部生成する -->
               <select id="gatherField"></select>
 
@@ -154,7 +154,7 @@
               <div id="gatherCookPageFish" style="display:none;">
                 <div style="display:flex; flex-direction:column; gap:4px; margin-bottom:4px;">
                   <div style="display:flex; gap:4px; align-items:center;">
-                    <label style="font-size:12px;">釣り場:</label>
+                    abel style="font-size:12px;">釣り場:</label>
                     <select id="fishingAreaSelect">
                       <option value="river">川辺</option>
                       <option value="lake">湖</option>
@@ -162,7 +162,7 @@
                     </select>
                   </div>
                   <div style="display:flex; gap:4px; align-items:center;">
-                    <label style="font-size:12px;">餌:</label>
+                    abel style="font-size:12px;">餌:</label>
                     <select id="fishingBaitSelect">
                       <!-- ★ここだけ修正: value を変換後キーに統一 -->
                       <option value="default">ふつうの餌</option>
@@ -239,7 +239,7 @@
 
               <!-- ティア選択 -->
               <div id="craftTierRow" style="margin:4px 0;">
-                <label style="font-size:12px;">ティア:</label>
+                abel style="font-size:12px;">ティア:</label>
                 <select id="craftTierSelect">
                   <option value="all">すべて</option>
                   <option value="T1">T1</option>
@@ -250,7 +250,7 @@
 
               <!-- 装備種別フィルタ -->
               <div id="craftKindRow" style="margin:4px 0%;">
-                <label style="font-size:12px;">装備種別:</label>
+                abel style="font-size:12px;">装備種別:</label>
                 <select id="craftKindSelect">
                   <option value="all">すべて</option>
                   <option value="normal">戦闘用</option>
@@ -286,7 +286,7 @@
               <div id="craftPanelMaterial" class="craft-panel" style="display:none;">
                 <h3>素材（中間素材）クラフト</h3>
                 <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
-                  <label style="font-size:12px;">中間素材:</label>
+                  abel style="font-size:12px;">中間素材:</label>
                   <select id="intermediateSelect" style="flex:1;"></select>
                   <button id="craftIntermediateBtn">作る</button>
                 </div>
@@ -308,7 +308,7 @@
                 <!-- 食べ物パネル -->
                 <div id="cookPanelFood">
                   <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
-                    <label style="font-size:12px;">食べ物:</label>
+                    abel style="font-size:12px;">食べ物:</label>
                     <select id="foodSelect" style="flex:1;"></select>
                     <button id="craftFoodBtn">料理を作る</button>
                   </div>
@@ -320,7 +320,7 @@
                 <!-- 飲み物パネル -->
                 <div id="cookPanelDrink" style="display:none;">
                   <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
-                    <label style="font-size:12px;">飲み物:</label>
+                    abel style="font-size:12px;">飲み物:</label>
                     <select id="drinkSelect" style="flex:1;"></select>
                     <button id="craftDrinkBtn">飲み物を作る</button>
                   </div>
@@ -344,7 +344,7 @@
               <div style="margin-bottom:6px;">
                 <h4 style="margin:4px 0;">武器強化</h4>
                 <div style="display:flex; gap:4px; alignitems:center; margin-bottom:4px;">
-                  <label style="font-size:12px;">強化対象武器:</label>
+                  abel style="font-size:12px;">強化対象武器:</label>
                   <!-- ★ インスタンス選択用セレクト（game-core-6.js で埋める） -->
                   <select id="enhanceWeaponTargetSelect" style="flex:1;"></select>
                 </div>
@@ -354,7 +354,7 @@
               <div style="margin-top:8px;">
                 <h4 style="margin:4px 0;">防具強化</h4>
                 <div style="display:flex; gap:4px; alignitems:center; margin-bottom:4px;">
-                  <label style="font-size:12px;">強化対象防具:</label>
+                  abel style="font-size:12px;">強化対象防具:</label>
                   <!-- ★ インスタンス選択用セレクト（game-core-6.js で埋める） -->
                   <select id="enhanceArmorTargetSelect" style="flex:1;"></select>
                 </div>
@@ -370,7 +370,7 @@
 
               <h3>装備修理</h3>
               <div style="margin-bottom:4px;">
-                <label style="font-size:12px;">修理対象:</label>
+                abel style="font-size:12px;">修理対象:</label>
                 <select id="repairTargetSelect" style="min-width:200px;"></select>
               </div>
               <div id="repairInfoText" style="font-size:11px; color:#ccc; margin-bottom:4px;">
@@ -421,29 +421,31 @@
                 </div>
 
                 <div style="margin-bottom:4px;">
-                  <label>カテゴリ:</label>
+                  abel>カテゴリ:</label>
+                  <!-- ★ここを修正: 素材と中間素材を UI 上も分離 -->
                   <select id="marketSellCategory">
                     <option value="weapon">武器</option>
                     <option value="armor">防具</option>
                     <option value="potion">ポーション</option>
-                    <option value="material">素材</option>
-                    <!-- 料理カテゴリを追加 -->
+                    <option value="materialBase">素材</option>
+                    <option value="materialInter">中間素材</option>
+                    <!-- 料理カテゴリを追加（仕様どおり） -->
                     <option value="cooking">料理</option>
                   </select>
                 </div>
 
                 <div style="margin-bottom:4px;">
-                  <label>アイテム:</label>
+                  abel>アイテム:</label>
                   <select id="marketSellItem"></select>
                 </div>
 
                 <div style="margin-bottom:4px;">
-                  <label>個数:</label>
+                  abel>個数:</label>
                   <input id="marketSellAmount" type="number" value="1" min="1" style="width:60px;">
                 </div>
 
                 <div style="margin-bottom:4px;">
-                  <label>価格(1個あたり):</label>
+                  abel>価格(1個あたり):</label>
                   <input id="marketSellPrice" type="number" value="10" min="1" style="width:80px;">
                 </div>
 
@@ -468,6 +470,7 @@
                     <button class="market-cat-tab" data-cat="weapon">武器</button>
                     <button class="market-cat-tab" data-cat="armor">防具</button>
                     <button class="market-cat-tab" data-cat="potion">ポーション</button>
+                    <!-- ★市場内部のカテゴリはサーバ仕様どおり material に一本化 -->
                     <button class="market-cat-tab" data-cat="material">素材</button>
                     <!-- <button class="market-cat-tab" data-cat="cooking">料理</button> -->
                   </div>
@@ -479,15 +482,15 @@
                 <div id="marketSubPageOrders" class="market-sub-page" style="display:none;">
                   <h4>買い注文を出す</h4>
                   <div style="margin-bottom:4px;">
-                    <label>アイテム:</label>
+                    abel>アイテム:</label>
                     <select id="marketOrderItem"></select>
                   </div>
                   <div style="margin-bottom:4px;">
-                    <label>価格(1個あたり):</label>
+                    abel>価格(1個あたり):</label>
                     <input id="marketOrderPrice" type="number" value="10" min="1" style="width:80px;">
                   </div>
                   <div style="margin-bottom:4px;">
-                    <label>個数:</label>
+                    abel>個数:</label>
                     <input id="marketOrderAmount" type="number" value="1" min="1" style="width:60px;">
                   </div>
                   <button id="marketOrderBtn">買い注文を出す</button>
@@ -546,19 +549,19 @@
                   <button id="exploreBtn" class="btn-attack btn-main">攻撃</button>
 
                   <div id="magicBlock">
-                    <label style="font-size:11px;">魔法:</label><br>
+                    abel style="font-size:11px;">魔法:</label><br>
                     <select id="magicSelect"></select>
                     <button id="castMagicBtn" class="btn-magic">魔法を使う</button>
                   </div>
 
                   <div id="skillBlock">
-                    <label style="font-size:11px;">武技:</label><br>
+                    abel style="font-size:11px;">武技:</label><br>
                     <select id="skillSelect"></select>
                     <button id="useSkillBtn" class="btn-skill">武技を使う</button>
                   </div>
 
                   <div>
-                    <label style="font-size:11px;">戦闘アイテム:</label><br>
+                    abel style="font-size:11px;">戦闘アイテム:</label><br>
                     <select id="battleItemCategory" onchange="onBattleItemCategoryChanged()">
                       <option value="potion">ポーション</option>
                       <option value="tool">道具</option>
