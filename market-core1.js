@@ -603,12 +603,12 @@ function doMarketBuyOrder(){
 
           updateDisplay();
 
-          // 出した直後にサーバ側の最新版で上書き
-          try {
-            window.globalSocket.emit("market:buyOrder:list");
-          } catch (e2) {
-            console.log("market:buyOrder:list emit error after buyOrder ack", e2);
-          }
+          // ★ここを削除: 即時の market:buyOrder:list 要求はやめる
+          // try {
+          //   window.globalSocket.emit("market:buyOrder:list");
+          // } catch (e2) {
+          //   console.log("market:buyOrder:list emit error after buyOrder ack", e2);
+          // }
         }
       );
       return;
