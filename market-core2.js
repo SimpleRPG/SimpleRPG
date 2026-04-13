@@ -864,6 +864,40 @@ function setupMarketSocketSync() {
       }
     });
 
+    // ★ 買い注文マッチング成立：アイテムを受け取る
+    window.globalSocket.on("market:buyOrder:matched", (data) => {
+      try {
+        const { category, itemKey, amount, pricePerItem } = data || {};
+        if (!category || !itemKey || !amount) return;
+
+        // インベントリにアイテムを追加
+        addItemForBuy(category, itemKey, amount);
+
+        const label = getItemLabel(category, itemKey);
+        const totalPaid = (amount || 0) * (pricePerItem || 0);
+        if (typeof appendLog === "function") {
+          appendLog(
+            `[市] 買い注文が成立！ ${label} を ${amount}個 受け取った（支払済 ${totalPaid}G）`
+          );
+        }
+
+        // 買い注文一覧を再取得
+        try {
+          window.globalSocket.emit("market:buyOrder:list");
+          window.globalSocket.emit("market:buyOrder:listAll");
+        } catch (e2) {}
+
+        if (typeof updateDisplay === "function") updateDisplay();
+        if (typeof refreshMarketBuyList === "function") refreshMarketBuyList();
+        if (typeof refreshMarketSellCandidates === "function") refreshMarketSellCandidates();
+        if (typeof renderMyBuyOrdersSummary === "function") renderMyBuyOrdersSummary();
+      } catch (e) {
+        if (typeof appendLog === "function") {
+          appendLog("[市] 買い注文マッチ処理中にエラーが発生しました");
+        }
+      }
+    });
+
     try {
       window.globalSocket.emit("market:list");
       window.globalSocket.emit("market:buyOrder:list");

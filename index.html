@@ -17,6 +17,9 @@
       <button id="tabMagicDist" class="tab-button">魔巧区</button>
       <button id="tabWarehouse" class="tab-button">倉庫</button>
       <button id="tabStatus"    class="tab-button">ステータス</button>
+      <!-- ★拠点タブ: 初期は非表示、市民権取得後に JS 側で表示する -->
+      <button id="tabHousing"   class="tab-button" style="display:none;">拠点</button>
+      <!-- ★追加ここまで -->
       <!-- ★追加: ギルドタブ -->
       <button id="tabGuild"     class="tab-button">ギルド</button>
       <button id="tabHelp"      class="tab-button">あそびかた</button>
@@ -446,7 +449,7 @@
                   <button id="marketSellAmountMax">最大</button>
                 </div>
 
-                <div style="margin-bottom:4px;">
+                <div style="margin-bottom:4px%;">
                   <label>価格(1個あたり):</label>
                   <input id="marketSellPrice" type="number" value="10" min="1" style="width:80px;">
                 </div>
@@ -487,7 +490,7 @@
                     <label>アイテム:</label>
                     <select id="marketOrderItem"></select>
                   </div>
-                  <div style="margin-bottom:4px;">
+                  <div style="margin-bottom:4px%;">
                     <label>価格(1個あたり):</label>
                     <input id="marketOrderPrice" type="number" value="10" min="1" style="width:80px;">
                   </div>
@@ -792,6 +795,15 @@
             </div>
           </div>
 
+          <!-- ★追加: ハウジング（拠点）ページ本体。中身は今後 housing-core.js / game-ui 側で埋める -->
+          <div id="pageHousing" class="tab-page">
+            <h2>拠点</h2>
+            <div id="housingRoot">
+              <!-- 拠点・住宅 UI は housing-core.js / game-ui 側で動的に描画する -->
+            </div>
+          </div>
+          <!-- ★追加ここまで -->
+
           <!-- あそびかた -->
           <div id="pageHelp" class="tab-page">
             <div id="helpContentRoot"></div>
@@ -915,11 +927,18 @@
   <script src="market-core1.js"></script>
   <script src="market-core2.js"></script> 
   <script src="save-system.js"></script>
+
+  <!-- ★追加: ギルド依頼データ（guild.js より前に読む） -->
+  <script src="guild-quests.js"></script>
+  <!-- ★追加ここまで -->
+
   <script src="guild.js"></script>
   <script src="guildskill.js"></script>
+  <script src="repair-core.js"></script>
 
-  <!-- 修理ロジックを別ファイルにしている場合はここで読み込む -->
-  <!-- <script src="repair-core.js"></script> -->
+  <!-- ★追加: ハウジングコア -->
+  <script src="housing-core.js"></script>
+  <!-- ★追加ここまで -->
 
   <script src="game-ui.js"></script>
   <script src="game-ui-2.js"></script>

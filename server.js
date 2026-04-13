@@ -422,6 +422,30 @@ io.on("connection", (socket) => {
         ack({ ok: true, listing, matchedAmount });
       }
 
+      // ★ マッチした買い注文者それぞれに商品を届ける
+      for (const matched of matchResult.matchedOrders) {
+        try {
+          const buyerSocket = io.sockets.sockets.get(matched.buyerId);
+          if (buyerSocket) {
+            buyerSocket.emit("market:buyOrder:matched", {
+              category,
+              itemKey,
+              amount: matched.amount,
+              pricePerItem: matched.price
+            });
+            console.log(
+              `[市] Notified buyer ${matched.buyerId}: ${matched.amount}x ${itemKey} (${matched.price}G each)`
+            );
+          } else {
+            console.log(
+              `[市] Buyer ${matched.buyerId} not connected; item delivery pending reconnect`
+            );
+          }
+        } catch (eNotify) {
+          console.error("Failed to notify buyer:", eNotify);
+        }
+      }
+
       console.log("emitting market:update, count =", marketListings.length);
       io.emit("market:update", marketListings);
 

@@ -1,7 +1,7 @@
 // guild.js
-// ギルドシステム：データ定義＋状態＋UI描画
+// ギルドシステム：データ定義＋状態＋ロジック
 
-console.log("guild.js start");
+console.log("guild.js start (core)");
 
 // =======================
 // プレイヤー側のギルド状態
@@ -20,6 +20,9 @@ window.guildFame = window.guildFame || {};
 //  battle_boss_1:        { count: 1,  done: true,  rewardTaken: true  }
 window.guildQuestProgress = window.guildQuestProgress || {};
 
+// 市民権フラグ（どこか1ギルドの特別依頼をクリアしたら true）
+window.citizenshipUnlocked = window.citizenshipUnlocked || false;
+
 // =======================
 // 名声・ランク定義
 // =======================
@@ -28,11 +31,23 @@ window.guildQuestProgress = window.guildQuestProgress || {};
 // 名声がこの値以上でランク到達、の境界
 const GUILD_RANK_THRESHOLDS = [
   { id: 0, name: "無名",   fame: 0 },
-  { id: 1, name: "新人",   fame: 10 },
-  { id: 2, name: "一人前", fame: 30 },
-  { id: 3, name: "熟練",   fame: 70 },
-  { id: 4, name: "看板",   fame: 150 },
-  { id: 5, name: "英雄",   fame: 300 }
+  { id: 1, name: "新人",   fame: 50 },
+  { id: 2, name: "一人前", fame: 100 },
+  { id: 3, name: "熟練",   fame: 200 },
+  { id: 4, name: "看板",   fame: 350 },
+  { id: 5, name: "英雄",   fame: 500 }
+];
+
+// 特別依頼ID一覧（市民権チェック用）
+const GUILD_SPECIAL_QUEST_IDS = [
+  "warrior_special_citizen",
+  "mage_special_citizen",
+  "tamer_special_citizen",
+  "smith_special_citizen",
+  "alch_special_citizen",
+  "cooking_special_citizen",
+  "gather_special_citizen",
+  "food_special_citizen"
 ];
 
 // =======================
@@ -205,8 +220,12 @@ function addGuildFame(guildId, amount) {
     appendLog(`${GUILDS[guildId].name} での名声が上がり、「${getGuildRankInfo(next).name}」になった！`);
   }
 
-  renderGuildHeader();
-  renderGuildRewards();
+  if (typeof renderGuildHeader === "function") {
+    renderGuildHeader();
+  }
+  if (typeof renderGuildRewards === "function") {
+    renderGuildRewards();
+  }
 }
 
 // =======================
@@ -256,71 +275,118 @@ function getGuildGatherExtraBonusChance() {
 }
 
 // =======================
+// 共通ヘルパー
+// =======================
+
+function updateQuestProgress(id, increment, target) {
+  if (!id || !increment) return;
+  const raw = window.guildQuestProgress[id] || {};
+  const count = (raw.count || 0) + increment;
+  const done = count >= target;
+  window.guildQuestProgress[id] = {
+    ...raw,
+    count,
+    done: done || raw.done,
+    rewardTaken: !!raw.rewardTaken
+  };
+}
+
+function checkCitizenshipUnlocked() {
+  if (window.citizenshipUnlocked) return;
+  for (const qid of GUILD_SPECIAL_QUEST_IDS) {
+    const q = window.guildQuestProgress[qid];
+    if (q && q.done) {
+      window.citizenshipUnlocked = true;
+      break;
+    }
+  }
+}
+
+function refreshGuildQuestUIIfNeeded() {
+  if (typeof renderGuildQuests === "function") {
+    renderGuildQuests();
+  }
+}
+
+// =======================
 // ギルド用進捗ヘルパー（戦闘・クラフト・採取から呼ばれる）
 // =======================
 
-// 戦闘用：物理／魔法／ペット撃破＋ボス撃破
+// 戦闘用：物理／魔法／ペット撃破＋ボス撃破＋エリア別討伐
+// params 例: { by: "phys" | "magic" | "pet" | "other", isBoss: bool, bossId?: string, tier?: number, area?: string }
 function onEnemyKilledForGuild(params) {
   if (!params) return;
   const by = params.by;
   const isBoss = !!params.isBoss;
+  const bossId = params.bossId || null;
+  const area = params.area || null; // "field" | "forest" など
+  const tier = params.tier || 1;    // 洞窟T3判定など
 
-  // A依頼: 各ギルド30体撃破
+  const currentGuildId = window.playerGuildId;
+  const fame = currentGuildId ? getGuildFame(currentGuildId) : 0;
+  const rankInfo = getGuildRankInfo(fame);
+  const rank = rankInfo ? rankInfo.id : 0;
+  const canDoForest = rank >= 1;
+
+  // 戦闘ギルド共通：草原100体（手段不問）
+  if (area === "field") {
+    updateQuestProgress("field_kill_100_any", 1, 100);
+  }
+
+  // 戦闘ギルド共通：森100体（ランク1以上で進行）
+  if (area === "forest" && canDoForest) {
+    updateQuestProgress("forest_kill_100_any", 1, 100);
+  }
+
+  // 各ギルド30体撃破＋森50体系（ランク1以上）
   if (by === "phys") {
-    const id = "warrior_kill_30_phys";
-    const raw = window.guildQuestProgress[id] || {};
-    const count = (raw.count || 0) + 1;
-    const done = count >= 30;
-    window.guildQuestProgress[id] = {
-      ...raw,
-      count,
-      done: done || raw.done,
-      rewardTaken: !!raw.rewardTaken
-    };
-  }
-  if (by === "magic") {
-    const id = "mage_kill_30_magic";
-    const raw = window.guildQuestProgress[id] || {};
-    const count = (raw.count || 0) + 1;
-    const done = count >= 30;
-    window.guildQuestProgress[id] = {
-      ...raw,
-      count,
-      done: done || raw.done,
-      rewardTaken: !!raw.rewardTaken
-    };
-  }
-  if (by === "pet") {
-    const id = "tamer_kill_30_pet";
-    const raw = window.guildQuestProgress[id] || {};
-    const count = (raw.count || 0) + 1;
-    const done = count >= 30;
-    window.guildQuestProgress[id] = {
-      ...raw,
-      count,
-      done: done || raw.done,
-      rewardTaken: !!raw.rewardTaken
-    };
+    updateQuestProgress("warrior_kill_30_phys", 1, 30);
+    if (area === "forest" && canDoForest) {
+      updateQuestProgress("forest_kill_50_phys", 1, 50);
+    }
+    // 戦士ギルド特別依頼：洞窟T3を物理で撃破
+    if (tier === 3) {
+      updateQuestProgress("warrior_special_citizen", 1, 40);
+    }
   }
 
-  // B依頼: ボス撃破（手段問わず）
-  if (isBoss) {
-    const id = "battle_boss_1";
-    const raw = window.guildQuestProgress[id] || {};
-    const count = (raw.count || 0) + 1;
-    const done = count >= 1;
-    window.guildQuestProgress[id] = {
-      ...raw,
-      count,
-      done: done || raw.done,
-      rewardTaken: !!raw.rewardTaken
-    };
+  if (by === "magic") {
+    updateQuestProgress("mage_kill_30_magic", 1, 30);
+    if (area === "forest" && canDoForest) {
+      updateQuestProgress("forest_kill_50_magic", 1, 50);
+    }
+    // 魔法ギルド特別依頼：洞窟T3を魔法で撃破
+    if (tier === 3) {
+      updateQuestProgress("mage_special_citizen", 1, 40);
+    }
   }
+
+  if (by === "pet") {
+    updateQuestProgress("tamer_kill_30_pet", 1, 30);
+    if (area === "forest" && canDoForest) {
+      updateQuestProgress("forest_kill_50_pet", 1, 50);
+    }
+    // 動物使いギルド特別依頼：洞窟T3をペットで撃破
+    if (tier === 3) {
+      updateQuestProgress("tamer_special_citizen", 1, 40);
+    }
+  }
+
+  // 草原ボス：スライムキングのみカウント
+  if (isBoss && bossId === "slime_king") {
+    updateQuestProgress("battle_boss_1", 1, 1);
+  }
+
+  // 森ボス（ランク1以上で進行）
+  if (isBoss && bossId === "forest_boss" && canDoForest) {
+    updateQuestProgress("forest_boss_1", 1, 1);
+  }
+
+  // 特別依頼の達成状況から市民権フラグを更新
+  checkCitizenshipUnlocked();
 
   // ギルドタブ開いていたら更新
-  if (typeof renderGuildQuests === "function") {
-    renderGuildQuests();
-  }
+  refreshGuildQuestUIIfNeeded();
 }
 
 // ★ 転生時に呼ばれる想定のヘルパー
@@ -340,886 +406,187 @@ function onRebirthForGuild(params) {
 
   if (!questId) return;
 
-  const raw = window.guildQuestProgress[questId] || {};
-  const count = 1; // その職で1回転生したら即達成
-  const done = true;
-  window.guildQuestProgress[questId] = {
-    ...raw,
-    count,
-    done: done || raw.done,
-    rewardTaken: !!raw.rewardTaken
-  };
+  updateQuestProgress(questId, 1, 1);
 
-  if (typeof renderGuildQuests === "function") {
-    renderGuildQuests();
-  }
+  checkCitizenshipUnlocked();
+
+  refreshGuildQuestUIIfNeeded();
 }
 
-// バフ料理B依頼用：バフ付き料理／飲み物を食べたときに呼ぶ（game-core-5.js 側から）
+// バフ料理依頼用：バフ付き料理／飲み物を食べたときに呼ぶ
 function onBuffFoodEatenForGuild() {
-  const id = "cooking_buff";
-  const raw = window.guildQuestProgress[id] || {};
-  const count = (raw.count || 0) + 1;
-  const done = count >= 2;
-  window.guildQuestProgress[id] = {
-    ...raw,
-    count,
-    done: done || raw.done,
-    rewardTaken: !!raw.rewardTaken
-  };
+  updateQuestProgress("cooking_buff", 1, 2);
+  updateQuestProgress("cooking_use_food_or_drink", 1, 5);
 
-  if (typeof renderGuildQuests === "function") {
-    renderGuildQuests();
-  }
+  checkCitizenshipUnlocked();
+
+  refreshGuildQuestUIIfNeeded();
+}
+
+// 錬金ギルド用：ポーション／道具を使用したときに呼ぶ
+// params: { kind: "potion" | "tool" }
+function onAlchConsumableUsedForGuild(params) {
+  // T1〜帯共通使用
+  updateQuestProgress("alch_use_potion_or_tool", 1, 5);
+
+  // T2専用使用（T2ポーション／T2道具使用時のみ別フックから呼ぶ想定なら、
+  // そのフック側でこのIDを叩く形でもOK。ここでは仕様を変えないので既存のまま。）
+  // ※ 仕様は変えたくないので、今は追加ロジックをここには入れていない。
+
+  checkCitizenshipUnlocked();
+
+  refreshGuildQuestUIIfNeeded();
 }
 
 // 装備強化用：鍛冶ギルド「smith_enhance」
-// game-core-7.js の enhanceWeapon / enhanceArmor 成功・失敗後から呼ばれる想定
 function onEquipEnhancedForGuild(params) {
-  const id = "smith_enhance";
-  const raw = window.guildQuestProgress[id] || {};
-  const count = (raw.count || 0) + 1;
-  const done = count >= 2;
-  window.guildQuestProgress[id] = {
-    ...raw,
-    count,
-    done: done || raw.done,
-    rewardTaken: !!raw.rewardTaken
-  };
+  // 既存T1〜帯（2回強化）
+  updateQuestProgress("smith_enhance", 1, 2);
 
-  if (typeof renderGuildQuests === "function") {
-    renderGuildQuests();
-  }
+  // T2専用の強化回数を別で数えたい場合は、
+  // T2装備強化時だけ別フラグから `updateQuestProgress("smith_enhance_t2", 1, 3)` を呼ぶ想定。
+
+  checkCitizenshipUnlocked();
+
+  refreshGuildQuestUIIfNeeded();
 }
 
 // クラフト用：鍛冶／錬金／料理ギルドの依頼進行
+// params: { category, recipeId, tier }
 function onCraftCompletedForGuild(params) {
   if (!params) return;
   const category = params.category;
-  const recipeId = params.recipeId;
+  const tier = params.tier || 1; // T1/T2/T3 判定用
 
-  // 鍛冶ギルド: 武器3本クラフト（武器・防具クラフトどちらも対象）
-  if (category === "weapon" || category === "armor") {
-    const id = "smith_craft_weapon";
-    const raw = window.guildQuestProgress[id] || {};
-    const count = (raw.count || 0) + 1;
-    const done = count >= 3;
-    window.guildQuestProgress[id] = {
-      ...raw,
-      count,
-      done: done || raw.done,
-      rewardTaken: !!raw.rewardTaken
-    };
+  // 鍛冶ギルド: T1武器/防具
+  if (tier === 1) {
+    if (category === "weapon") {
+      updateQuestProgress("smith_craft_weapon_t1", 1, 5);
+      updateQuestProgress("smith_craft_t1_gear_20", 1, 20);
+    } else if (category === "armor") {
+      updateQuestProgress("smith_craft_armor_t1", 1, 5);
+      updateQuestProgress("smith_craft_t1_gear_20", 1, 20);
+    }
   }
 
-  // 錬金ギルド: ポーション5回クラフト / 爆弾3個クラフト
-  if (category === "potion") {
-    const id = "alch_craft_potion";
-    const raw = window.guildQuestProgress[id] || {};
-    const count = (raw.count || 0) + 1;
-    const done = count >= 5;
-    window.guildQuestProgress[id] = {
-      ...raw,
-      count,
-      done: done || raw.done,
-      rewardTaken: !!raw.rewardTaken
-    };
-  }
-  if (category === "tool") {
-    const id = "alch_craft_bomb";
-    const raw = window.guildQuestProgress[id] || {};
-    const count = (raw.count || 0) + 1;
-    const done = count >= 3;
-    window.guildQuestProgress[id] = {
-      ...raw,
-      count,
-      done: done || raw.done,
-      rewardTaken: !!raw.rewardTaken
-    };
+  // 鍛冶ギルド: T2装備（個別2個＋合計10個）
+  if ((category === "weapon" || category === "armor") && tier === 2) {
+    if (category === "weapon") {
+      updateQuestProgress("smith_craft_weapon_t2", 1, 2);
+    } else if (category === "armor") {
+      updateQuestProgress("smith_craft_armor_t2", 1, 2);
+    }
+    updateQuestProgress("smith_craft_t2_gear_10", 1, 10);
   }
 
-  // 料理ギルド: 料理を3回作る（食べ物も飲み物もまとめてカウント）
+  // 鍛冶ギルド特別依頼：T3武器・防具クラフト
+  if ((category === "weapon" || category === "armor") && tier === 3) {
+    updateQuestProgress("smith_special_citizen", 1, 12);
+  }
+
+  // 錬金ギルド: T1ポーション/爆弾/合計
+  if (tier === 1) {
+    if (category === "potion") {
+      updateQuestProgress("alch_craft_potion_t1", 1, 5);
+      updateQuestProgress("alch_craft_mix", 1, 10);
+    } else if (category === "tool") {
+      updateQuestProgress("alch_craft_bomb_t1", 1, 3);
+      updateQuestProgress("alch_craft_mix", 1, 10);
+    }
+  } else if (tier === 2) {
+    // 錬金ギルド: T2ポーション/道具/合計10個
+    if (category === "potion") {
+      updateQuestProgress("alch_craft_t2_potion", 1, 3);
+      updateQuestProgress("alch_mass_t2_supply", 1, 10);
+    } else if (category === "tool") {
+      updateQuestProgress("alch_craft_t2_tool", 1, 3);
+      updateQuestProgress("alch_mass_t2_supply", 1, 10);
+    }
+  }
+
+  // 錬金特別依頼：T3ポーション／爆弾合計15個
+  if ((category === "potion" || category === "tool") && tier === 3) {
+    updateQuestProgress("alch_special_citizen", 1, 15);
+  }
+
+  // 料理ギルド: T1料理/飲み物
+  if (tier === 1) {
+    if (category === "food") {
+      updateQuestProgress("cooking_basic_food_t1", 1, 3);
+      updateQuestProgress("cooking_variety", 1, 5);
+    } else if (category === "drink") {
+      updateQuestProgress("cooking_basic_drink_t1", 1, 3);
+      updateQuestProgress("cooking_variety", 1, 5);
+    }
+  } else if (tier === 2) {
+    // 料理ギルド: T2料理/飲み物個別＋合計10
+    if (category === "food") {
+      updateQuestProgress("cooking_t2_food", 1, 3);
+      updateQuestProgress("cooking_t2_any", 1, 10);
+    } else if (category === "drink") {
+      updateQuestProgress("cooking_t2_drink", 1, 3);
+      updateQuestProgress("cooking_t2_any", 1, 10);
+    }
+  }
+
+  // T1/T2 問わず、異なる料理/飲み物5回（回数ベース）
   if (category === "food" || category === "drink") {
-    const id = "cooking_basic";
-    const raw = window.guildQuestProgress[id] || {};
-    const count = (raw.count || 0) + 1;
-    const done = count >= 3;
-    window.guildQuestProgress[id] = {
-      ...raw,
-      count,
-      done: done || raw.done,
-      rewardTaken: !!raw.rewardTaken
-    };
+    // 既に T1 部分で cooking_variety を増やしているが、
+    // 仕様変更なし優先でそのまま維持（T2時はここでは追加カウントしていない）。
   }
 
-  if (typeof renderGuildQuests === "function") {
-    renderGuildQuests();
+  // 料理特別依頼：T3料理/飲み物15品
+  if ((category === "food" || category === "drink") && tier === 3) {
+    updateQuestProgress("cooking_special_citizen", 1, 15);
   }
+
+  checkCitizenshipUnlocked();
+
+  refreshGuildQuestUIIfNeeded();
 }
 
 // 採取用：採取ギルド＆食材ギルドの依頼進行
-// game-core-4.js の gather 内から呼ばれる想定
-// params: { kind: "gather" | "food", total: number, t3?: number, rare?: boolean }
+// params: { kind: "gather" | "food", total: number, t2?: number, t3?: number, rare?: boolean }
 function onGatherCompletedForGuild(params) {
   if (!params) return;
   const kind = params.kind;
 
-  // 採取ギルド: 素材集めの手伝い（gather_basic）＝通常素材 total 個
-  //              高品質素材の納品（gather_t3）＝ T3 素材 t3 個
+  // 採取ギルド: T2通常素材50個 / T3素材5個
   if (kind === "gather") {
-    const total = params.total || 0;
-    const t3    = params.t3 || 0;
+    const t2 = params.t2 || 0;
+    const t3 = params.t3 || 0;
 
-    if (total > 0) {
-      const id = "gather_basic";
-      const raw = window.guildQuestProgress[id] || {};
-      const count = (raw.count || 0) + total;
-      const done = count >= 50;
-      window.guildQuestProgress[id] = {
-        ...raw,
-        count,
-        done: done || raw.done,
-        rewardTaken: !!raw.rewardTaken
-      };
+    if (t2 > 0) {
+      updateQuestProgress("gather_basic", t2, 50);
     }
 
     if (t3 > 0) {
-      const id = "gather_t3";
-      const raw = window.guildQuestProgress[id] || {};
-      const count = (raw.count || 0) + t3;
-      const done = count >= 5;
-      window.guildQuestProgress[id] = {
-        ...raw,
-        count,
-        done: done || raw.done,
-        rewardTaken: !!raw.rewardTaken
-      };
+      updateQuestProgress("gather_t3", t3, 5);
+      updateQuestProgress("gather_special_citizen", t3, 60);
     }
   }
 
-  // 食材ギルド: food_mat（料理素材 total 個）／food_rare（レア食材1個）
+  // 食材ギルド: total 70個 / rare 1個
   if (kind === "food") {
     const total = params.total || 0;
     const isRare = !!params.rare;
 
     if (total > 0) {
-      const id = "food_mat";
-      const raw = window.guildQuestProgress[id] || {};
-      const count = (raw.count || 0) + total;
-      const done = count >= 30;
-      window.guildQuestProgress[id] = {
-        ...raw,
-        count,
-        done: done || raw.done,
-        rewardTaken: !!raw.rewardTaken
-      };
+      updateQuestProgress("food_mat", total, 70);
+      updateQuestProgress("food_special_citizen", total, 80);
     }
 
-    // レア食材は1回入手すればOK、複数回入手しても count を増やすだけで done は1個で到達
     if (isRare) {
-      const id = "food_rare";
-      const raw = window.guildQuestProgress[id] || {};
-      const count = (raw.count || 0) + 1;
-      const done = count >= 1;
-      window.guildQuestProgress[id] = {
-        ...raw,
-        count,
-        done: done || raw.done,
-        rewardTaken: !!raw.rewardTaken
-      };
+      updateQuestProgress("food_rare", 1, 1);
     }
   }
 
-  if (typeof renderGuildQuests === "function") {
-    renderGuildQuests();
-  }
+  checkCitizenshipUnlocked();
+
+  refreshGuildQuestUIIfNeeded();
 }
 
-// =======================
-// UI: ヘッダ
-// =======================
-
-function renderGuildHeader() {
-  const nameEl  = document.getElementById("guildCurrentName");
-  const fameEl  = document.getElementById("guildCurrentFame");
-  const rankEl  = document.getElementById("guildCurrentRank");
-
-  if (!nameEl || !fameEl || !rankEl) return;
-
-  if (!window.playerGuildId || !GUILDS[window.playerGuildId]) {
-    nameEl.textContent = "未所属";
-    fameEl.textContent = "0";
-    rankEl.textContent = "-";
-    return;
-  }
-
-  const g    = GUILDS[window.playerGuildId];
-  const fame = getGuildFame(g.id);
-  const r    = getGuildRankInfo(fame);
-
-  nameEl.textContent = g.name;
-  fameEl.textContent = String(fame);
-  rankEl.textContent = r.name;
-}
-
-// =======================
-// UI: ギルド一覧
-// =======================
-
-function renderGuildList() {
-  const container = document.getElementById("guildListContainer");
-  if (!container) return;
-  container.innerHTML = "";
-
-  GUILD_ORDER.forEach(id => {
-    const g = GUILDS[id];
-    if (!g) return;
-
-    const fame = getGuildFame(id);
-    const rank = getGuildRankInfo(fame);
-
-    const box = document.createElement("div");
-    box.className = "guild-list-item";
-    box.style.border = "1px solid #444";
-    box.style.padding = "4px";
-    box.style.marginBottom = "4px";
-    box.style.background = "#181818";
-
-    const title = document.createElement("div");
-    title.style.display = "flex";
-    title.style.justifyContent = "space-between";
-    title.style.alignItems = "center";
-
-    const nameSpan = document.createElement("span");
-    nameSpan.textContent = `${g.name}`;
-    nameSpan.style.fontWeight = "bold";
-
-    const typeSpan = document.createElement("span");
-    typeSpan.style.fontSize = "11px";
-    typeSpan.style.color = "#ccc";
-    if (g.type === "battle") typeSpan.textContent = "[戦闘系]";
-    else if (g.type === "craft") typeSpan.textContent = "[クラフト系]";
-    else if (g.type === "gather") typeSpan.textContent = "[採取系]";
-    else typeSpan.textContent = "[その他]";
-
-    title.appendChild(nameSpan);
-    title.appendChild(typeSpan);
-    box.appendChild(title);
-
-    const desc = document.createElement("div");
-    desc.textContent = g.desc;
-    desc.style.fontSize = "12px";
-    desc.style.marginTop = "2px";
-    box.appendChild(desc);
-
-    if (g.detail) {
-      const detail = document.createElement("div");
-      detail.textContent = g.detail;
-      detail.style.fontSize = "11px";
-      detail.style.color = "#ccc";
-      box.appendChild(detail);
-    }
-
-    const statusRow = document.createElement("div");
-    statusRow.style.display = "flex";
-    statusRow.style.alignItems = "center";
-    statusRow.style.justifyContent = "space-between";
-    statusRow.style.marginTop = "4px";
-
-    const fameSpan = document.createElement("span");
-    fameSpan.style.fontSize = "11px";
-    fameSpan.textContent = `名声: ${fame}（ランク: ${rank.name}）`;
-    statusRow.appendChild(fameSpan);
-
-    const btnArea = document.createElement("div");
-
-    if (window.playerGuildId === id) {
-      const joinedLabel = document.createElement("span");
-      joinedLabel.textContent = "所属中";
-      joinedLabel.style.fontSize = "11px";
-      joinedLabel.style.color = "#8cf";
-      btnArea.appendChild(joinedLabel);
-    } else if (!window.playerGuildId) {
-      const joinBtn = document.createElement("button");
-      joinBtn.textContent = "このギルドに入る";
-      joinBtn.style.fontSize = "11px";
-      joinBtn.addEventListener("click", () => {
-        joinGuild(id);
-      });
-      btnArea.appendChild(joinBtn);
-    } else {
-      const otherLabel = document.createElement("span");
-      otherLabel.textContent = "別ギルド所属中";
-      otherLabel.style.fontSize = "11px";
-      otherLabel.style.color = "#aaa";
-      btnArea.appendChild(otherLabel);
-    }
-
-    statusRow.appendChild(btnArea);
-    box.appendChild(statusRow);
-
-    const perksBox = document.createElement("div");
-    perksBox.style.marginTop = "4px";
-    perksBox.style.fontSize = "11px";
-    perksBox.style.color = "#ccc";
-
-    const perkTitle = document.createElement("div");
-    perkTitle.textContent = "主な名声報酬（ランクボーナス）";
-    perksBox.appendChild(perkTitle);
-
-    g.perks.forEach(p => {
-      const li = document.createElement("div");
-      li.textContent = `・${p.summary}`;
-      perksBox.appendChild(li);
-    });
-
-    box.appendChild(perksBox);
-
-    container.appendChild(box);
-  });
-}
-
-// =======================
-// UI: 依頼タブ
-// =======================
-
-// ひとまずギルドごとに簡易依頼を定義
-const GUILD_QUESTS = {
-  warrior: [
-    {
-      id: "warrior_kill_30_phys",
-      name: "A依頼: 物理撃破訓練",
-      desc: "物理攻撃で敵を30体倒す。",
-      fameReward: 10,
-      hint: "通常攻撃や物理スキルでトドメを刺すとカウントされる。"
-    },
-    {
-      id: "battle_boss_1",
-      name: "B依頼: ボス討伐試験",
-      desc: "いずれかのエリアボスを1体倒す。",
-      fameReward: 15,
-      hint: "草原・森・洞窟など、どのボスでも1体倒せば達成。"
-    },
-    // ★ 戦士転生依頼
-    {
-      id: "warrior_rebirth_1",
-      name: "C依頼: 戦士としての再出発",
-      desc: "戦士として1回転生する。",
-      fameReward: 20,
-      hint: "戦士の職業で1度転生すると達成される。"
-    }
-  ],
-  mage: [
-    {
-      id: "mage_kill_30_magic",
-      name: "A依頼: 魔法撃破訓練",
-      desc: "魔法で敵を30体倒す。",
-      fameReward: 10,
-      hint: "ファイアボルトやアイスランスなどでトドメを刺すとカウントされる。"
-    },
-    {
-      id: "battle_boss_1",
-      name: "B依頼: ボス討伐試験",
-      desc: "いずれかのエリアボスを1体倒す。",
-      fameReward: 15,
-      hint: "草原・森・洞窟など、どのボスでも1体倒せば達成。"
-    },
-    // ★ 魔法使い転生依頼
-    {
-      id: "mage_rebirth_1",
-      name: "C依頼: 魔法使いとしての再出発",
-      desc: "魔法使いとして1回転生する。",
-      fameReward: 20,
-      hint: "魔法使いの職業で1度転生すると達成される。"
-    }
-  ],
-  tamer: [
-    {
-      id: "tamer_kill_30_pet",
-      name: "A依頼: ペット撃破訓練",
-      desc: "ペットで敵を30体倒す。",
-      fameReward: 10,
-      hint: "ペットの攻撃やスキルでトドメを刺すとカウントされる。"
-    },
-    {
-      id: "battle_boss_1",
-      name: "B依頼: ボス討伐試験",
-      desc: "いずれかのエリアボスを1体倒す。",
-      fameReward: 15,
-      hint: "草原・森・洞窟など、どのボスでも1体倒せば達成。"
-    },
-    // ★ 動物使い転生依頼
-    {
-      id: "tamer_rebirth_1",
-      name: "C依頼: 動物使いとしての再出発",
-      desc: "動物使いとして1回転生する。",
-      fameReward: 20,
-      hint: "動物使いの職業で1度転生すると達成される。"
-    }
-  ],
-  // 以下のクラフト／採取ギルドはプレースホルダから、今回で一部実装済みに
-  smith: [
-    {
-      id: "smith_craft_weapon",
-      name: "武器制作の依頼",
-      desc: "武器を3本クラフトする。",
-      fameReward: 8,
-      hint: "クラフト導線。"
-    },
-    {
-      id: "smith_enhance",
-      name: "装備強化の試験",
-      desc: "武器か防具を2回強化する。",
-      fameReward: 10,
-      hint: "強化システムへの誘導。"
-    }
-  ],
-  alchemist: [
-    {
-      id: "alch_craft_potion",
-      name: "ポーション調合の依頼",
-      desc: "ポーションを5回クラフトする。",
-      fameReward: 8,
-      hint: "クラフト画面でポーションを作るだけで進む想定。"
-    },
-    {
-      id: "alch_craft_bomb",
-      name: "危険な実験",
-      desc: "爆弾系の道具を3個クラフトする。",
-      fameReward: 12,
-      hint: "戦闘用道具クラフトの導線。"
-    }
-  ],
-  cooking: [
-    {
-      id: "cooking_basic",
-      name: "基本料理の習得",
-      desc: "料理を3回作る。",
-      fameReward: 8,
-      hint: "料理クラフト導線。"
-    },
-    {
-      id: "cooking_buff",
-      name: "バフ料理の試食会",
-      desc: "バフ付き料理を2回食べる。",
-      fameReward: 10,
-      hint: "フィールドでの料理活用を促す。"
-    }
-  ],
-  gather: [
-    {
-      id: "gather_basic",
-      name: "素材集めの手伝い",
-      desc: "採取で素材を50個集める。",
-      fameReward: 8,
-      hint: "採取の基本。"
-    },
-    {
-      id: "gather_t3",
-      name: "高品質素材の納品",
-      desc: "T3素材を5個集める。",
-      fameReward: 12,
-      hint: "高ティア狙いの動機付け。"
-    }
-  ],
-  food: [
-    {
-      id: "food_mat",
-      name: "食材の確保",
-      desc: "料理用素材を30個集める。",
-      fameReward: 8,
-      hint: "草・釣り・狩猟などの利用を促す。"
-    },
-    {
-      id: "food_rare",
-      name: "珍味の発見",
-      desc: "レア食材を1つ入手する。",
-      fameReward: 15,
-      hint: "将来のレア食材テーブルと連動。"
-    }
-  ]
-};
-
-// 進捗オブジェクトの形をそろえる
-function getGuildQuestProg(id) {
-  const raw = window.guildQuestProgress[id] || {};
-
-  // カウント型依頼
-  if (
-    id === "warrior_kill_30_phys" ||
-    id === "mage_kill_30_magic"   ||
-    id === "tamer_kill_30_pet"    ||
-    id === "battle_boss_1"        ||
-    id === "smith_craft_weapon"   ||
-    id === "smith_enhance"        || // ★ 鍛冶ギルド 強化依頼
-    id === "alch_craft_potion"    ||
-    id === "alch_craft_bomb"      ||
-    id === "cooking_basic"        ||
-    id === "cooking_buff"         || // ★ バフ料理依頼
-    id === "gather_basic"         || // ★ 採取ギルド 素材50個
-    id === "gather_t3"            || // ★ 採取ギルド T3素材5個
-    id === "food_mat"             || // ★ 食材ギルド 素材30個
-    id === "food_rare"            || // ★ 食材ギルド レア食材1個
-    id === "warrior_rebirth_1"    || // ★ 戦士転生1回
-    id === "mage_rebirth_1"       || // ★ 魔法使い転生1回
-    id === "tamer_rebirth_1"         // ★ 動物使い転生1回
-  ) {
-    return {
-      count: raw.count || 0,
-      done: !!raw.done,
-      rewardTaken: !!raw.rewardTaken
-    };
-  }
-
-  // それ以外は従来どおり
-  return {
-    done: !!raw.done,
-    note: raw.note || "",
-    rewardTaken: !!raw.rewardTaken
-  };
-}
-
-// 名声報酬受取処理（依頼タブから呼ぶ）
-function claimGuildQuestReward(guildId, questDef) {
-  if (!guildId || !questDef) return;
-  const id = questDef.id;
-  const prog = getGuildQuestProg(id);
-
-  if (!prog.done) {
-    if (typeof appendLog === "function") {
-      appendLog("まだ依頼の条件を満たしていない。");
-    }
-    return;
-  }
-  if (prog.rewardTaken) {
-    if (typeof appendLog === "function") {
-      appendLog("この依頼の報酬はすでに受け取っている。");
-    }
-    return;
-  }
-
-  // 名声付与
-  addGuildFame(guildId, questDef.fameReward);
-
-  // ★ 戦闘ギルド依頼なら戦闘ギルドスキルポイントも付与
-  if (guildId === "warrior" || guildId === "mage" || guildId === "tamer") {
-    window.combatGuildSkillPoints = (window.combatGuildSkillPoints || 0) + 1;
-    if (typeof appendLog === "function") {
-      appendLog("戦闘ギルドスキルポイントを1獲得した！");
-    }
-  }
-
-  // フラグ更新
-  const stored = window.guildQuestProgress[id] || {};
-  stored.rewardTaken = true;
-  window.guildQuestProgress[id] = stored;
-
-  if (typeof appendLog === "function") {
-    appendLog(`${GUILDS[guildId].name} の依頼「${questDef.name}」を達成し、名声を${questDef.fameReward}獲得した！`);
-  }
-
-  renderGuildQuests();
-
-  // ツリーUI更新（guildskill.js があれば）
-  if (typeof renderGuildRewards === "function") {
-    renderGuildRewards();
-  }
-}
-
-// この段階では A/B 以外は「内容一覧＋簡易報酬ボタン」に留める
-
-function renderGuildQuests() {
-  const listEl = document.getElementById("guildQuestList");
-  if (!listEl) return;
-  listEl.innerHTML = "";
-
-  if (!window.playerGuildId || !GUILDS[window.playerGuildId]) {
-    const p = document.createElement("p");
-    p.textContent = "ギルドに所属すると、専用の依頼を受けられます。";
-    listEl.appendChild(p);
-    return;
-  }
-
-  const guildId = window.playerGuildId;
-  const quests = GUILD_QUESTS[guildId] || [];
-
-  if (!quests.length) {
-    const p = document.createElement("p");
-    p.textContent = "このギルドにはまだ依頼が用意されていません。";
-    listEl.appendChild(p);
-    return;
-  }
-
-  quests.forEach(q => {
-    const box = document.createElement("div");
-    box.style.border = "1px solid #444";
-    box.style.padding = "4px";
-    box.style.marginBottom = "4px";
-    box.style.background = "#151515";
-
-    const title = document.createElement("div");
-    title.textContent = q.name;
-    title.style.fontWeight = "bold";
-    box.appendChild(title);
-
-    const desc = document.createElement("div");
-    desc.textContent = q.desc;
-    desc.style.fontSize = "11px";
-    box.appendChild(desc);
-
-    const fame = document.createElement("div");
-    fame.textContent = `報酬: 名声 +${q.fameReward}`;
-    fame.style.fontSize = "11px";
-    fame.style.color = "#ccc";
-    box.appendChild(fame);
-
-    if (q.hint) {
-      const hint = document.createElement("div");
-      hint.textContent = `ヒント: ${q.hint}`;
-      hint.style.fontSize = "11px";
-      hint.style.color = "#888";
-      box.appendChild(hint);
-    }
-
-    const prog = getGuildQuestProg(q.id);
-
-    const status = document.createElement("div");
-    status.style.fontSize = "11px";
-    status.style.marginTop = "2px";
-
-    // A/B 依頼＋クラフト系＋採取系の count / done を表示
-    if (q.id === "warrior_kill_30_phys") {
-      status.textContent = prog.done
-        ? `状態: 完了（物理撃破 ${prog.count}/30）`
-        : `状態: 進行中（物理撃破 ${prog.count}/30）`;
-    } else if (q.id === "mage_kill_30_magic") {
-      status.textContent = prog.done
-        ? `状態: 完了（魔法撃破 ${prog.count}/30）`
-        : `状態: 進行中（魔法撃破 ${prog.count}/30）`;
-    } else if (q.id === "tamer_kill_30_pet") {
-      status.textContent = prog.done
-        ? `状態: 完了（ペット撃破 ${prog.count}/30）`
-        : `状態: 進行中（ペット撃破 ${prog.count}/30）`;
-    } else if (q.id === "battle_boss_1") {
-      status.textContent = prog.done
-        ? `状態: 完了（ボス討伐 ${prog.count}/1）`
-        : `状態: 進行中（ボス討伐 ${prog.count}/1）`;
-    } else if (q.id === "smith_craft_weapon") {
-      status.textContent = prog.done
-        ? `状態: 完了（クラフト ${prog.count}/3）`
-        : `状態: 進行中（クラフト ${prog.count}/3）`;
-    } else if (q.id === "smith_enhance") {
-      status.textContent = prog.done
-        ? `状態: 完了（強化 ${prog.count}/2）`
-        : `状態: 進行中（強化 ${prog.count}/2）`;
-    } else if (q.id === "alch_craft_potion") {
-      status.textContent = prog.done
-        ? `状態: 完了（ポーションクラフト ${prog.count}/5）`
-        : `状態: 進行中（ポーションクラフト ${prog.count}/5）`;
-    } else if (q.id === "alch_craft_bomb") {
-      status.textContent = prog.done
-        ? `状態: 完了（爆弾クラフト ${prog.count}/3）`
-        : `状態: 進行中（爆弾クラフト ${prog.count}/3）`;
-    } else if (q.id === "cooking_basic") {
-      status.textContent = prog.done
-        ? `状態: 完了（料理作成 ${prog.count}/3）`
-        : `状態: 進行中（料理作成 ${prog.count}/3）`;
-    } else if (q.id === "cooking_buff") { // バフ料理依頼の表示
-      status.textContent = prog.done
-        ? `状態: 完了（バフ料理 ${prog.count}/2）`
-        : `状態: 進行中（バフ料理 ${prog.count}/2）`;
-    } else if (q.id === "gather_basic") {
-      status.textContent = prog.done
-        ? `状態: 完了（採取素材 ${prog.count}/50）`
-        : `状態: 進行中（採取素材 ${prog.count}/50）`;
-    } else if (q.id === "gather_t3") {
-      status.textContent = prog.done
-        ? `状態: 完了（T3素材 ${prog.count}/5）`
-        : `状態: 進行中（T3素材 ${prog.count}/5）`;
-    } else if (q.id === "food_mat") {
-      status.textContent = prog.done
-        ? `状態: 完了（料理素材 ${prog.count}/30）`
-        : `状態: 進行中（料理素材 ${prog.count}/30）`;
-    } else if (q.id === "food_rare") {
-      status.textContent = prog.done
-        ? `状態: 完了（レア食材 ${prog.count}/1）`
-        : `状態: 進行中（レア食材 ${prog.count}/1）`;
-    } else if (q.id === "warrior_rebirth_1") {
-      status.textContent = prog.done
-        ? `状態: 完了（戦士転生 ${prog.count}/1）`
-        : `状態: 進行中（戦士転生 ${prog.count}/1）`;
-    } else if (q.id === "mage_rebirth_1") {
-      status.textContent = prog.done
-        ? `状態: 完了（魔法使い転生 ${prog.count}/1）`
-        : `状態: 進行中（魔法使い転生 ${prog.count}/1）`;
-    } else if (q.id === "tamer_rebirth_1") {
-      status.textContent = prog.done
-        ? `状態: 完了（動物使い転生 ${prog.count}/1）`
-        : `状態: 進行中（動物使い転生 ${prog.count}/1）`;
-    } else {
-      status.textContent = prog.done
-        ? "状態: 完了"
-        : "状態: 進行中（システム実装予定）";
-    }
-    box.appendChild(status);
-
-    // 報酬ボタン
-    const btnRow = document.createElement("div");
-    btnRow.style.marginTop = "4px";
-
-    const rewardBtn = document.createElement("button");
-    rewardBtn.style.fontSize = "11px";
-
-    if (prog.rewardTaken) {
-      rewardBtn.textContent = "報酬受取済み";
-      rewardBtn.disabled = true;
-    } else if (!prog.done) {
-      rewardBtn.textContent = "未達成";
-      rewardBtn.disabled = true;
-    } else {
-      rewardBtn.textContent = "報酬を受け取る";
-      rewardBtn.disabled = false;
-      rewardBtn.addEventListener("click", () => {
-        claimGuildQuestReward(guildId, q);
-      });
-    }
-
-    btnRow.appendChild(rewardBtn);
-    box.appendChild(btnRow);
-
-    listEl.appendChild(box);
-  });
-}
-
-// =======================
-// UI: 報酬・称号タブ
-// =======================
-
-function renderGuildRewards() {
-  const listEl = document.getElementById("guildRewardList");
-  if (!listEl) return;
-  listEl.innerHTML = "";
-
-  if (!window.playerGuildId || !GUILDS[window.playerGuildId]) {
-    const p = document.createElement("p");
-    p.textContent = "ギルドに所属すると、名声に応じてランクボーナスが強化されます。";
-    listEl.appendChild(p);
-    return;
-  }
-
-  const guildId = window.playerGuildId;
-  const g = GUILDS[guildId];
-  const fame = getGuildFame(guildId);
-  const currentRank = getGuildRankInfo(fame);
-
-  const header = document.createElement("div");
-  header.style.marginBottom = "4px";
-  header.style.fontSize = "12px";
-  header.textContent = `${g.name} の現在の名声: ${fame}（ランク: ${currentRank.name}）`;
-  listEl.appendChild(header);
-
-  // ★ ランクボーナスの現在値を表示
-  const bonusLine = document.createElement("div");
-  bonusLine.style.fontSize = "11px";
-  bonusLine.style.color = "#8cf";
-
-  const battleBonus = getGuildBattleBonus();
-  const gatherBonus = getGuildGatherExtraBonusChance();
-
-  if (g.type === "battle") {
-    if (battleBonus.phys > 0) {
-      bonusLine.textContent = `現在のランクボーナス: 物理スキルダメージ +${Math.round(battleBonus.phys * 100)}%`;
-    } else if (battleBonus.magic > 0) {
-      bonusLine.textContent = `現在のランクボーナス: 魔法スキルダメージ +${Math.round(battleBonus.magic * 100)}%`;
-    } else if (battleBonus.pet > 0) {
-      bonusLine.textContent = `現在のランクボーナス: ペットの与ダメージ +${Math.round(battleBonus.pet * 100)}%`;
-    } else {
-      bonusLine.textContent = "現在のランクボーナス: まだ発生していません（名声を稼いでランクを上げよう）";
-    }
-  } else if (g.type === "gather") {
-    if (gatherBonus > 0) {
-      bonusLine.textContent = `現在のランクボーナス: +1個ボーナス抽選 +${Math.round(gatherBonus * 100)}%`;
-    } else {
-      bonusLine.textContent = "現在のランクボーナス: まだ発生していません（名声を稼いでランクを上げよう）";
-    }
-  } else {
-    // craft ギルドはまだ数値ボーナス未実装
-    bonusLine.textContent = "現在のランクボーナス: 今後のアップデートで追加予定。";
-  }
-
-  listEl.appendChild(bonusLine);
-
-  const nextRank = getNextRankInfo(fame);
-  if (nextRank) {
-    const next = document.createElement("div");
-    next.style.fontSize = "11px";
-    next.style.color = "#ccc";
-    next.textContent = `次のランク「${nextRank.name}」まで、あと ${nextRank.fame - fame} 名声。`;
-    listEl.appendChild(next);
-  } else {
-    const max = document.createElement("div");
-    max.style.fontSize = "11px";
-    max.style.color = "#ccc";
-    max.textContent = "すでに最高ランクに到達しています。";
-    listEl.appendChild(max);
-  }
-
-  const table = document.createElement("table");
-  table.className = "mat-table";
-  table.style.marginTop = "4px";
-
-  const thead = document.createElement("thead");
-  const htr = document.createElement("tr");
-  ["ランク", "必要名声", "効果要約", "状態"].forEach(text => {
-    const th = document.createElement("th");
-    th.textContent = text;
-    htr.appendChild(th);
-  });
-  thead.appendChild(htr);
-  table.appendChild(thead);
-
-  const tbody = document.createElement("tbody");
-  g.perks.forEach(p => {
-    const tr = document.createElement("tr");
-
-    const rankTd = document.createElement("td");
-    rankTd.textContent = `第${p.rank}段階`;
-    tr.appendChild(rankTd);
-
-    const fameTd = document.createElement("td");
-    fameTd.textContent = `${p.fame}以上`;
-    tr.appendChild(fameTd);
-
-    const sumTd = document.createElement("td");
-    sumTd.textContent = p.summary;
-    tr.appendChild(sumTd);
-
-    const stateTd = document.createElement("td");
-    if (fame >= p.fame) {
-      stateTd.textContent = "解放済み（ランクに応じて自動で強化）";
-      stateTd.style.color = "#8f8";
-    } else {
-      stateTd.textContent = "未解放";
-      stateTd.style.color = "#ccc";
-    }
-    tr.appendChild(stateTd);
-
-    tbody.appendChild(tr);
-  });
-
-  table.appendChild(tbody);
-  listEl.appendChild(table);
-
-  // ★ 戦闘ギルドツリー（guildskill.js）があれば表示
-  if (typeof renderCombatGuildTreeSection === "function") {
-    renderCombatGuildTreeSection(listEl);
-  }
-}
-
-// =======================
 // ギルド加入処理
-// =======================
-
 function joinGuild(guildId) {
   const g = GUILDS[guildId];
   if (!g) return;
@@ -1232,7 +599,6 @@ function joinGuild(guildId) {
   }
 
   if (window.playerGuildId && window.playerGuildId !== guildId) {
-    // 今の仕様では所属は1つ固定、変更はOKにしておく
     if (typeof appendLog === "function") {
       appendLog(`${GUILDS[window.playerGuildId].name} から ${g.name} へ所属を変更した。`);
     }
@@ -1247,26 +613,7 @@ function joinGuild(guildId) {
     window.guildFame[guildId] = 0;
   }
 
-  renderGuildUI();
+  if (typeof renderGuildUI === "function") {
+    renderGuildUI();
+  }
 }
-
-// =======================
-// メイン：ギルドタブ全体再描画
-// =======================
-
-function renderGuildUI() {
-  renderGuildHeader();
-  renderGuildList();
-  renderGuildQuests();
-  renderGuildRewards();
-}
-
-// =======================
-// 初期化（ギルドタブに入ったタイミングで呼ばれる想定）
-// =======================
-
-document.addEventListener("DOMContentLoaded", () => {
-  // 起動時に一度だけ軽く初期化しておく
-  // （実際には game-ui.js の showTabByPageId("pageGuild") で renderGuildUI が呼ばれる想定）
-  renderGuildHeader();
-});

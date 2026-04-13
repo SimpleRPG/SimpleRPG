@@ -155,8 +155,7 @@ function applyPotionEffect(p, inBattle) {
       addPotionStatusToPlayer("potion_def_up_T3", 3);
     }
 
-    // コンディションポーション（デバフ解除＋リジェネなど）は
-    // デバフ解除処理が別にあればそちらで行い、ここではリジェネ付与だけ行う想定。
+    // コンディションポーション（デバフ解除＋リジェネなど）
     if (p.id === "cleanse_T1") {
       addPotionStatusToPlayer("potion_regen_T1", 3);
     } else if (p.id === "cleanse_T2") {
@@ -313,6 +312,33 @@ function onBattleItemCategoryChanged() {
 }
 
 // =======================
+// ギルド通知用ヘルパー
+// =======================
+
+// アイテムIDから Tier 文字列を判定
+function getTierFromItemId(id) {
+  if (!id) return null;
+  if (id.endsWith("_T1") || id.endsWith("T1")) return "T1";
+  if (id.endsWith("_T2") || id.endsWith("T2")) return "T2";
+  if (id.endsWith("_T3") || id.endsWith("T3")) return "T3";
+  return null;
+}
+
+function notifyAlchUse(kind, itemId) {
+  if (typeof onAlchConsumableUsedForGuild === "function") {
+    const tier = getTierFromItemId(itemId); // "T1"/"T2"/"T3" or null
+    onAlchConsumableUsedForGuild({ kind, tier });
+  }
+}
+
+function notifyBuffFoodOrDrink(recipeEffect) {
+  if (!recipeEffect || !recipeEffect.statusId) return;
+  if (typeof onBuffFoodEatenForGuild === "function") {
+    onBuffFoodEatenForGuild();
+  }
+}
+
+// =======================
 // アイテム使用（フィールド / 戦闘）
 // =======================
 
@@ -396,6 +422,9 @@ function usePotionOutsideBattle() {
     appendLog(`${p.name} を使用した（HP ${prevHp} → ${hp}、+${healedHp} / MP ${prevMp} → ${mp}、+${healedMp}）`);
   }
 
+  // ★ 錬金ギルド依頼用：フィールドポーション使用をカウント（Tier付き）
+  notifyAlchUse("potion", p.id);
+
   refreshUseItemSelect();
   updateDisplay();
 }
@@ -465,6 +494,9 @@ function useBattleItem() {
     } else if (p.id === "cleanse_T1" || p.id === "cleanse_T2" || p.id === "cleanse_T3") {
       appendLog("澄んだ薬が体内を巡り、傷の治りが早くなった気がする…");
     }
+
+    // ★ 錬金ギルド依頼用：戦闘中ポーション使用をカウント（Tier付き）
+    notifyAlchUse("potion", p.id);
 
   } else if (category === "tool") {
     if (typeof carryTools === "undefined") {
@@ -560,6 +592,9 @@ function useBattleItem() {
       } else {
         appendLog(`爆弾を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
       }
+
+      // ★ 錬金ギルド依頼用：戦闘用道具使用をカウント（Tier付き）
+      notifyAlchUse("tool", id);
 
       if (enemyHp <= 0) {
         enemyHp = 0;
@@ -684,9 +719,7 @@ function eatFoodInField() {
   appendLog(`${recipe.name} を食べた！`);
 
   // ★ バフ付き料理ギルド依頼用：バフ付き料理を食べたらカウント
-  if (recipe.effect.statusId && typeof onBuffFoodEatenForGuild === "function") {
-    onBuffFoodEatenForGuild();
-  }
+  notifyBuffFoodOrDrink(recipe.effect);
 
   if (typeof refreshCarryFoodDrinkSelects === "function") {
     refreshCarryFoodDrinkSelects();
@@ -724,10 +757,8 @@ function drinkInField() {
 
   appendLog(`${recipe.name} を飲んだ！`);
 
-  // ★ バフ飲み物も依頼対象に含めるならここでカウント
-  if (recipe.effect.statusId && typeof onBuffFoodEatenForGuild === "function") {
-    onBuffFoodEatenForGuild();
-  }
+  // ★ バフ飲み物も依頼対象に含めるならここでカウント（既存仕様どおり onBuffFoodEatenForGuild）
+  notifyBuffFoodOrDrink(recipe.effect);
 
   if (typeof refreshCarryFoodDrinkSelects === "function") {
     refreshCarryFoodDrinkSelects();
@@ -816,6 +847,23 @@ function setGatherBaseMode(matKey, mode) {
   } else if (mode === "quality") {
     appendLog(`採取拠点(${label})の方針を質特化に変更した。`);
   }
+}
+
+// 採取拠点強化に必要な素材ログ出力だけヘルパー化
+function logGatherBaseRequiredMats(matKey, currentLv, nextLv, needInter, needStar) {
+  let lines = [];
+  const label = getGatherSkillLabel(matKey);
+  lines.push(`採取拠点(${label}) Lv${currentLv} → Lv${nextLv} に必要な中間素材:`);
+  for (const iid in needInter) {
+    const need = needInter[iid] || 0;
+    const have = intermediateMats[iid] || 0;
+    lines.push(`- ${iid}: 必要 ${need} 個 / 所持 ${have} 個`);
+  }
+  if (needStar > 0) {
+    const haveStar = intermediateMats["starShard"] || 0;
+    lines.push(`- starShard: 必要 ${needStar} 個 / 所持 ${haveStar} 個`);
+  }
+  appendLog(lines.join("\n"));
 }
 
 const GATHER_BASE_UPGRADE_DATA = {
@@ -1019,21 +1067,7 @@ function tryUpgradeGatherBase(matKey) {
     return;
   }
 
-  (function showRequiredMats() {
-    let lines = [];
-    const label = getGatherSkillLabel(matKey);
-    lines.push(`採取拠点(${label}) Lv${currentLv} → Lv${nextLv} に必要な中間素材:`);
-    for (const iid in needInter) {
-      const need = needInter[iid] || 0;
-      const have = intermediateMats[iid] || 0;
-      lines.push(`- ${iid}: 必要 ${need} 個 / 所持 ${have} 個`);
-    }
-    if (needStar > 0) {
-      const haveStar = intermediateMats["starShard"] || 0;
-      lines.push(`- starShard: 必要 ${needStar} 個 / 所持 ${haveStar} 個`);
-    }
-    appendLog(lines.join("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n"));
-  })();
+  logGatherBaseRequiredMats(matKey, currentLv, nextLv, needInter, needStar);
 
   for (const iid in needInter) {
     const need = needInter[iid] || 0;

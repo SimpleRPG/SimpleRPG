@@ -89,6 +89,47 @@ function renderGatherBaseStatusInto(container) {
   }
 }
 
+// ★ハウジング関連: ステータス内の表示＋拠点タブ連動
+function refreshHousingStatusAndTab() {
+  const citizenRow   = document.getElementById("statusCitizenRow");
+  const housingTabBtn= document.getElementById("tabHousing");
+
+  const unlocked = !!window.citizenshipUnlocked;
+
+  if (citizenRow) {
+    citizenRow.textContent = unlocked
+      ? "市民権: 取得済み（拠点メニューが解放されています）"
+      : "市民権: 未取得（いずれかのギルドの特別依頼で解放）";
+  }
+
+  if (housingTabBtn) {
+    // 表示/非表示は html.js の updateHousingWarehouseTabs() が担当。
+    // ここでは「押せるかどうか」のみ制御する。
+    housingTabBtn.disabled = !unlocked;
+    housingTabBtn.style.opacity = unlocked ? "1" : "0.5";
+  }
+
+  // 拠点ページ内の簡易状態表示（必要なら）
+  const housingRoot = document.getElementById("housingRoot");
+  if (housingRoot && housingRoot.childElementCount === 0) {
+    const p = document.createElement("p");
+    p.id = "housingStatusText";
+    p.style.fontSize = "12px";
+    p.style.color = "#ccc";
+    p.textContent = unlocked
+      ? "市民権を得たことで、拠点の手続きや住宅の管理が行えるようになります。（詳細UIは今後追加予定）"
+      : "まだ市民権を得ていないため、拠点の手続きは行えません。";
+    housingRoot.appendChild(p);
+  } else if (housingRoot) {
+    const statusText = document.getElementById("housingStatusText");
+    if (statusText) {
+      statusText.textContent = unlocked
+        ? "市民権を得たことで、拠点の手続きや住宅の管理が行えるようになります。（詳細UIは今後追加予定）"
+        : "まだ市民権を得ていないため、拠点の手続きは行えません。";
+    }
+  }
+}
+
 // ★ステータスタブHTMLを組み立てる
 function buildStatusPage() {
   const page = document.getElementById("pageStatus");
@@ -116,6 +157,12 @@ function buildStatusPage() {
           職業を変更
         </button>
       </div>
+
+      <!-- ★追加: 市民権・拠点ステータス表示 -->
+      <div class="status-block" id="statusCitizenRow">
+        市民権: 未取得（いずれかのギルドの特別依頼で解放）
+      </div>
+      <!-- ★追加ここまで -->
 
       <div class="status-block">
         STR: <span id="stSTR">1</span>,
@@ -522,6 +569,9 @@ function buildStatusPage() {
   if (magicGatherBox) {
     renderGatherBaseStatusInto(magicGatherBox);
   }
+
+  // ★ここで一度、市民権＆拠点タブ表示を反映
+  refreshHousingStatusAndTab();
 }
 
 
@@ -563,7 +613,7 @@ function updateGatherMatDetailText() {
     const t3 = m.t3 || 0;
     return `${names[k]}: ${t1}/${t2}/${t3}`;
   });
-  area.textContent = lines.join("\\n");
+  area.textContent = lines.join("\n");
 
   let labelText = "所持素材：-";
 
@@ -633,7 +683,7 @@ function updateCraftMatDetailText() {
     const m = window.materials[k] || {};
     return `${names[k]}: ${formatTierNums(m)}`;
   });
-  area.textContent = lines.join("\\n");
+  area.textContent = lines.join("\n");
 
   // 中間素材の在庫一覧
   if (typeof window.intermediateMats !== "undefined" &&
@@ -648,7 +698,7 @@ function updateCraftMatDetailText() {
     });
 
     if (interLines.length > 0) {
-      area.textContent += "\\n--- 中間素材 ---\\n" + interLines.join("\\n");
+      area.textContent += "\n--- 中間素材 ---\n" + interLines.join("\n");
     }
   }
 
@@ -862,6 +912,9 @@ function initJobPetRebirthUI() {
   if (typeof refreshWarehouseUI === "function") {
     refreshWarehouseUI();
   }
+
+  // ★市民権・拠点タブ表示を再反映（セーブデータ読み込み後など）
+  refreshHousingStatusAndTab();
 }
 
 const MAX_LOG_LINES = 50;
@@ -870,19 +923,15 @@ function appendLog(msg) {
   const el = document.getElementById("log");
   if (!el) return;
 
-  // 既存ログを行に分割（上から「新しい→古い」の順に並べる前提）
   let lines = el.textContent.split("\n").filter(line => line.trim() !== "");
 
-  // 新しいログを先頭に追加
   lines.unshift(msg);
 
-  // 最大行数を超えたら「末尾（＝一番古い）」から削る
   if (lines.length > MAX_LOG_LINES) {
     lines = lines.slice(0, MAX_LOG_LINES);
   }
 
   el.textContent = lines.join("\n");
 
-  // 一番上が最新なのでスクロール位置は先頭へ
   el.scrollTop = 0;
 }

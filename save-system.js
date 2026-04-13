@@ -59,7 +59,7 @@ function makeSaveData() {
       petBuffRate,
       petGrowthType,
       petSkills,
-      // ★ 追加: ペット名
+      // ペット名
       petName: (typeof petName !== "undefined") ? petName : ""
     },
 
@@ -73,7 +73,7 @@ function makeSaveData() {
     cookingMats,         // 料理素材
     lastGatherInfo,      // 直近の採取結果（なくても良いがデバッグ用に保存）
 
-    // ★ 追加: 採取統計（gather-core 側で管理）
+    // 採取統計（gather-core 側で管理）
     gatherStats: (typeof window !== "undefined" && window.gatherStats) ? window.gatherStats : {},
 
     // --------------------------------
@@ -168,9 +168,16 @@ function makeSaveData() {
     playerGuildId: (typeof window !== "undefined") ? window.playerGuildId : null,
     guildFame: (typeof window !== "undefined") ? (window.guildFame || {}) : {},
     guildQuestProgress: (typeof window !== "undefined") ? (window.guildQuestProgress || {}) : {},
-    // ★ 戦闘ギルドスキルツリー
     combatGuildTreeUnlocked: (typeof window !== "undefined") ? (window.combatGuildTreeUnlocked || {}) : {},
-    combatGuildSkillPoints: (typeof window !== "undefined") ? (window.combatGuildSkillPoints || 0) : 0
+    combatGuildSkillPoints: (typeof window !== "undefined") ? (window.combatGuildSkillPoints || 0) : 0,
+
+    // --------------------------------
+    // 市民権・ハウジング（housing-core.js）
+    // --------------------------------
+    citizenshipUnlocked: (typeof window !== "undefined") ? !!window.citizenshipUnlocked : false,
+    housingState: (typeof window !== "undefined" && window.housingState)
+      ? window.housingState
+      : { hasBase: false, baseLevel: 0, lastGuildId: null }
   };
 }
 
@@ -301,7 +308,7 @@ function applySaveData(data) {
     if ("petBuffRate" in pet)     petBuffRate     = pet.petBuffRate;
     if ("petGrowthType" in pet)   petGrowthType   = pet.petGrowthType;
     if (Array.isArray(pet.petSkills)) petSkills   = pet.petSkills;
-    // ★ ペット名
+    // ペット名
     if ("petName" in pet)         petName         = pet.petName;
   }
 
@@ -347,7 +354,7 @@ function applySaveData(data) {
     lastGatherInfo = data.lastGatherInfo;
   }
 
-  // ★ 採取統計
+  // 採取統計
   if (data.gatherStats && typeof window !== "undefined") {
     window.gatherStats = window.gatherStats || {};
     Object.keys(window.gatherStats).forEach(k => delete window.gatherStats[k]);
@@ -552,7 +559,7 @@ function applySaveData(data) {
       });
     }
 
-    // ★ 戦闘ギルドスキルツリー
+    // 戦闘ギルドスキルツリー
     if (data.combatGuildTreeUnlocked) {
       window.combatGuildTreeUnlocked = window.combatGuildTreeUnlocked || {};
       Object.keys(window.combatGuildTreeUnlocked).forEach(k => delete window.combatGuildTreeUnlocked[k]);
@@ -562,6 +569,22 @@ function applySaveData(data) {
     }
     if (typeof data.combatGuildSkillPoints === "number") {
       window.combatGuildSkillPoints = data.combatGuildSkillPoints;
+    }
+
+    // 市民権フラグ
+    if (typeof data.citizenshipUnlocked === "boolean") {
+      window.citizenshipUnlocked = data.citizenshipUnlocked;
+    }
+
+    // ハウジング状態
+    if (data.housingState) {
+      window.housingState = window.housingState || {};
+      window.housingState.hasBase = !!data.housingState.hasBase;
+      window.housingState.baseLevel = data.housingState.baseLevel || 0;
+      window.housingState.lastGuildId =
+        (typeof data.housingState.lastGuildId !== "undefined")
+          ? data.housingState.lastGuildId
+          : null;
     }
   }
 
@@ -610,6 +633,11 @@ function applySaveData(data) {
   // ギルドUIがあれば再描画
   if (typeof renderGuildUI === "function") {
     renderGuildUI();
+  }
+
+  // 拠点/ハウジング UI 反映
+  if (typeof refreshHousingFromState === "function") {
+    refreshHousingFromState();
   }
 }
 

@@ -11,12 +11,20 @@ const QUALITY_NAMES = ["", "【良品】", "【傑作】"];
 // 必要なら性能補正用レート（今は未使用、後でダメージ計算側で使う想定）
 const QUALITY_RATE = [1.0, 1.05, 1.12];
 
-// ★ tier 判定ヘルパー
+// ★ tier 判定ヘルパー（文字列）
 function getTierFromId(id) {
   if (id.endsWith("_T1") || id.endsWith("T1")) return "T1";
   if (id.endsWith("_T2") || id.endsWith("T2")) return "T2";
   if (id.endsWith("_T3") || id.endsWith("T3")) return "T3";
   return "T1";
+}
+
+// ★ guild.js に渡す用の tier 数値ヘルパー
+function getTierNumberFromId(id) {
+  const t = getTierFromId(id); // "T1" / "T2" / "T3"
+  if (t === "T2") return 2;
+  if (t === "T3") return 3;
+  return 1;
 }
 
 // ★ tier × スキルLvで表示可否を決める共通ヘルパー
@@ -519,7 +527,11 @@ function craftWeapon(){
 
   // ★ 鍛冶ギルド用：武器クラフト依頼を進行
   if (typeof onCraftCompletedForGuild === "function") {
-    onCraftCompletedForGuild({ category: "weapon", recipeId: recipe.id });
+    onCraftCompletedForGuild({
+      category: "weapon",
+      recipeId: recipe.id,
+      tier: getTierNumberFromId(recipe.id)
+    });
   }
 
   refreshEquipSelects();
@@ -571,7 +583,11 @@ function craftArmor(){
 
   // ★ 鍛冶ギルド用：防具クラフト依頼を進行
   if (typeof onCraftCompletedForGuild === "function") {
-    onCraftCompletedForGuild({ category: "armor", recipeId: recipe.id });
+    onCraftCompletedForGuild({
+      category: "armor",
+      recipeId: recipe.id,
+      tier: getTierNumberFromId(recipe.id)
+    });
   }
 
   refreshEquipSelects();
@@ -626,7 +642,11 @@ function craftPotion(){
 
   // ★ 錬金ギルド用：ポーションクラフト依頼を進行
   if (typeof onCraftCompletedForGuild === "function") {
-    onCraftCompletedForGuild({ category: "potion", recipeId: recipe.id });
+    onCraftCompletedForGuild({
+      category: "potion",
+      recipeId: recipe.id,
+      tier: getTierNumberFromId(recipe.id)
+    });
   }
 
   updateDisplay();
@@ -681,7 +701,11 @@ function craftTool(){
 
   // ★ 錬金／道具系ギルド用：道具クラフト依頼を進行
   if (typeof onCraftCompletedForGuild === "function") {
-    onCraftCompletedForGuild({ category: "tool", recipeId: recipe.id });
+    onCraftCompletedForGuild({
+      category: "tool",
+      recipeId: recipe.id,
+      tier: getTierNumberFromId(recipe.id)
+    });
   }
 
   updateDisplay();
@@ -795,7 +819,11 @@ function craftFood(){
 
   // ★ 料理ギルド用：料理クラフト依頼を進行
   if (typeof onCraftCompletedForGuild === "function") {
-    onCraftCompletedForGuild({ category: "food", recipeId: recipe.id });
+    onCraftCompletedForGuild({
+      category: "food",
+      recipeId: recipe.id,
+      tier: recipe.tier || getTierNumberFromId(recipe.id)
+    });
   }
 
   updateDisplay();
@@ -870,7 +898,11 @@ function craftDrink(){
 
   // ★ 料理ギルド用：飲み物クラフト依頼を進行
   if (typeof onCraftCompletedForGuild === "function") {
-    onCraftCompletedForGuild({ category: "drink", recipeId: recipe.id });
+    onCraftCompletedForGuild({
+      category: "drink",
+      recipeId: recipe.id,
+      tier: recipe.tier || getTierNumberFromId(recipe.id)
+    });
   }
 
   updateDisplay();

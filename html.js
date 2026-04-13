@@ -6,6 +6,29 @@
 window.globalSocket = window.globalSocket || null;
 
 // -----------------------------
+// 倉庫タブ / 拠点タブの表示切り替え
+// -----------------------------
+function updateHousingWarehouseTabs() {
+  const warehouseBtn = document.getElementById("tabWarehouse");
+  const housingBtn   = document.getElementById("tabHousing");
+
+  // ボタンが存在しない場合は何もしない（古いHTMLとの互換）
+  if (!warehouseBtn && !housingBtn) return;
+
+  const unlocked = !!window.citizenshipUnlocked;
+
+  if (warehouseBtn) {
+    // 市民権が解放されるまでは倉庫タブを見せる
+    // 解放されたら倉庫タブは隠す
+    warehouseBtn.style.display = unlocked ? "none" : "";
+  }
+  if (housingBtn) {
+    // 拠点タブは市民権解放後にだけ表示
+    housingBtn.style.display = unlocked ? "" : "none";
+  }
+}
+
+// -----------------------------
 // メインタブ切り替え
 // -----------------------------
 function setupMainTabs() {
@@ -15,6 +38,8 @@ function setupMainTabs() {
     { btn: "tabMagicDist", page: "pageMagicDist" },
     { btn: "tabWarehouse", page: "pageWarehouse" },
     { btn: "tabStatus",    page: "pageStatus" },
+    // ★拠点タブもメインタブとして扱う（表示/非表示は updateHousingWarehouseTabs が担当）
+    { btn: "tabHousing",   page: "pageHousing" },
     { btn: "tabGuild",     page: "pageGuild" },
     { btn: "tabHelp",      page: "pageHelp" },
   ];
@@ -32,6 +57,12 @@ function setupMainTabs() {
       const page = document.getElementById(d.page);
       if (!btn || !page) return;
       const active = (d.page === pageId);
+
+      // 非表示のタブが指定された場合は無視（例: 拠点タブが非表示のとき）
+      if (active && btn.style.display === "none") {
+        return;
+      }
+
       btn.classList.toggle("active", active);
       page.classList.toggle("active", active);
       page.style.display = active ? "" : "none";
@@ -48,6 +79,9 @@ function setupMainTabs() {
       }
     });
   });
+
+  // 初期表示の倉庫 / 拠点タブ状態を反映
+  updateHousingWarehouseTabs();
 
   // 初期タブは採取
   setMainTab("pageGather");
