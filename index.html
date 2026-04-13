@@ -961,6 +961,7 @@
       try {
         if (typeof io === "undefined") {
           console.log("Socket.io client library not loaded (io is undefined)");
+          if (typeof appendLog === "function") appendLog("[SYS] Socket.ioクライアントが読み込まれていません");
           return;
         }
 
@@ -973,6 +974,7 @@
 
         socket.on("connect", () => {
           console.log("Socket.io connected:", socket.id);
+          if (typeof appendLog === "function") appendLog("[SYS] Socket.io接続: " + socket.id);
           // 簡単な疎通テスト
           socket.emit("ping-from-client");
 
@@ -984,13 +986,16 @@
 
         socket.on("pong-from-server", () => {
           console.log("Received pong-from-server");
+          if (typeof appendLog === "function") appendLog("[SYS] サーバーからpong受信");
         });
 
         socket.on("connect_error", (err) => {
           console.log("Socket.io connect_error:", err.message);
+          if (typeof appendLog === "function") appendLog("[SYS] Socket接続エラー: " + err.message);
         });
       } catch (e) {
         console.log("Socket.io init error:", e);
+        if (typeof appendLog === "function") appendLog("[SYS] Socket.io初期化エラー: " + e.message);
       }
     })();
   </script>

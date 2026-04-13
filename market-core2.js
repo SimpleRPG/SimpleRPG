@@ -750,6 +750,10 @@ function setupMarketSocketSync() {
 
       refreshMarketBuyList();
       renderMyListings();
+
+      if (typeof appendLog === "function") {
+        appendLog("[SYS] market:listResult 受信 count=" + newList.length);
+      }
     });
 
     window.globalSocket.on("market:update", (serverListings) => {
@@ -774,6 +778,10 @@ function setupMarketSocketSync() {
 
       refreshMarketBuyList();
       renderMyListings();
+
+      if (typeof appendLog === "function") {
+        appendLog("[SYS] market:update 受信 count=" + newList.length);
+      }
     });
 
     // 自分の買い注文一覧の同期
@@ -783,6 +791,9 @@ function setupMarketSocketSync() {
       if (typeof refreshMarketOrderList === "function") {
         refreshMarketOrderList();
       }
+      if (typeof appendLog === "function") {
+        appendLog("[SYS] buyOrder:listResult 受信 count=" + window.marketBuyOrders.length);
+      }
     });
 
     try {
@@ -791,9 +802,15 @@ function setupMarketSocketSync() {
       window.globalSocket.emit("market:buyOrder:list");
     } catch (e2) {
       console.log("initial market:list emit error (inside socket sync)", e2);
+      if (typeof appendLog === "function") {
+        appendLog("[SYS] market:list 初期要求エラー: " + e2.message);
+      }
     }
   } catch (e) {
     console.log("market socket handlers error", e);
+    if (typeof appendLog === "function") {
+      appendLog("[SYS] 市場ソケットハンドラ初期化エラー: " + e.message);
+    }
   }
 }
 
@@ -837,6 +854,9 @@ window.addEventListener("DOMContentLoaded", () => {
           window.globalSocket.emit("market:buyOrder:list");
         } catch (e) {
           console.log("market:list emit error on tab click", e);
+          if (typeof appendLog === "function") {
+            appendLog("[SYS] market:list タブクリック時エラー: " + e.message);
+          }
         }
       } else {
         renderMyListings();

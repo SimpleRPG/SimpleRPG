@@ -933,7 +933,7 @@ function initJobPetRebirthUI() {
     refreshWarehouseUI();
   }
 }
-const MAX_LOG_LINES = 15;
+const MAX_LOG_LINES = 50;
 
 function appendLog(msg) {
   const el = document.getElementById("log");

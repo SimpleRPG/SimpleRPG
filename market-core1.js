@@ -453,15 +453,16 @@ function doMarketSell(){
             if (window.globalSocket && window.globalSocket.id) {
               myId = window.globalSocket.id;
             }
+            const serverListing = res.listing || {};
             const newListing = {
-              id: res.id != null ? res.id : res.listingId || ("local-" + (marketListingIdSeq++)),
-              category: categoryForMarket,
-              itemId: itemKey,
-              itemKey: itemKey,
-              price: price,
-              amount: amount,
-              sellerId: myId,
-              owner: myId
+              id: serverListing.id != null ? serverListing.id : (res.id != null ? res.id : res.listingId || ("local-" + (marketListingIdSeq++))),
+              category: serverListing.category || categoryForMarket,
+              itemId: serverListing.itemKey || itemKey,
+              itemKey: serverListing.itemKey || itemKey,
+              price: serverListing.price != null ? serverListing.price : price,
+              amount: serverListing.amount != null ? serverListing.amount : amount,
+              sellerId: serverListing.sellerId || myId,
+              owner: serverListing.sellerId || myId
             };
             window.marketListings.push(newListing);
           } catch (ePush) {
