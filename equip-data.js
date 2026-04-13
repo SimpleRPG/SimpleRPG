@@ -1504,4 +1504,6 @@ weaponInstances.forEach(inst => {
 armorInstances.forEach(inst => {
   if (!inst.location) inst.location = "warehouse";
 });
-// ★ここまで追加
+
+// ★ツールマスタをグローバル公開（市場表示などから参照するため）
+window.tools = TOOLS_INIT;

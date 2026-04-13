@@ -257,10 +257,18 @@ function getItemLabel(category, itemId){
     const p = potions.find(x => x.id === itemId);
     return p ? p.name : itemId;
   } else if(category === "tool"){
-    if (itemId === "bomb") return "爆弾";
+    // 仕様を変えず、まず従来の爆弾IDを優先して解決
+    if (itemId === "bomb")   return "爆弾";
     if (itemId === "bomb_T1") return "爆弾T1";
     if (itemId === "bomb_T2") return "爆弾T2";
     if (itemId === "bomb_T3") return "爆弾T3";
+
+    // それ以外のツールは、equip-data.js 側で window.tools として公開された
+    // TOOLS_INIT から名前を引く（存在しない場合は従来どおり itemId をそのまま表示）
+    if (Array.isArray(window.tools)) {
+      const t = window.tools.find(x => x.id === itemId);
+      if (t && t.name) return t.name;
+    }
     return itemId;
   } else if(category === "materialBase"){
     const baseNames = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
@@ -369,7 +377,6 @@ function renderMyListings() {
 // 自分の買い注文一覧サマリ（専用要素 marketMyOrderSummary 用）
 // =======================
 function renderMyBuyOrdersSummary() {
-  // ★修正: marketInfo ではなく専用要素を使う
   const el = document.getElementById("marketMyOrderSummary");
   if (!el) return;
 
@@ -693,8 +700,6 @@ function refreshMarketOrderList(){
 
   const header = "名前           残数/最大  価格    予約G";
 
-  // 文字表示に加えて、「自分の注文にはキャンセルボタン」を付ける
-  // （サーバの market:buyOrder:cancel ACK で returnMoney を受け取り、拘束Gを返金する）
   const lines = ["買い注文一覧", header];
   src.forEach(order => {
     const label = getItemLabel(order.category, order.itemKey || order.itemId);
@@ -714,7 +719,6 @@ function refreshMarketOrderList(){
   el.style.whiteSpace = "pre";
   el.style.fontFamily = "monospace";
 
-  // ここから下は、キャンセルボタン用の簡易 UI を別要素に作る（仕様を変えず「機能追加」のみ）
   const cancelContainerId = "marketOrderCancelContainer";
   let cancelContainer = document.getElementById(cancelContainerId);
   if (!cancelContainer) {
@@ -724,14 +728,12 @@ function refreshMarketOrderList(){
   }
   cancelContainer.innerHTML = "";
 
-  // 自分のソケットID
   let myId = "player";
   if (window.globalSocket && window.globalSocket.id) {
     myId = window.globalSocket.id;
   }
 
   src.forEach(order => {
-    // server 側では buyerId を持っているので、それが自分のものだけキャンセルボタンを出す前提
     if (order.buyerId && order.buyerId !== myId) return;
 
     const row = document.createElement("div");
@@ -759,7 +761,6 @@ function refreshMarketOrderList(){
               return;
             }
 
-            // サーバー ACK で返ってきた returnMoney を返金（server.js 側修正前提）
             if (typeof res.returnMoney === "number" && res.returnMoney > 0) {
               money += res.returnMoney;
               if (typeof appendLog === "function") {
@@ -767,7 +768,6 @@ function refreshMarketOrderList(){
               }
             }
 
-            // ローカル一覧も更新要求
             try {
               window.globalSocket.emit("market:buyOrder:list");
               window.globalSocket.emit("market:buyOrder:listAll");

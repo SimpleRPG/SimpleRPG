@@ -35,7 +35,7 @@ const io = new Server(httpServer, {
 let marketListings = [];
 
 // ★サーバー共通の買い注文データ（プレイヤー同士用）
-// order 形式: { id, buyerId, itemKey, category, price, maxAmount, remainAmount, createdAt }
+// order 形式: { id, buyerId, itemKey, category, price, maxAmount, remainAmount, reservedMoney, createdAt }
 let marketBuyOrders = [];
 
 // =======================
@@ -154,6 +154,7 @@ function addBuyOrder(buyerId, category, itemKey, price, amount) {
     price,
     maxAmount: amount,
     remainAmount: amount,
+    reservedMoney: price * amount,  // ★ 予約Gをサーバー側でも保持
     createdAt: now
   };
   marketBuyOrders.push(order);
