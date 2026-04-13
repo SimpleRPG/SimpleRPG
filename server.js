@@ -127,13 +127,8 @@ function serverSideRollNpcBuy() {
       const actualBuy = Math.min(li.amount, buyAmount);
       if (actualBuy <= 0) continue;
 
-      // 金額はここでは使わない（money はクライアントで管理）
-      // const totalPrice = actualBuy * li.price;
-
       li.amount -= actualBuy;
       if (li.amount <= 0) {
-        // 実際に削除するのはループの外で filter してもよいが、
-        // ここでは簡単に null マークして最後に一括フィルタ
         marketListings[indices[idx]] = null;
       }
 
@@ -141,7 +136,6 @@ function serverSideRollNpcBuy() {
     }
 
     if (updated) {
-      // null を取り除きつつ amount > 0 のものだけ残す
       marketListings = marketListings.filter(
         (l) => l && typeof l.amount === "number" && l.amount > 0
       );
@@ -149,7 +143,6 @@ function serverSideRollNpcBuy() {
         "[NPC] market updated by NPC buy, remaining listings:",
         marketListings.length
       );
-      // 全クライアントへ最新リストを通知
       io.emit("market:update", marketListings);
     }
   } catch (e) {
@@ -209,7 +202,6 @@ function matchBuyOrdersForListing(listing) {
   let remain = listing.amount;
   const matchedOrders = [];
 
-  // 対象アイテムの買い注文を抽出
   const candidates = getBuyOrders({ category, itemKey });
 
   if (!candidates.length) {
@@ -220,7 +212,6 @@ function matchBuyOrdersForListing(listing) {
     };
   }
 
-  // 高い価格優先、同値は古い順
   candidates.sort((a, b) => {
     if (b.price !== a.price) return b.price - a.price;
     return a.createdAt - b.createdAt;
@@ -228,10 +219,7 @@ function matchBuyOrdersForListing(listing) {
 
   for (const order of candidates) {
     if (remain <= 0) break;
-
-    // 注文価格が出品価格より低ければマッチしない
     if (order.price < sellPrice) continue;
-
     if (order.remainAmount <= 0) continue;
 
     const use = Math.min(order.remainAmount, remain);
@@ -246,12 +234,8 @@ function matchBuyOrdersForListing(listing) {
       price: order.price,
       amount: use
     });
-
-    // 残量ゼロの注文はここではそのままにしておき、
-    // 別途クリーンアップする（必要なら）
   }
 
-  // remainAmount <= 0 の注文を掃除
   marketBuyOrders = marketBuyOrders.filter(o => o && o.remainAmount > 0);
 
   const matchedAmount = listing.amount - remain;
@@ -267,11 +251,9 @@ function matchBuyOrdersForListing(listing) {
 // Socket.io 接続ハンドラ
 // =======================
 
-// クライアント接続時
 io.on("connection", (socket) => {
   console.log("Player connected:", socket.id);
 
-  // ping / pong テスト
   socket.on("ping-from-client", () => {
     console.log("Ping from client:", socket.id);
     socket.emit("pong-from-server");
@@ -285,7 +267,6 @@ io.on("connection", (socket) => {
   socket.on("market:list", () => {
     try {
       console.log("market:list from", socket.id);
-      // 単純に現在の配列を返す
       socket.emit("market:listResult", marketListings);
       console.log("market:listResult sent, count =", marketListings.length);
     } catch (e) {
@@ -293,13 +274,24 @@ io.on("connection", (socket) => {
     }
   });
 
-  // ★買い注文: 一覧要求（必要ならクライアントから呼ぶ前提）
+  // ★買い注文: （自分の）一覧要求
   socket.on("market:buyOrder:list", () => {
     try {
       const myOrders = getBuyOrders({ buyerId: socket.id });
       socket.emit("market:buyOrder:listResult", myOrders);
     } catch (e) {
       console.error("market:buyOrder:list error", e);
+    }
+  });
+
+  // ★買い注文: 全体一覧要求（全プレイヤー分）
+  socket.on("market:buyOrder:listAll", () => {
+    try {
+      // フィルタなしで全件返す
+      const allOrders = getBuyOrders({});
+      socket.emit("market:buyOrder:listAllResult", allOrders);
+    } catch (e) {
+      console.error("market:buyOrder:listAll error", e);
     }
   });
 
@@ -330,9 +322,13 @@ io.on("connection", (socket) => {
         ack({ ok: true, order });
       }
 
-      // 自分の最新注文一覧を返しておく（UI用）
+      // 自分の最新注文一覧を返す
       const myOrders = getBuyOrders({ buyerId: socket.id });
       socket.emit("market:buyOrder:listResult", myOrders);
+
+      // 全体板用に、全プレイヤー分の一覧も更新
+      const allOrders = getBuyOrders({});
+      io.emit("market:buyOrder:listAllResult", allOrders);
     } catch (e) {
       console.error("market:buyOrder error", e);
       if (typeof ack === "function") {
@@ -368,6 +364,10 @@ io.on("connection", (socket) => {
 
       const myOrders = getBuyOrders({ buyerId: socket.id });
       socket.emit("market:buyOrder:listResult", myOrders);
+
+      // 全体板も更新
+      const allOrders = getBuyOrders({});
+      io.emit("market:buyOrder:listAllResult", allOrders);
     } catch (e) {
       console.error("market:buyOrder:cancel error", e);
       if (typeof ack === "function") {
@@ -378,13 +378,11 @@ io.on("connection", (socket) => {
 
   // ★マーケット: 出品する（買い注文とマッチングしてから残りを掲載）
   socket.on("market:sell", (payload, ack) => {
-    // payload: { itemKey, category, amount, price }
     try {
       console.log("market:sell payload:", payload);
 
       const { itemKey, category, amount, price } = payload || {};
 
-      // 最低限のバリデーション
       if (!itemKey || !category ||
           typeof amount !== "number" || typeof price !== "number") {
         console.log("market:sell invalid_payload");
@@ -401,7 +399,6 @@ io.on("connection", (socket) => {
         return;
       }
 
-      // まず仮の listing を作って、買い注文とマッチングを試みる
       const tempListing = {
         id: "temp",
         sellerId: socket.id,
@@ -420,13 +417,8 @@ io.on("connection", (socket) => {
         { matchedAmount, remainingAmount, matchedOrders: matchResult.matchedOrders }
       );
 
-      // matchedOrders の内容（誰がいくつ買えたか）は、
-      // 現時点ではサーバ側に保持しておくだけで、
-      // money やログの処理はクライアント側の detectSellFromDiff に任せる。
-
       let listing = null;
 
-      // 残りがあれば、残量だけを通常の出品として marketListings に追加
       if (remainingAmount > 0) {
         listing = {
           id: Date.now().toString() + ":" + Math.random().toString(16).slice(2),
@@ -441,14 +433,16 @@ io.on("connection", (socket) => {
 
       console.log("marketListings now:", marketListings);
 
-      // 要求元にACK（残量の listing だけ返す）
       if (typeof ack === "function") {
         ack({ ok: true, listing, matchedAmount });
       }
 
-      // 全クライアントへ最新リストを通知
       console.log("emitting market:update, count =", marketListings.length);
       io.emit("market:update", marketListings);
+
+      // 買い注文側も変動している可能性があるので、全体板を更新
+      const allOrders = getBuyOrders({});
+      io.emit("market:buyOrder:listAllResult", allOrders);
     } catch (e) {
       console.error("market:sell error", e);
       if (typeof ack === "function") {
@@ -459,7 +453,6 @@ io.on("connection", (socket) => {
 
   // ★マーケット: 出品を減らす／削除する（購入されたとき用）
   socket.on("market:consume", (payload, ack) => {
-    // payload: { id, consumeAmount }
     try {
       console.log("market:consume payload:", payload);
 
@@ -500,7 +493,6 @@ io.on("connection", (socket) => {
       }
 
       console.log("market:consume done, remaining listings:", marketListings.length);
-      // 最新状態をブロードキャスト
       io.emit("market:update", marketListings);
     } catch (e) {
       console.error("market:consume error", e);
@@ -511,7 +503,7 @@ io.on("connection", (socket) => {
   });
 });
 
-// ポート（Render では PORT は環境変数で渡される）
+// ポート
 const port = process.env.PORT || 3001;
 httpServer.listen(port, () => {
   console.log("Server (HTTP + Socket.io) listening on port " + port);
