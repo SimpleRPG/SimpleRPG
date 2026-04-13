@@ -366,6 +366,38 @@ function renderMyListings() {
   el.style.fontFamily = "monospace";
 }
 
+// =======================
+// 自分の買い注文一覧サマリ（marketInfo 用）
+// =======================
+function renderMyBuyOrdersSummary() {
+  const el = document.getElementById("marketInfo");
+  if (!el) return;
+
+  const src = Array.isArray(window.marketBuyOrders) ? window.marketBuyOrders : [];
+  if (!src.length) {
+    el.textContent = "あなたの現在の買い注文はありません。";
+    el.style.whiteSpace = "normal";
+    el.style.fontFamily = "";
+    return;
+  }
+
+  const header = "名前           残数/最大  価格  予約G";
+  const rows = src.map(order => {
+    const label = getItemLabel(order.category, order.itemKey);
+    const nameCol = (label + "              ").slice(0, 12);
+    const remainCol = String(order.remainAmount).padStart(3, " ");
+    const maxCol = String(order.maxAmount).padStart(3, " ");
+    const priceCol = (String(order.price) + "G").padStart(6, " ");
+    const reserved = order.reservedMoney || 0;
+    const reservedCol = (String(reserved) + "G").padStart(6, " ");
+    return `${nameCol}  ${remainCol}/${maxCol}  @${priceCol}  ${reservedCol}`;
+  });
+
+  el.textContent = ["買い注文", header].concat(rows).join("\n");
+  el.style.whiteSpace = "pre";
+  el.style.fontFamily = "monospace";
+}
+
 // -----------------------
 // 売却（出品）
 // -----------------------
@@ -449,7 +481,7 @@ function doMarketSell(){
             return;
           }
 
-          // ✅ 即時マッチング分の売上を反映（res.matchedAmount）
+          // 即時マッチング分の売上を反映（res.matchedAmount）
           if (res.matchedAmount && res.matchedAmount > 0) {
             const immediateEarning = res.matchedAmount * price;
             money += immediateEarning;
@@ -571,20 +603,22 @@ function doMarketBuyOrder(){
   // オンライン時はサーバに買い注文を送る
   if (window.globalSocket) {
     try {
+      const reservedMoneyLocal = reservedMoney;
+
       window.globalSocket.emit(
         "market:buyOrder",
         { category, itemKey: itemId, price, amount },
         (res) => {
           if (!res || !res.ok) {
             // 失敗したらお金を戻す
-            money += reservedMoney;
+            money += reservedMoneyLocal;
             const errMsg = res && res.error ? res.error : "買い注文の登録に失敗しました";
             if (typeof appendLog === "function") appendLog(errMsg);
             updateDisplay();
             return;
           }
 
-          // サーバから返ってきた order をそのまま使う
+          // サーバから返ってきた order を使う（reservedMoney はローカル計算値を採用）
           try {
             let buyerId = "player";
             if (window.globalSocket && window.globalSocket.id) {
@@ -599,18 +633,21 @@ function doMarketBuyOrder(){
               price: serverOrder.price != null ? serverOrder.price : price,
               maxAmount: serverOrder.maxAmount != null ? serverOrder.maxAmount : amount,
               remainAmount: serverOrder.remainAmount != null ? serverOrder.remainAmount : amount,
-              reservedMoney
+              reservedMoney: reservedMoneyLocal
             };
             window.marketBuyOrders.push(order);
             if (typeof refreshMarketOrderList === "function") {
               refreshMarketOrderList();
+            }
+            if (typeof renderMyBuyOrdersSummary === "function") {
+              renderMyBuyOrdersSummary();
             }
           } catch (ePushOrder) {
             console.log("push local market buy order failed", ePushOrder);
           }
 
           const label = getItemLabel(category, itemId);
-          const msg = `${label} を「1個${price}Gで${amount}個まで」注文として出した（${reservedMoney}G拘束・オンライン）`;
+          const msg = `${label} を「1個${price}Gで${amount}個まで」注文として出した（${reservedMoneyLocal}G拘束・オンライン）`;
           if (typeof appendLog === "function") appendLog(msg);
 
           updateDisplay();
@@ -645,7 +682,9 @@ function doMarketBuyOrder(){
 
   updateDisplay();
   refreshMarketOrderList();
-  renderMyListings();
+  if (typeof renderMyBuyOrdersSummary === "function") {
+    renderMyBuyOrdersSummary();
+  }
 }
 
 function doMarketOrder() {
@@ -672,14 +711,14 @@ function refreshMarketOrderList(){
     const label = getItemLabel(order.category, order.itemKey);
     const usedAmount = order.maxAmount - order.remainAmount;
     const usedMoney  = usedAmount * order.price;
-    const remainMoney= order.reservedMoney - usedMoney;
+    const remainMoney= (order.reservedMoney || 0) - usedMoney;
 
     row.textContent =
       `#${order.id} ${label} / 価格:${order.price}G / `+
       `最大${order.maxAmount}個（残り${order.remainAmount}個）/ `+
-      `予約G:${order.reservedMoney}（未使用${remainMoney}G）`;
+      `予約G:${order.reservedMoney || 0}（未使用${remainMoney}G）`;
 
-    // ✅ 買い注文キャンセルボタン
+    // 買い注文キャンセルボタン
     const cancelBtn = document.createElement("button");
     cancelBtn.textContent = "取消";
     cancelBtn.style.marginLeft = "8px";
@@ -700,7 +739,7 @@ function refreshMarketOrderList(){
           // 残り未使用分を返金
           const usedAmount = order.maxAmount - order.remainAmount;
           const usedMoney  = usedAmount * order.price;
-          const returnMoney = order.reservedMoney - usedMoney;
+          const returnMoney = (order.reservedMoney || 0) - usedMoney;
           if (returnMoney > 0) {
             money += returnMoney;
             if (typeof appendLog === "function") {
@@ -714,6 +753,9 @@ function refreshMarketOrderList(){
           }
           if (typeof updateDisplay === "function") updateDisplay();
           if (typeof refreshMarketOrderList === "function") refreshMarketOrderList();
+          if (typeof renderMyBuyOrdersSummary === "function") {
+            renderMyBuyOrdersSummary();
+          }
         }
       );
     });
