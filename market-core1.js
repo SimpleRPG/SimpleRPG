@@ -443,28 +443,40 @@ function doMarketSell(){
             return;
           }
 
+          // まず在庫を減らす
           if(!removeItemForSell(uiCategory, itemId, amount)){
             if (typeof appendLog === "function") appendLog("手持ちの個数が足りません");
             return;
           }
 
+          // ✅ 即時マッチング分の売上を反映（res.matchedAmount）
+          if (res.matchedAmount && res.matchedAmount > 0) {
+            const immediateEarning = res.matchedAmount * price;
+            money += immediateEarning;
+            const matchMsg = `${label} が買い注文に ${res.matchedAmount}個 即売れした（${immediateEarning}G）`;
+            if (typeof appendLog === "function") appendLog(matchMsg);
+          }
+
+          // サーバー側で作られた listing（残り分）があればローカルにも反映
           try {
             let myId = "player";
             if (window.globalSocket && window.globalSocket.id) {
               myId = window.globalSocket.id;
             }
             const serverListing = res.listing || {};
-            const newListing = {
-              id: serverListing.id != null ? serverListing.id : (res.id != null ? res.id : res.listingId || ("local-" + (marketListingIdSeq++))),
-              category: serverListing.category || categoryForMarket,
-              itemId: serverListing.itemKey || itemKey,
-              itemKey: serverListing.itemKey || itemKey,
-              price: serverListing.price != null ? serverListing.price : price,
-              amount: serverListing.amount != null ? serverListing.amount : amount,
-              sellerId: serverListing.sellerId || myId,
-              owner: serverListing.sellerId || myId
-            };
-            window.marketListings.push(newListing);
+            if (serverListing && serverListing.id != null && serverListing.amount > 0) {
+              const newListing = {
+                id: serverListing.id,
+                category: serverListing.category || categoryForMarket,
+                itemId: serverListing.itemKey || itemKey,
+                itemKey: serverListing.itemKey || itemKey,
+                price: serverListing.price != null ? serverListing.price : price,
+                amount: serverListing.amount,
+                sellerId: serverListing.sellerId || myId,
+                owner: serverListing.sellerId || myId
+              };
+              window.marketListings.push(newListing);
+            }
           } catch (ePush) {
             console.log("push local market listing failed", ePush);
           }
@@ -602,9 +614,6 @@ function doMarketBuyOrder(){
           if (typeof appendLog === "function") appendLog(msg);
 
           updateDisplay();
-
-          // ★即時の market:buyOrder:list 要求はやめる（レスポンスは push 済みなので不要）
-          // サーバ側からの "market:buyOrder:listResult" で全体同期される
         }
       );
       return;
@@ -670,6 +679,46 @@ function refreshMarketOrderList(){
       `最大${order.maxAmount}個（残り${order.remainAmount}個）/ `+
       `予約G:${order.reservedMoney}（未使用${remainMoney}G）`;
 
+    // ✅ 買い注文キャンセルボタン
+    const cancelBtn = document.createElement("button");
+    cancelBtn.textContent = "取消";
+    cancelBtn.style.marginLeft = "8px";
+    cancelBtn.addEventListener("click", () => {
+      if (!window.globalSocket) {
+        if (typeof appendLog === "function") appendLog("オンライン接続が必要です");
+        return;
+      }
+      window.globalSocket.emit(
+        "market:buyOrder:cancel",
+        { orderId: order.id },
+        (res) => {
+          if (!res || !res.ok) {
+            const errMsg = res && res.error ? res.error : "買い注文のキャンセルに失敗しました";
+            if (typeof appendLog === "function") appendLog(errMsg);
+            return;
+          }
+          // 残り未使用分を返金
+          const usedAmount = order.maxAmount - order.remainAmount;
+          const usedMoney  = usedAmount * order.price;
+          const returnMoney = order.reservedMoney - usedMoney;
+          if (returnMoney > 0) {
+            money += returnMoney;
+            if (typeof appendLog === "function") {
+              appendLog(`買い注文を取消し、${returnMoney}G 返金された`);
+            }
+          }
+          // ローカルからも削除
+          const idx = window.marketBuyOrders.findIndex(o => o.id === order.id);
+          if (idx >= 0) {
+            window.marketBuyOrders.splice(idx, 1);
+          }
+          if (typeof updateDisplay === "function") updateDisplay();
+          if (typeof refreshMarketOrderList === "function") refreshMarketOrderList();
+        }
+      );
+    });
+
+    row.appendChild(cancelBtn);
     el.appendChild(row);
   });
 }

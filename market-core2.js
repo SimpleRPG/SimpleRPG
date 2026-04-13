@@ -212,23 +212,38 @@ function doMarketBuy(stackKey, mode, amount){
 
   if (!consumeList.length) return;
 
-  // オンライン（サーバ経由）の場合
+  // オンライン（サーバ経由）の場合）
   if (window.globalSocket) {
     try {
       let index = 0;
+      const successCount = { amount: 0, cost: 0 }; // ✅ 成功分のみ精算するために追跡
+
+      const finalizeSuccess = (partialFailed) => {
+        if (successCount.amount > 0) {
+          money -= successCount.cost;
+          addItemForBuy(category, itemId, successCount.amount);
+          const label = getItemLabel(category, itemId);
+          const msg = partialFailed
+            ? `${label} を ${successCount.amount}個購入した（合計${successCount.cost}G、一部失敗）`
+            : `${label} を ${successCount.amount}個購入した（合計${successCount.cost}G）`;
+          if (typeof appendLog === "function") appendLog(msg);
+          if (typeof updateDisplay === "function") updateDisplay();
+          if (typeof refreshMarketBuyList === "function") refreshMarketBuyList();
+          if (typeof refreshMarketSellCandidates === "function") refreshMarketSellCandidates();
+          if (typeof refreshMarketSellItems === "function") refreshMarketSellItems();
+          if (typeof renderMyListings === "function") renderMyListings();
+        }
+        try {
+          window.globalSocket.emit("market:list");
+        } catch (e2) {
+          console.log("market:list emit error after buy", e2);
+        }
+      };
+
       const doNext = () => {
         if (index >= consumeList.length) {
-          money -= sim.totalPrice;
-          addItemForBuy(category, itemId, sim.buyableCount);
-          const label = getItemLabel(category, itemId);
-          const msg = `${label} を ${sim.buyableCount}個購入した（合計${sim.totalPrice}G）`;
-          if (typeof appendLog === "function") appendLog(msg);
-
-          try {
-            window.globalSocket.emit("market:list");
-          } catch (e2) {
-            console.log("market:list emit error after buy", e2);
-          }
+          // すべて成功
+          finalizeSuccess(false);
           return;
         }
         const c = consumeList[index++];
@@ -237,9 +252,14 @@ function doMarketBuy(stackKey, mode, amount){
           { id: c.id, consumeAmount: c.amount },
           (res) => {
             if (!res || !res.ok) {
-              if (typeof appendLog === "function") appendLog("購入処理に失敗しました");
+              // ✅ 途中で失敗した場合は、それまでの成功分だけ精算して終了
+              if (typeof appendLog === "function") appendLog("購入処理が途中で失敗しました");
+              finalizeSuccess(true);
               return;
             }
+            // ✅ 成功分を積み上げ
+            successCount.amount += c.amount;
+            successCount.cost += c.amount * c.price;
             doNext();
           }
         );
@@ -475,11 +495,12 @@ function refreshMarketSellCandidates(){
 
   // HTML 初期値に合わせたカテゴリ構成にする
   catSel.innerHTML = "";
-  // ★ index.html に合わせて「素材」と「中間素材」を分離
+  // 「素材」と「中間素材」を分離＋道具も足す
   const cats = [
     { value: "weapon",       label: "武器" },
     { value: "armor",        label: "防具" },
     { value: "potion",       label: "ポーション" },
+    { value: "tool",         label: "道具" },
     { value: "materialBase", label: "素材" },
     { value: "materialInter",label: "中間素材" },
     { value: "cooking",      label: "料理" }
@@ -517,17 +538,33 @@ function refreshMarketSellItems(){
   };
 
   if (category === "weapon") {
+    // 倉庫内の武器インスタンスを数える（装備中を除外）
+    let warehouseCounts = {};
+    if (Array.isArray(window.weaponInstances)) {
+      weaponInstances.forEach(inst => {
+        if (!inst || inst.location !== "warehouse") return;
+        warehouseCounts[inst.id] = (warehouseCounts[inst.id] || 0) + 1;
+      });
+    }
     weapons.forEach(w=>{
-      const cnt = weaponCounts[w.id] || 0;
+      const cnt = warehouseCounts[w.id] != null ? warehouseCounts[w.id] : (weaponCounts[w.id] || 0);
       if (cnt > 0) {
-        appendOption(w.id, `${w.name}（所持${cnt}）`);
+        appendOption(w.id, `${w.name}（倉庫${cnt}）`);
       }
     });
   } else if (category === "armor") {
+    // 倉庫内の防具インスタンスを数える
+    let warehouseCounts = {};
+    if (Array.isArray(window.armorInstances)) {
+      armorInstances.forEach(inst => {
+        if (!inst || inst.location !== "warehouse") return;
+        warehouseCounts[inst.id] = (warehouseCounts[inst.id] || 0) + 1;
+      });
+    }
     armors.forEach(a=>{
-      const cnt = armorCounts[a.id] || 0;
+      const cnt = warehouseCounts[a.id] != null ? warehouseCounts[a.id] : (armorCounts[a.id] || 0);
       if (cnt > 0) {
-        appendOption(a.id, `${a.name}（所持${cnt}）`);
+        appendOption(a.id, `${a.name}（倉庫${cnt}）`);
       }
     });
   } else if (category === "potion") {
@@ -537,6 +574,16 @@ function refreshMarketSellItems(){
         appendOption(p.id, `${p.name}（所持${cnt}）`);
       }
     });
+  } else if (category === "tool") {
+    // 道具（爆弾など）
+    if (typeof toolCounts === "object") {
+      Object.keys(toolCounts).forEach(id => {
+        const cnt = toolCounts[id] || 0;
+        if (cnt <= 0) return;
+        const label = getItemLabel("tool", id);
+        appendOption(id, `${label}（所持${cnt}）`);
+      });
+    }
   } else if (category === "materialBase") {
     // 採取素材のみ
     const mats = [
@@ -647,6 +694,32 @@ function initMarketOrderItemSelect() {
     });
     COOKING_RECIPES.drink.forEach(r => {
       append("material", r.id, `飲み物: ${r.name}`);
+    });
+  }
+
+  // 武器
+  if (typeof weapons !== "undefined") {
+    weapons.forEach(w => {
+      append("weapon", w.id, `武器: ${w.name}`);
+    });
+  }
+  // 防具
+  if (typeof armors !== "undefined") {
+    armors.forEach(a => {
+      append("armor", a.id, `防具: ${a.name}`);
+    });
+  }
+  // ポーション
+  if (typeof potions !== "undefined") {
+    potions.forEach(p => {
+      append("potion", p.id, `ポーション: ${p.name}`);
+    });
+  }
+  // 道具
+  if (typeof toolCounts === "object") {
+    Object.keys(toolCounts).forEach(id => {
+      const label = getItemLabel("tool", id);
+      append("tool", id, `道具: ${label}`);
     });
   }
 
@@ -789,6 +862,13 @@ function setupMarketSocketSync() {
         owner: l.sellerId || "server"
       }));
 
+      // ✅ 再接続直後など listResult でも売上差分を検出する
+      try {
+        detectSellFromDiff(window.prevServerMarketListings, newList);
+      } catch (e) {
+        console.log("detectSellFromDiff error", e);
+      }
+
       window.marketListings = newList;
       window.prevServerMarketListings = newList.map(l => ({ ...l }));
 
@@ -859,7 +939,9 @@ window.addEventListener("DOMContentLoaded", () => {
       if (typeof refreshMarketSellCandidates === "function") {
         refreshMarketSellCandidates();
       }
-      renderMyListings();
+      if (typeof renderMyListings === "function") {
+        renderMyListings();
+      }
     });
   }
 
@@ -883,8 +965,11 @@ window.addEventListener("DOMContentLoaded", () => {
           console.log("market:list emit error on tab click", e);
         }
       } else {
-        renderMyListings();
+        if (typeof renderMyListings === "function") {
+          renderMyListings();
+        }
       }
     });
   }
-});
+}
+);
