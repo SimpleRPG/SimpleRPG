@@ -603,12 +603,8 @@ function doMarketBuyOrder(){
 
           updateDisplay();
 
-          // ★ここを削除: 即時の market:buyOrder:list 要求はやめる
-          // try {
-          //   window.globalSocket.emit("market:buyOrder:list");
-          // } catch (e2) {
-          //   console.log("market:buyOrder:list emit error after buyOrder ack", e2);
-          // }
+          // ★即時の market:buyOrder:list 要求はやめる（レスポンスは push 済みなので不要）
+          // サーバ側からの "market:buyOrder:listResult" で全体同期される
         }
       );
       return;
@@ -652,12 +648,14 @@ function refreshMarketOrderList(){
   if(!el) return;
   el.innerHTML = "";
 
-  if(marketBuyOrders.length === 0){
+  const src = Array.isArray(window.marketBuyOrders) ? window.marketBuyOrders : [];
+
+  if(src.length === 0){
     el.textContent = "現在、あなたの注文はありません。";
     return;
   }
 
-  marketBuyOrders.forEach(order=>{
+  src.forEach(order=>{
     const row = document.createElement("div");
     row.style.borderBottom = "1px dashed #4b3f72";
     row.style.padding = "2px 0";
