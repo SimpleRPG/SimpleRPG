@@ -252,7 +252,7 @@
               </div>
 
               <!-- 装備種別フィルタ -->
-              <div id="craftKindRow" style="margin:4px 0%;">
+              <div id="craftKindRow" style="margin:4px 0;">
                 <label style="font-size:12px;">装備種別:</label>
                 <select id="craftKindSelect">
                   <option value="all">すべて</option>
@@ -388,7 +388,7 @@
               <h3>ショップ</h3>
               <p>消耗品やサービスを購入できます。</p>
 
-              <p>所持ゴールド: <span id="shopGoldDisplay">0</span>G</span></p>
+              <p>所持ゴールド: <span id="shopGoldDisplay">0</span>G</p>
 
               <div id="shopCategoryTabs">
                 <button class="shop-category-button" data-category="item">消耗品</button>
@@ -449,7 +449,7 @@
                   <button id="marketSellAmountMax">最大</button>
                 </div>
 
-                <div style="margin-bottom:4px%;">
+                <div style="margin-bottom:4px;">
                   <label>価格(1個あたり):</label>
                   <input id="marketSellPrice" type="number" value="10" min="1" style="width:80px;">
                 </div>
@@ -470,7 +470,7 @@
                     <button id="marketBuyRefreshBtn">出品更新</button>
                   </div>
 
-                  <div style="margin-bottom:4px%;">
+                  <div style="margin-bottom:4px;">
                     <button class="market-cat-tab active" data-cat="all">すべて</button>
                     <button class="market-cat-tab" data-cat="weapon">武器</button>
                     <button class="market-cat-tab" data-cat="armor">防具</button>
@@ -490,7 +490,7 @@
                     <label>アイテム:</label>
                     <select id="marketOrderItem"></select>
                   </div>
-                  <div style="margin-bottom:4px%;">
+                  <div style="margin-bottom:4px;">
                     <label>価格(1個あたり):</label>
                     <input id="marketOrderPrice" type="number" value="10" min="1" style="width:80px;">
                   </div>
@@ -902,6 +902,38 @@
       </div>
     </div>
 
+    <!-- ★追加: ペット選択モーダル（必要な修正のみ） -->
+    <div id="companionModal" class="modal-center hidden">
+      <div id="companionModalInner">
+        <h3>最初のペットを選ぶ</h3>
+        <p style="font-size:0.9em;">
+          一緒に旅をするペットを1種類選んでください。<br>
+          あとから成長タイプやステータスで個性が出てきます。
+        </p>
+        <!-- 候補ボタン群: 既存の data-companion-type はそのまま、class だけ追加 -->
+        <div id="companionButtons">
+          <button class="companion-select-btn" data-companion-type="inu">犬</button>
+          <button class="companion-select-btn" data-companion-type="karasu">烏</button>
+          <button class="companion-select-btn" data-companion-type="usagi">兎</button>
+        </div>
+        <div id="companionDescArea" style="margin-top:8px; min-height:3em; font-size:0.85em; text-align:center;">
+          <!-- 選択中ペットの説明を JS 側で表示 -->
+        </div>
+        <!-- ここだけ配置変更: flex で左右に振り分け -->
+        <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <!-- 新規: この子にするボタン（最初は無効） -->
+            <button id="companionConfirmBtn" disabled>この子にする</button>
+          </div>
+          <div>
+            <!-- 既存:いまはえらばないボタン -->
+            <button id="companionCancelBtn">今は選ばない</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ★ペット選択モーダル ここまで -->
+
   </div><!-- /#appRoot -->
   
   <script src="enemy-data.js"></script>
@@ -913,6 +945,10 @@
   <script src="inventory-core.js"></script>
   <script src="farm-core.js"></script>
   <script src="fish-data.js"></script>
+
+  <!-- ★追加: ペット種・特性ロジック -->
+  <script src="pet.js"></script>
+  <!-- ★追加ここまで -->
 
   <script src="game-core-1.js"></script>
   <script src="game-core-2.js"></script>
