@@ -43,18 +43,18 @@ function getRandomNpcMerchantName() {
 
 // 売り注文（window 配下に統一）
 window.marketListings = window.marketListings || [];
-const marketListings = window.marketListings;
+let marketListings = window.marketListings;
 
 // 買い注文（window 配下に統一・自分の注文）
 window.marketBuyOrders = window.marketBuyOrders || [];
-const marketBuyOrders = window.marketBuyOrders;
+let marketBuyOrders = window.marketBuyOrders;
 
 // 全体の買い注文リスト（全プレイヤー分）
 window.marketAllBuyOrders = window.marketAllBuyOrders || [];
 
 // 前回サーバーから受け取った出品一覧（売れた判定用ローカルスナップショット）
 window.prevServerMarketListings = window.prevServerMarketListings || [];
-const prevServerMarketListings = window.prevServerMarketListings;
+let prevServerMarketListings = window.prevServerMarketListings;
 
 let marketOrderIdSeq = 1;
 // クライアント側のローカルIDはあまり意味がなくなるが互換のため残す
@@ -62,9 +62,24 @@ let marketListingIdSeq = 1;
 
 // 売り手視点の売却ログ（誰に・何を・いくつ・いくらで売ったか）
 // 重要ログを [市] で強調
+window.marketTradeLogs = window.marketTradeLogs || [];
+let marketTradeLogs = window.marketTradeLogs;
+
 function addSellLog(buyerLabel, category, itemId, amount, totalPrice) {
   const label = getItemLabel(category, itemId);
   const msg = `[市] ${buyerLabel} に ${label} を ${amount}個売った（${totalPrice}G）`;
+
+  // セーブ対象の市場ログにも積む
+  marketTradeLogs.push({
+    time: Date.now(),
+    buyer: buyerLabel,
+    category,
+    itemId,
+    amount,
+    totalPrice,
+    message: msg
+  });
+
   if (typeof appendLog === "function") {
     appendLog(msg);
   }

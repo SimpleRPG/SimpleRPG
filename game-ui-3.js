@@ -207,6 +207,7 @@ function buildStatusPage() {
       </div>
 
       <h3 class="pet-only">ペットステータス（動物使いのみ）</h3>
+      <p id="noPetMsg" style="display:none;">ペットがいない…</p>
       <div class="status-block pet-only">
         <div id="petNameRow" style="display:inline-flex; align-items:center; gap:4px;">
           ペット名: <span id="stPetName">ペット</span>
@@ -214,6 +215,9 @@ function buildStatusPage() {
             ペット名を変更
           </button>
         </div><br>
+        <!-- ★追加: ペットの種類表示（ペット名の下） -->
+        種類: <span id="stPetType">未選択</span><br>
+        <!-- ★追加ここまで -->
         ペットLv: <span id="stPetLevel">1</span><br>
         ペット経験値: <span id="stPetExp">0</span> / <span id="stPetExpToNext">5</span><br>
         ペット転生回数: <span id="stPetRebirthCount">0</span><br>
@@ -723,6 +727,108 @@ function updateCraftMatDetailText() {
   }
 
   label.textContent = labelText;
+}
+
+// ★修正: ペット選択モーダル（動物使い初回用）
+// 「今は選ばない」2段階仕様:
+// 1回目 → 警告を出して閉じるだけ
+// 2回目 → フラグを立てて、最初の機会は二度と表示しない
+function openCompanionModalIfNeeded() {
+  // すでにペットタイプが決まっているなら何もしない
+  if (window.companionTypeId) return;
+
+  // 「二度と表示しない」フラグが立っていたら何もしない
+  if (window.companionSkipForever) return;
+
+  const modal      = document.getElementById("companionModal");
+  const buttons    = modal ? modal.querySelectorAll("#companionButtons button") : null;
+  const descArea   = document.getElementById("companionDescArea");
+  const confirmBtn = document.getElementById("companionConfirmBtn");
+  const cancelBtn  = document.getElementById("companionCancelBtn");
+
+  if (!modal || !buttons || buttons.length === 0 || !confirmBtn || !cancelBtn) return;
+
+  let selectedTypeTemp = null; // 一時選択用
+
+  modal.classList.remove("hidden");
+
+  function updateDesc(typeId) {
+    if (!descArea || typeof COMPANION_TYPES === "undefined") return;
+    const data = COMPANION_TYPES.find(c => String(c.id) === String(typeId));
+    descArea.textContent = data ? data.desc : "";
+  }
+
+  // 候補ボタンをクリック → 一時選択
+  buttons.forEach(btn => {
+    const typeId = btn.dataset.companionType;
+
+    btn.addEventListener("click", () => {
+      if (!typeId) return;
+
+      // 見た目用に selected クラスを付け替え
+      buttons.forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+
+      selectedTypeTemp = typeId;
+      confirmBtn.disabled = false;
+      updateDesc(typeId);
+    });
+
+    // 既存仕様の「ホバーで説明更新」はそのまま維持
+    btn.addEventListener("mouseenter", () => {
+      if (typeId) updateDesc(typeId);
+    });
+  });
+
+  // 「この子にする」ボタンで確定
+  confirmBtn.addEventListener("click", () => {
+    if (!selectedTypeTemp) return;
+
+    if (typeof setCompanionByTypeId === "function") {
+      setCompanionByTypeId(selectedTypeTemp);
+    }
+
+    // ペット情報を再計算・再表示
+    if (typeof recalcStats === "function")  recalcStats();
+    if (typeof updateDisplay === "function") updateDisplay();
+
+    modal.classList.add("hidden");
+  });
+
+  // 「今は選ばない」ボタンの2段階挙動
+  cancelBtn.addEventListener("click", (e) => {
+    // まだ警告段階を踏んでいない場合（1回目）
+    if (!window.companionSkipOnce) {
+      const ok = window.confirm(
+        "最初のペットを選ばずに、今は選ばないを選びますか？\n" +
+        "このあとも草原のランダムイベント等で動物と出会える予定です。\n\n" +
+        "本当に今はペットを選びませんか？"
+      );
+      if (!ok) {
+        // やっぱり選ぶ → 何もせずモーダルを開いたままにする
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      // OK → 「警告を一度見た」フラグを立てて閉じる
+      window.companionSkipOnce = true;
+      modal.classList.add("hidden");
+      return;
+    }
+
+    // 2回目以降: ここで「最初の機会を完全に捨てる」
+    window.companionSkipForever = true;
+    modal.classList.add("hidden");
+  });
+
+  // 初期状態は何も選ばれていないので、確定ボタンは無効
+  confirmBtn.disabled = true;
+
+  // 仕様を変えないため、最初の説明だけは従来どおり表示
+  if (buttons.length > 0) {
+    const firstTypeId = buttons[0].dataset.companionType;
+    if (firstTypeId) updateDesc(firstTypeId);
+  }
 }
 
 function initJobPetRebirthUI() {

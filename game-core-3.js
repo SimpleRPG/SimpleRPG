@@ -972,7 +972,11 @@ function playerAttack() {
     return;
   }
 
-  doPetTurn();
+  // ★修正: ペット選択済みかつHP>0のときのみペットターンを実行
+  if (typeof hasCompanion === "function" && hasCompanion() && petHp > 0) {
+    doPetTurn();
+  }
+
   if (enemyHp <= 0) {
     enemyHp = 0;
 
@@ -1004,7 +1008,8 @@ function enemyTurn() {
   }
 
   let target = "player";
-  if (jobId === 2 && petHp > 0) {
+  // ★修正: 動物使いかつペット選択済みかつHP>0のときだけペットをターゲット候補に
+  if (jobId === 2 && typeof hasCompanion === "function" && hasCompanion() && petHp > 0) {
     target = (Math.random() < 0.7) ? "pet" : "player";
   }
 

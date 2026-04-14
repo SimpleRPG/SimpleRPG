@@ -172,8 +172,16 @@ function addPetExp(amount) {
       petAtkBase += 2;
     }
 
-    // ★ ペット最大HPをベース値から再計算して全回復
-    petHpMax = petHpBase + petRebirthCount * 3;
+    // ★ ペット転生ボーナス適用済みの petHpBase/petAtkBase/petDefBase に対して
+    //    特性補正を掛けたうえで最大HPを再計算して全回復
+    let baseHpForMax = petHpBase;
+    if (typeof applyCompanionPetRates === "function") {
+      const r = applyCompanionPetRates(petHpBase, petAtkBase, petDefBase);
+      if (r && typeof r.hp === "number") {
+        baseHpForMax = r.hp;
+      }
+    }
+    petHpMax = baseHpForMax + petRebirthCount * 3;
     petHp    = petHpMax;
 
     // ★ 必要経験値はプレイヤーと同じく 100 固定
@@ -219,7 +227,8 @@ function applyRebirthBonus() {
       msgList.push("LUK +1");
     }
   }
-  return "転生ボーナス:\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n" + msgList.join("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n");
+  // ★ 普通の改行に修正
+  return "転生ボーナス:\n" + msgList.join("\n");
 }
 
 function applyPetRebirthBonus() {
@@ -307,12 +316,20 @@ function doRebirth() {
     sp    = spMax;
   }
 
-  // ペットリセット
+  // ペットリセット（レベル・EXPだけリセットし、転生ボーナスと特性込みでHP再計算）
   petLevel     = 1;
   petExp       = 0;
   petExpToNext = BASE_EXP_PER_LEVEL;
-  petHpMax     = petHpBase + petRebirthCount * 3;
-  petHp        = petHpMax;
+
+  let baseHpForMax = petHpBase;
+  if (typeof applyCompanionPetRates === "function") {
+    const r = applyCompanionPetRates(petHpBase, petAtkBase, petDefBase);
+    if (r && typeof r.hp === "number") {
+      baseHpForMax = r.hp;
+    }
+  }
+  petHpMax = baseHpForMax + petRebirthCount * 3;
+  petHp    = petHpMax;
 
   // 戦闘状態リセット
   currentEnemy = null;
@@ -326,10 +343,11 @@ function doRebirth() {
     onRebirthForGuild({ jobId });
   }
 
+  // ★ ログも普通の改行に統一
   appendLog(
-    `転生した！ 転生回数: ${rebirthCount}\\\\\\\\\\\\\\\\n` +
-    `成長タイプ: ${getGrowthTypeName()}\\\\\\\\\\\\\\\\n` +
-    `${bonusMsg}\\\\\\\\\\\\\\\\n` +
+    `転生した！ 転生回数: ${rebirthCount}\n` +
+    `成長タイプ: ${getGrowthTypeName()}\n` +
+    `${bonusMsg}\n` +
     `ペット転生回数: ${petRebirthCount}（基礎ATKとHPが強化された）`
   );
 
@@ -596,11 +614,22 @@ function applyJobChange(newJobId) {
   }
 
   if (jobId === 2) {
+    // 既存どおりペットスキル付与
     petSkills = [
       { id: "powerBite", name: "パワーバイト", powerRate: 1.6 },
       { id: "taunt",     name: "挑発" },
       { id: "selfHeal",  name: "セルフヒール", healRate: 0.3 }
     ];
+
+    // ★ここだけ追加:
+    // 「最初に動物使いになったときだけペット選択モーダルを開く」
+    // 条件: まだ companionTypeId が決まっていない（初回だけ）
+    if (!window.companionTypeId && typeof openCompanionModalIfNeeded === "function") {
+      // 職業モーダルを閉じてからペット選択モーダルを開く
+      closeJobModal();
+      openCompanionModalIfNeeded();
+      return; // ペット決定後に UI 側で recalcStats / updateDisplay される想定
+    }
   } else {
     petSkills = [];
   }

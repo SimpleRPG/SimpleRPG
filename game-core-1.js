@@ -442,6 +442,18 @@ function recalcStats() {
     defFromDex +
     defFromArmorVit;
 
+  // ★ここからペットの最大HP再計算（特性補正込み）
+  // petHpBase / petRebirthCount を元に毎回再計算する想定
+  if (typeof applyCompanionPetRates === "function") {
+    const r = applyCompanionPetRates(petHpBase, petAtkBase, petDefBase);
+    petHpMax = r.hp + petRebirthCount * 3;
+  } else {
+    petHpMax = petHpBase + petRebirthCount * 3;
+  }
+  if (petHpMax < 1) petHpMax = 1;
+  petHp = Math.min(petHp, petHpMax);
+  // ★ここまでペットHP計算
+
   if (typeof updateDisplay === "function") {
     updateDisplay();
   }
@@ -686,19 +698,28 @@ function updateDisplay() {
   }
 
   // ペット用ステータスページ
-  let stPetName  = document.getElementById("stPetName");
-  let stPetLevel = document.getElementById("stPetLevel");
-  let stPetExp   = document.getElementById("stPetExp");
-  let stPetExpTo = document.getElementById("stPetExpToNext");
-  let stPetReb   = document.getElementById("stPetRebirthCount");
-  let stPetGrow  = document.getElementById("stPetGrowthType");
-  let stPetHp    = document.getElementById("stPetHp");
-  let stPetHpM   = document.getElementById("stPetHpMax");
+  let stPetName      = document.getElementById("stPetName");
+  let stPetLevel     = document.getElementById("stPetLevel");
+  let stPetExp       = document.getElementById("stPetExp");
+  let stPetExpTo     = document.getElementById("stPetExpToNext");
+  let stPetReb       = document.getElementById("stPetRebirthCount");
+  let stPetGrow      = document.getElementById("stPetGrowthType");
+  let stPetHpEl2     = document.getElementById("stPetHp");
+  let stPetHpM       = document.getElementById("stPetHpMax");
   let stPetAtkBaseEl = document.getElementById("stPetAtkBase");
   let stPetAtkNowEl  = document.getElementById("stPetAtkNow");
   let stPetDefEl     = document.getElementById("stPetDef");
+  // ★追加: 種類表示用
+  let stPetTypeEl    = document.getElementById("stPetType");
 
   if (stPetName)  stPetName.textContent  = petName;
+
+  // ★種類: COMPANION_TYPES / companionTypeId から名前を表示
+  if (stPetTypeEl && typeof getCurrentCompanionType === "function") {
+    const t = getCurrentCompanionType();
+    stPetTypeEl.textContent = t ? t.name : "未選択";
+  }
+
   if (stPetLevel) stPetLevel.textContent = petLevel;
   if (stPetExp)   stPetExp.textContent   = petExp;
   if (stPetExpTo) stPetExpTo.textContent = petExpToNext;
@@ -709,8 +730,8 @@ function updateDisplay() {
       petGrowthType === PET_GROWTH_DPS  ? "アタッカー型" :
       "バランス型";
   }
-  if (stPetHp)  stPetHp.textContent  = petHp;
-  if (stPetHpM) stPetHpM.textContent = petHpMax;
+  if (stPetHpEl2) stPetHpEl2.textContent = petHp;
+  if (stPetHpM)   stPetHpM.textContent   = petHpMax;
 
   // ペット攻撃力・防御力表示（skill-core.js のヘルパーを利用）
   if (typeof getPetBaseAtk === "function") {
@@ -724,10 +745,23 @@ function updateDisplay() {
     if (stPetDefEl) stPetDefEl.textContent = defVal;
   }
 
+  const hasPet = (jobId === 2) && !!window.companionTypeId;
+
+  // h3見出しは「動物使い」なら表示、ステータスブロック類はペット選択済みの時だけ表示
   let petOnlyEls = document.querySelectorAll(".pet-only");
   petOnlyEls.forEach(el => {
-    el.style.display = (jobId === 2) ? "" : "none";
+    if (el.tagName === "H3") {
+      el.style.display = (jobId === 2) ? "" : "none";
+    } else {
+      el.style.display = hasPet ? "" : "none";
+    }
   });
+
+  // 「ペットがいない…」メッセージ（動物使いでペット未選択の時だけ表示）
+  const noPetMsgEl = document.getElementById("noPetMsg");
+  if (noPetMsgEl) {
+    noPetMsgEl.style.display = (jobId === 2 && !window.companionTypeId) ? "" : "none";
+  }
 
   // 空腹・水分バー
   let hungerGauge = document.getElementById("hungerGauge");

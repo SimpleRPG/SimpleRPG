@@ -250,15 +250,32 @@ function tickSkillBuffTurns() {
 // ペット攻撃ロジック
 // =======================
 
-function getPetBaseAtk() {
-  const levelBonus = Math.floor(petLevel * 0.5);
-  return Math.max(1, petAtkBase + levelBonus);
+// ★特性補正込みのペット基礎ステを取得するヘルパー
+function getCompanionAdjustedPetBaseStats() {
+  if (typeof applyCompanionPetRates === "function") {
+    // petRebirthCount などによるボーナス適用済みの petHpBase/petAtkBase/petDefBase に対して特性補正を掛ける
+    return applyCompanionPetRates(petHpBase, petAtkBase, petDefBase);
+  }
+  return {
+    hp:  petHpBase,
+    atk: petAtkBase,
+    def: petDefBase
+  };
 }
 
-// ★追加: ペット防御力（game-core-1.js の petDefBase を利用）
+function getPetBaseAtk() {
+  const levelBonus = Math.floor(petLevel * 0.5);
+  const baseStats = getCompanionAdjustedPetBaseStats();
+  const atkBase = baseStats.atk != null ? baseStats.atk : petAtkBase;
+  return Math.max(1, atkBase + levelBonus);
+}
+
+// ★ ペット防御力（game-core-1.js の petDefBase を利用）＋特性補正
 function getPetDef() {
   const levelBonus = Math.floor(petLevel * 0.3);
-  return Math.max(0, petDefBase + levelBonus);
+  const baseStats = getCompanionAdjustedPetBaseStats();
+  const defBase = baseStats.def != null ? baseStats.def : petDefBase;
+  return Math.max(0, defBase + levelBonus);
 }
 
 function calcPetDamage() {

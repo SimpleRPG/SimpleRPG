@@ -813,6 +813,50 @@ input[type="text"] {
 }
 
 /* ======================
+   ペット選択モーダル
+   ====================== */
+
+#companionModal {
+  background: rgba(0,0,0,0.65); /* 画面全体を薄暗く */
+  z-index: 101;                 /* 職業より上・農園より下で統一 */
+}
+
+#companionModalInner {
+  background: #11111c;          /* 後ろと文字が被らないよう不透明背景 */
+  border-radius: 10px;
+  border: 1px solid rgba(200,190,255,0.95);
+  padding: 14px 18px 16px;
+  max-width: 360px;
+  width: 92%;
+  box-shadow:
+    0 14px 32px rgba(0,0,0,0.9),
+    0 0 12px rgba(159,123,255,0.8);
+  font-size: 13px;
+}
+
+#companionModalInner h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+#companionModalInner p {
+  margin: 4px 0;
+  font-size: 0.85rem;
+}
+
+#companionButtons {
+  margin-top: 8px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+#companionButtons button {
+  min-width: 70px;
+  text-align: center;
+}
+
+/* ======================
    市場
    ====================== */
 
@@ -1223,6 +1267,7 @@ input[type="text"] {
 #jobModalInner,
 #petGrowthModalInner,
 #rebirthModalInner,
+#companionModalInner,
 .modal .modal-content {
   max-height: 90vh;
   overflow-y: auto;
