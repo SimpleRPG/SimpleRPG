@@ -880,7 +880,10 @@ function gather(){
     onGatherCompletedForGuild({
       kind: "gather",
       total: gainedTotal,
-      t3: t3
+      t1: t1,
+      t2: t2,
+      t3: t3,
+      target: target   // wood / ore / herb / cloth / leather / water
     });
   }
 

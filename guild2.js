@@ -174,35 +174,30 @@ function getGuildQuestProg(id) {
     id === "smith_craft_weapon_t1"     ||
     id === "smith_craft_armor_t1"      ||
     id === "smith_enhance"             ||
-    id === "smith_craft_t2_gear"       ||
+    id === "smith_craft_t1_gear_20"    ||
+    id === "smith_craft_weapon_t2"     ||
+    id === "smith_craft_armor_t2"      ||
+    id === "smith_craft_t2_gear_10"    ||
+    id === "smith_enhance_t2"          ||
     id === "alch_craft_potion_t1"      ||
     id === "alch_craft_bomb_t1"        ||
     id === "alch_craft_t2_potion"      ||
+    id === "alch_craft_t2_tool"        ||
     id === "alch_craft_mix"            ||
     id === "alch_use_potion_or_tool"   ||
+    id === "alch_use_t2_potion_or_tool"||
+    id === "alch_mass_t2_supply"       ||
     id === "cooking_basic_food_t1"     ||
     id === "cooking_basic_drink_t1"    ||
     id === "cooking_buff"              ||
-    id === "cooking_t2_dish"           ||
+    id === "cooking_t2_food"           ||
+    id === "cooking_t2_drink"          ||
+    id === "cooking_t2_any"            ||
     id === "cooking_variety"           ||
     id === "cooking_use_food_or_drink" ||
+    id === "cooking_eat_t2_food"       ||
+    id === "cooking_drink_t2"          ||
     id === "gather_basic"              ||
-    id === "gather_t3"                 ||
-    id === "food_mat"                  ||
-    id === "food_rare"                 ||
-    id === "warrior_rebirth_1"         ||
-    id === "mage_rebirth_1"            ||
-    id === "tamer_rebirth_1"           ||
-    // 特別依頼
-    id === "warrior_special_citizen"   ||
-    id === "mage_special_citizen"      ||
-    id === "tamer_special_citizen"     ||
-    id === "smith_special_citizen"     ||
-    id === "alch_special_citizen"      ||
-    id === "cooking_special_citizen"   ||
-    id === "gather_special_citizen"    ||
-    id === "food_special_citizen"      ||
-    // 採取ギルド T1/T2
     id === "gather_t1_any_30"          ||
     id === "gather_t1_wood_30"         ||
     id === "gather_t1_ore_30"          ||
@@ -217,10 +212,28 @@ function getGuildQuestProg(id) {
     id === "gather_t2_cloth_30"        ||
     id === "gather_t2_leather_30"      ||
     id === "gather_t2_water_30"        ||
-    // 食材ギルドカテゴリ別（ティア無し）
+    id === "gather_t3"                 ||
     id === "food_hunt_t1_30"           ||
     id === "food_fish_t1_30"           ||
-    id === "food_farm_t1_30"
+    id === "food_farm_t1_30"           ||
+    id === "food_hunt_t1_50"           ||
+    id === "food_fish_t1_50"           ||
+    id === "food_farm_t1_50"           ||
+    id === "food_mat"                  ||
+    id === "food_mat_150"              ||
+    id === "food_rare"                 ||
+    id === "warrior_rebirth_1"         ||
+    id === "mage_rebirth_1"            ||
+    id === "tamer_rebirth_1"           ||
+    // 特別依頼
+    id === "warrior_special_citizen"   ||
+    id === "mage_special_citizen"      ||
+    id === "tamer_special_citizen"     ||
+    id === "smith_special_citizen"     ||
+    id === "alch_special_citizen"      ||
+    id === "cooking_special_citizen"   ||
+    id === "gather_special_citizen"    ||
+    id === "food_special_citizen"
   ) {
     return {
       count: raw.count || 0,
@@ -339,25 +352,8 @@ function renderGuildQuests() {
   const rank = rankInfo ? rankInfo.id : 0;
 
   quests.forEach(q => {
-    // 森系依頼はランク1以上で表示
-    if (
-      (q.id === "forest_kill_100_any" ||
-       q.id === "forest_kill_50_phys" ||
-       q.id === "forest_kill_50_magic" ||
-       q.id === "forest_kill_50_pet" ||
-       q.id === "forest_boss_1") &&
-      rank < 1
-    ) {
-      return;
-    }
-
-    // クラフトギルドのT2系依頼はランク1以上で表示
-    if (
-      (q.id === "smith_craft_t2_gear" ||
-       q.id === "alch_craft_t2_potion" ||
-       q.id === "cooking_t2_dish") &&
-      rank < 1
-    ) {
+    // 汎用ランク条件
+    if (typeof q.minRank === "number" && rank < q.minRank) {
       return;
     }
 
@@ -440,20 +436,36 @@ function renderGuildQuests() {
         : `状態: 進行中（森ボス討伐 ${prog.count}/1）`;
     } else if (q.id === "smith_craft_weapon_t1") {
       status.textContent = prog.done
-        ? `状態: 完了（T1武器クラフト ${prog.count}/3）`
-        : `状態: 進行中（T1武器クラフト ${prog.count}/3）`;
+        ? `状態: 完了（T1武器クラフト ${prog.count}/5）`
+        : `状態: 進行中（T1武器クラフト ${prog.count}/5）`;
     } else if (q.id === "smith_craft_armor_t1") {
       status.textContent = prog.done
-        ? `状態: 完了（T1防具クラフト ${prog.count}/3）`
-        : `状態: 進行中（T1防具クラフト ${prog.count}/3）`;
+        ? `状態: 完了（T1防具クラフト ${prog.count}/5）`
+        : `状態: 進行中（T1防具クラフト ${prog.count}/5）`;
     } else if (q.id === "smith_enhance") {
       status.textContent = prog.done
         ? `状態: 完了（強化 ${prog.count}/2）`
         : `状態: 進行中（強化 ${prog.count}/2）`;
-    } else if (q.id === "smith_craft_t2_gear") {
+    } else if (q.id === "smith_craft_t1_gear_20") {
       status.textContent = prog.done
-        ? `状態: 完了（T2装備クラフト ${prog.count}/2）`
-        : `状態: 進行中（T2装備クラフト ${prog.count}/2）`;
+        ? `状態: 完了（T1装備クラフト ${prog.count}/20）`
+        : `状態: 進行中（T1装備クラフト ${prog.count}/20）`;
+    } else if (q.id === "smith_craft_weapon_t2") {
+      status.textContent = prog.done
+        ? `状態: 完了（T2武器クラフト ${prog.count}/2）`
+        : `状態: 進行中（T2武器クラフト ${prog.count}/2）`;
+    } else if (q.id === "smith_craft_armor_t2") {
+      status.textContent = prog.done
+        ? `状態: 完了（T2防具クラフト ${prog.count}/2）`
+        : `状態: 進行中（T2防具クラフト ${prog.count}/2）`;
+    } else if (q.id === "smith_craft_t2_gear_10") {
+      status.textContent = prog.done
+        ? `状態: 完了（T2装備クラフト ${prog.count}/10）`
+        : `状態: 進行中（T2装備クラフト ${prog.count}/10）`;
+    } else if (q.id === "smith_enhance_t2") {
+      status.textContent = prog.done
+        ? `状態: 完了（T2装備強化 ${prog.count}/3）`
+        : `状態: 進行中（T2装備強化 ${prog.count}/3）`;
     } else if (q.id === "alch_craft_potion_t1") {
       status.textContent = prog.done
         ? `状態: 完了（T1ポーションクラフト ${prog.count}/5）`
@@ -466,6 +478,10 @@ function renderGuildQuests() {
       status.textContent = prog.done
         ? `状態: 完了（T2ポーションクラフト ${prog.count}/3）`
         : `状態: 進行中（T2ポーションクラフト ${prog.count}/3）`;
+    } else if (q.id === "alch_craft_t2_tool") {
+      status.textContent = prog.done
+        ? `状態: 完了（T2道具/爆弾クラフト ${prog.count}/3）`
+        : `状態: 進行中（T2道具/爆弾クラフト ${prog.count}/3）`;
     } else if (q.id === "alch_craft_mix") {
       status.textContent = prog.done
         ? `状態: 完了（ポーション/爆弾クラフト ${prog.count}/10）`
@@ -474,6 +490,14 @@ function renderGuildQuests() {
       status.textContent = prog.done
         ? `状態: 完了（ポーション/道具使用 ${prog.count}/5）`
         : `状態: 進行中（ポーション/道具使用 ${prog.count}/5）`;
+    } else if (q.id === "alch_use_t2_potion_or_tool") {
+      status.textContent = prog.done
+        ? `状態: 完了（T2ポーション/道具使用 ${prog.count}/5）`
+        : `状態: 進行中（T2ポーション/道具使用 ${prog.count}/5）`;
+    } else if (q.id === "alch_mass_t2_supply") {
+      status.textContent = prog.done
+        ? `状態: 完了（T2ポーション/道具クラフト ${prog.count}/10）`
+        : `状態: 進行中（T2ポーション/道具クラフト ${prog.count}/10）`;
     } else if (q.id === "cooking_basic_food_t1") {
       status.textContent = prog.done
         ? `状態: 完了（T1料理 ${prog.count}/3）`
@@ -486,10 +510,18 @@ function renderGuildQuests() {
       status.textContent = prog.done
         ? `状態: 完了（バフ料理 ${prog.count}/2）`
         : `状態: 進行中（バフ料理 ${prog.count}/2）`;
-    } else if (q.id === "cooking_t2_dish") {
+    } else if (q.id === "cooking_t2_food") {
       status.textContent = prog.done
-        ? `状態: 完了（T2料理/飲み物 ${prog.count}/3）`
-        : `状態: 進行中（T2料理/飲み物 ${prog.count}/3）`;
+        ? `状態: 完了（T2料理 ${prog.count}/3）`
+        : `状態: 進行中（T2料理 ${prog.count}/3）`;
+    } else if (q.id === "cooking_t2_drink") {
+      status.textContent = prog.done
+        ? `状態: 完了（T2飲み物 ${prog.count}/3）`
+        : `状態: 進行中（T2飲み物 ${prog.count}/3）`;
+    } else if (q.id === "cooking_t2_any") {
+      status.textContent = prog.done
+        ? `状態: 完了（T2料理/飲み物 ${prog.count}/10）`
+        : `状態: 進行中（T2料理/飲み物 ${prog.count}/10）`;
     } else if (q.id === "cooking_variety") {
       status.textContent = prog.done
         ? `状態: 完了（異なる料理/飲み物 ${prog.count}/5）`
@@ -498,34 +530,14 @@ function renderGuildQuests() {
       status.textContent = prog.done
         ? `状態: 完了（料理/飲み物バフ ${prog.count}/5）`
         : `状態: 進行中（料理/飲み物バフ ${prog.count}/5）`;
-    } else if (q.id === "gather_basic") {
+    } else if (q.id === "cooking_eat_t2_food") {
       status.textContent = prog.done
-        ? `状態: 完了（T2素材 ${prog.count}/50）`
-        : `状態: 進行中（T2素材 ${prog.count}/50）`;
-    } else if (q.id === "gather_t3") {
+        ? `状態: 完了（T2料理を食べる ${prog.count}/5）`
+        : `状態: 進行中（T2料理を食べる ${prog.count}/5）`;
+    } else if (q.id === "cooking_drink_t2") {
       status.textContent = prog.done
-        ? `状態: 完了（T3素材 ${prog.count}/5）`
-        : `状態: 進行中（T3素材 ${prog.count}/5）`;
-    } else if (q.id === "food_mat") {
-      status.textContent = prog.done
-        ? `状態: 完了（料理素材 ${prog.count}/70）`
-        : `状態: 進行中（料理素材 ${prog.count}/70）`;
-    } else if (q.id === "food_rare") {
-      status.textContent = prog.done
-        ? `状態: 完了（レア食材 ${prog.count}/1）`
-        : `状態: 進行中（レア食材 ${prog.count}/1）`;
-    } else if (q.id === "warrior_rebirth_1") {
-      status.textContent = prog.done
-        ? `状態: 完了（戦士転生 ${prog.count}/1）`
-        : `状態: 進行中（戦士転生 ${prog.count}/1）`;
-    } else if (q.id === "mage_rebirth_1") {
-      status.textContent = prog.done
-        ? `状態: 完了（魔法使い転生 ${prog.count}/1）`
-        : `状態: 進行中（魔法使い転生 ${prog.count}/1）`;
-    } else if (q.id === "tamer_rebirth_1") {
-      status.textContent = prog.done
-        ? `状態: 完了（動物使い転生 ${prog.count}/1）`
-        : `状態: 進行中（動物使い転生 ${prog.count}/1）`;
+        ? `状態: 完了（T2飲み物を飲む ${prog.count}/5）`
+        : `状態: 進行中（T2飲み物を飲む ${prog.count}/5）`;
     } else if (q.id === "gather_t1_any_30") {
       status.textContent = prog.done
         ? `状態: 完了（T1通常素材 ${prog.count}/30）`
@@ -554,6 +566,10 @@ function renderGuildQuests() {
       status.textContent = prog.done
         ? `状態: 完了（T1水資源 ${prog.count}/30）`
         : `状態: 進行中（T1水資源 ${prog.count}/30）`;
+    } else if (q.id === "gather_basic") {
+      status.textContent = prog.done
+        ? `状態: 完了（T2素材 ${prog.count}/50）`
+        : `状態: 進行中（T2素材 ${prog.count}/50）`;
     } else if (q.id === "gather_t2_any_100") {
       status.textContent = prog.done
         ? `状態: 完了（T2素材 ${prog.count}/100）`
@@ -582,6 +598,10 @@ function renderGuildQuests() {
       status.textContent = prog.done
         ? `状態: 完了（T2水資源 ${prog.count}/30）`
         : `状態: 進行中（T2水資源 ${prog.count}/30）`;
+    } else if (q.id === "gather_t3") {
+      status.textContent = prog.done
+        ? `状態: 完了（T3素材 ${prog.count}/5）`
+        : `状態: 進行中（T3素材 ${prog.count}/5）`;
     } else if (q.id === "food_hunt_t1_30") {
       status.textContent = prog.done
         ? `状態: 完了（狩猟食材 ${prog.count}/30）`
@@ -594,6 +614,42 @@ function renderGuildQuests() {
       status.textContent = prog.done
         ? `状態: 完了（農園食材 ${prog.count}/30）`
         : `状態: 進行中（農園食材 ${prog.count}/30）`;
+    } else if (q.id === "food_hunt_t1_50") {
+      status.textContent = prog.done
+        ? `状態: 完了（狩猟食材 ${prog.count}/50）`
+        : `状態: 進行中（狩猟食材 ${prog.count}/50）`;
+    } else if (q.id === "food_fish_t1_50") {
+      status.textContent = prog.done
+        ? `状態: 完了（釣り食材 ${prog.count}/50）`
+        : `状態: 進行中（釣り食材 ${prog.count}/50）`;
+    } else if (q.id === "food_farm_t1_50") {
+      status.textContent = prog.done
+        ? `状態: 完了（農園食材 ${prog.count}/50）`
+        : `状態: 進行中（農園食材 ${prog.count}/50）`;
+    } else if (q.id === "food_mat") {
+      status.textContent = prog.done
+        ? `状態: 完了（料理素材 ${prog.count}/70）`
+        : `状態: 進行中（料理素材 ${prog.count}/70）`;
+    } else if (q.id === "food_mat_150") {
+      status.textContent = prog.done
+        ? `状態: 完了（料理素材 ${prog.count}/150）`
+        : `状態: 進行中（料理素材 ${prog.count}/150）`;
+    } else if (q.id === "food_rare") {
+      status.textContent = prog.done
+        ? `状態: 完了（レア食材 ${prog.count}/1）`
+        : `状態: 進行中（レア食材 ${prog.count}/1）`;
+    } else if (q.id === "warrior_rebirth_1") {
+      status.textContent = prog.done
+        ? `状態: 完了（戦士転生 ${prog.count}/1）`
+        : `状態: 進行中（戦士転生 ${prog.count}/1）`;
+    } else if (q.id === "mage_rebirth_1") {
+      status.textContent = prog.done
+        ? `状態: 完了（魔法使い転生 ${prog.count}/1）`
+        : `状態: 進行中（魔法使い転生 ${prog.count}/1）`;
+    } else if (q.id === "tamer_rebirth_1") {
+      status.textContent = prog.done
+        ? `状態: 完了（動物使い転生 ${prog.count}/1）`
+        : `状態: 進行中（動物使い転生 ${prog.count}/1）`;
     } else {
       status.textContent = prog.done
         ? "状態: 完了"
@@ -727,8 +783,8 @@ function renderGuildQuests() {
       : `状態: 進行中（T3通常素材 ${prog.count}/60）`;
   } else if (specialDef.id === "food_special_citizen") {
     status.textContent = prog.done
-      ? `状態: 完了（料理素材 ${prog.count}/80）`
-      : `状態: 進行中（料理素材 ${prog.count}/80）`;
+      ? `状態: 完了（料理素材 ${prog.count}/300）`
+      : `状態: 進行中（料理素材 ${prog.count}/300）`;
   } else {
     status.textContent = prog.done ? "状態: 完了" : "状態: 進行中";
   }
