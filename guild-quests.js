@@ -169,7 +169,7 @@ window.GUILD_QUESTS = {
       name: "T1武器制作の依頼",
       desc: "T1武器を5本クラフトする。",
       fameReward: 10,
-      hint: "まずはT1武器レシピで武器を5本作ろう。"
+      hint: "まずはT1武器レシピで武器を5本作ろう."
     },
     {
       id: "smith_craft_armor_t1",
@@ -363,13 +363,116 @@ window.GUILD_QUESTS = {
   ],
 
   gather: [
+    // --- T1帯 任意＋種類別 ---
+    {
+      id: "gather_t1_any_30",
+      name: "T1素材の基礎集め",
+      desc: "T1通常素材を合計30個集める。",
+      fameReward: 20,
+      hint: "木・鉱石・草・布・皮・水など、T1素材を満遍なく集めてみよう。"
+    },
+    {
+      id: "gather_t1_wood_30",
+      name: "T1木材の調達",
+      desc: "T1木材を30個集める。",
+      fameReward: 20,
+      hint: "伐採スポットを巡って木材を集めよう。"
+    },
+    {
+      id: "gather_t1_ore_30",
+      name: "T1鉱石の調達",
+      desc: "T1鉱石を30個集める。",
+      fameReward: 20,
+      hint: "鉱石採取スポットを重点的に回ろう。"
+    },
+    {
+      id: "gather_t1_herb_30",
+      name: "T1薬草の調達",
+      desc: "T1草素材を30個集める。",
+      fameReward: 20,
+      hint: "草が多く採れる場所を中心に採集しよう。"
+    },
+    {
+      id: "gather_t1_cloth_30",
+      name: "T1繊維素材の調達",
+      desc: "T1布素材を30個集める。",
+      fameReward: 20,
+      hint: "布素材が採れるポイントを巡ろう。"
+    },
+    {
+      id: "gather_t1_leather_30",
+      name: "T1皮素材の調達",
+      desc: "T1皮素材を30個集める。",
+      fameReward: 20,
+      hint: "皮素材が得られる採取や狩りを重ねよう。"
+    },
+    {
+      id: "gather_t1_water_30",
+      name: "T1水資源の調達",
+      desc: "T1水を30回分採取する。",
+      fameReward: 20,
+      hint: "水場を回って水を集めよう。"
+    },
+
+    // --- T2帯 任意＋種類別（既存T2クエストを内包） ---
     {
       id: "gather_basic",
-      name: "素材集めの手伝い",
+      name: "T2素材集めの手伝い",
       desc: "T2通常素材を50個集める。",
       fameReward: 8,
       hint: "T2採取スポットを中心に素材を集めよう。"
     },
+    {
+      id: "gather_t2_any_100",
+      name: "T2素材の大量調達",
+      desc: "T2通常素材を合計100個集める。",
+      fameReward: 20,
+      hint: "高ティアの採取ポイントを回ってT2素材を集中的に集めよう。"
+    },
+    {
+      id: "gather_t2_wood_30",
+      name: "T2木材の調達",
+      desc: "T2木材を30個集める。",
+      fameReward: 20,
+      hint: "上位の伐採スポットで木材を集めよう。"
+    },
+    {
+      id: "gather_t2_ore_30",
+      name: "T2鉱石の調達",
+      desc: "T2鉱石を30個集める。",
+      fameReward: 20,
+      hint: "上位の鉱石採取スポットを巡ろう。"
+    },
+    {
+      id: "gather_t2_herb_30",
+      name: "T2薬草の調達",
+      desc: "T2草素材を30個集める。",
+      fameReward: 20,
+      hint: "上位エリアで薬草を採集しよう。"
+    },
+    {
+      id: "gather_t2_cloth_30",
+      name: "T2繊維素材の調達",
+      desc: "T2布素材を30個集める。",
+      fameReward: 20,
+      hint: "高品質な布素材を採れるポイントを巡ろう。"
+    },
+    {
+      id: "gather_t2_leather_30",
+      name: "T2皮素材の調達",
+      desc: "T2皮素材を30個集める。",
+      fameReward: 20,
+      hint: "高品質な皮素材が得られる採取や狩りを重ねよう。"
+    },
+    {
+      id: "gather_t2_water_30",
+      name: "T2水資源の調達",
+      desc: "T2水を30回分採取する。",
+      fameReward: 20,
+      hint: "上位の水場で水を集めよう。"
+    },
+
+    // --- T3帯（既存） ---
     {
       id: "gather_t3",
       name: "高品質素材の納品",
@@ -380,6 +483,30 @@ window.GUILD_QUESTS = {
   ],
 
   food: [
+    // --- T1帯 カテゴリ別 ---
+    {
+      id: "food_hunt_t1_30",
+      name: "狩猟食材の調達",
+      desc: "狩猟で得られるT1食材を30個集める。",
+      fameReward: 20,
+      hint: "狩猟スポットで肉や皮などの食材を集めよう。"
+    },
+    {
+      id: "food_fish_t1_30",
+      name: "釣り食材の調達",
+      desc: "釣りで得られるT1食材を30個集める。",
+      fameReward: 20,
+      hint: "釣り場に通って魚系の食材を確保しよう。"
+    },
+    {
+      id: "food_farm_t1_30",
+      name: "農園食材の調達",
+      desc: "農園で得られるT1食材を30個集める。",
+      fameReward: 20,
+      hint: "畑や農園から穀物・野菜などの食材を集めよう。"
+    },
+
+    // --- 既存クエスト ---
     {
       id: "food_mat",
       name: "食材の確保",

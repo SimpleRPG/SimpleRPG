@@ -207,14 +207,16 @@ function getGuildQuestProg(id) {
     return {
       count: raw.count || 0,
       done: !!raw.done,
-      rewardTaken: !!raw.rewardTaken
+      rewardTaken: !!raw.rewardTaken,
+      accepted: !!raw.accepted
     };
   }
 
   return {
     done: !!raw.done,
     note: raw.note || "",
-    rewardTaken: !!raw.rewardTaken
+    rewardTaken: !!raw.rewardTaken,
+    accepted: !!raw.accepted
   };
 }
 
@@ -244,6 +246,7 @@ function claimGuildQuestReward(guildId, questDef, isSpecial) {
     const stored = window.guildQuestProgress[id] || {};
     stored.rewardTaken = true;
     stored.done = true;
+    stored.accepted = true;
     window.guildQuestProgress[id] = stored;
 
     if (typeof appendLog === "function") {
@@ -272,6 +275,7 @@ function claimGuildQuestReward(guildId, questDef, isSpecial) {
 
   const stored = window.guildQuestProgress[id] || {};
   stored.rewardTaken = true;
+  stored.accepted = true;
   window.guildQuestProgress[id] = stored;
 
   if (typeof appendLog === "function") {
@@ -375,7 +379,9 @@ function renderGuildQuests() {
     status.style.fontSize = "11px";
     status.style.marginTop = "2px";
 
-    if (q.id === "warrior_kill_30_phys") {
+    if (!prog.accepted) {
+      status.textContent = "状態: 未受注";
+    } else if (q.id === "warrior_kill_30_phys") {
       status.textContent = prog.done
         ? `状態: 完了（物理撃破 ${prog.count}/30）`
         : `状態: 進行中（物理撃破 ${prog.count}/30）`;
@@ -513,24 +519,35 @@ function renderGuildQuests() {
     const btnRow = document.createElement("div");
     btnRow.style.marginTop = "4px";
 
-    const rewardBtn = document.createElement("button");
-    rewardBtn.style.fontSize = "11px";
-
-    if (prog.rewardTaken) {
-      rewardBtn.textContent = "報酬受取済み";
-      rewardBtn.disabled = true;
-    } else if (!prog.done) {
-      rewardBtn.textContent = "未達成";
-      rewardBtn.disabled = true;
-    } else {
-      rewardBtn.textContent = "報酬を受け取る";
-      rewardBtn.disabled = false;
-      rewardBtn.addEventListener("click", () => {
-        claimGuildQuestReward(guildId, q, false);
+    if (!prog.accepted) {
+      const acceptBtn = document.createElement("button");
+      acceptBtn.style.fontSize = "11px";
+      acceptBtn.textContent = "依頼を受ける";
+      acceptBtn.addEventListener("click", () => {
+        acceptGuildQuest(q.id);
       });
+      btnRow.appendChild(acceptBtn);
+    } else {
+      const rewardBtn = document.createElement("button");
+      rewardBtn.style.fontSize = "11px";
+
+      if (prog.rewardTaken) {
+        rewardBtn.textContent = "報酬受取済み";
+        rewardBtn.disabled = true;
+      } else if (!prog.done) {
+        rewardBtn.textContent = "未達成";
+        rewardBtn.disabled = true;
+      } else {
+        rewardBtn.textContent = "報酬を受け取る";
+        rewardBtn.disabled = false;
+        rewardBtn.addEventListener("click", () => {
+          claimGuildQuestReward(guildId, q, false);
+        });
+      }
+
+      btnRow.appendChild(rewardBtn);
     }
 
-    btnRow.appendChild(rewardBtn);
     box.appendChild(btnRow);
 
     listEl.appendChild(box);
@@ -542,6 +559,14 @@ function renderGuildQuests() {
   const specialDefs = window.GUILD_SPECIAL_QUESTS || {};
   const specialDef = specialDefs[guildId];
   if (!specialDef) return;
+
+  // ランク2以上でのみ特別依頼を表示
+  const fame2 = getGuildFame(guildId);
+  const rankInfo2 = getGuildRankInfo(fame2);
+  const rank2 = rankInfo2 ? rankInfo2.id : 0;
+  if (rank2 < 2) {
+    return;
+  }
 
   const prog = getGuildQuestProg(specialDef.id);
 
@@ -586,7 +611,9 @@ function renderGuildQuests() {
   status.style.fontSize = "11px";
   status.style.marginTop = "2px";
 
-  if (specialDef.id === "warrior_special_citizen") {
+  if (!prog.accepted) {
+    status.textContent = "状態: 未受注";
+  } else if (specialDef.id === "warrior_special_citizen") {
     status.textContent = prog.done
       ? `状態: 完了（洞窟T3物理撃破 ${prog.count}/40）`
       : `状態: 進行中（洞窟T3物理撃破 ${prog.count}/40）`;
@@ -626,24 +653,35 @@ function renderGuildQuests() {
   const btnRow = document.createElement("div");
   btnRow.style.marginTop = "4px";
 
-  const rewardBtn = document.createElement("button");
-  rewardBtn.style.fontSize = "11px";
-
-  if (prog.rewardTaken) {
-    rewardBtn.textContent = "報酬受取済み";
-    rewardBtn.disabled = true;
-  } else if (!prog.done) {
-    rewardBtn.textContent = "未達成";
-    rewardBtn.disabled = true;
-  } else {
-    rewardBtn.textContent = "市民権を獲得する";
-    rewardBtn.disabled = false;
-    rewardBtn.addEventListener("click", () => {
-      claimGuildQuestReward(guildId, specialDef, true);
+  if (!prog.accepted) {
+    const acceptBtn = document.createElement("button");
+    acceptBtn.style.fontSize = "11px";
+    acceptBtn.textContent = "依頼を受ける";
+    acceptBtn.addEventListener("click", () => {
+      acceptGuildQuest(specialDef.id);
     });
+    btnRow.appendChild(acceptBtn);
+  } else {
+    const rewardBtn = document.createElement("button");
+    rewardBtn.style.fontSize = "11px";
+
+    if (prog.rewardTaken) {
+      rewardBtn.textContent = "報酬受取済み";
+      rewardBtn.disabled = true;
+    } else if (!prog.done) {
+      rewardBtn.textContent = "未達成";
+      rewardBtn.disabled = true;
+    } else {
+      rewardBtn.textContent = "市民権を獲得する";
+      rewardBtn.disabled = false;
+      rewardBtn.addEventListener("click", () => {
+        claimGuildQuestReward(guildId, specialDef, true);
+      });
+    }
+
+    btnRow.appendChild(rewardBtn);
   }
 
-  btnRow.appendChild(rewardBtn);
   box.appendChild(btnRow);
 
   listEl.appendChild(box);

@@ -1,3 +1,4 @@
+
 // farm-core.js
 // 畑・菜園システム（4スロット＋成長ポイント制）
 // 前提: cookingMats, COOKING_MAT_NAMES, appendLog, updateDisplay, makeSaveData/applySaveData などが存在
@@ -261,6 +262,15 @@ function harvestFarmSlot(index) {
   appendLog(`${name}を${amount}個収穫した！`);
 
   addFarmSkillExpByCropId(id);
+
+  // ★ギルド用フック：食材ギルドの素材集めクエスト進行
+  if (typeof onGatherCompletedForGuild === "function") {
+    onGatherCompletedForGuild({
+      kind: "food",
+      total: amount,
+      rare: false // 農園からは通常食材のみとして扱う（仕様は維持）
+    });
+  }
 
   // 収穫後も連作する: 作物IDはそのまま、成長だけリセット
   slot.growth = 0;

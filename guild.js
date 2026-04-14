@@ -16,8 +16,8 @@ window.guildFame = window.guildFame || {};
 
 // ギルド依頼進行（戦闘コア側でも使う）
 // 例:
-//  warrior_kill_30_phys: { count: 12, done: false, rewardTaken: false }
-//  battle_boss_1:        { count: 1,  done: true,  rewardTaken: true  }
+//  warrior_kill_30_phys: { count: 12, done: false, rewardTaken: false, accepted: false }
+//  battle_boss_1:        { count: 1,  done: true,  rewardTaken: true,  accepted: true  }
 window.guildQuestProgress = window.guildQuestProgress || {};
 
 // 市民権フラグ（どこか1ギルドの特別依頼をクリアしたら true）
@@ -281,13 +281,20 @@ function getGuildGatherExtraBonusChance() {
 function updateQuestProgress(id, increment, target) {
   if (!id || !increment) return;
   const raw = window.guildQuestProgress[id] || {};
+
+  // 受注制: accepted が true の依頼のみ進行させる
+  if (!raw.accepted) {
+    return;
+  }
+
   const count = (raw.count || 0) + increment;
   const done = count >= target;
   window.guildQuestProgress[id] = {
     ...raw,
     count,
     done: done || raw.done,
-    rewardTaken: !!raw.rewardTaken
+    rewardTaken: !!raw.rewardTaken,
+    accepted: true
   };
 }
 
@@ -303,6 +310,23 @@ function checkCitizenshipUnlocked() {
 }
 
 function refreshGuildQuestUIIfNeeded() {
+  if (typeof renderGuildQuests === "function") {
+    renderGuildQuests();
+  }
+}
+
+// 任意の依頼を「受注状態」にするヘルパー（UIから呼ぶ）
+function acceptGuildQuest(questId) {
+  if (!questId) return;
+  const raw = window.guildQuestProgress[questId] || {};
+  window.guildQuestProgress[questId] = {
+    ...raw,
+    accepted: true,
+    count: raw.count || 0,
+    done: !!raw.done,
+    rewardTaken: !!raw.rewardTaken
+  };
+
   if (typeof renderGuildQuests === "function") {
     renderGuildQuests();
   }
@@ -546,34 +570,82 @@ function onCraftCompletedForGuild(params) {
 }
 
 // 採取用：採取ギルド＆食材ギルドの依頼進行
-// params: { kind: "gather" | "food", total: number, t2?: number, t3?: number, rare?: boolean }
+// params: { kind: "gather" | "food", total?: number, t1?: number, t2?: number, t3?: number, rare?: boolean, target?: string }
 function onGatherCompletedForGuild(params) {
   if (!params) return;
   const kind = params.kind;
 
-  // 採取ギルド: T2通常素材50個 / T3素材5個
+  // 採取ギルド
   if (kind === "gather") {
+    const t1 = params.t1 || 0;
     const t2 = params.t2 || 0;
     const t3 = params.t3 || 0;
+    const total = params.total || (t1 + t2 + t3);
+    const target = params.target || null; // "wood" / "ore" / "herb" / "cloth" / "leather" / "water"
 
-    if (t2 > 0) {
-      updateQuestProgress("gather_basic", t2, 50);
+    // --- 任意T1素材系 ---
+    if (t1 > 0) {
+      updateQuestProgress("gather_t1_any_30", t1, 30);
     }
 
+    // --- T2既存＋任意T2大量 ---
+    if (t2 > 0) {
+      updateQuestProgress("gather_basic", t2, 50);
+      updateQuestProgress("gather_t2_any_100", t2, 100);
+    }
+
+    // --- T3素材系（通常＋市民権） ---
     if (t3 > 0) {
       updateQuestProgress("gather_t3", t3, 5);
       updateQuestProgress("gather_special_citizen", t3, 60);
     }
+
+    // --- 種類別（T1/T2問わず） ---
+    if (target && (t1 > 0 || t2 > 0)) {
+      const t1t2 = t1 + t2;
+      if (target === "wood") {
+        updateQuestProgress("gather_t1_wood_30", t1, 30);
+        updateQuestProgress("gather_t2_wood_30", t2, 30);
+      } else if (target === "ore") {
+        updateQuestProgress("gather_t1_ore_30", t1, 30);
+        updateQuestProgress("gather_t2_ore_30", t2, 30);
+      } else if (target === "herb") {
+        updateQuestProgress("gather_t1_herb_30", t1, 30);
+        updateQuestProgress("gather_t2_herb_30", t2, 30);
+      } else if (target === "cloth") {
+        updateQuestProgress("gather_t1_cloth_30", t1, 30);
+        updateQuestProgress("gather_t2_cloth_30", t2, 30);
+      } else if (target === "leather") {
+        updateQuestProgress("gather_t1_leather_30", t1, 30);
+        updateQuestProgress("gather_t2_leather_30", t2, 30);
+      } else if (target === "water") {
+        updateQuestProgress("gather_t1_water_30", t1, 30);
+        updateQuestProgress("gather_t2_water_30", t2, 30);
+      }
+
+      // 仕様上は使っていないが、total を任意素材系に流用するならここで扱う余地あり
+      // （現状は T1/T2 を個別に見ているので total は参照しない）
+    }
   }
 
-  // 食材ギルド: total 70個 / rare 1個
+  // 食材ギルド: total 70個 / rare 1個＋カテゴリ別T1
   if (kind === "food") {
     const total = params.total || 0;
     const isRare = !!params.rare;
+    const mode = params.mode || null; // "hunt" / "fish" / "farm" を想定（gatherCooking側で詰める）
 
     if (total > 0) {
       updateQuestProgress("food_mat", total, 70);
       updateQuestProgress("food_special_citizen", total, 80);
+
+      // T1カテゴリ別: ここでは total をそのまま足す（T1縛りは gatherCooking 側で担保する想定）
+      if (mode === "hunt") {
+        updateQuestProgress("food_hunt_t1_30", total, 30);
+      } else if (mode === "fish") {
+        updateQuestProgress("food_fish_t1_30", total, 30);
+      } else if (mode === "farm") {
+        updateQuestProgress("food_farm_t1_30", total, 30);
+      }
     }
 
     if (isRare) {
