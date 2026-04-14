@@ -150,7 +150,6 @@ function renderGuildList() {
 // =======================
 // UI: 依頼タブ
 // =======================
-// 依頼データ本体は guild-quests.js で定義済み
 
 function getGuildQuestList(guildId) {
   const all = window.GUILD_QUESTS || {};
@@ -202,7 +201,26 @@ function getGuildQuestProg(id) {
     id === "alch_special_citizen"      ||
     id === "cooking_special_citizen"   ||
     id === "gather_special_citizen"    ||
-    id === "food_special_citizen"
+    id === "food_special_citizen"      ||
+    // 採取ギルド T1/T2
+    id === "gather_t1_any_30"          ||
+    id === "gather_t1_wood_30"         ||
+    id === "gather_t1_ore_30"          ||
+    id === "gather_t1_herb_30"         ||
+    id === "gather_t1_cloth_30"        ||
+    id === "gather_t1_leather_30"      ||
+    id === "gather_t1_water_30"        ||
+    id === "gather_t2_any_100"         ||
+    id === "gather_t2_wood_30"         ||
+    id === "gather_t2_ore_30"          ||
+    id === "gather_t2_herb_30"         ||
+    id === "gather_t2_cloth_30"        ||
+    id === "gather_t2_leather_30"      ||
+    id === "gather_t2_water_30"        ||
+    // 食材ギルドカテゴリ別（ティア無し）
+    id === "food_hunt_t1_30"           ||
+    id === "food_fish_t1_30"           ||
+    id === "food_farm_t1_30"
   ) {
     return {
       count: raw.count || 0,
@@ -240,7 +258,6 @@ function claimGuildQuestReward(guildId, questDef, isSpecial) {
   }
 
   if (isSpecial) {
-    // 特別依頼（市民権クエスト）
     window.citizenshipUnlocked = true;
 
     const stored = window.guildQuestProgress[id] || {};
@@ -509,6 +526,74 @@ function renderGuildQuests() {
       status.textContent = prog.done
         ? `状態: 完了（動物使い転生 ${prog.count}/1）`
         : `状態: 進行中（動物使い転生 ${prog.count}/1）`;
+    } else if (q.id === "gather_t1_any_30") {
+      status.textContent = prog.done
+        ? `状態: 完了（T1通常素材 ${prog.count}/30）`
+        : `状態: 進行中（T1通常素材 ${prog.count}/30）`;
+    } else if (q.id === "gather_t1_wood_30") {
+      status.textContent = prog.done
+        ? `状態: 完了（T1木材 ${prog.count}/30）`
+        : `状態: 進行中（T1木材 ${prog.count}/30）`;
+    } else if (q.id === "gather_t1_ore_30") {
+      status.textContent = prog.done
+        ? `状態: 完了（T1鉱石 ${prog.count}/30）`
+        : `状態: 進行中（T1鉱石 ${prog.count}/30）`;
+    } else if (q.id === "gather_t1_herb_30") {
+      status.textContent = prog.done
+        ? `状態: 完了（T1薬草 ${prog.count}/30）`
+        : `状態: 進行中（T1薬草 ${prog.count}/30）`;
+    } else if (q.id === "gather_t1_cloth_30") {
+      status.textContent = prog.done
+        ? `状態: 完了（T1布素材 ${prog.count}/30）`
+        : `状態: 進行中（T1布素材 ${prog.count}/30）`;
+    } else if (q.id === "gather_t1_leather_30") {
+      status.textContent = prog.done
+        ? `状態: 完了（T1皮素材 ${prog.count}/30）`
+        : `状態: 進行中（T1皮素材 ${prog.count}/30）`;
+    } else if (q.id === "gather_t1_water_30") {
+      status.textContent = prog.done
+        ? `状態: 完了（T1水資源 ${prog.count}/30）`
+        : `状態: 進行中（T1水資源 ${prog.count}/30）`;
+    } else if (q.id === "gather_t2_any_100") {
+      status.textContent = prog.done
+        ? `状態: 完了（T2素材 ${prog.count}/100）`
+        : `状態: 進行中（T2素材 ${prog.count}/100）`;
+    } else if (q.id === "gather_t2_wood_30") {
+      status.textContent = prog.done
+        ? `状態: 完了（T2木材 ${prog.count}/30）`
+        : `状態: 進行中（T2木材 ${prog.count}/30）`;
+    } else if (q.id === "gather_t2_ore_30") {
+      status.textContent = prog.done
+        ? `状態: 完了（T2鉱石 ${prog.count}/30）`
+        : `状態: 進行中（T2鉱石 ${prog.count}/30）`;
+    } else if (q.id === "gather_t2_herb_30") {
+      status.textContent = prog.done
+        ? `状態: 完了（T2薬草 ${prog.count}/30）`
+        : `状態: 進行中（T2薬草 ${prog.count}/30）`;
+    } else if (q.id === "gather_t2_cloth_30") {
+      status.textContent = prog.done
+        ? `状態: 完了（T2布素材 ${prog.count}/30）`
+        : `状態: 進行中（T2布素材 ${prog.count}/30）`;
+    } else if (q.id === "gather_t2_leather_30") {
+      status.textContent = prog.done
+        ? `状態: 完了（T2皮素材 ${prog.count}/30）`
+        : `状態: 進行中（T2皮素材 ${prog.count}/30）`;
+    } else if (q.id === "gather_t2_water_30") {
+      status.textContent = prog.done
+        ? `状態: 完了（T2水資源 ${prog.count}/30）`
+        : `状態: 進行中（T2水資源 ${prog.count}/30）`;
+    } else if (q.id === "food_hunt_t1_30") {
+      status.textContent = prog.done
+        ? `状態: 完了（狩猟食材 ${prog.count}/30）`
+        : `状態: 進行中（狩猟食材 ${prog.count}/30）`;
+    } else if (q.id === "food_fish_t1_30") {
+      status.textContent = prog.done
+        ? `状態: 完了（釣り食材 ${prog.count}/30）`
+        : `状態: 進行中（釣り食材 ${prog.count}/30）`;
+    } else if (q.id === "food_farm_t1_30") {
+      status.textContent = prog.done
+        ? `状態: 完了（農園食材 ${prog.count}/30）`
+        : `状態: 進行中（農園食材 ${prog.count}/30）`;
     } else {
       status.textContent = prog.done
         ? "状態: 完了"
@@ -560,7 +645,6 @@ function renderGuildQuests() {
   const specialDef = specialDefs[guildId];
   if (!specialDef) return;
 
-  // ランク2以上でのみ特別依頼を表示
   const fame2 = getGuildFame(guildId);
   const rankInfo2 = getGuildRankInfo(fame2);
   const rank2 = rankInfo2 ? rankInfo2.id : 0;

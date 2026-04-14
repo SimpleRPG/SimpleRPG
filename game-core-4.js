@@ -503,7 +503,8 @@ function gatherCooking(mode) {
     onGatherCompletedForGuild({
       kind: "food",
       total: totalCount,
-      rare: hasRareFish
+      rare: hasRareFish,
+      mode: mode // ★ 狩猟/釣りカテゴリ判定用に mode を渡す
     });
   }
 

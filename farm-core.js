@@ -275,7 +275,8 @@ function harvestFarmSlot(index) {
     onGatherCompletedForGuild({
       kind: "food",
       total: amount,
-      rare: false // 農園からは通常食材のみとして扱う（仕様は維持）
+      rare: false, // 農園からは通常食材のみとして扱う（仕様は維持）
+      mode: "farm" // 食材ギルドの「農園カテゴリ」クエスト用
     });
   }
 
