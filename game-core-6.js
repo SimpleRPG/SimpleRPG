@@ -505,7 +505,13 @@ function craftWeapon(){
   const guildBonus = (typeof getGuildCraftSuccessBonus === "function")
     ? getGuildCraftSuccessBonus("weapon")
     : 0;
-  successRate = Math.min(1, successRate + guildBonus);
+
+  // ★ペット特性ボーナス（兎など）
+  const traitBonus = (typeof getCraftSuccessBonusByTrait === "function")
+    ? getCraftSuccessBonusByTrait()
+    : 0;
+
+  successRate = Math.min(1, successRate + guildBonus + traitBonus);
 
   consumeMaterials(recipe.cost);
   addCraftSkillExp("weapon");
@@ -561,7 +567,12 @@ function craftArmor(){
   const guildBonus = (typeof getGuildCraftSuccessBonus === "function")
     ? getGuildCraftSuccessBonus("armor")
     : 0;
-  successRate = Math.min(1, successRate + guildBonus);
+
+  const traitBonus = (typeof getCraftSuccessBonusByTrait === "function")
+    ? getCraftSuccessBonusByTrait()
+    : 0;
+
+  successRate = Math.min(1, successRate + guildBonus + traitBonus);
 
   consumeMaterials(recipe.cost);
   addCraftSkillExp("armor");
@@ -617,7 +628,12 @@ function craftPotion(){
   const guildBonus = (typeof getGuildCraftSuccessBonus === "function")
     ? getGuildCraftSuccessBonus("potion")
     : 0;
-  successRate = Math.min(1, successRate + guildBonus);
+
+  const traitBonus = (typeof getCraftSuccessBonusByTrait === "function")
+    ? getCraftSuccessBonusByTrait()
+    : 0;
+
+  successRate = Math.min(1, successRate + guildBonus + traitBonus);
 
   consumeMaterials(recipe.cost);
   addCraftSkillExp("potion");
@@ -676,7 +692,12 @@ function craftTool(){
   const guildBonus = (typeof getGuildCraftSuccessBonus === "function")
     ? getGuildCraftSuccessBonus("tool")
     : 0;
-  successRate = Math.min(1, successRate + guildBonus);
+
+  const traitBonus = (typeof getCraftSuccessBonusByTrait === "function")
+    ? getCraftSuccessBonusByTrait()
+    : 0;
+
+  successRate = Math.min(1, successRate + guildBonus + traitBonus);
 
   consumeMaterials(recipe.cost);
   addCraftSkillExp("tool");
@@ -784,7 +805,12 @@ function craftFood(){
   const guildBonus = (typeof getGuildCraftSuccessBonus === "function")
     ? getGuildCraftSuccessBonus("food")
     : 0;
-  successRate = Math.min(1, successRate + guildBonus);
+
+  const traitBonus = (typeof getCraftSuccessBonusByTrait === "function")
+    ? getCraftSuccessBonusByTrait()
+    : 0;
+
+  successRate = Math.min(1, successRate + guildBonus + traitBonus);
 
   if (Math.random() >= successRate) {
     if (recipe.cost) consumeCookingMaterials(recipe.cost);
@@ -863,7 +889,12 @@ function craftDrink(){
   const guildBonus = (typeof getGuildCraftSuccessBonus === "function")
     ? getGuildCraftSuccessBonus("drink")
     : 0;
-  successRate = Math.min(1, successRate + guildBonus);
+
+  const traitBonus = (typeof getCraftSuccessBonusByTrait === "function")
+    ? getCraftSuccessBonusByTrait()
+    : 0;
+
+  successRate = Math.min(1, successRate + guildBonus + traitBonus);
 
   if (Math.random() >= successRate) {
     if (recipe.cost) consumeCookingMaterials(recipe.cost);

@@ -19,6 +19,41 @@ function applyResponsiveLayout() {
   }
 }
 
+// 任意のボタンを「押している間だけ連打」させる共通ヘルパー（PC＋スマホ）
+function setupAutoRepeatButton(btn, action, intervalMs = 100) {
+  if (!btn || typeof action !== "function") return;
+
+  let timer = null;
+
+  function start() {
+    if (timer) return;
+    action(); // 押した瞬間に1回
+    timer = setInterval(action, intervalMs);
+  }
+
+  function stop() {
+    if (!timer) return;
+    clearInterval(timer);
+    timer = null;
+  }
+
+  // PC（マウス）
+  btn.addEventListener("mousedown", (e) => {
+    if (e.button !== 0) return;
+    start();
+  });
+  btn.addEventListener("mouseup", stop);
+  btn.addEventListener("mouseleave", stop);
+
+  // スマホ（タッチ）
+  btn.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    start();
+  }, { passive: false });
+  btn.addEventListener("touchend", stop);
+  btn.addEventListener("touchcancel", stop);
+}
+
 // ★ 追加: 今アクティブなクラフトカテゴリのコスト表示を更新する共通ヘルパ
 function refreshCurrentCraftCost() {
   const infoEl = document.getElementById("craftCostInfo");
@@ -542,7 +577,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   const exploreStartBtn = document.getElementById("exploreStartBtn");
   if (exploreStartBtn && typeof doExploreEvent === "function") {
-    exploreStartBtn.addEventListener("click", () => {
+    const exploreOnce = () => {
       if (!window.isExploring) {
         const sel = document.getElementById("exploreTarget");
         window.exploringArea = sel ? sel.value : "field";
@@ -552,7 +587,16 @@ window.addEventListener("DOMContentLoaded", () => {
         }
       }
       doExploreEvent(window.exploringArea);
+    };
+
+    exploreStartBtn.addEventListener("click", () => {
+      exploreOnce();
     });
+
+    // デバッグ用: 押している間、探索イベント連打
+    setupAutoRepeatButton(exploreStartBtn, () => {
+      exploreOnce();
+    }, 100);
   }
 
   const attackBtn = document.getElementById("exploreBtn");
@@ -658,7 +702,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   const gatherBtn = document.getElementById("gather");
   if (gatherBtn && typeof gather === "function") {
-    gatherBtn.addEventListener("click", () => {
+    const doGatherOnce = () => {
       if (window.isExploring || window.currentEnemy) {
         appendLog("探索中は採取できない！");
         return;
@@ -666,7 +710,17 @@ window.addEventListener("DOMContentLoaded", () => {
       gather();
       updateGatherMatDetailText();
       updateCraftMatDetailText();
+    };
+
+    // 単発クリック
+    gatherBtn.addEventListener("click", () => {
+      doGatherOnce();
     });
+
+    // デバッグ用: 押している間採取連打
+    setupAutoRepeatButton(gatherBtn, () => {
+      doGatherOnce();
+    }, 100);
   }
 
   // 採取タブ内サブタブ
@@ -764,25 +818,43 @@ window.addEventListener("DOMContentLoaded", () => {
   const gatherFishBtn = document.getElementById("gatherFishBtn");
 
   if (gatherHuntBtn && typeof gatherCooking === "function") {
-    gatherHuntBtn.addEventListener("click", () => {
+    const doHuntOnce = () => {
       if (window.isExploring || window.currentEnemy) {
         appendLog("探索中は採取できない！");
         return;
       }
       gatherCooking("hunt");
       updateGatherMatDetailText();
+    };
+
+    gatherHuntBtn.addEventListener("click", () => {
+      doHuntOnce();
     });
+
+    // デバッグ用: 狩猟連打
+    setupAutoRepeatButton(gatherHuntBtn, () => {
+      doHuntOnce();
+    }, 100);
   }
 
   if (gatherFishBtn && typeof gatherCooking === "function") {
-    gatherFishBtn.addEventListener("click", () => {
+    const doFishOnce = () => {
       if (window.isExploring || window.currentEnemy) {
         appendLog("探索中は採取できない！");
         return;
       }
       gatherCooking("fish");
       updateGatherMatDetailText();
+    };
+
+    gatherFishBtn.addEventListener("click", () => {
+      doFishOnce();
     });
+
+    // デバッグ用: 釣り連打
+    setupAutoRepeatButton(gatherFishBtn, () => {
+      doFishOnce();
+    }, 100);
   }
 
   if (typeof refreshGatherFieldSelect === "function") {
@@ -1129,6 +1201,31 @@ window.addEventListener("DOMContentLoaded", () => {
     repairExecBtn.addEventListener("click", () => {
       execRepairSelected();
     });
+  }
+
+  // =======================
+  // 農園のお世話（連打対応）
+  // =======================
+
+  const careFarmAllBtn = document.getElementById("careFarmAllBtn");
+  if (careFarmAllBtn && typeof careFarmAll === "function") {
+    const careOnce = () => {
+      if (window.isExploring || window.currentEnemy) {
+        appendLog("探索中は農園の世話ができない！");
+        return;
+      }
+      careFarmAll();
+    };
+
+    // 単発クリック
+    careFarmAllBtn.addEventListener("click", () => {
+      careOnce();
+    });
+
+    // 押している間、お世話を連打
+    setupAutoRepeatButton(careFarmAllBtn, () => {
+      careOnce();
+    }, 100);
   }
 
   // =======================

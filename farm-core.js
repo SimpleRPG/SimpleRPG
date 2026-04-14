@@ -1,4 +1,3 @@
-
 // farm-core.js
 // 畑・菜園システム（4スロット＋成長ポイント制）
 // 前提: cookingMats, COOKING_MAT_NAMES, appendLog, updateDisplay, makeSaveData/applySaveData などが存在
@@ -246,7 +245,15 @@ function harvestFarmSlot(index) {
   }
 
   const id = harvestId;
-  const amount = getRandomHarvestAmount();
+  let amount = getRandomHarvestAmount();
+
+  // ★ウサギなどのペット特性による収穫ボーナス（別枠加算）
+  if (typeof getGatherBonusByTrait === "function") {
+    const extra = getGatherBonusByTrait("farm") || 0;
+    if (extra > 0) {
+      amount += extra;
+    }
+  }
 
   if (typeof cookingMats !== "object") {
     appendLog("料理素材の保管オブジェクトが未定義です（cookingMats）");

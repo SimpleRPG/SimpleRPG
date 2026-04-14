@@ -18,8 +18,8 @@ const GATHER_FIELDS = [
 // wood / ore / herb / cloth / leather / water
 const GATHER_FIELD_REQUIRE_LV = {
   field1: { wood: 0,  ore: 0,  herb: 0,  cloth: 0,  leather: 0,  water: 0 },
-  field2: { wood: 20, ore: 20, herb: 20, cloth: 20, leather: 20, water: 20 },
-  field3: { wood: 40, ore: 40, herb: 40, cloth: 40, leather: 40, water: 40 }
+  field2: { wood: 10, ore: 10, herb: 10, cloth: 10, leather: 10, water: 10 },
+  field3: { wood: 20, ore: 20, herb: 20, cloth: 20, leather: 20, water: 20 }
 };
 
 // 「星屑の結晶」強化用定数（他ファイルで上書きしてもOK）
@@ -120,6 +120,26 @@ function getGatherStatsList() {
   });
 
   return list;
+}
+
+// =======================
+// ペット特性: 兎の別枠+10%ボーナス共通ヘルパー
+// =======================
+
+// 「行動1回につき一度だけ」callback を呼ぶ可能性がある。
+// 兎特性（extraGatherRate=0.10）のみ有効、それ以外は何もしない。
+function tryCompanionExtraGatherOnce(onExtra) {
+  if (typeof onExtra !== "function") return;
+  if (typeof hasCompanion !== "function" ||
+      typeof getCurrentCompanionTrait !== "function") return;
+  if (!hasCompanion()) return;
+
+  const trait = getCurrentCompanionTrait();
+  if (!trait || !trait.extraGatherRate) return;
+
+  if (Math.random() < trait.extraGatherRate) {
+    onExtra();
+  }
 }
 
 // 採取スキルでフィールド解放をチェックするフック
@@ -431,6 +451,17 @@ function gatherCooking(mode) {
       }
     }
   }
+
+  // ★ペット特性: 狩猟・釣りの別枠+10%（兎）
+  tryCompanionExtraGatherOnce(() => {
+    const ids = Object.keys(gained);
+    if (ids.length > 0) {
+      const pickId = ids[Math.floor(Math.random() * ids.length)];
+      cookingMats[pickId] = (cookingMats[pickId] || 0) + 1;
+      gained[pickId]      = (gained[pickId]      || 0) + 1;
+      appendLog("ペットが追加で料理素材を見つけてきた！");
+    }
+  });
 
   // 料理素材ごとの統計更新
   Object.keys(gained).forEach(id => {
@@ -777,23 +808,55 @@ function gather(){
 
   let t1 = 0, t2 = 0, t3 = 0;
 
-  if (field === "field1") {
-    t1 = added;
-  } else if (field === "field2") {
-    t2 = Math.floor(added * 0.2);
-    t1 = added - t2;
-  } else if (field === "field3") {
-    t3 = Math.floor(added * 0.1);
-    let rest = added - t3;
-    t2 = Math.floor(rest * 0.3);
-    t1 = rest - t2;
-  } else {
-    t1 = added;
+  // per-item 抽選方式
+  for (let i = 0; i < added; i++) {
+    if (field === "field1") {
+      // 近郊の原っぱ: すべてT1
+      t1 += 1;
+    } else if (field === "field2") {
+      // 星降りの丘: 1個ごとに20%でT2、それ以外はT1
+      const r = Math.random();
+      if (r < 0.20) {
+        t2 += 1;
+      } else {
+        t1 += 1;
+      }
+    } else if (field === "field3") {
+      // 翠風の谷:
+      //  1個ごとに 10%でT3, それ以外で 30%でT2, それ以外はT1
+      const r = Math.random();
+      if (r < 0.10) {
+        t3 += 1;
+      } else if (r < 0.10 + 0.30) {
+        t2 += 1;
+      } else {
+        t1 += 1;
+      }
+    } else {
+      // 想定外フィールドは全部T1
+      t1 += 1;
+    }
   }
 
   materials[target].t1 += t1;
   materials[target].t2 += t2;
   materials[target].t3 += t3;
+
+  // ★ペット特性: 通常採取の別枠+10%（兎）
+  tryCompanionExtraGatherOnce(() => {
+    // フィールドに応じて、同じティア体系で+1
+    if (field === "field3") {
+      t3 += 1;
+      materials[target].t3 += 1;
+    } else if (field === "field2") {
+      t2 += 1;
+      materials[target].t2 += 1;
+    } else {
+      t1 += 1;
+      materials[target].t1 += 1;
+    }
+    appendLog("ペットが追加で素材を見つけてきた！");
+  });
 
   // 通常素材ごとの統計更新（target単位で合計）
   const gainedTotal = t1 + t2 + t3;
