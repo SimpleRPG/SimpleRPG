@@ -190,12 +190,26 @@
                   <p style="font-size:11px; color:#ccc; margin:0 0 4px;">
                     農園の管理・収穫はここから行います。
                   </p>
+
+                  <!-- 4マス（選択用） -->
                   <div id="farmSlots">
                     <!-- farm-core.js の updateFarmUI() がここにスロットを描画する -->
                   </div>
-                  <div style="margin-top:4px;">
-                    <button id="careFarmAllBtn" onclick="careFarmAll()">農園の世話をする</button>
+
+                  <!-- ★追加: 選択中区画の詳細＋植え替え／収穫ボタン -->
+                  <div id="farmDetail">
+                    <div id="farmDetailTitle"></div>
+                    <div id="farmDetailInfo"></div>
+                    <div id="farmDetailButtons">
+                      <button id="farmDetailPlantBtn">植える / 植え替え</button>
+                      <button id="farmDetailHarvestBtn">収穫</button>
+                    </div>
                   </div>
+
+                  <div style="margin-top:4px; display:flex; gap:4px; flex-wrap:wrap;">
+  <button id="careFarmAllBtn" onclick="careFarmAll()">農園の世話をする</button>
+  <button id="harvestFarmAllBtn" onclick="harvestFarmAll()">全て収穫する</button>
+</div>
                 </div>
               </div>
             </div>

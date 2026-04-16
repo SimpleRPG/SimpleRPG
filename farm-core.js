@@ -1,5 +1,5 @@
 // farm-core.js
-// 畑・菜園システム（4スロット＋成長ポイント制）
+// 畑・菜園システム（4スロット＋成長ポイント制・選択式詳細パネル）
 // 前提: cookingMats, COOKING_MAT_NAMES, appendLog, updateDisplay, makeSaveData/applySaveData などが存在
 
 // =======================
@@ -60,12 +60,14 @@ const FARM_CROPS = {
 //   growth: 0〜FARM_GROW_NEEDED,
 //   ready:  boolean（収穫可能か）
 // }
+// selectedIndex: 現在選択中の区画（0〜3、未選択なら null）
 window.farmState = window.farmState || {
   slots: Array.from({ length: FARM_SLOT_COUNT }, () => ({
     cropId: null,
     growth: 0,
     ready: false
-  }))
+  })),
+  selectedIndex: 0
 };
 
 // 内部ヘルパ
@@ -323,30 +325,57 @@ function careFarmAll() {
 // =======================
 
 function updateFarmUI() {
+  updateFarmSlotsUI();
+  updateFarmDetailUI();
+  if (typeof window.onFarmUIUpdated === "function") {
+    window.onFarmUIUpdated();
+  }
+}
+
+// 4マス部分（選択用）
+function updateFarmSlotsUI() {
   const container = document.getElementById("farmSlots");
   if (!container) return;
 
   container.innerHTML = "";
 
   const st = window.farmState;
-  st.slots.forEach((slot, idx) => {
-    const div = document.createElement("div");
-    div.className = "farm-slot";
+  const selectedIndex = (typeof st.selectedIndex === "number") ? st.selectedIndex : null;
 
+  st.slots.forEach((slot, idx) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "farm-slot";
+    if (idx === selectedIndex) {
+      btn.classList.add("selected");
+    }
+
+    // 区画番号
     const title = document.createElement("div");
     title.className = "farm-slot-title";
     title.textContent = `区画${idx + 1}`;
-    div.appendChild(title);
+    btn.appendChild(title);
 
-    const info = document.createElement("div");
-    info.className = "farm-slot-info";
+    // アイコン
+    const icon = document.createElement("div");
+    icon.className = "farm-slot-icon";
+
+    // 成長バー
+    const growthBar = document.createElement("div");
+    growthBar.className = "farm-slot-growth";
+    const growthInner = document.createElement("div");
+    growthInner.className = "farm-slot-growth-inner";
+    growthBar.appendChild(growthInner);
+    btn.appendChild(growthBar);
 
     if (!slot.cropId) {
-      info.textContent = "（未使用）";
+      // 何も植わっていない
+      btn.classList.add("empty");
+      icon.textContent = "＋";
+      growthInner.style.width = "0%";
     } else {
       let cropName;
       if (slot.cropId === FARM_MYSTERY_SEED_ID) {
-        // 育っている間はずっと「謎の種」表示
         cropName = "謎の種";
       } else {
         cropName = COOKING_MAT_NAMES[slot.cropId] ||
@@ -356,32 +385,103 @@ function updateFarmUI() {
       const g = slot.growth;
       const need = FARM_GROW_NEEDED;
       const pct = Math.floor((g / need) * 100);
+      growthInner.style.width = `${pct}%`;
 
-      info.textContent = `${cropName} / 成長 ${g}/${need} (${pct}%)` +
-                         (slot.ready ? " ※収穫OK" : "");
+      // 成長段階で簡易アイコンを変える
+      let stageIcon = "🌱";
+      if (pct >= 80) {
+        stageIcon = "🌾";
+      } else if (pct >= 40) {
+        stageIcon = "🌿";
+      }
+      if (slot.cropId === FARM_MYSTERY_SEED_ID) {
+        stageIcon = "❓";
+      }
+      icon.textContent = stageIcon;
+
+      if (slot.ready) {
+        btn.classList.add("ready");
+      }
+
+      // ツールチップ的な情報
+      btn.title = `${cropName} (${pct}%)` + (slot.ready ? " 収穫OK" : "");
     }
-    div.appendChild(info);
 
-    const plantBtn = document.createElement("button");
-    plantBtn.textContent = slot.cropId ? "植え替え" : "植える";
+    btn.appendChild(icon);
+
+    btn.onclick = () => {
+      window.farmState.selectedIndex = idx;
+      updateFarmUI();
+    };
+
+    container.appendChild(btn);
+  });
+}
+
+// 選択中スロットの詳細＋操作
+function updateFarmDetailUI() {
+  const panel = document.getElementById("farmDetail");
+  if (!panel) return;
+
+  const titleEl   = document.getElementById("farmDetailTitle");
+  const infoEl    = document.getElementById("farmDetailInfo");
+  const plantBtn  = document.getElementById("farmDetailPlantBtn");
+  const harvestBtn= document.getElementById("farmDetailHarvestBtn");
+
+  const st = window.farmState;
+  const idx = (typeof st.selectedIndex === "number") ? st.selectedIndex : null;
+  const slot = (idx != null) ? getFarmSlot(idx) : null;
+
+  if (!slot || idx == null) {
+    panel.classList.add("empty");
+    if (titleEl)   titleEl.textContent   = "区画 -";
+    if (infoEl)    infoEl.textContent    = "区画を選択してください。";
+    if (plantBtn)  plantBtn.disabled     = true;
+    if (harvestBtn)harvestBtn.disabled   = true;
+    return;
+  }
+
+  panel.classList.remove("empty");
+
+  if (titleEl) {
+    titleEl.textContent = `区画${idx + 1} の状態`;
+  }
+
+  let text;
+  if (!slot.cropId) {
+    text = "何も植わっていません。";
+  } else {
+    let cropName;
+    if (slot.cropId === FARM_MYSTERY_SEED_ID) {
+      cropName = "謎の種";
+    } else {
+      cropName = COOKING_MAT_NAMES[slot.cropId] ||
+                 FARM_CROPS[slot.cropId]?.name ||
+                 slot.cropId;
+    }
+    const g = slot.growth;
+    const need = FARM_GROW_NEEDED;
+    const pct = Math.floor((g / need) * 100);
+    text = `${cropName} を育成中 / 成長 ${g}/${need} (${pct}%)` +
+           (slot.ready ? " / 収穫可能です。" : " / まだ育成中です。");
+  }
+
+  if (infoEl) {
+    infoEl.textContent = text;
+  }
+
+  if (plantBtn) {
+    plantBtn.disabled = false;
     plantBtn.onclick = () => {
       openFarmPlantModal(idx);
     };
-    div.appendChild(plantBtn);
+  }
 
-    const harvestBtn = document.createElement("button");
-    harvestBtn.textContent = "収穫";
+  if (harvestBtn) {
     harvestBtn.disabled = !slot.ready;
     harvestBtn.onclick = () => {
       harvestFarmSlot(idx);
     };
-    div.appendChild(harvestBtn);
-
-    container.appendChild(div);
-  });
-
-  if (typeof window.onFarmUIUpdated === "function") {
-    window.onFarmUIUpdated();
   }
 }
 
@@ -494,7 +594,8 @@ function getFarmSaveData() {
       cropId: s.cropId || null,
       growth: s.growth || 0,
       ready: !!s.ready
-    }))
+    })),
+    selectedIndex: (typeof st.selectedIndex === "number") ? st.selectedIndex : 0
   };
 }
 
@@ -511,6 +612,10 @@ function applyFarmSaveData(farmData) {
     st.slots[i].ready  = !!src.ready;
   }
 
+  st.selectedIndex = (typeof farmData.selectedIndex === "number")
+    ? farmData.selectedIndex
+    : 0;
+
   if (typeof updateFarmUI === "function") {
     updateFarmUI();
   }
@@ -523,5 +628,25 @@ function applyFarmSaveData(farmData) {
 function initFarmSystem() {
   if (typeof updateFarmUI === "function") {
     updateFarmUI();
+  }
+}
+// 畑・菜園全体を収穫（ready のものだけ）
+function harvestFarmAll() {
+  const st = window.farmState;
+  if (!st || !Array.isArray(st.slots)) {
+    appendLog("畑の状態が正しくありません");
+    return;
+  }
+
+  let harvestedAny = false;
+
+  st.slots.forEach((slot, idx) => {
+    if (!slot || !slot.cropId || !slot.ready) return;
+    harvestFarmSlot(idx);
+    harvestedAny = true;
+  });
+
+  if (!harvestedAny) {
+    appendLog("収穫できる作物はないようだ");
   }
 }

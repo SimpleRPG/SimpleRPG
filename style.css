@@ -405,7 +405,7 @@ button {
   padding: 5px 10px;
   font-size: 0.9rem;
   cursor: pointer;
-  white-space: nowrap; /* ★ 全ボタンで改行禁止 */
+  white-space: nowrap;
 }
 
 button:hover {
@@ -521,24 +521,23 @@ input[type="text"] {
 }
 
 /* ======================
-   魔巧区サブタブ（クラフト内の武器/防具/ポーション等と合わせる）
+   魔巧区サブタブ
    ====================== */
 
 #magicDistTabs {
   display: flex;
-  flex-wrap: nowrap;          /* 折り返さない（2列化防止） */
-  overflow-x: auto;           /* はみ出したら横スクロール */
+  flex-wrap: nowrap;
+  overflow-x: auto;
   gap: 4px;
   padding-bottom: 2px;
   -webkit-overflow-scrolling: touch;
 }
 
-/* クラフトの武器/防具/ポーションボタンと同じサイズ感・見た目に揃える */
 #magicDistTabs .magic-tab-button {
   flex: 0 0 auto;
-  font-size: 13px;          /* .craft-cat-tab と同じ */
-  padding: 6px 18px;        /* .craft-cat-tab と同じ */
-  border-radius: 8px;       /* .craft-cat-tab と同じ */
+  font-size: 13px;
+  padding: 6px 18px;
+  border-radius: 8px;
   background: #25253a;
   border: 1px solid rgba(130,120,200,0.7);
   color: var(--text-main);
@@ -546,7 +545,6 @@ input[type="text"] {
   cursor: pointer;
 }
 
-/* アクティブ時はアクセント色で強調（他タブと統一） */
 #magicDistTabs .magic-tab-button.active {
   background: var(--accent);
   color: #fff;
@@ -677,7 +675,6 @@ input[type="text"] {
   color: var(--text-sub);
 }
 
-/* PC時: サイドのログを長めスクロールに */
 .layout-desktop #log {
   min-height: 140px;
   max-height: 55vh;
@@ -688,7 +685,6 @@ input[type="text"] {
    共通モーダルセンタリング
    ====================== */
 
-/* 画面全体を覆って中央寄せする共通レイアウト */
 .modal-center {
   position: fixed;
   inset: 0;
@@ -697,7 +693,6 @@ input[type="text"] {
   justify-content: center;
 }
 
-/* 非表示状態用クラス（JSで付け外しする想定） */
 .modal-center.hidden {
   display: none;
 }
@@ -749,7 +744,6 @@ input[type="text"] {
 
 #petGrowthModal {
   background: rgba(0,0,0,0.65);
-  /* display は .modal-center.hidden に任せる */
   z-index: 101;
 }
 
@@ -788,17 +782,14 @@ input[type="text"] {
 }
 
 /* ======================
-   農園モーダル（共通 .modal クラス）
+   農園モーダル
    ====================== */
 
-/* 画面全体を覆うモーダル共通スタイル */
 .modal {
   background: rgba(0,0,0,0.65);
-  /* display は JS ではなく .hidden クラスで切り替える */
-  z-index: 102;             /* 職業/ペットより一段上 */
+  z-index: 102;
 }
 
-/* .modal 内のパネル（農園用） */
 .modal .modal-content {
   background: #11111c;
   border-radius: 10px;
@@ -817,12 +808,12 @@ input[type="text"] {
    ====================== */
 
 #companionModal {
-  background: rgba(0,0,0,0.65); /* 画面全体を薄暗く */
-  z-index: 101;                 /* 職業より上・農園より下で統一 */
+  background: rgba(0,0,0,0.65);
+  z-index: 101;
 }
 
 #companionModalInner {
-  background: #11111c;          /* 後ろと文字が被らないよう不透明背景 */
+  background: #11111c;
   border-radius: 10px;
   border: 1px solid rgba(200,190,255,0.95);
   padding: 14px 18px 16px;
@@ -871,7 +862,6 @@ input[type="text"] {
   border: 1px solid rgba(130,120,200,0.7);
 }
 
-/* 市場系タブもアクティブ時はアクセント色で統一 */
 .market-main-tab.active,
 .market-sub-tab.active,
 .market-cat-tab.active {
@@ -930,7 +920,6 @@ input[type="text"] {
   margin: 4px 0;
 }
 
-/* ステータス内のインポート／エクスポート用テキストエリアがはみ出さないように */
 #pageStatus textarea {
   box-sizing: border-box;
   width: 100%;
@@ -952,7 +941,6 @@ input[type="text"] {
   100% { color: #ffffff; }
 }
 
-/* ペット専用要素は JS 側で display 切替 */
 .pet-only {}
 
 .btn-return {
@@ -977,7 +965,6 @@ input[type="text"] {
   max-width: 720px;
 }
 
-/* 探索・戦闘 UI カラム配置 */
 .layout-mobile #battleButtons {
   flex-direction: column;
 }
@@ -986,7 +973,6 @@ input[type="text"] {
   width: 100%;
 }
 
-/* クラフトページ: PC/タブレット2カラム、モバイル1カラム */
 #pageCraft {
   display: grid;
   grid-template-columns: 1.3fr 1fr;
@@ -997,7 +983,6 @@ input[type="text"] {
   grid-template-columns: 1fr;
 }
 
-/* ステータスページ: 将来2カラムにしたいとき用のフック */
 .layout-desktop #pageStatusInner,
 .layout-tablet  #pageStatusInner {
   display: grid;
@@ -1009,7 +994,6 @@ input[type="text"] {
   display: block;
 }
 
-/* フォント微調整 */
 .layout-mobile body {
   font-size: clamp(13px, 2vw, 16px);
 }
@@ -1018,7 +1002,6 @@ input[type="text"] {
   font-size: clamp(15px, 2vw, 19px);
 }
 
-/* メインボタンの微調整（モバイルは少し大きめ） */
 .layout-mobile .btn-main {
   font-size: clamp(15px, 3.4vw, 21px);
 }
@@ -1040,21 +1023,18 @@ input[type="text"] {
 }
 
 @media (max-width: 768px) {
-  /* 全体的にセレクトを少し大きく */
   select {
     font-size: 13px;
     padding: 5px 6px;
     min-height: 34px;
   }
 
-  /* 探索ヘッダーの行き先セレクトは特に触りやすく */
   #exploreTarget {
     font-size: 13px;
     padding: 6px 8px;
     min-height: 36px;
   }
 
-  /* 戦闘系セレクトも少し余裕を持たせる */
   #magicSelect,
   #skillSelect,
   #battleItemSelect,
@@ -1066,14 +1046,12 @@ input[type="text"] {
 }
 
 /* ======================
-   倉庫タブ（インベントリ）レイアウト
+   倉庫タブ
    ====================== */
 
-/* 倉庫タブ本体は .tab-page の制御に任せる */
 #pageWarehouse {
 }
 
-/* 倉庫タブ内部を2カラムに（#pageWarehouseInner を想定） */
 #pageWarehouseInner {
   display: grid;
   grid-template-columns: 1.4fr 1fr;
@@ -1081,24 +1059,20 @@ input[type="text"] {
   alignments: start;
 }
 
-/* モバイルでは1カラムに落とす */
 .layout-mobile #pageWarehouseInner {
   grid-template-columns: 1fr;
 }
 
-/* 左カラム: 手持ち＋倉庫リスト */
 #warehouseLists {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
 }
 
-/* モバイルでは縦並び */
 .layout-mobile #warehouseLists {
   grid-template-columns: 1fr;
 }
 
-/* 各インベントリボックス */
 .warehouse-box {
   background: #10101a;
   border-radius: 6px;
@@ -1113,18 +1087,15 @@ input[type="text"] {
   color: var(--accent);
 }
 
-/* 行（createRowで生成されるdivを想定） */
 .warehouse-box > div {
   margin-bottom: 2px;
 }
 
-/* 小さめボタン */
 .warehouse-box button {
   font-size: 10px;
   padding: 2px 6px;
 }
 
-/* 右カラム: インベントリ情報など */
 #warehouseInfoPanel {
   background: #101018;
   border-radius: 6px;
@@ -1143,7 +1114,6 @@ input[type="text"] {
   margin: 3px 0;
 }
 
-/* 手持ち上限表示などに使う行 */
 .carry-limit-row {
   display: flex;
   justify-content: space-between;
@@ -1154,10 +1124,6 @@ input[type="text"] {
   color: var(--text-main);
   font-weight: 600;
 }
-
-/* ======================
-   素材テーブル（倉庫タブのマテリアル表示用）
-   ====================== */
 
 .mat-table {
   width: 100%;
@@ -1183,10 +1149,9 @@ input[type="text"] {
 }
 
 /* ======================
-   採取拠点レイアウト（魔巧区サブページ）
+   採取拠点
    ====================== */
 
-/* 1行全体をグリッドで整列（ラベル + Lvボタン + モード3種） */
 #magicPageGather #gatherBaseStatus > div {
   display: grid;
   grid-template-columns: minmax(120px, 1.4fr) repeat(4, minmax(64px, 1fr));
@@ -1194,35 +1159,33 @@ input[type="text"] {
   align-items: center;
 }
 
-/* 「木拠点 Lv0（ノーマル）」などのラベルを折り返さない */
 #magicPageGather #gatherBaseStatus > div span:first-child {
   white-space: nowrap;
 }
 
-/* 例: インポート／エクスポート欄のテキストエリア共通 */
 #pageImportExport textarea {
-  box-sizing: border-box; /* パディング込みで幅計算 */
-  width: 100%;           /* 親コンテナにフィット */
-  max-width: 100%;       /* はみ出さないようにする */
-  resize: vertical;      /* 横方向には広げられないようにする */
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  resize: vertical;
 }
 
 /* ======================
-   タイトルバー（画面下固定）
+   タイトルバー
    ====================== */
 
 #titleBar {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;              /* 画面の一番下に固定 */
+  bottom: 0;
   z-index: 200;
   text-align: center;
-  pointer-events: none;   /* ゲームUIの操作を邪魔しないように */
+  pointer-events: none;
 }
 
 #titleBar h1 {
-  pointer-events: auto;   /* タイトル自体の選択などは可能に */
+  pointer-events: auto;
 }
 
 /* ======================
@@ -1230,11 +1193,10 @@ input[type="text"] {
    ====================== */
 
 #rebirthModal {
-  background: rgba(0,0,0,0.65); /* 画面全体を薄暗く */
-  z-index: 103;                 /* 職業/ペット/農園より上 */
+  background: rgba(0,0,0,0.65);
+  z-index: 103;
 }
 
-/* 中身のパネルは職業・ペットモーダルと揃える */
 #rebirthModalInner {
   background: #11111c;
   border-radius: 10px;
@@ -1258,12 +1220,10 @@ input[type="text"] {
   font-size: 0.85rem;
 }
 
-/* ボタン行（右寄せ） */
 #rebirthModalInner > div:last-child button {
   min-width: 90px;
 }
 
-/* モーダル内パネルが画面からはみ出さないように共通制限 */
 #jobModalInner,
 #petGrowthModalInner,
 #rebirthModalInner,
@@ -1271,4 +1231,144 @@ input[type="text"] {
 .modal .modal-content {
   max-height: 90vh;
   overflow-y: auto;
+}
+
+/* ======================
+   農園（4マス＋詳細）
+   ====================== */
+
+#farmSlots {
+  display: grid;
+  grid-template-columns: repeat(2, 64px);
+  gap: 8px;
+  justify-content: center;
+}
+
+/* 将来的に 3×3 や 9×9 にする場合は
+   grid-template-columns の repeat の列数を増やすだけで対応可能 */
+.layout-mobile #farmSlots {
+  grid-template-columns: repeat(2, 64px);
+}
+
+/* 畑マス本体 */
+.farm-slot {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border-radius: 4px;
+  border: 2px solid #5a462f;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.04), transparent),
+    radial-gradient(circle at 20% 20%, #4b3824 0, #2c1b10 70%);
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.8) inset,
+    0 2px 3px rgba(0,0,0,0.7);
+  font-size: 10px;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+/* グリッドセル内で小さい正方形を中央寄せ */
+#farmSlots > .farm-slot {
+  margin: 0 auto;
+}
+
+/* 区画番号 */
+.farm-slot-title {
+  position: absolute;
+  left: 3px;
+  top: 2px;
+  font-weight: 600;
+  color: #f5e0b8;
+  font-size: 10px;
+  text-shadow: 0 0 3px rgba(0,0,0,0.8);
+}
+
+/* 中央の作物アイコン */
+.farm-slot-icon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 18px;
+}
+
+/* 成長バー */
+.farm-slot-growth {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 4px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.5);
+  overflow: hidden;
+}
+
+.farm-slot-growth-inner {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg,#4caf50,#cddc39);
+}
+
+/* 空きマスの見た目 */
+.farm-slot.empty .farm-slot-icon {
+  font-size: 16px;
+  color: rgba(255,255,255,0.4);
+}
+
+/* 収穫OKマスを光らせる */
+.farm-slot.ready {
+  box-shadow:
+    0 0 6px rgba(255,230,120,0.8),
+    0 0 0 1px rgba(255,230,120,0.5) inset;
+}
+
+.farm-slot.ready .farm-slot-icon {
+  color: #ffd95e;
+}
+
+/* 選択中区画の枠強調 */
+.farm-slot.selected {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 1px rgba(159,123,255,0.9),
+    0 0 8px rgba(159,123,255,0.9);
+}
+
+/* 選択中区画の詳細パネル */
+#farmDetail {
+  margin-top: 8px;
+  padding: 6px 8px;
+  background: #101018;
+  border-radius: 6px;
+  border: 1px solid rgba(90,90,150,0.7);
+  font-size: 12px;
+}
+
+#farmDetailTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+#farmDetailInfo {
+  margin-bottom: 6px;
+  color: var(--text-sub);
+}
+
+#farmDetailButtons {
+  display: flex;
+  gap: 6px;
+}
+
+#farmDetailButtons button {
+  flex: 1;
+  font-size: 11px;
+  padding: 4px 6px;
+  white-space: nowrap;
 }
