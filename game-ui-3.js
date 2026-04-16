@@ -89,6 +89,161 @@ function renderGatherBaseStatusInto(container) {
   }
 }
 
+// ★ハウジング関連: 拠点UIに土地レンタル状況を描画
+function renderHousingLandStatus() {
+  const housingRoot = document.getElementById("housingRoot");
+  if (!housingRoot) return;
+
+  const unlocked = !!window.citizenshipUnlocked;
+  housingRoot.innerHTML = "";
+
+  const statusText = document.createElement("p");
+  statusText.id = "housingStatusText";
+  statusText.style.fontSize = "12px";
+  statusText.style.color = "#ccc";
+  statusText.style.marginBottom = "8px";
+  statusText.textContent = unlocked
+    ? "市民権を得たことで、拠点の手続きや住宅の管理が行えるようになりました。"
+    : "まだ市民権を得ていないため、拠点の手続きは行えません。";
+  housingRoot.appendChild(statusText);
+
+  if (!unlocked) {
+    return;
+  }
+
+  const lands = window.HOUSING_LANDS || {};
+  const current = (typeof getCurrentHousingLand === "function")
+    ? getCurrentHousingLand()
+    : null;
+  const hs = (typeof window.housingState !== "undefined") ? window.housingState : null;
+
+  // 現在借りている土地の表示
+  const currentBox = document.createElement("div");
+  currentBox.className = "status-block";
+  currentBox.style.marginBottom = "8px";
+
+  if (current && hs) {
+    const title = document.createElement("div");
+    title.textContent = `現在借りている拠点: ${current.name}`;
+    currentBox.appendChild(title);
+
+    const info = document.createElement("div");
+    info.style.fontSize = "11px";
+
+    let rentText = "";
+    if (hs.rentDueAt) {
+      const now = Date.now();
+      const remainMs = hs.rentDueAt - now;
+      if (hs.rentUnpaid) {
+        rentText = "家賃: 滞納中（効果停止中）";
+      } else if (remainMs <= 0) {
+        rentText = "家賃: 支払期限切れ（効果停止中）";
+      } else {
+        const remainDays = Math.floor(remainMs / (24 * 60 * 60 * 1000));
+        const remainHours = Math.floor((remainMs % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+        rentText = `家賃: 1週間ごと / 残り およそ ${remainDays}日 ${remainHours}時間`;
+      }
+    } else {
+      rentText = "家賃: 未設定";
+    }
+
+    info.textContent = rentText;
+    currentBox.appendChild(info);
+
+    const btnRow = document.createElement("div");
+    btnRow.style.marginTop = "4px";
+
+    const payBtn = document.createElement("button");
+    payBtn.textContent = "家賃を支払う";
+    payBtn.style.fontSize = "11px";
+    payBtn.addEventListener("click", () => {
+      if (typeof payHousingRent === "function") {
+        payHousingRent();
+      }
+    });
+    btnRow.appendChild(payBtn);
+
+    currentBox.appendChild(btnRow);
+  } else {
+    const none = document.createElement("div");
+    none.textContent = "現在借りている拠点はありません。";
+    currentBox.appendChild(none);
+  }
+
+  housingRoot.appendChild(currentBox);
+
+  // 借りられる土地一覧
+  const listBox = document.createElement("div");
+  listBox.className = "status-block";
+  const listTitle = document.createElement("div");
+  listTitle.textContent = "借りられる土地";
+  listTitle.style.marginBottom = "4px";
+  listBox.appendChild(listTitle);
+
+  Object.keys(lands).forEach(id => {
+    const land = lands[id];
+    if (!land) return;
+
+    const card = document.createElement("div");
+    card.style.border = "1px solid #555";
+    card.style.padding = "4px";
+    card.style.marginBottom = "4px";
+    card.style.fontSize = "12px";
+
+    const nameRow = document.createElement("div");
+    nameRow.textContent = land.name;
+    card.appendChild(nameRow);
+
+    const infoRow = document.createElement("div");
+    const kindText =
+      land.kind === "guildDorm" ? "（ギルド寮）" :
+      land.kind === "cityRoom" ? "（街の一室）" :
+      land.kind === "suburbLand" ? "（郊外の土地）" :
+      "";
+    infoRow.textContent =
+      `${kindText} 週家賃: ${land.weeklyRent}G / 家具スロット: ${land.baseSlots}`;
+    card.appendChild(infoRow);
+
+    const btnRow = document.createElement("div");
+    btnRow.style.marginTop = "4px";
+    const rentBtn = document.createElement("button");
+    rentBtn.textContent = "この土地を借りる";
+    rentBtn.style.fontSize = "11px";
+
+    rentBtn.addEventListener("click", () => {
+      if (typeof rentLand === "function") {
+        rentLand(land.id);
+      }
+    });
+
+    // 借りられるかどうかの事前チェック（理由表示）
+    let reasonText = "";
+    if (typeof canRentLand === "function") {
+      const res = canRentLand(land.id);
+      if (!res.ok) {
+        rentBtn.disabled = true;
+        reasonText = res.reason || "";
+      }
+    }
+
+    btnRow.appendChild(rentBtn);
+
+    if (reasonText) {
+      const reasonSpan = document.createElement("span");
+      reasonSpan.style.marginLeft = "4px";
+      reasonSpan.style.fontSize = "11px";
+      reasonSpan.style.color = "#ccc";
+      reasonSpan.textContent = `（${reasonText}）`;
+      btnRow.appendChild(reasonSpan);
+    }
+
+    card.appendChild(btnRow);
+    listBox.appendChild(card);
+  });
+
+  housingRoot.appendChild(listBox);
+}
+
 // ★ハウジング関連: ステータス内の表示＋拠点タブ連動
 function refreshHousingStatusAndTab() {
   const citizenRow   = document.getElementById("statusCitizenRow");
@@ -109,24 +264,9 @@ function refreshHousingStatusAndTab() {
     housingTabBtn.style.opacity = unlocked ? "1" : "0.5";
   }
 
-  // 拠点ページ内の簡易状態表示（必要なら）
-  const housingRoot = document.getElementById("housingRoot");
-  if (housingRoot && housingRoot.childElementCount === 0) {
-    const p = document.createElement("p");
-    p.id = "housingStatusText";
-    p.style.fontSize = "12px";
-    p.style.color = "#ccc";
-    p.textContent = unlocked
-      ? "市民権を得たことで、拠点の手続きや住宅の管理が行えるようになります。（詳細UIは今後追加予定）"
-      : "まだ市民権を得ていないため、拠点の手続きは行えません。";
-    housingRoot.appendChild(p);
-  } else if (housingRoot) {
-    const statusText = document.getElementById("housingStatusText");
-    if (statusText) {
-      statusText.textContent = unlocked
-        ? "市民権を得たことで、拠点の手続きや住宅の管理が行えるようになります。（詳細UIは今後追加予定）"
-        : "まだ市民権を得ていないため、拠点の手続きは行えません。";
-    }
+  // 拠点ページ内の状態表示
+  if (typeof renderHousingLandStatus === "function") {
+    renderHousingLandStatus();
   }
 }
 

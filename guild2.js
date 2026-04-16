@@ -156,98 +156,15 @@ function getGuildQuestList(guildId) {
   return all[guildId] || [];
 }
 
-// 進捗オブジェクトの形をそろえる
+// 進捗オブジェクトの形をそろえる（仕様は変えず、どのIDでも同じ形で返す）
 function getGuildQuestProg(id) {
   const raw = window.guildQuestProgress[id] || {};
-
-  if (
-    id === "warrior_kill_30_phys"      ||
-    id === "mage_kill_30_magic"        ||
-    id === "tamer_kill_30_pet"         ||
-    id === "battle_boss_1"             ||
-    id === "field_kill_100_any"        ||
-    id === "forest_kill_100_any"       ||
-    id === "forest_kill_50_phys"       ||
-    id === "forest_kill_50_magic"      ||
-    id === "forest_kill_50_pet"        ||
-    id === "forest_boss_1"             ||
-    id === "smith_craft_weapon_t1"     ||
-    id === "smith_craft_armor_t1"      ||
-    id === "smith_enhance"             ||
-    id === "smith_craft_t1_gear_20"    ||
-    id === "smith_craft_weapon_t2"     ||
-    id === "smith_craft_armor_t2"      ||
-    id === "smith_craft_t2_gear_10"    ||
-    id === "smith_enhance_t2"          ||
-    id === "alch_craft_potion_t1"      ||
-    id === "alch_craft_bomb_t1"        ||
-    id === "alch_craft_t2_potion"      ||
-    id === "alch_craft_t2_tool"        ||
-    id === "alch_craft_mix"            ||
-    id === "alch_use_potion_or_tool"   ||
-    id === "alch_use_t2_potion_or_tool"||
-    id === "alch_mass_t2_supply"       ||
-    id === "cooking_basic_food_t1"     ||
-    id === "cooking_basic_drink_t1"    ||
-    id === "cooking_buff"              ||
-    id === "cooking_t2_food"           ||
-    id === "cooking_t2_drink"          ||
-    id === "cooking_t2_any"            ||
-    id === "cooking_variety"           ||
-    id === "cooking_use_food_or_drink" ||
-    id === "cooking_eat_t2_food"       ||
-    id === "cooking_drink_t2"          ||
-    id === "gather_basic"              ||
-    id === "gather_t1_any_30"          ||
-    id === "gather_t1_wood_30"         ||
-    id === "gather_t1_ore_30"          ||
-    id === "gather_t1_herb_30"         ||
-    id === "gather_t1_cloth_30"        ||
-    id === "gather_t1_leather_30"      ||
-    id === "gather_t1_water_30"        ||
-    id === "gather_t2_any_100"         ||
-    id === "gather_t2_wood_30"         ||
-    id === "gather_t2_ore_30"          ||
-    id === "gather_t2_herb_30"         ||
-    id === "gather_t2_cloth_30"        ||
-    id === "gather_t2_leather_30"      ||
-    id === "gather_t2_water_30"        ||
-    id === "gather_t3"                 ||
-    id === "food_hunt_t1_30"           ||
-    id === "food_fish_t1_30"           ||
-    id === "food_farm_t1_30"           ||
-    id === "food_hunt_t1_50"           ||
-    id === "food_fish_t1_50"           ||
-    id === "food_farm_t1_50"           ||
-    id === "food_mat"                  ||
-    id === "food_mat_150"              ||
-    id === "food_rare"                 ||
-    id === "warrior_rebirth_1"         ||
-    id === "mage_rebirth_1"            ||
-    id === "tamer_rebirth_1"           ||
-    // 特別依頼
-    id === "warrior_special_citizen"   ||
-    id === "mage_special_citizen"      ||
-    id === "tamer_special_citizen"     ||
-    id === "smith_special_citizen"     ||
-    id === "alch_special_citizen"      ||
-    id === "cooking_special_citizen"   ||
-    id === "gather_special_citizen"    ||
-    id === "food_special_citizen"
-  ) {
-    return {
-      count: raw.count || 0,
-      done: !!raw.done,
-      rewardTaken: !!raw.rewardTaken,
-      accepted: !!raw.accepted
-    };
-  }
-
   return {
+    count: raw.count || 0,
     done: !!raw.done,
-    note: raw.note || "",
     rewardTaken: !!raw.rewardTaken,
-    accepted: !!raw.accepted
+    accepted: !!raw.accepted,
+    note: raw.note || ""
   };
 }
 

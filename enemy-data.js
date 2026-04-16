@@ -13,7 +13,6 @@ const ENEMIES = {
     hp: 12,   // ほんの少しだけ増やす
     atk: 4,   // HP30に対して8発前後
     def: 0,
-    exp: 8,
     money: 3,
     isBoss: false
   },
@@ -23,7 +22,6 @@ const ENEMIES = {
     hp: 22,   // 4〜6発くらい
     atk: 6,   // ちょっとだけ痛い
     def: 1,
-    exp: 12,
     money: 5,
     isBoss: false
   },
@@ -35,7 +33,6 @@ const ENEMIES = {
     hp: 140,     // 素STR/VITに対して10ターン程度想定で増やす
     atk: 55,     // 10転生VIT96前後に対してそこそこ痛い
     def: 18,
-    exp: 30,
     money: 12,
     isBoss: false
   },
@@ -45,7 +42,6 @@ const ENEMIES = {
     hp: 170,
     atk: 60,
     def: 20,
-    exp: 38,
     money: 14,
     isBoss: false
   },
@@ -57,7 +53,6 @@ const ENEMIES = {
     hp: 260,
     atk: 85,
     def: 30,
-    exp: 65,
     money: 24,
     isBoss: false
   },
@@ -67,7 +62,6 @@ const ENEMIES = {
     hp: 300,
     atk: 95,
     def: 32,
-    exp: 80,
     money: 30,
     isBoss: false
   },
@@ -77,7 +71,6 @@ const ENEMIES = {
     hp: 340,
     atk: 105,
     def: 35,
-    exp: 100,
     money: 36,
     isBoss: false
   },
@@ -87,7 +80,6 @@ const ENEMIES = {
     hp: 420,
     atk: 120,
     def: 40,
-    exp: 160,
     money: 60,
     isBoss: false
   },
@@ -99,7 +91,6 @@ const ENEMIES = {
     hp: 650,
     atk: 155,
     def: 55,
-    exp: 210,
     money: 70,
     isBoss: false
   },
@@ -109,7 +100,6 @@ const ENEMIES = {
     hp: 720,
     atk: 165,
     def: 60,
-    exp: 250,
     money: 82,
     isBoss: false
   },
@@ -119,7 +109,6 @@ const ENEMIES = {
     hp: 680,
     atk: 175,
     def: 52,
-    exp: 270,
     money: 90,
     isBoss: false
   },

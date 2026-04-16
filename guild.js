@@ -185,6 +185,43 @@ const GUILD_ORDER = [
 ];
 
 // =======================
+// 食材ギルド用クエスト設定（仕様は変えず、IDと目標値だけテーブル化）
+// =======================
+
+const FOOD_QUEST_CONFIG = {
+  total: [
+    { id: "food_mat",     target: 70 },
+    { id: "food_mat_150", target: 150 },
+    // 特別依頼: 料理素材300個（定義上の desc/ヒントはそのまま）
+    { id: "food_special_citizen", target: 300 }
+  ],
+  byMode: {
+    hunt: [
+      { id: "food_hunt_t1_30", target: 30 },
+      { id: "food_hunt_t1_50", target: 50 }
+    ],
+    fish: [
+      { id: "food_fish_t1_30", target: 30 },
+      { id: "food_fish_t1_50", target: 50 }
+    ],
+    farm: [
+      { id: "food_farm_t1_30", target: 30 },
+      { id: "food_farm_t1_50", target: 50 }
+    ]
+  },
+  rare: [
+    { id: "food_rare", target: 1 }
+  ]
+};
+
+function applyQuestConfig(configList, increment) {
+  if (!Array.isArray(configList) || increment <= 0) return;
+  configList.forEach(q => {
+    updateQuestProgress(q.id, increment, q.target);
+  });
+}
+
+// =======================
 // 名声・ランク計算
 // =======================
 
@@ -298,12 +335,15 @@ function updateQuestProgress(id, increment, target) {
   };
 }
 
+// ★修正: 市民権フラグはここでは立てず、特別依頼の報酬受取時（guild2.js）にのみ立てる
 function checkCitizenshipUnlocked() {
-  if (window.citizenshipUnlocked) return;
+  // 以前はここで window.citizenshipUnlocked = true を立てていたが、
+  // 条件達成時点では市民権は未獲得なので、フラグ更新は行わない。
+  // ただし将来のデバッグ用途などのために、達成済みかどうかの判定自体は残しておく。
   for (const qid of GUILD_SPECIAL_QUEST_IDS) {
     const q = window.guildQuestProgress[qid];
     if (q && q.done) {
-      window.citizenshipUnlocked = true;
+      // ここでは何もしない（報酬受取時に onCitizenshipUnlockedFromGuild 経由でフラグ更新）
       break;
     }
   }
@@ -406,7 +446,7 @@ function onEnemyKilledForGuild(params) {
     updateQuestProgress("forest_boss_1", 1, 1);
   }
 
-  // 特別依頼の達成状況から市民権フラグを更新
+  // 特別依頼の達成状況チェック（フラグはここでは立てない）
   checkCitizenshipUnlocked();
 
   // ギルドタブ開いていたら更新
@@ -570,7 +610,7 @@ function onCraftCompletedForGuild(params) {
 }
 
 // 採取用：採取ギルド＆食材ギルドの依頼進行
-// params: { kind: "gather" | "food", total?: number, t1?: number, t2?: number, t3?: number, rare?: boolean, target?: string }
+// params: { kind: "gather" | "food", total?: number, t1?: number, t2?: number, t3?: number, rare?: boolean, target?: string, mode?: string }
 function onGatherCompletedForGuild(params) {
   if (!params) return;
   const kind = params.kind;
@@ -602,7 +642,6 @@ function onGatherCompletedForGuild(params) {
 
     // --- 種類別（T1/T2問わず） ---
     if (target && (t1 > 0 || t2 > 0)) {
-      const t1t2 = t1 + t2;
       if (target === "wood") {
         updateQuestProgress("gather_t1_wood_30", t1, 30);
         updateQuestProgress("gather_t2_wood_30", t2, 30);
@@ -628,28 +667,24 @@ function onGatherCompletedForGuild(params) {
     }
   }
 
-  // 食材ギルド: total 70個 / rare 1個＋カテゴリ別T1
+  // 食材ギルド: total / rare / モード別
   if (kind === "food") {
     const total = params.total || 0;
     const isRare = !!params.rare;
-    const mode = params.mode || null; // "hunt" / "fish" / "farm" を想定（gatherCooking側で詰める）
+    const mode = params.mode || null; // "hunt" / "fish" / "farm"
 
     if (total > 0) {
-      updateQuestProgress("food_mat", total, 70);
-      updateQuestProgress("food_special_citizen", total, 80);
+      // 合計食材系（70 / 150 / 300）
+      applyQuestConfig(FOOD_QUEST_CONFIG.total, total);
 
-      // T1カテゴリ別: ここでは total をそのまま足す（T1縛りは gatherCooking 側で担保する想定）
-      if (mode === "hunt") {
-        updateQuestProgress("food_hunt_t1_30", total, 30);
-      } else if (mode === "fish") {
-        updateQuestProgress("food_fish_t1_30", total, 30);
-      } else if (mode === "farm") {
-        updateQuestProgress("food_farm_t1_30", total, 30);
+      // 狩猟／釣り／農園モード別
+      if (mode && FOOD_QUEST_CONFIG.byMode[mode]) {
+        applyQuestConfig(FOOD_QUEST_CONFIG.byMode[mode], total);
       }
     }
 
     if (isRare) {
-      updateQuestProgress("food_rare", 1, 1);
+      applyQuestConfig(FOOD_QUEST_CONFIG.rare, 1);
     }
   }
 

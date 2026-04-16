@@ -3,20 +3,88 @@
 // ・市民権フラグの管理
 // ・ギルド側からの解放コールバック
 // ・UI更新フック（game-ui-3.js の refreshHousingStatusAndTab / html.js の updateHousingWarehouseTabs と連携）
+// ・土地レンタル状態の管理（ギルド寮 / 街の一室 / 郊外の土地）
+
+// ==============================
+// 初期化
+// ==============================
 
 // 既存セーブデータとの衝突を避けて初期化
 if (typeof window.citizenshipUnlocked === "undefined") {
   window.citizenshipUnlocked = false;
 }
 
-// ハウジング用の簡易ステート（今後の拡張用）
+// ハウジング用ステート（既存フィールドはそのまま残しつつ拡張）
 if (typeof window.housingState === "undefined") {
   window.housingState = {
     hasBase: false,     // 住宅を取得済みかどうか（将来用）
     baseLevel: 0,       // 住宅レベル（将来用）
-    lastGuildId: null   // 市民権をくれたギルドID（演出用）
+    lastGuildId: null,  // 市民権をくれたギルドID（演出用）
+
+    // 追加: 土地レンタル関連
+    landId: null,       // 現在借りている土地プランID ("guildDorm_warrior" など)
+    rentDueAt: null,    // 次の家賃支払期限（Unix ms）
+    rentUnpaid: false,  // 期限超過で滞納中かどうか
+    furnitureSlots: []  // 家具スロット情報（将来の拡張用）
   };
+} else {
+  // 既存セーブに対して、追加フィールドだけ安全に補完
+  const hs = window.housingState;
+  if (typeof hs.hasBase === "undefined") hs.hasBase = false;
+  if (typeof hs.baseLevel === "undefined") hs.baseLevel = 0;
+  if (typeof hs.lastGuildId === "undefined") hs.lastGuildId = null;
+  if (typeof hs.landId === "undefined") hs.landId = null;
+  if (typeof hs.rentDueAt === "undefined") hs.rentDueAt = null;
+  if (typeof hs.rentUnpaid === "undefined") hs.rentUnpaid = false;
+  if (!Array.isArray(hs.furnitureSlots)) hs.furnitureSlots = [];
 }
+
+// ==============================
+// 土地プラン定義
+// ==============================
+//
+// ギルド寮 / 街の一室 / 郊外の土地 の3系統だけを想定。
+// 仕様はここで完結していて、ゲームプレイ上の挙動は
+// ・週ごとの家賃
+// ・土地ごとの家具スロット数
+// ・土地種別(kind)に応じたボーナス方向
+// だけに留めている（具体ボーナスは他モジュール側で参照する）。
+
+window.HOUSING_LANDS = window.HOUSING_LANDS || {
+  // ギルド寮（例: 戦士ギルド寮）
+  // 実際にはギルドごとに複数定義してもよいが、
+  // ここではサンプルとして1つだけ用意しておく。
+  "guildDorm_warrior": {
+    id: "guildDorm_warrior",
+    kind: "guildDorm",
+    name: "戦士ギルド寮",
+    weeklyRent: 200,
+    baseSlots: 2,
+    guildId: "warrior"
+  },
+
+  // 街の一室（市民なら誰でも借りられる）
+  "cityRoom": {
+    id: "cityRoom",
+    kind: "cityRoom",
+    name: "街の一室",
+    weeklyRent: 800,
+    baseSlots: 3
+  },
+
+  // 郊外の土地（高めの維持費・スロット多め）
+  "suburbLand": {
+    id: "suburbLand",
+    kind: "suburbLand",
+    name: "郊外の土地",
+    weeklyRent: 2000,
+    baseSlots: 5
+  }
+};
+
+// ==============================
+// 市民権解放コールバック（既存仕様）
+// ==============================
 
 /**
  * ギルド側から「市民権を解放した」ときに呼んでもらうエントリポイント。
@@ -71,6 +139,206 @@ window.onCitizenshipUnlockedFromGuild = function(guildId) {
   }
 };
 
+// ==============================
+// 土地レンタル関連ヘルパ
+// ==============================
+
+function getHousingStateSafe() {
+  window.housingState = window.housingState || {};
+  const hs = window.housingState;
+  if (typeof hs.landId === "undefined") hs.landId = null;
+  if (typeof hs.rentDueAt === "undefined") hs.rentDueAt = null;
+  if (typeof hs.rentUnpaid === "undefined") hs.rentUnpaid = false;
+  if (!Array.isArray(hs.furnitureSlots)) hs.furnitureSlots = [];
+  if (typeof hs.hasBase === "undefined") hs.hasBase = false;
+  if (typeof hs.baseLevel === "undefined") hs.baseLevel = 0;
+  if (typeof hs.lastGuildId === "undefined") hs.lastGuildId = null;
+  return hs;
+}
+
+/**
+ * 現在の土地プランを取得（なければ null）。
+ */
+window.getCurrentHousingLand = function() {
+  const hs = getHousingStateSafe();
+  if (!hs.landId) return null;
+  const lands = window.HOUSING_LANDS || {};
+  return lands[hs.landId] || null;
+};
+
+/**
+ * 土地を借りられるかどうかのチェックだけ行う。
+ * 仕様:
+ *  - landId が存在しない場合はNG
+ *  - ギルド寮(kind: "guildDorm") の場合、対応ギルド所属が必須
+ *  - 市民権が必要であれば citizenshipUnlocked を参照
+ *  - 家賃分の money が無ければNG
+ */
+window.canRentLand = function(landId) {
+  const lands = window.HOUSING_LANDS || {};
+  const land = lands[landId];
+  if (!land) {
+    return { ok: false, reason: "存在しない土地" };
+  }
+
+  const hs = getHousingStateSafe();
+  if (hs.landId && hs.landId === landId) {
+    return { ok: false, reason: "すでに借りている" };
+  }
+
+  // ギルド寮の場合は対応ギルド所属が必要
+  if (land.kind === "guildDorm") {
+    const pgid = (typeof window.playerGuildId !== "undefined") ? window.playerGuildId : null;
+    if (!pgid || land.guildId && land.guildId !== pgid) {
+      return { ok: false, reason: "対応するギルドに所属していない" };
+    }
+  }
+
+  // 市民権必須にしたい土地があればここで判定（例: cityRoom, suburbLand）
+  if ((land.kind === "cityRoom" || land.kind === "suburbLand") && !window.citizenshipUnlocked) {
+    return { ok: false, reason: "市民権が必要だ" };
+  }
+
+  if (typeof money === "number" && money < land.weeklyRent) {
+    return { ok: false, reason: "お金が足りない" };
+  }
+
+  return { ok: true };
+};
+
+/**
+ * 土地を借りる本処理。
+ * money から家賃を即時支払い、rentDueAt を1週間後に設定。
+ */
+window.rentLand = function(landId) {
+  const lands = window.HOUSING_LANDS || {};
+  const land = lands[landId];
+  if (!land) {
+    if (typeof appendLog === "function") {
+      appendLog("[拠点] その土地は存在しない。");
+    }
+    return;
+  }
+
+  const check = window.canRentLand(landId);
+  if (!check.ok) {
+    if (typeof appendLog === "function") {
+      appendLog("[拠点] " + check.reason);
+    }
+    return;
+  }
+
+  const hs = getHousingStateSafe();
+
+  const rent = land.weeklyRent || 0;
+  if (typeof money === "number") {
+    money -= rent;
+  }
+
+  const weekMs = 7 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  hs.landId = land.id;
+  hs.rentDueAt = now + weekMs;
+  hs.rentUnpaid = false;
+
+  if (typeof appendLog === "function") {
+    appendLog(`[拠点] ${land.name} を1週間レンタルした（家賃 ${rent}G）`);
+  }
+
+  if (typeof refreshHousingFromState === "function") {
+    try { refreshHousingFromState(); } catch (e) {}
+  }
+  if (typeof updateDisplay === "function") {
+    try { updateDisplay(); } catch (e) {}
+  }
+};
+
+/**
+ * 家賃の期限をチェックし、期限超過なら rentUnpaid を true にする。
+ * 起動時や日次処理のタイミングで呼ぶ想定。
+ */
+window.checkHousingRent = function() {
+  const hs = getHousingStateSafe();
+  if (!hs.landId || !hs.rentDueAt) return;
+
+  const now = Date.now();
+  if (now > hs.rentDueAt && !hs.rentUnpaid) {
+    hs.rentUnpaid = true;
+    if (typeof appendLog === "function") {
+      appendLog("[拠点] 家賃の支払期限を過ぎてしまった。拠点効果が停止している。");
+    }
+    if (typeof refreshHousingFromState === "function") {
+      try { refreshHousingFromState(); } catch (e) {}
+    }
+  }
+};
+
+/**
+ * 家賃支払い。
+ * 支払いに成功すると rentDueAt を1週間後に延長し、rentUnpaid を false に戻す。
+ */
+window.payHousingRent = function() {
+  const hs = getHousingStateSafe();
+  if (!hs.landId) {
+    if (typeof appendLog === "function") {
+      appendLog("[拠点] 借りている土地がない。");
+    }
+    return;
+  }
+  const lands = window.HOUSING_LANDS || {};
+  const land = lands[hs.landId];
+  if (!land) {
+    if (typeof appendLog === "function") {
+      appendLog("[拠点] 土地情報が見つからない。");
+    }
+    return;
+  }
+
+  const rent = land.weeklyRent || 0;
+  if (typeof money === "number" && money < rent) {
+    if (typeof appendLog === "function") {
+      appendLog("[拠点] 家賃を払うお金が足りない。");
+    }
+    return;
+  }
+
+  if (typeof money === "number") {
+    money -= rent;
+  }
+
+  const weekMs = 7 * 24 * 60 * 60 * 1000;
+  hs.rentDueAt = Date.now() + weekMs;
+  hs.rentUnpaid = false;
+
+  if (typeof appendLog === "function") {
+    appendLog(`[拠点] 家賃 ${rent}G を支払った。1週間の契約を更新した。`);
+  }
+
+  if (typeof refreshHousingFromState === "function") {
+    try { refreshHousingFromState(); } catch (e) {}
+  }
+  if (typeof updateDisplay === "function") {
+    try { updateDisplay(); } catch (e) {}
+  }
+};
+
+/**
+ * 現在の拠点効果が有効かどうか。
+ * - landId が設定されている
+ * - rentUnpaid が false
+ * のとき true。
+ */
+window.isHousingActive = function() {
+  const hs = getHousingStateSafe();
+  if (!hs.landId) return false;
+  if (hs.rentUnpaid) return false;
+  return true;
+};
+
+// ==============================
+// UI側から状態を反映するヘルパ（既存＋拡張）
+// ==============================
+
 /**
  * 将来、ゲーム起動／ロード時に呼ばれて、
  * 市民権フラグに応じてUI側を更新するためのヘルパ。
@@ -79,10 +347,16 @@ window.onCitizenshipUnlockedFromGuild = function(guildId) {
  */
 window.refreshHousingFromState = function() {
   if (typeof refreshHousingStatusAndTab === "function") {
-    refreshHousingStatusAndTab();
+    try { refreshHousingStatusAndTab(); } catch (e) {}
   }
   // タブの表示状態もフラグから再反映しておく
   if (typeof updateHousingWarehouseTabs === "function") {
-    updateHousingWarehouseTabs();
+    try { updateHousingWarehouseTabs(); } catch (e) {}
+  }
+
+  // 拠点UI側で土地・家賃ステータスを描画したい場合があるので、
+  // ここで必要に応じて game-ui 側のレンダリング関数も呼べるようにしておく想定。
+  if (typeof renderHousingLandStatus === "function") {
+    try { renderHousingLandStatus(); } catch (e) {}
   }
 };
