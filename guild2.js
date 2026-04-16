@@ -156,7 +156,7 @@ function getGuildQuestList(guildId) {
   return all[guildId] || [];
 }
 
-// 進捗オブジェクトの形をそろえる（仕様は変えず、どのIDでも同じ形で返す）
+// 進捗オブジェクトの形をそろえる
 function getGuildQuestProg(id) {
   const raw = window.guildQuestProgress[id] || {};
   return {
@@ -187,9 +187,12 @@ function claimGuildQuestReward(guildId, questDef, isSpecial) {
     return;
   }
 
+  // 特別依頼（市民権クエスト）
   if (isSpecial) {
+    // 公式フラグを立てる
     window.citizenshipUnlocked = true;
 
+    // 進捗の保存
     const stored = window.guildQuestProgress[id] || {};
     stored.rewardTaken = true;
     stored.done = true;
@@ -200,15 +203,27 @@ function claimGuildQuestReward(guildId, questDef, isSpecial) {
       appendLog(`${GUILDS[guildId].name} の特別依頼「${questDef.name}」を達成し、市民権を獲得した！`);
     }
 
+    // ハウジング側の公式エントリポイントを呼ぶ
     if (typeof onCitizenshipUnlockedFromGuild === "function") {
       onCitizenshipUnlockedFromGuild(guildId);
+    } else {
+      // 念のため、直接UI更新だけでも行う保険
+      if (typeof refreshHousingStatusAndTab === "function") {
+        refreshHousingStatusAndTab();
+      }
+      if (typeof updateHousingWarehouseTabs === "function") {
+        updateHousingWarehouseTabs();
+      }
     }
 
     renderGuildQuests();
-    renderGuildRewards();
+    if (typeof renderGuildRewards === "function") {
+      renderGuildRewards();
+    }
     return;
   }
 
+  // 通常依頼
   if (questDef.fameReward && questDef.fameReward > 0) {
     addGuildFame(guildId, questDef.fameReward);
   }
