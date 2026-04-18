@@ -589,10 +589,13 @@ function rollFishSize(fishId) {
 // meta: { area, bait, size, date }
 function updateFishDex(fishId, meta) {
   if (!fishId) return;
-  const now = meta && meta.date ? meta.date : new Date();
+  const now  = meta && meta.date ? meta.date : new Date();
   const size = meta && typeof meta.size === "number" ? meta.size : null;
 
-  const entry = window.fishDex[fishId] || {
+  const prev    = window.fishDex[fishId] || null;
+  const prevMax = prev ? prev.maxSize || 0 : 0;
+
+  const entry = prev || {
     id: fishId,
     count: 0,
     maxSize: size || 0,
@@ -601,9 +604,23 @@ function updateFishDex(fishId, meta) {
   };
 
   entry.count += 1;
-  if (size != null && size > entry.maxSize) {
-    entry.maxSize = size;
+
+  let isFirstCatch = !prev;
+  let isNewRecord  = false;
+  let oldMaxForLog = prevMax;
+  let newMaxForLog = prevMax;
+
+  if (size != null) {
+    if (size > entry.maxSize) {
+      entry.maxSize = size;
+    }
+    if (!isFirstCatch && size > prevMax) {
+      isNewRecord  = true;
+      oldMaxForLog = prevMax;
+      newMaxForLog = size;
+    }
   }
+
   if (!entry.firstTime) {
     entry.firstTime = now.toISOString();
   }
@@ -613,6 +630,18 @@ function updateFishDex(fishId, meta) {
   // entry.byArea = { river: { count, maxSize }, ... } みたいに拡張も可
 
   window.fishDex[fishId] = entry;
+
+  // ★サイズ更新時のログ（appendLogがある場合のみ）
+  if (typeof appendLog === "function" && size != null) {
+    const m = FISH_MASTER[fishId];
+    const name = m ? m.name : fishId;
+
+    if (isFirstCatch) {
+      appendLog(`【釣り】${name}を初めて釣り上げた！ サイズ: ${size}cm`);
+    } else if (isNewRecord) {
+      appendLog(`【釣り】${name}の最大サイズ記録更新！ ${oldMaxForLog}cm → ${newMaxForLog}cm`);
+    }
+  }
 }
 
 // =======================

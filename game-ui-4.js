@@ -499,20 +499,37 @@ function buildStatusPage() {
     <!-- 採取統計 -->
     <div id="statusPageGatherStats" class="status-sub-page" style="display:none;">
       <h3>採取統計</h3>
-      <div id="gatherStatsContainer" class="status-block" style="max-height:300px; overflow:auto; font-size:12px;"></div>
 
-      <div id="statusGatherMaterials">
-        <h4>基本素材</h4>
-        <div id="gatherMaterialsList"></div>
+      <!-- 採取統計タブ内サブタブ -->
+      <div id="statusGatherSubTabs" style="margin-bottom:6px;">
+        <button id="statusGatherTabStats" class="status-gather-sub-tab active" data-page="gather-stats">統計一覧</button>
+        <button id="statusGatherTabFish"  class="status-gather-sub-tab"         data-page="gather-fishdex">魚図鑑</button>
+      </div>
 
-        <h4>中間素材</h4>
-        <div id="intermediateMaterialsList"></div>
+      <!-- 統計一覧ページ -->
+      <div id="statusGatherPageStats" class="status-gather-page" style="display:block;">
+        <div id="gatherStatsContainer" class="status-block" style="max-height:300px; overflow:auto; font-size:12px;"></div>
 
-        <h4>料理素材</h4>
-        <div id="cookingMaterialsList"></div>
+        <div id="statusGatherMaterials">
+          <h4>基本素材</h4>
+          <div id="gatherMaterialsList"></div>
 
-        <h4>採取拠点</h4>
-        <div id="gatherBaseStatus"></div>
+          <h4>中間素材</h4>
+          <div id="intermediateMaterialsList"></div>
+
+          <h4>料理素材</h4>
+          <div id="cookingMaterialsList"></div>
+
+          <h4>採取拠点</h4>
+          <div id="gatherBaseStatus"></div>
+        </div>
+      </div>
+
+      <!-- 魚図鑑ページ -->
+      <div id="statusGatherPageFish" class="status-gather-page" style="display:none;">
+        <h4>魚図鑑</h4>
+        <div id="gatherFishDexSummary" style="font-size:12px; color:#c0bedf; margin-bottom:4px;">図鑑: -</div>
+        <div id="gatherFishDexList" class="status-block" style="max-height:260px; overflow:auto; font-size:12px;"></div>
       </div>
     </div>
 
@@ -798,6 +815,111 @@ function buildStatusPage() {
     }
   }
 
+  // 魚図鑑（採取統計タブ内）描画
+  function renderFishDexInGatherTab() {
+    const summaryBox = document.getElementById("gatherFishDexSummary");
+    const listBox    = document.getElementById("gatherFishDexList");
+    if (!summaryBox || !listBox) return;
+
+    listBox.innerHTML = "";
+
+    if (typeof getFishDexList !== "function") {
+      summaryBox.textContent = "図鑑: データがありません。";
+      return;
+    }
+
+    const list = getFishDexList();
+    if (!list || !list.length) {
+      summaryBox.textContent = "図鑑: まだ魚を釣っていない…";
+      return;
+    }
+
+    const discovered = list.filter(f => f.discovered);
+    const total      = list.length;
+    const rareCount  = discovered.filter(f => f.rarity === "legend" || f.rarity === "rare").length;
+
+    summaryBox.textContent = `図鑑: ${discovered.length}/${total} 種（レア魚 ${rareCount}種）`;
+
+    const table = document.createElement("table");
+    table.className = "mat-table";
+
+    const thead = document.createElement("thead");
+    const htr = document.createElement("tr");
+    ["名前", "レア度", "累計匹数", "最大サイズ"].forEach(label => {
+      const th = document.createElement("th");
+      th.textContent = label;
+      htr.appendChild(th);
+    });
+    thead.appendChild(htr);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    list.forEach(f => {
+      const tr = document.createElement("tr");
+      if (!f.discovered) {
+        tr.style.opacity = "0.6";
+      }
+
+      const tdName = document.createElement("td");
+      tdName.textContent = f.discovered ? f.name : "？？？";
+
+      const tdRare = document.createElement("td");
+      let rareText = "-";
+      if (f.rarity === "legend")      rareText = "伝説";
+      else if (f.rarity === "rare")   rareText = "レア";
+      else if (f.rarity === "uncommon") rareText = "アンコモン";
+      else rareText = "ノーマル";
+      tdRare.textContent = rareText;
+
+      const tdCount = document.createElement("td");
+      tdCount.textContent = f.discovered ? (f.count || 0) : 0;
+
+      const tdSize = document.createElement("td");
+      tdSize.textContent = f.discovered ? ((f.maxSize || 0) + "cm") : "-";
+
+      tr.appendChild(tdName);
+      tr.appendChild(tdRare);
+      tr.appendChild(tdCount);
+      tr.appendChild(tdSize);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    listBox.appendChild(table);
+  }
+
+  // 採取統計タブ内サブタブ切り替え
+  const gatherTabStats  = document.getElementById("statusGatherTabStats");
+  const gatherTabFish   = document.getElementById("statusGatherTabFish");
+  const gatherPageStats = document.getElementById("statusGatherPageStats");
+  const gatherPageFish  = document.getElementById("statusGatherPageFish");
+
+  function setStatusGatherSubPage(kind) {
+    if (!gatherTabStats || !gatherTabFish || !gatherPageStats || !gatherPageFish) return;
+
+    const isStats = kind === "stats";
+    const isFish  = kind === "fish";
+
+    gatherTabStats.classList.toggle("active", isStats);
+    gatherTabFish.classList.toggle("active", isFish);
+
+    gatherPageStats.style.display = isStats ? "" : "none";
+    gatherPageFish.style.display  = isFish  ? "" : "none";
+
+    if (isStats) {
+      renderGatherStatsTable();
+      renderGatherMaterialTables();
+    }
+    if (isFish) {
+      renderFishDexInGatherTab();
+    }
+  }
+
+  if (gatherTabStats && gatherTabFish) {
+    gatherTabStats.addEventListener("click", () => setStatusGatherSubPage("stats"));
+    gatherTabFish.addEventListener("click",  () => setStatusGatherSubPage("fish"));
+    setStatusGatherSubPage("stats");
+  }
+
   function setStatusSubPage(kind) {
     if (!tabMain || !tabGather || !tabSkill ||
         !pageMain || !pageGather || !pageSkill) return;
@@ -815,8 +937,8 @@ function buildStatusPage() {
     pageSkill.style.display  = isSkill  ? "" : "none";
 
     if (isGather) {
-      renderGatherStatsTable();
-      renderGatherMaterialTables();
+      // 採取統計タブに入ったら、統計サブタブを初期表示
+      setStatusGatherSubPage("stats");
     }
     if (isSkill) {
       renderSkillTreeBonusList();
