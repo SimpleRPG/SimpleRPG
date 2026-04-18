@@ -354,6 +354,14 @@ function gatherCooking(mode) {
     added = Math.max(1, Math.floor(added * (1 + rate)));
   }
 
+  // ★日替わりボーナス: 料理採取用（hunt/fish）の量ボーナス
+  if (typeof getDailyGatherBonus === "function") {
+    const daily = getDailyGatherBonus(mode); // "hunt" or "fish"
+    if (daily && typeof daily.amountRate === "number" && daily.amountRate !== 1) {
+      added = Math.max(1, Math.floor(added * daily.amountRate));
+    }
+  }
+
   // ★肉の餌ペナルティ: 釣りかつ currentFishingBait が strong のとき
   // 50% の確率で採れたスタックから 1 個減らす（最低1個保証なし）
   if (mode === "fish" && window.currentFishingBait === "strong") {
@@ -799,6 +807,14 @@ function gather(){
   const lukBonus = (Math.random() < LUK_ * 0.01) ? 1 : 0;
   added += jobBonus + lukBonus;
   if (added < 0) added = 0;
+
+  // ★ 日替わりボーナス: 通常採取の量ボーナス
+  if (typeof getDailyGatherBonus === "function") {
+    const daily = getDailyGatherBonus(target); // "wood" など
+    if (daily && typeof daily.amountRate === "number" && daily.amountRate !== 1) {
+      added = Math.max(0, Math.floor(added * daily.amountRate));
+    }
+  }
 
   // ★ 空腹・水分による「採取失敗」抽選（ボーナスとは別）
   if (typeof currentHunger === "number" && typeof currentThirst === "number") {

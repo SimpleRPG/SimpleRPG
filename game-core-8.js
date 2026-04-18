@@ -12,23 +12,61 @@ window.battleCountSinceDurability = window.battleCountSinceDurability || 0;
 function onEnemyDefeatedCore(enemyInst, killFlag, killSource) {
   if (!enemyInst) return;
 
+  // ===== 経験値加算 =====
   const expGain = (typeof getBattleExpPerWin === "function")
     ? getBattleExpPerWin(enemyInst)
     : (enemyInst.exp || BASE_EXP_PER_BATTLE || 5);
 
-  const moneyGain = enemyInst.money != null ? enemyInst.money : 10;
+  // ===== ベースゴールド（敵インスタンスの money、なければ10G） =====
+  let moneyGain = enemyInst.money != null ? enemyInst.money : 10;
 
+  // ===== スキルツリー：戦闘ゴールドボーナス =====
+  // battleSkillTreeBonus.moneyGainRateBattle は game-core-3.js 側で
+  // refreshBattleSkillTreeBonus によりキャッシュ済みの前提。
+  if (typeof battleSkillTreeBonus === "object" &&
+      typeof battleSkillTreeBonus.moneyGainRateBattle === "number" &&
+      battleSkillTreeBonus.moneyGainRateBattle > 0) {
+    const r = battleSkillTreeBonus.moneyGainRateBattle;
+    moneyGain = Math.floor(moneyGain * (1 + r));
+  }
+
+  // ===== 日替わり職業ボーナス：戦闘ゴールド＋ドロップ率 =====
+  // daily-bonus.js の getDailyBattleBonus(jobId) を利用。
+  let dropRateBonus = 1.0;
+  if (typeof getDailyBattleBonus === "function" &&
+      typeof jobId === "number") {
+    const b = getDailyBattleBonus(jobId);
+    if (b) {
+      if (typeof b.goldRate === "number" && b.goldRate > 0) {
+        moneyGain = Math.floor(moneyGain * b.goldRate);
+      }
+      if (typeof b.dropRate === "number" && b.dropRate > 0) {
+        dropRateBonus = b.dropRate;
+      }
+    }
+  }
+
+  // ===== ログ（経験値＋最終ゴールド） =====
   appendLog(
     `${enemyInst.name}を倒した！ 経験値${expGain}と${moneyGain}Gを手に入れた`
   );
 
+  // ===== EXP / GOLD 実反映 =====
   addExp(expGain);
   money += moneyGain;
 
+  // ===== ドロップ処理（あれば、日替わりボーナス倍率を渡す） =====
+  // rollEnemyDrops(enemyId, rateBonus) 形式を想定。未定義なら何もしない。
+  if (typeof rollEnemyDrops === "function") {
+    rollEnemyDrops(enemyInst.id, dropRateBonus);
+  }
+
+  // ===== ペットEXP（既存仕様通りプレイヤーの半分） =====
   if (typeof addPetExp === "function") {
     addPetExp(Math.floor(expGain / 2));
   }
 
+  // ===== 空腹・水分消費（行動扱い） =====
   if (typeof handleHungerThirstOnAction === "function") {
     handleHungerThirstOnAction("battleWin");
   }
@@ -863,7 +901,7 @@ function logGatherBaseRequiredMats(matKey, currentLv, nextLv, needInter, needSta
     const haveStar = intermediateMats["starShard"] || 0;
     lines.push(`- starShard: 必要 ${needStar} 個 / 所持 ${haveStar} 個`);
   }
-  appendLog(lines.join("\n"));
+  appendLog(lines.join("\\n"));
 }
 
 const GATHER_BASE_UPGRADE_DATA = {
@@ -1054,8 +1092,8 @@ function tryUpgradeGatherBase(matKey) {
   }
   const skLv = gatherSkills[matKey].lv || 0;
   if (skLv < def.reqGatherLv) {
-    const label = getGatherSkillLabel(matKey);
-    appendLog(`この拠点をLv${nextLv}にするには、採取スキル(${label}) Lv${def.reqGatherLv}が必要だ。`);
+    const labelNeed = getGatherSkillLabel(matKey);
+    appendLog(`この拠点をLv${nextLv}にするには、採取スキル(${labelNeed}) Lv${def.reqGatherLv}が必要だ。`);
     return;
   }
 
@@ -1090,6 +1128,7 @@ function tryUpgradeGatherBase(matKey) {
 
   logGatherBaseRequiredMats(matKey, currentLv, nextLv, needInter, needStar);
 
+  // 所持数チェック
   for (const iid in needInter) {
     const need = needInter[iid] || 0;
     const have = intermediateMats[iid] || 0;
@@ -1107,11 +1146,13 @@ function tryUpgradeGatherBase(matKey) {
     }
   }
 
+  // 中間素材を消費
   for (const iid in needInter) {
     const need = needInter[iid] || 0;
     intermediateMats[iid] = (intermediateMats[iid] || 0) - need;
     if (intermediateMats[iid] < 0) intermediateMats[iid] = 0;
   }
+  // 星屑を消費
   if (needStar > 0) {
     intermediateMats["starShard"] =
       (intermediateMats["starShard"] || 0) - needStar;

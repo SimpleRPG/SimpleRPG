@@ -608,6 +608,14 @@ function craftWeapon(){
     ? getCraftSuccessBonusByTrait()
     : 0;
 
+  // ★日替わりボーナス: 武器クラフト成功率
+  if (typeof getDailyCraftBonus === "function") {
+    const daily = getDailyCraftBonus("weapon");
+    if (daily && typeof daily.successAdd === "number") {
+      successRate += daily.successAdd;
+    }
+  }
+
   successRate = Math.min(1, successRate + guildBonus + traitBonus);
 
   consumeMaterials(recipe.cost);
@@ -669,6 +677,14 @@ function craftArmor(){
     ? getCraftSuccessBonusByTrait()
     : 0;
 
+  // ★日替わりボーナス: 防具クラフト成功率
+  if (typeof getDailyCraftBonus === "function") {
+    const daily = getDailyCraftBonus("armor");
+    if (daily && typeof daily.successAdd === "number") {
+      successRate += daily.successAdd;
+    }
+  }
+
   successRate = Math.min(1, successRate + guildBonus + traitBonus);
 
   consumeMaterials(recipe.cost);
@@ -729,6 +745,14 @@ function craftPotion(){
   const traitBonus = (typeof getCraftSuccessBonusByTrait === "function")
     ? getCraftSuccessBonusByTrait()
     : 0;
+
+  // ★日替わりボーナス: ポーションクラフト成功率
+  if (typeof getDailyCraftBonus === "function") {
+    const daily = getDailyCraftBonus("potion");
+    if (daily && typeof daily.successAdd === "number") {
+      successRate += daily.successAdd;
+    }
+  }
 
   successRate = Math.min(1, successRate + guildBonus + traitBonus);
 
@@ -793,6 +817,14 @@ function craftTool(){
   const traitBonus = (typeof getCraftSuccessBonusByTrait === "function")
     ? getCraftSuccessBonusByTrait()
     : 0;
+
+  // ★日替わりボーナス: 道具クラフト成功率
+  if (typeof getDailyCraftBonus === "function") {
+    const daily = getDailyCraftBonus("tool");
+    if (daily && typeof daily.successAdd === "number") {
+      successRate += daily.successAdd;
+    }
+  }
 
   successRate = Math.min(1, successRate + guildBonus + traitBonus);
 
@@ -920,6 +952,14 @@ function craftFood(){
     ? getCraftSuccessBonusByTrait()
     : 0;
 
+  // ★日替わりボーナス: 料理クラフト成功率（食べ物）
+  if (typeof getDailyCraftBonus === "function") {
+    const daily = getDailyCraftBonus("food");
+    if (daily && typeof daily.successAdd === "number") {
+      successRate += daily.successAdd;
+    }
+  }
+
   successRate = Math.min(1, successRate + guildBonus + traitBonus);
 
   if (Math.random() >= successRate) {
@@ -1003,6 +1043,14 @@ function craftDrink(){
   const traitBonus = (typeof getCraftSuccessBonusByTrait === "function")
     ? getCraftSuccessBonusByTrait()
     : 0;
+
+  // ★日替わりボーナス: 料理クラフト成功率（飲み物）
+  if (typeof getDailyCraftBonus === "function") {
+    const daily = getDailyCraftBonus("drink");
+    if (daily && typeof daily.successAdd === "number") {
+      successRate += daily.successAdd;
+    }
+  }
 
   successRate = Math.min(1, successRate + guildBonus + traitBonus);
 

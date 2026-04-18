@@ -697,7 +697,9 @@ const JOB_DESCS = {
   3: "アイテムやポーションに長けた職。準備したアイテムで戦いを有利にする。"
 };
 
-document.addEventListener("DOMContentLoaded", () => {
+// ★ DOMが構築されたあと（buildStatusPage/buildAppLayout 後）に手動で呼ぶ
+//   initJobPetRebirthUI 内から呼び出す想定。
+function setupJobSelectUI() {
   const jobButtons    = document.querySelectorAll(".job-select-btn");
   const jobDescArea   = document.getElementById("jobDescArea");
   const jobConfirmBtn = document.getElementById("jobConfirmBtn");
@@ -723,8 +725,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   jobConfirmBtn.addEventListener("click", () => {
     if (selectedJobTemp == null) return;
-
-    // 既存仕様どおりの職業変更処理に委譲
     applyJobChange(selectedJobTemp);
   });
-});
+}

@@ -249,6 +249,24 @@ function harvestFarmSlot(index) {
   const id = harvestId;
   let amount = getRandomHarvestAmount();
 
+  // ★日替わりボーナス: 農園収穫量（畑=field→gather_farm / 菜園=garden→gather_garden）
+  if (typeof getDailyGatherBonus === "function") {
+    const info = FARM_CROPS[id];
+    if (info && info.category) {
+      const key =
+        (info.category === "field")  ? "farm"   :
+        (info.category === "garden") ? "garden" :
+        null;
+
+      if (key) {
+        const daily = getDailyGatherBonus(key);
+        if (daily && typeof daily.amountRate === "number" && daily.amountRate !== 1) {
+          amount = Math.max(1, Math.floor(amount * daily.amountRate));
+        }
+      }
+    }
+  }
+
   // ★ウサギなどのペット特性による収穫ボーナス（別枠加算）
   if (typeof getGatherBonusByTrait === "function") {
     const extra = getGatherBonusByTrait("farm") || 0;
@@ -630,6 +648,7 @@ function initFarmSystem() {
     updateFarmUI();
   }
 }
+
 // 畑・菜園全体を収穫（ready のものだけ）
 function harvestFarmAll() {
   const st = window.farmState;

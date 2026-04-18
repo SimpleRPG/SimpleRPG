@@ -50,7 +50,7 @@ const SKILL_TREE_NODES = [
     type: "combat",
     x: -1, y: 1,
     name: "防衛姿勢 I",
-    desc: "攻撃を受けるその瞬間、身体が自然と最小限の被害で済む位置を選ぶようになる。（受けるダメージがわずかに軽減）",
+    desc: "攻撃を受けるその瞬間、身体が自然と最小限の被害で済む位置を選ぶようになる。（受けるダメージが少し軽減）",
     costMoney: 4000,
     costIntermediates: {},
     effect: { combatGuardReductionRate: 0.03 }
@@ -671,11 +671,10 @@ function renderSkillTree(containerId) {
     const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
     line.setAttribute("x1", start.x.toString());
     line.setAttribute("y1", start.y.toString());
-    line.setAttribute("x2", end.y.toString()); // ←元のコードのまま
+    line.setAttribute("x2", end.x.toString());
     line.setAttribute("y2", end.y.toString());
     line.setAttribute("data-edge-id", `${edge.aId}__${edge.bId}`);
-    // マスクは現状見た目に影響させていない
-    // line.setAttribute("mask", "url(#skillTreeLinesMask)");
+    // line.setAttribute("mask", "url(#skillTreeLinesMask)"); // 今は未使用
     line.classList.add("skill-tree-edge");
 
     const aState = getSkillNodeState(getSkillNodeById(edge.aId));
@@ -701,9 +700,7 @@ function renderSkillTree(containerId) {
   highlightNeighbors(window.selectedSkillNodeId);
   applySkillTreeFilter();
   renderSkillTreeSummary();
-
-  // ★ パン機能は一旦無効化（クリック位置ズレ防止）
-  // enableSkillTreePan();
+  enableSkillTreePan(); // ← 有効化
 }
 
 function selectSkillNode(nodeId) {
@@ -864,10 +861,8 @@ function renderSkillTreeSummary() {
 }
 
 // =======================
-// スキルツリーのドラッグパン（今回は未使用）
+// スキルツリーのドラッグパン＋ピンチズーム
 // =======================
-// クリックズレ原因になっていたので、今は renderSkillTree から呼ばずに置いておくだけ。
-// 将来「パンを復活したくなったら」ここを見直す。
 function enableSkillTreePan() {
   const svg = document.getElementById("skillTreeSvg");
   if (!svg) return;
@@ -878,6 +873,11 @@ function enableSkillTreePan() {
   let isPanning = false;
   let startPoint = { x: 0, y: 0 };
   let startViewBox = null;
+
+  // ピンチ用
+  let isPinching = false;
+  let pinchStartDist = 0;
+  let pinchStartViewBox = null;
 
   function getViewBox() {
     const vb = svg.viewBox.baseVal;
@@ -904,31 +904,98 @@ function enableSkillTreePan() {
     return { x: svgP.x, y: svgP.y };
   }
 
+  function distanceTouches(t1, t2) {
+    const dx = t2.clientX - t1.clientX;
+    const dy = t2.clientY - t1.clientY;
+    return Math.hypot(dx, dy);
+  }
+
   function onPointerDown(e) {
+    if (e.touches && e.touches.length === 2) {
+      // ピンチ開始
+      isPinching = true;
+      isPanning = false;
+
+      pinchStartDist = distanceTouches(e.touches[0], e.touches[1]);
+      pinchStartViewBox = getViewBox();
+      e.preventDefault();
+      return;
+    }
+
+    if (e.touches && e.touches.length === 1) {
+      // 1本指ドラッグでパン
+      isPanning = true;
+      isPinching = false;
+      startPoint = getSvgPointFromEvent(e);
+      startViewBox = getViewBox();
+      e.preventDefault();
+      return;
+    }
+
+    // マウス
     isPanning = true;
+    isPinching = false;
     startPoint = getSvgPointFromEvent(e);
     startViewBox = getViewBox();
     e.preventDefault();
   }
 
   function onPointerMove(e) {
-    if (!isPanning || !startViewBox) return;
-    const p = getSvgPointFromEvent(e);
-    const dx = p.x - startPoint.x;
-    const dy = p.y - startPoint.y;
+    // ピンチ中
+    if (isPinching && e.touches && e.touches.length === 2 && pinchStartViewBox) {
+      const newDist = distanceTouches(e.touches[0], e.touches[1]);
+      if (!pinchStartDist) return;
 
-    const newVb = {
-      x: startViewBox.x - dx,
-      y: startViewBox.y - dy,
-      width: startViewBox.width,
-      height: startViewBox.height
-    };
-    setViewBox(newVb);
-    e.preventDefault();
+      let scale = pinchStartDist / newDist; // 指が広がると newDist > start → scale < 1 → ズームイン
+      // ズーム範囲の簡易制限
+      scale = Math.max(0.4, Math.min(scale, 3.0));
+
+      const vb = {
+        x: pinchStartViewBox.x + (pinchStartViewBox.width  * (1 - scale)) / 2,
+        y: pinchStartViewBox.y + (pinchStartViewBox.height * (1 - scale)) / 2,
+        width:  pinchStartViewBox.width  * scale,
+        height: pinchStartViewBox.height * scale
+      };
+      setViewBox(vb);
+      e.preventDefault(); // ページ全体のズームを防ぐ
+      return;
+    }
+
+    // パン中
+    if (isPanning && startViewBox) {
+      const p = getSvgPointFromEvent(e);
+      const dx = p.x - startPoint.x;
+      const dy = p.y - startPoint.y;
+
+      const newVb = {
+        x: startViewBox.x - dx,
+        y: startViewBox.y - dy,
+        width: startViewBox.width,
+        height: startViewBox.height
+      };
+      setViewBox(newVb);
+      e.preventDefault();
+    }
   }
 
-  function onPointerUp() {
+  function onPointerUp(e) {
     isPanning = false;
+
+    if (e.touches && e.touches.length > 0) {
+      // まだ指が残っている場合は、その本数に応じて状態を更新
+      if (e.touches.length === 1) {
+        isPinching = false;
+        isPanning = true;
+        startPoint = getSvgPointFromEvent(e);
+        startViewBox = getViewBox();
+      } else if (e.touches.length >= 2) {
+        isPinching = true;
+        pinchStartDist = distanceTouches(e.touches[0], e.touches[1]);
+        pinchStartViewBox = getViewBox();
+      }
+    } else {
+      isPinching = false;
+    }
   }
 
   svg.addEventListener("mousedown", onPointerDown);
@@ -937,8 +1004,8 @@ function enableSkillTreePan() {
 
   svg.addEventListener("touchstart", onPointerDown, { passive: false });
   svg.addEventListener("touchmove", onPointerMove, { passive: false });
-  window.addEventListener("touchend", onPointerUp);
-  window.addEventListener("touchcancel", onPointerUp);
+  svg.addEventListener("touchend", onPointerUp);
+  svg.addEventListener("touchcancel", onPointerUp);
 }
 
 // 初期化は呼び出し側で renderSkillTree("skillTreePanel") する想定

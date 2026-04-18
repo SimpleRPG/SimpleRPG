@@ -3,7 +3,9 @@
 
 console.log("game-ui.js srt");
 
-// 画面サイズに応じてレイアウトクラスを付ける
+// ---------------------------------------
+// レイアウト切り替え
+// ---------------------------------------
 function applyResponsiveLayout() {
   const w = window.innerWidth;
   const root = document.documentElement;
@@ -19,7 +21,9 @@ function applyResponsiveLayout() {
   }
 }
 
-// 任意のボタンを「押している間だけ連打」させる共通ヘルパー（PC＋スマホ）
+// ---------------------------------------
+// 任意ボタンを「押している間だけ連打」させるヘルパー
+// ---------------------------------------
 function setupAutoRepeatButton(btn, action, intervalMs = 100) {
   if (!btn || typeof action !== "function") return;
 
@@ -54,7 +58,9 @@ function setupAutoRepeatButton(btn, action, intervalMs = 100) {
   btn.addEventListener("touchcancel", stop);
 }
 
-// ★ 追加: 今アクティブなクラフトカテゴリのコスト表示を更新する共通ヘルパ
+// ---------------------------------------
+// クラフトコスト再計算ヘルパー
+// ---------------------------------------
 function refreshCurrentCraftCost() {
   const infoEl = document.getElementById("craftCostInfo");
   if (!infoEl) return;
@@ -97,6 +103,7 @@ function refreshCurrentCraftCost() {
     const sub = activeSubTab ? activeSubTab.dataset.sub : "food";
     const foodSel  = document.getElementById("foodSelect");
     const drinkSel = document.getElementById("drinkSelect");
+
     if (sub === "drink") {
       if (drinkSel && drinkSel.value) {
         updateCraftCostInfo("cookingDrink", drinkSel.value);
@@ -113,10 +120,11 @@ function refreshCurrentCraftCost() {
   infoEl.textContent = "必要素材：-";
 }
 
+// ---------------------------------------
+// DOMContentLoaded 後の初期化
+// ---------------------------------------
 window.addEventListener("DOMContentLoaded", () => {
-  // =======================
-  // 初期化
-  // =======================
+  // コア初期化
   if (typeof initGame === "function") {
     initGame();
   }
@@ -124,13 +132,12 @@ window.addEventListener("DOMContentLoaded", () => {
   applyResponsiveLayout();
   window.addEventListener("resize", applyResponsiveLayout);
 
-  // =======================
+  // --------------------
   // メインタブ切り替え
-  // =======================
-
+  // --------------------
   const tabButtonsMap = {
     tabGather:    "pageGather",
-    // tabEquip は HTML 上コメントアウトのまま
+    // tabEquip はHTML側でコメントアウト
     tabExplore:   "pageExplore",
     tabMagicDist: "pageMagicDist",
     tabWarehouse: "pageWarehouse",
@@ -162,7 +169,7 @@ window.addEventListener("DOMContentLoaded", () => {
       p.classList.toggle("active", isActive);
     });
 
-    // タブボタンの active 切り替え
+    // タブボタン active 切替
     Object.entries(tabButtonsMap).forEach(([btnId, pid]) => {
       const btn = document.getElementById(btnId);
       if (!btn) return;
@@ -170,7 +177,7 @@ window.addEventListener("DOMContentLoaded", () => {
       btn.classList.toggle("active", isActive);
     });
 
-    // 魔巧区タブ
+    // 魔巧区タブを開いたとき
     if (pageId === "pageMagicDist") {
       setMagicSubPage("magic-craft");
 
@@ -233,38 +240,37 @@ window.addEventListener("DOMContentLoaded", () => {
         refreshMarketOrderList();
       }
 
-      // ★装備強化の横の修理UIも、魔巧区タブを開いたタイミングで更新しておく
+      // 装備強化タブ用
       if (typeof refreshRepairUI === "function") {
         refreshRepairUI();
       }
     }
 
-    // 倉庫タブ
+    // 倉庫
     if (pageId === "pageWarehouse") {
       if (typeof refreshWarehouseUI === "function") {
         refreshWarehouseUI();
       }
     }
 
-    // ステータスタブ
+    // ステータス
     if (pageId === "pageStatus") {
       if (typeof refreshStatusUI === "function") {
         refreshStatusUI();
       }
     }
 
-    // ギルドタブ
+    // ギルド
     if (pageId === "pageGuild") {
       if (typeof renderGuildUI === "function") {
         renderGuildUI();
       }
-      // ギルド内サブタブ初期表示（仕様は guild.js にある renderX を呼ぶだけ）
       if (typeof setGuildSubPage === "function") {
         setGuildSubPage("list");
       }
     }
 
-    // 共通の再計算・UI更新
+    // 共通の再計算
     if (typeof recalcStats === "function") {
       recalcStats();
     }
@@ -290,13 +296,12 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // 初期タブは採取
+  // 初期タブ
   showTabByPageId("pageGather");
 
-  // =======================
+  // --------------------
   // 魔巧区内サブタブ
-  // =======================
-
+  // --------------------
   const magicTabButtons = document.querySelectorAll(".magic-tab-button");
   const magicSubPages = {
     "magic-craft":   document.getElementById("magicPageCraft"),
@@ -350,7 +355,6 @@ window.addEventListener("DOMContentLoaded", () => {
         refreshWarehouseUI();
       }
     } else if (key === "magic-enhance") {
-      // ★装備強化タブを開いたときに修理UIも更新
       if (typeof refreshRepairUI === "function") {
         refreshRepairUI();
       }
@@ -364,10 +368,9 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // =======================
+  // --------------------
   // ギルド内サブタブ
-  // =======================
-
+  // --------------------
   const guildTabList   = document.getElementById("guildTabList");
   const guildTabQuest  = document.getElementById("guildTabQuest");
   const guildTabReward = document.getElementById("guildTabReward");
@@ -379,7 +382,6 @@ window.addEventListener("DOMContentLoaded", () => {
   function setGuildSubPage(kind) {
     if (!guildPageList || !guildPageQuest || !guildPageReward) return;
 
-    // ボタンの active 切り替え
     const mapping = {
       list:   guildTabList,
       quest:  guildTabQuest,
@@ -390,18 +392,22 @@ window.addEventListener("DOMContentLoaded", () => {
       btn.classList.toggle("active", btn === mapping[kind]);
     });
 
-    // ページ表示切り替え
     guildPageList.style.display   = (kind === "list")   ? "" : "none";
     guildPageQuest.style.display  = (kind === "quest")  ? "" : "none";
     guildPageReward.style.display = (kind === "reward") ? "" : "none";
 
-    // 中身の再描画
     if (kind === "list") {
-      if (typeof renderGuildList === "function") renderGuildList();
+      if (typeof renderGuildList === "function") {
+        renderGuildList();
+      }
     } else if (kind === "quest") {
-      if (typeof renderGuildQuests === "function") renderGuildQuests();
+      if (typeof renderGuildQuests === "function") {
+        renderGuildQuests();
+      }
     } else if (kind === "reward") {
-      if (typeof renderGuildRewards === "function") renderGuildRewards();
+      if (typeof renderGuildRewards === "function") {
+        renderGuildRewards();
+      }
     }
   }
 
@@ -411,10 +417,9 @@ window.addEventListener("DOMContentLoaded", () => {
     guildTabReward.addEventListener("click", () => setGuildSubPage("reward"));
   }
 
-  // =======================
+  // --------------------
   // 市場タブ・ボタン
-  // =======================
-
+  // --------------------
   const marketSellPanel = document.getElementById("marketSellPanel");
   const marketBuyPanel  = document.getElementById("marketBuyPanel");
   const marketTabSell   = document.getElementById("marketTabSell");
@@ -531,15 +536,16 @@ window.addEventListener("DOMContentLoaded", () => {
     initMarketOrderItemSelect();
   }
 
-  // =======================
-  // ステータス詳細 ON/OFF
-  // =======================
-
+  // --------------------
+  // 詳細 ON/OFF
+  // --------------------
   const toggleDetailBtn = document.getElementById("toggleDetailBtn");
   const detailPanel = document.getElementById("detailPanel");
+
   if (toggleDetailBtn && detailPanel) {
     toggleDetailBtn.addEventListener("click", () => {
-      const visible = detailPanel.style.display === "block";
+      const currentDisplay = window.getComputedStyle(detailPanel).display;
+      const visible = currentDisplay !== "none";
       detailPanel.style.display = visible ? "none" : "block";
       toggleDetailBtn.textContent = visible ? "▼詳細" : "▲詳細";
     });
@@ -571,10 +577,9 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // =======================
+  // --------------------
   // 探索・戦闘関連
-  // =======================
-
+  // --------------------
   const exploreStartBtn = document.getElementById("exploreStartBtn");
   if (exploreStartBtn && typeof doExploreEvent === "function") {
     const exploreOnce = () => {
@@ -593,7 +598,6 @@ window.addEventListener("DOMContentLoaded", () => {
       exploreOnce();
     });
 
-    // デバッグ用: 押している間、探索イベント連打
     setupAutoRepeatButton(exploreStartBtn, () => {
       exploreOnce();
     }, 100);
@@ -614,7 +618,6 @@ window.addEventListener("DOMContentLoaded", () => {
     bossBtn.addEventListener("click", () => startBossBattleFromUI());
   }
 
-  // ★ 撤退ボタン
   const returnTownBtn = document.getElementById("returnTownBtn");
   if (returnTownBtn) {
     returnTownBtn.addEventListener("click", () => {
@@ -676,249 +679,9 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // =======================
-  // 採取関連
-  // =======================
-
-  const gatherFieldSel = document.getElementById("gatherField");
-  if (gatherFieldSel) {
-    const onFieldChange = () => {
-      if (typeof refreshGatherTargetSelect === "function") {
-        refreshGatherTargetSelect();
-      }
-      if (typeof updateFarmAreaVisibility === "function") {
-        updateFarmAreaVisibility();
-      }
-    };
-    gatherFieldSel.addEventListener("change", onFieldChange);
-  }
-
-  const farmSelect = document.getElementById("farmSelect");
-  if (farmSelect && typeof updateFarmAreaVisibility === "function") {
-    farmSelect.addEventListener("change", () => {
-      updateFarmAreaVisibility();
-    });
-  }
-
-  const gatherBtn = document.getElementById("gather");
-  if (gatherBtn && typeof gather === "function") {
-    const doGatherOnce = () => {
-      if (window.isExploring || window.currentEnemy) {
-        appendLog("探索中は採取できない！");
-        return;
-      }
-      gather();
-      updateGatherMatDetailText();
-      updateCraftMatDetailText();
-    };
-
-    // 単発クリック
-    gatherBtn.addEventListener("click", () => {
-      doGatherOnce();
-    });
-
-    // デバッグ用: 押している間採取連打
-    setupAutoRepeatButton(gatherBtn, () => {
-      doGatherOnce();
-    }, 100);
-  }
-
-  // 採取タブ内サブタブ
-  const gatherTabNormal  = document.getElementById("gatherTabNormal");
-  const gatherTabCooking = document.getElementById("gatherTabCooking");
-  const gatherPageNormal  = document.getElementById("gatherPageNormal");
-  const gatherPageCooking = document.getElementById("gatherPageCooking");
-
-  function setGatherSubTab(kind) {
-    if (!gatherPageNormal || !gatherPageCooking) return;
-    const tabs = [gatherTabNormal, gatherTabCooking];
-
-    tabs.forEach(btn => {
-      if (!btn) return;
-      const isActive =
-        (kind === "normal"  && btn === gatherTabNormal) ||
-        (kind === "cooking" && btn === gatherTabCooking);
-      btn.classList.toggle("active", isActive);
-    });
-
-    if (kind === "normal") {
-      gatherPageNormal.style.display  = "";
-      gatherPageCooking.style.display = "none";
-    } else {
-      gatherPageNormal.style.display  = "none";
-      gatherPageCooking.style.display = "";
-    }
-  }
-
-  if (gatherTabNormal && gatherTabCooking) {
-    gatherTabNormal.addEventListener("click", () => setGatherSubTab("normal"));
-    gatherTabCooking.addEventListener("click", () => setGatherSubTab("cooking"));
-    setGatherSubTab("normal");
-  }
-
-  // 食材調達内サブタブ
-  const gatherCookTabHunt = document.getElementById("gatherCookTabHunt");
-  const gatherCookTabFish = document.getElementById("gatherCookTabFish");
-  const gatherCookTabFarm = document.getElementById("gatherCookTabFarm");
-
-  const gatherCookPageHunt = document.getElementById("gatherCookPageHunt");
-  const gatherCookPageFish = document.getElementById("gatherCookPageFish");
-  const gatherCookPageFarm = document.getElementById("gatherCookPageFarm");
-
-  function setGatherCookingSubTab(kind) {
-    if (!gatherCookPageHunt || !gatherCookPageFish || !gatherCookPageFarm) return;
-
-    const tabs = [gatherCookTabHunt, gatherCookTabFish, gatherCookTabFarm];
-    tabs.forEach(btn => {
-      if (!btn) return;
-      const isActive =
-        (kind === "hunt" && btn === gatherCookTabHunt) ||
-        (kind === "fish" && btn === gatherCookTabFish) ||
-        (kind === "farm" && btn === gatherCookTabFarm);
-      btn.classList.toggle("active", isActive);
-    });
-
-    gatherCookPageHunt.style.display = (kind === "hunt") ? "" : "none";
-    gatherCookPageFish.style.display = (kind === "fish") ? "" : "none";
-    gatherCookPageFarm.style.display = (kind === "farm") ? "" : "none";
-
-    if (kind === "farm") {
-      if (typeof updateFarmAreaVisibility === "function") {
-        updateFarmAreaVisibility();
-      }
-    }
-  }
-
-  if (gatherCookTabHunt && gatherCookTabFish && gatherCookTabFarm) {
-    gatherCookTabHunt.addEventListener("click", () => setGatherCookingSubTab("hunt"));
-    gatherCookTabFish.addEventListener("click", () => setGatherCookingSubTab("fish"));
-    gatherCookTabFarm.addEventListener("click", () => setGatherCookingSubTab("farm"));
-    setGatherCookingSubTab("hunt");
-  }
-
-  // 釣り場・餌セレクト
-  window.currentFishingArea = window.currentFishingArea || "river";
-  window.currentFishingBait = window.currentFishingBait || "default";
-
-  const fishingAreaSelect = document.getElementById("fishingAreaSelect");
-  const fishingBaitSelect = document.getElementById("fishingBaitSelect");
-
-  if (fishingAreaSelect) {
-    fishingAreaSelect.addEventListener("change", () => {
-      window.currentFishingArea = fishingAreaSelect.value || "river";
-    });
-  }
-  if (fishingBaitSelect) {
-    fishingBaitSelect.addEventListener("change", () => {
-      window.currentFishingBait = fishingBaitSelect.value || "default";
-    });
-  }
-
-  const gatherHuntBtn = document.getElementById("gatherHuntBtn");
-  const gatherFishBtn = document.getElementById("gatherFishBtn");
-
-  if (gatherHuntBtn && typeof gatherCooking === "function") {
-    const doHuntOnce = () => {
-      if (window.isExploring || window.currentEnemy) {
-        appendLog("探索中は採取できない！");
-        return;
-      }
-      gatherCooking("hunt");
-      updateGatherMatDetailText();
-    };
-
-    gatherHuntBtn.addEventListener("click", () => {
-      doHuntOnce();
-    });
-
-    // デバッグ用: 狩猟連打
-    setupAutoRepeatButton(gatherHuntBtn, () => {
-      doHuntOnce();
-    }, 100);
-  }
-
-  if (gatherFishBtn && typeof gatherCooking === "function") {
-    const doFishOnce = () => {
-      if (window.isExploring || window.currentEnemy) {
-        appendLog("探索中は採取できない！");
-        return;
-      }
-      gatherCooking("fish");
-      updateGatherMatDetailText();
-    };
-
-    gatherFishBtn.addEventListener("click", () => {
-      doFishOnce();
-    });
-
-    // デバッグ用: 釣り連打
-    setupAutoRepeatButton(gatherFishBtn, () => {
-      doFishOnce();
-    }, 100);
-  }
-
-  if (typeof refreshGatherFieldSelect === "function") {
-    refreshGatherFieldSelect();
-  }
-  if (typeof updateFarmAreaVisibility === "function") {
-    updateFarmAreaVisibility();
-  }
-
-  // =======================
-  // 中間素材クラフト
-  // =======================
-
-  function initIntermediateCraft() {
-    const sel = document.getElementById("intermediateSelect");
-    const btn = document.getElementById("craftIntermediateBtn");
-    if (!sel || !btn || !Array.isArray(INTERMEDIATE_MATERIALS)) return;
-
-    sel.innerHTML = "";
-    INTERMEDIATE_MATERIALS.forEach(m => {
-      const opt = document.createElement("option");
-      opt.value = m.id;
-      opt.textContent = m.name;
-      sel.appendChild(opt);
-    });
-
-    function updateIntermediateInfo() {
-      const id = sel.value;
-      const infoEl = document.getElementById("craftCostInfo");
-      if (!id) {
-        if (infoEl) infoEl.textContent = "必要素材：-";
-        return;
-      }
-      updateCraftCostInfo("material", id);
-    }
-
-    sel.addEventListener("change", updateIntermediateInfo);
-    updateIntermediateInfo();
-
-    btn.addEventListener("click", () => {
-      if (window.isExploring || window.currentEnemy) {
-        appendLog("探索中はクラフトできない！");
-        return;
-      }
-      const id = sel.value;
-      if (!id) return;
-      if (typeof craftIntermediate === "function") {
-        craftIntermediate(id);
-        updateGatherMatDetailText();
-        updateCraftMatDetailText();
-        if (typeof refreshEquipSelects === "function") {
-          refreshEquipSelects();
-        }
-        refreshCurrentCraftCost();
-      }
-    });
-  }
-
-  initIntermediateCraft();
-
-  // =======================
+  // --------------------
   // クラフトカテゴリタブ
-  // =======================
-
+  // --------------------
   const craftCatTabs = document.querySelectorAll(".craft-cat-tab");
   const craftPanels = {
     weapon:   document.getElementById("craftPanelWeapon"),
@@ -988,10 +751,9 @@ window.addEventListener("DOMContentLoaded", () => {
 
   setCraftCategory("weapon");
 
-  // =======================
-  // 料理サブタブ初期化
-  // =======================
-
+  // --------------------
+  // 料理サブタブ
+  // --------------------
   function initCookingSubTabs() {
     const subTabs = document.querySelectorAll(".cook-sub-tab");
     const panelFood  = document.getElementById("cookPanelFood");
@@ -1037,10 +799,9 @@ window.addEventListener("DOMContentLoaded", () => {
 
   initCookingSubTabs();
 
-  // =======================
+  // --------------------
   // クラフトボタン・セレクト
-  // =======================
-
+  // --------------------
   const weaponCraftBtn = document.getElementById("craftWeaponBtn");
   if (weaponCraftBtn && typeof craftWeapon === "function") {
     weaponCraftBtn.addEventListener("click", () => {
@@ -1161,10 +922,9 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // =======================
-  // 装備関連（強化＋修理）
-  // =======================
-
+  // --------------------
+  // 装備強化・修理
+  // --------------------
   const enhanceWeaponBtn = document.getElementById("enhanceWeaponBtn");
   if (enhanceWeaponBtn && typeof enhanceWeapon === "function") {
     enhanceWeaponBtn.addEventListener("click", () => {
@@ -1187,7 +947,6 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ★追加: 装備修理（装備強化の横に置いたセレクト＆ボタンをバインド）
   const repairTargetSelect = document.getElementById("repairTargetSelect");
   const repairExecBtn      = document.getElementById("repairExecBtn");
 
@@ -1203,10 +962,9 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // =======================
-  // 農園のお世話（連打対応）
-  // =======================
-
+  // --------------------
+  // 農園お世話（連打対応）
+  // --------------------
   const careFarmAllBtn = document.getElementById("careFarmAllBtn");
   if (careFarmAllBtn && typeof careFarmAll === "function") {
     const careOnce = () => {
@@ -1217,37 +975,37 @@ window.addEventListener("DOMContentLoaded", () => {
       careFarmAll();
     };
 
-    // 単発クリック
     careFarmAllBtn.addEventListener("click", () => {
       careOnce();
     });
 
-    // 押している間、お世話を連打
     setupAutoRepeatButton(careFarmAllBtn, () => {
       careOnce();
     }, 100);
   }
 
-  // =======================
+  // --------------------
   // 分割UI初期化呼び出し
-  // =======================
-
+  // --------------------
   if (typeof initWarehouseAndStatusUI === "function") {
     initWarehouseAndStatusUI();
   }
   if (typeof initBattleAndShopUI === "function") {
     initBattleAndShopUI();
   }
+  // 職業・ペット・転生 UI は game-ui-3.js 側
   if (typeof initJobPetRebirthUI === "function") {
     initJobPetRebirthUI();
   }
+  // 採取UIは game-ui-3.js の initGatherUI で初期化
+  if (typeof initGatherUI === "function") {
+    initGatherUI();
+  }
 
-  // 農園システム初期化
   if (typeof initFarmSystem === "function") {
     initFarmSystem();
   }
 
-  // 最初の職業未選択ならジョブモーダル自動表示
   if (typeof openJobModal === "function" && typeof jobId !== "undefined" && jobId === null) {
     openJobModal();
   }
