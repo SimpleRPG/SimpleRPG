@@ -767,14 +767,35 @@ function calcCraftSuccessRate(baseRate, skillLv) {
 // =======================
 
 function rollQualityBySkillLv(skillLv) {
-  const goodRate = 0.005 * skillLv;
-  const exRate   = 0.002 * skillLv;
+  // ベースの確率
+  const goodRateBase = 0.005 * skillLv;
+  const exRateBase   = 0.002 * skillLv;
+
+  let goodRate = goodRateBase;
+  let exRate   = exRateBase;
+
+  // スキルツリーの品質ボーナスを適用
+  try {
+    if (typeof getGlobalSkillTreeBonus === "function") {
+      const b = getGlobalSkillTreeBonus() || {};
+      const qBonus = b.craftQualityBonusRate || 0; // 例: 0.10 なら +10%
+
+      if (qBonus > 0) {
+        const mul = 1 + qBonus;
+        goodRate *= mul;
+        exRate   *= mul;
+      }
+    }
+  } catch (e) {
+    // 万一未定義順序などで落ちないよう保護
+    console.warn("rollQualityBySkillLv: skilltree bonus error", e);
+  }
 
   const r = Math.random();
   if (r < exRate) {
-    return 2;
+    return 2; // 傑作
   } else if (r < exRate + goodRate) {
-    return 1;
+    return 1; // 良品
   }
-  return 0;
+  return 0;   // 通常
 }

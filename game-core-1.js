@@ -280,6 +280,19 @@ function recalcStats() {
   equippedWeaponId = window.equippedWeaponId || null;
   equippedArmorId  = window.equippedArmorId  || null;
 
+  // ★スキルツリーボーナスを取得（なければ0扱い）
+  let skillBonus = null;
+  if (typeof getGlobalSkillTreeBonus === "function") {
+    skillBonus = getGlobalSkillTreeBonus() || {};
+  } else {
+    skillBonus = {};
+  }
+  const hpMaxRate   = skillBonus.hpMaxRate   || 0; // 最大HP+%
+  const mpMaxRate   = skillBonus.mpMaxRate   || 0; // 最大MP+%（必要なら定義）
+  const spMaxRate   = skillBonus.spMaxRate   || 0; // 最大SP+%（必要なら定義）
+  const atkRate     = skillBonus.atkRate     || 0; // 物理攻撃+%
+  const defRate     = skillBonus.defRate     || 0; // 防御+%
+
   // ★ まず「素の最大値」を基礎値から毎回作り直す（空腹・水分デバフはここではまだ掛けない）
   let baseHpMax = hpMaxBase;
   let baseMpMax = mpMaxBase;
@@ -404,6 +417,17 @@ function recalcStats() {
   baseMpMax += mpFromInt;
   baseSpMax += spFromDex;
 
+  // ===== スキルツリーの最大値ボーナスを反映 =====
+  if (hpMaxRate !== 0) {
+    baseHpMax = Math.floor(baseHpMax * (1 + hpMaxRate));
+  }
+  if (mpMaxRate !== 0) {
+    baseMpMax = Math.floor(baseMpMax * (1 + mpMaxRate));
+  }
+  if (spMaxRate !== 0) {
+    baseSpMax = Math.floor(baseSpMax * (1 + spMaxRate));
+  }
+
   // ===== 空腹・水分デバフ反映（最大HP/MP/SP） =====
   if (typeof hungerHpRate === "number") {
     hpMax = Math.floor(baseHpMax * hungerHpRate);
@@ -427,7 +451,8 @@ function recalcStats() {
   mp = Math.min(mp, mpMax);
   sp = Math.min(sp, spMax);
 
-  atkTotal =
+  // ==== 最終攻撃・防御値を計算 ====
+  let rawAtkTotal =
     baseAtk +
     enhancedWeaponAtk +
     atkFromStr +
@@ -435,12 +460,23 @@ function recalcStats() {
     atkFromWeaponStr +
     atkFromWeaponInt;
 
-  defTotal =
+  let rawDefTotal =
     baseDef +
     enhancedArmorDef +
     defFromVit +
     defFromDex +
     defFromArmorVit;
+
+  // スキルツリーの攻撃・防御ボーナス反映
+  if (atkRate !== 0) {
+    rawAtkTotal = Math.floor(rawAtkTotal * (1 + atkRate));
+  }
+  if (defRate !== 0) {
+    rawDefTotal = Math.floor(rawDefTotal * (1 + defRate));
+  }
+
+  atkTotal = rawAtkTotal;
+  defTotal = rawDefTotal;
 
   // ★ここからペットの最大HP再計算（特性補正込み）
   // petHpBase / petRebirthCount を元に毎回再計算する想定

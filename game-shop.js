@@ -24,7 +24,7 @@ const shopData = {
   ],
   service: [
     { id: "inn_hp",   name: "宿屋で休む(HP)",      price: 500,  desc: "HPを全回復します。",             type: "service", kind: "innHP" },
-    { id: "inn_full", name: "宿屋で休む(HP/MP)",   price: 800, desc: "HPとMPを全回復します。",         type: "service", kind: "innFull" },
+    { id: "inn_full", name: "宿屋で休む(HP/MP)",   price: 800,  desc: "HPとMPを全回復します。",         type: "service", kind: "innFull" },
     // ★追加: 定食
     { id: "setmeal",  name: "定食を食べる",        price: 130,  desc: "空腹と水分が少し回復する定食。", type: "service", kind: "meal" }
   ]
@@ -46,10 +46,25 @@ function updateShopGoldDisplay() {
 // 売却用ヘルパー
 // =======================
 
-// 売値計算：価値の半分（切り上げ）
+// 売値計算：価値の半分（切り上げ）＋スキルツリーボーナス（sellPriceRate）
 function getSellPriceFromValue(value) {
   const v = typeof value === "number" ? value : 0;
-  return Math.max(0, Math.ceil(v / 2));
+  let price = Math.max(0, Math.ceil(v / 2));
+
+  // スキルツリーの売値ボーナスを適用
+  try {
+    if (typeof getGlobalSkillTreeBonus === "function") {
+      const b = getGlobalSkillTreeBonus() || {};
+      const bonus = b.sellPriceRate || 0; // 例: 0.05 で +5%
+      if (bonus > 0) {
+        price = Math.ceil(price * (1 + bonus));
+      }
+    }
+  } catch (e) {
+    console.warn("getSellPriceFromValue: skilltree bonus error", e);
+  }
+
+  return price;
 }
 
 // ポーションマスタから価値を取る前提（なければ price を流用）
@@ -132,6 +147,30 @@ function getCookingMatName(matId) {
     if (COOKING_MAT_NAMES[matId]) return COOKING_MAT_NAMES[matId];
   }
   return matId;
+}
+
+// =======================
+// NPC購入価格ヘルパー（buyPriceReduceRate）
+// =======================
+
+function getEffectiveShopPrice(basePrice) {
+  let p = typeof basePrice === "number" ? basePrice : 0;
+
+  try {
+    if (typeof getGlobalSkillTreeBonus === "function") {
+      const b = getGlobalSkillTreeBonus() || {};
+      const reduce = b.buyPriceReduceRate || 0; // 例: 0.05 で -5%
+      if (reduce > 0) {
+        const mul = 1 - reduce;
+        p = Math.ceil(p * mul);
+      }
+    }
+  } catch (e) {
+    console.warn("getEffectiveShopPrice: skilltree bonus error", e);
+  }
+
+  if (p < 0) p = 0;
+  return p;
 }
 
 // =======================
@@ -445,9 +484,14 @@ function selectShopItem(item) {
     return;
   }
 
+  const effectivePrice = getEffectiveShopPrice(item.price);
+
   if (nameEl)  nameEl.textContent = item.name;
   if (descEl)  descEl.textContent = item.desc;
-  if (priceEl)  priceEl.textContent = `価格: ${item.price}G`;
+  if (priceEl) {
+    // 割引後の最終価格だけ表示（元価格を出したければここで併記も可）
+    priceEl.textContent = `価格: ${effectivePrice}G`;
+  }
 
   if (buyBtn) {
     buyBtn.disabled = false;
@@ -461,11 +505,14 @@ function selectShopItem(item) {
 
 function buyShopItem(item) {
   if (!item) return;
-  if (money < item.price) {
+
+  const priceToPay = getEffectiveShopPrice(item.price);
+
+  if (money < priceToPay) {
     appendLog("ゴールドが足りない。");
     return;
   }
-  money -= item.price;
+  money -= priceToPay;
 
   if (shopCurrentCategory === "item") {
     // 通常ポーション

@@ -28,6 +28,38 @@ const STAR_SHARD_NEED_LV  = 5;           // この強化段階（現在値）以
 const STAR_SHARD_NEED_NUM = 1;           // 1回の強化で必要な個数
 
 // =======================
+// 採取用スキルツリーボーナスキャッシュ
+// =======================
+//
+// 毎回 getGlobalSkillTreeBonus() を呼ぶと重いので、
+// 採取行動ごとに軽く読む用のキャッシュを用意しておく。
+let gatherSkillTreeBonus = {
+  gatherAmountBonusRate: 0,
+  extraGatherBonusRateAdd: 0,
+  gatherFailPenaltyRate: 1,
+  gatherEquipBonusChanceAdd: 0
+};
+
+function refreshGatherSkillTreeBonus() {
+  if (typeof getGlobalSkillTreeBonus === "function") {
+    const b = getGlobalSkillTreeBonus() || {};
+    gatherSkillTreeBonus.gatherAmountBonusRate    = b.gatherAmountBonusRate    || 0;
+    gatherSkillTreeBonus.extraGatherBonusRateAdd  = b.extraGatherBonusRateAdd  || 0;
+    gatherSkillTreeBonus.gatherFailPenaltyRate    = (b.gatherFailPenaltyRate   || 0) || 0;
+    gatherSkillTreeBonus.gatherEquipBonusChanceAdd= b.gatherEquipBonusChanceAdd|| 0;
+
+    // gatherFailPenaltyRate は「失敗率×(1-rate)」で扱いたいので、ここで整形しておく
+    // 例: skill が 0.3 なら 失敗率×0.7 にする。
+    gatherSkillTreeBonus.gatherFailPenaltyRate = Math.max(0, 1 - gatherSkillTreeBonus.gatherFailPenaltyRate);
+  } else {
+    gatherSkillTreeBonus.gatherAmountBonusRate     = 0;
+    gatherSkillTreeBonus.extraGatherBonusRateAdd   = 0;
+    gatherSkillTreeBonus.gatherFailPenaltyRate     = 1;
+    gatherSkillTreeBonus.gatherEquipBonusChanceAdd = 0;
+  }
+}
+
+// =======================
 // 1時間ごとの採取ボーナスカテゴリ
 // =======================
 
@@ -296,6 +328,9 @@ function refreshGatherFieldSelect() {
 // 食材調達タブから呼ぶ想定
 // mode: "hunt" / "fish" / "farm"
 function gatherCooking(mode) {
+  // 毎回スキルツリーボーナスを最新状態にしておく
+  refreshGatherSkillTreeBonus();
+
   // 農園は farm-core 側で処理・経験値付与する
   if (mode === "farm") {
     appendLog("農園の管理・収穫は農園メニューで行ってください。");
@@ -312,6 +347,12 @@ function gatherCooking(mode) {
   }
 
   let added = calcGatherAmount(skillKey);
+
+  // ★スキルツリー: 採取量ボーナス（料理採取にも乗算）
+  if (gatherSkillTreeBonus.gatherAmountBonusRate > 0) {
+    const rate = gatherSkillTreeBonus.gatherAmountBonusRate;
+    added = Math.max(1, Math.floor(added * (1 + rate)));
+  }
 
   // ★肉の餌ペナルティ: 釣りかつ currentFishingBait が strong のとき
   // 50% の確率で採れたスタックから 1 個減らす（最低1個保証なし）
@@ -363,7 +404,17 @@ function gatherCooking(mode) {
   }
 
   // 「たまに多めに取れる」イベント（料理）
-  if (Math.random() < EXTRA_GATHER_BONUS_RATE) {
+  let extraRateCook = EXTRA_GATHER_BONUS_RATE;
+
+  // ★スキルツリー: 料理採取の「ちょっと多め」確率にも加算
+  if (gatherSkillTreeBonus.extraGatherBonusRateAdd > 0) {
+    extraRateCook += gatherSkillTreeBonus.extraGatherBonusRateAdd;
+  }
+
+  if (extraRateCook < 0) extraRateCook = 0;
+  if (extraRateCook > 1) extraRateCook = 1;
+
+  if (Math.random() < extraRateCook) {
     const extra = 1 + Math.floor(Math.random() * 3); // 1〜3
     added += extra;
     appendLog(`手際が良く、いつもより多く料理素材を集められた！（+${extra}）`);
@@ -572,6 +623,13 @@ function calcGatherAmount(resourceKey){
   if(Math.random() < extraChance){
     total += 1;
   }
+
+  // ★スキルツリー: 採取量ボーナス（通常採取向けの汎用ヘルパ）
+  if (gatherSkillTreeBonus.gatherAmountBonusRate > 0) {
+    const rate = gatherSkillTreeBonus.gatherAmountBonusRate;
+    total = Math.max(1, Math.floor(total * (1 + rate)));
+  }
+
   return Math.max(1, total);
 }
 
@@ -685,6 +743,14 @@ function getGatherBonusChance(target) {
     else if (singleTier === "T3") chance = 0.25;
   }
 
+  // ★スキルツリー: 採取装備ボーナス発動率に加算
+  if (gatherSkillTreeBonus.gatherEquipBonusChanceAdd) {
+    chance += gatherSkillTreeBonus.gatherEquipBonusChanceAdd;
+  }
+
+  if (chance < 0) chance = 0;
+  if (chance > 1) chance = 1;
+
   return chance;
 }
 
@@ -695,6 +761,9 @@ function gather(){
 
   const fieldSel = document.getElementById("gatherField");
   const field = fieldSel ? fieldSel.value : "field1";
+
+  // 毎回スキルツリーボーナスを最新状態にしておく
+  refreshGatherSkillTreeBonus();
 
   // =======================
   // 通常素材採取（木/鉱石/草/布/皮/水）
@@ -740,6 +809,12 @@ function gather(){
     if (currentHunger < 10 || currentThirst < 10) {
       failChance = 0.50;
     }
+
+    // ★スキルツリー: 失敗率に対して軽減係数を掛ける
+    if (failChance > 0 && gatherSkillTreeBonus.gatherFailPenaltyRate >= 0) {
+      failChance *= gatherSkillTreeBonus.gatherFailPenaltyRate;
+    }
+
     if (failChance > 0 && Math.random() < failChance) {
       added = 0;
       appendLog("体力がもたず、採取に失敗してしまった…");
@@ -760,7 +835,17 @@ function gather(){
   }
 
   // 「たまに多めに取れる」イベント（通常）
-  if (Math.random() < EXTRA_GATHER_BONUS_RATE) {
+  let extraRate = EXTRA_GATHER_BONUS_RATE;
+
+  // ★スキルツリー: 通常採取の「ちょっと多め」確率にも加算
+  if (gatherSkillTreeBonus.extraGatherBonusRateAdd > 0) {
+    extraRate += gatherSkillTreeBonus.extraGatherBonusRateAdd;
+  }
+
+  if (extraRate < 0) extraRate = 0;
+  if (extraRate > 1) extraRate = 1;
+
+  if (Math.random() < extraRate) {
     const extra = 1 + Math.floor(Math.random() * 3); // 1〜3
     added += extra;
     appendLog(`手際が良く、いつもより多く採取できた！（+${extra}）`);

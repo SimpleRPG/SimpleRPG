@@ -841,7 +841,8 @@ function enhanceWeapon(){
     return;
   }
 
-  if (inst.enhance >= STAR_SHARD_NEED_LV) {
+  const useStarShard = inst.enhance >= STAR_SHARD_NEED_LV;
+  if (useStarShard) {
     if (typeof itemCounts !== "object") {
       appendLog("星屑の結晶の所持情報が取得できない");
       return;
@@ -865,10 +866,24 @@ function enhanceWeapon(){
   }
   money -= cost;
 
-  const rate    = ENHANCE_SUCCESS_RATES[inst.enhance];
+  // ★ 強化成功率 + 星屑スキルツリーボーナス
+  let rate = ENHANCE_SUCCESS_RATES[inst.enhance];
+  if (useStarShard && typeof getGlobalSkillTreeBonus === "function") {
+    try {
+      const b = getGlobalSkillTreeBonus() || {};
+      const starBonus = b.craftStarBonusRate || 0; // 例: 0.10 で +10%
+      if (starBonus > 0) {
+        rate *= (1 + starBonus);
+      }
+    } catch (e) {
+      console.warn("enhanceWeapon: skilltree bonus error", e);
+    }
+  }
+  if (rate > 0.98) rate = 0.98;
+
   const success = Math.random() < rate;
 
-  if (inst.enhance >= STAR_SHARD_NEED_LV && typeof itemCounts === "object") {
+  if (useStarShard && typeof itemCounts === "object") {
     itemCounts[STAR_SHARD_ITEM_ID] =
       Math.max(0, (itemCounts[STAR_SHARD_ITEM_ID] || 0) - STAR_SHARD_NEED_NUM);
   }
@@ -914,7 +929,8 @@ function enhanceArmor(){
     return;
   }
 
-  if (inst.enhance >= STAR_SHARD_NEED_LV) {
+  const useStarShard = inst.enhance >= STAR_SHARD_NEED_LV;
+  if (useStarShard) {
     if (typeof itemCounts !== "object") {
       appendLog("星屑の結晶の所持情報が取得できない");
       return;
@@ -938,10 +954,24 @@ function enhanceArmor(){
   }
   money -= cost;
 
-  const rate    = ENHANCE_SUCCESS_RATES[inst.enhance];
+  // ★ 強化成功率 + 星屑スキルツリーボーナス
+  let rate = ENHANCE_SUCCESS_RATES[inst.enhance];
+  if (useStarShard && typeof getGlobalSkillTreeBonus === "function") {
+    try {
+      const b = getGlobalSkillTreeBonus() || {};
+      const starBonus = b.craftStarBonusRate || 0;
+      if (starBonus > 0) {
+        rate *= (1 + starBonus);
+      }
+    } catch (e) {
+      console.warn("enhanceArmor: skilltree bonus error", e);
+    }
+  }
+  if (rate > 0.98) rate = 0.98;
+
   const success = Math.random() < rate;
 
-  if (inst.enhance >= STAR_SHARD_NEED_LV && typeof itemCounts === "object") {
+  if (useStarShard && typeof itemCounts === "object") {
     itemCounts[STAR_SHARD_ITEM_ID] =
       Math.max(0, (itemCounts[STAR_SHARD_ITEM_ID] || 0) - STAR_SHARD_NEED_NUM);
   }

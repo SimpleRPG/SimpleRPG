@@ -102,11 +102,48 @@ function addArmorInstance(id, quality, enhance) {
   armorCounts[id] = (armorCounts[id] || 0) + 1;
 }
 
+// =======================
+// スキルツリー由来クラフトボーナス
+// =======================
+
+let craftSkillTreeBonus = {
+  craftCostReduceRate: 0
+  // craftIntermediateExtraChance, craftQualityBonusRate, craftStarBonusRate は
+  // 別の箇所（中間素材EXTRA/品質ロール/星屑強化）で使う前提
+};
+
+function refreshCraftSkillTreeBonus() {
+  if (typeof getGlobalSkillTreeBonus === "function") {
+    const b = getGlobalSkillTreeBonus() || {};
+    craftSkillTreeBonus.craftCostReduceRate = b.craftCostReduceRate || 0;
+  } else {
+    craftSkillTreeBonus.craftCostReduceRate = 0;
+  }
+}
+
+// コストオブジェクトをスキルツリー用に減算したコピーを返すヘルパー
+function applyCraftCostReduction(rawCost) {
+  const rate = craftSkillTreeBonus.craftCostReduceRate || 0;
+  if (!rawCost || rate <= 0) return rawCost;
+
+  const cost = {};
+  Object.keys(rawCost).forEach(k => {
+    const need = rawCost[k] || 0;
+    if (!need) return;
+    const reduced = Math.max(0, Math.floor(need * (1 - rate)));
+    cost[k] = reduced;
+  });
+  return cost;
+}
+
 // 必要素材表示（「必要/所持」を出す）
 // 武器・防具・ポーション・道具 + 中間素材（material）+ 料理（cookingFood / cookingDrink）に対応
 function updateCraftCostInfo(category, recipeId){
   const infoEl = document.getElementById("craftCostInfo");
   if (!infoEl) return;
+
+  // 表示時点でもスキルツリーボーナスが分かるようにリフレッシュ
+  refreshCraftSkillTreeBonus();
 
   let list = [];
   let recipe = null;
@@ -144,8 +181,16 @@ function updateCraftCostInfo(category, recipeId){
       const tierInfo = def.from[baseKey];
       const m = materials[baseKey];
       Object.keys(tierInfo).forEach(tierKey => {
-        const need = tierInfo[tierKey] || 0;
-        if (!need) return;
+        const rawNeed = tierInfo[tierKey] || 0;
+        if (!rawNeed) return;
+
+        // 中間素材の「必要素材」表示時にもコスト軽減を反映
+        let need = rawNeed;
+        const rate = craftSkillTreeBonus.craftCostReduceRate || 0;
+        if (rate > 0) {
+          need = Math.max(0, Math.floor(rawNeed * (1 - rate)));
+        }
+
         const have = m ? (m[tierKey] || 0) : 0;
         const tierLabel = tierKey.toUpperCase();
         const name = baseNames[baseKey] || baseKey;
@@ -172,10 +217,14 @@ function updateCraftCostInfo(category, recipeId){
     const mats  = window.cookingMats || {};
     const names = COOKING_MAT_NAMES || {};
     list = recipe.requires.map(req => {
-      const id   = req.id;
-      const need = req.amount;
-      const have = mats[id] || 0;
-      const label = names[id] || id;
+      const rawNeed = req.amount;
+      let need = rawNeed;
+      const rate = craftSkillTreeBonus.craftCostReduceRate || 0;
+      if (rate > 0) {
+        need = Math.max(0, Math.floor(rawNeed * (1 - rate)));
+      }
+      const have = mats[req.id] || 0;
+      const label = names[req.id] || req.id;
       return `${label} ${have}/${need}`;
     });
 
@@ -187,6 +236,9 @@ function updateCraftCostInfo(category, recipeId){
     infoEl.textContent = "必要素材：-";
     return;
   }
+
+  // 通常クラフト用 cost にもコスト軽減を事前反映
+  const shownCost = applyCraftCostReduction(recipe.cost);
 
   const baseNames = {
     wood:   "木",
@@ -239,8 +291,9 @@ function updateCraftCostInfo(category, recipeId){
     leather_T3:"T3皮"
   };
 
-  Object.keys(recipe.cost).forEach(k => {
-    const need = recipe.cost[k];
+  Object.keys(shownCost).forEach(k => {
+    const need = shownCost[k];
+    if (!need) return;
     let have = 0;
     let label;
 
@@ -274,12 +327,18 @@ function updateCraftCostInfo(category, recipeId){
 }
 
 function hasMaterials(cost){
-  if(cost.wood && getMatTotal("wood") < cost.wood) return false;
-  if(cost.ore && getMatTotal("ore") < cost.ore) return false;
-  if(cost.herb && getMatTotal("herb") < cost.herb) return false;
-  if(cost.cloth && getMatTotal("cloth") < cost.cloth) return false;
-  if(cost.leather && getMatTotal("leather") < cost.leather) return false;
-  if(cost.water && getMatTotal("water") < cost.water) return false;
+  if (!cost) return false;
+
+  // スキルツリーボーナスを反映したコストで判定
+  refreshCraftSkillTreeBonus();
+  const c = applyCraftCostReduction(cost) || {};
+
+  if(c.wood && getMatTotal("wood") < c.wood) return false;
+  if(c.ore && getMatTotal("ore") < c.ore) return false;
+  if(c.herb && getMatTotal("herb") < c.herb) return false;
+  if(c.cloth && getMatTotal("cloth") < c.cloth) return false;
+  if(c.leather && getMatTotal("leather") < c.leather) return false;
+  if(c.water && getMatTotal("water") < c.water) return false;
 
   const checkTier = (base, tierKey, amount) => {
     if (!amount) return true;
@@ -288,63 +347,79 @@ function hasMaterials(cost){
     return (m[tierKey] || 0) >= amount;
   };
 
-  if (!checkTier("herb",  "t1", cost.herb_T1)) return false;
-  if (!checkTier("herb",  "t2", cost.herb_T2)) return false;
-  if (!checkTier("herb",  "t3", cost.herb_T3)) return false;
-  if (!checkTier("water", "t1", cost.water_T1)) return false;
-  if (!checkTier("water", "t2", cost.water_T2)) return false;
-  if (!checkTier("water", "t3", cost.water_T3)) return false;
+  if (!checkTier("herb",  "t1", c.herb_T1)) return false;
+  if (!checkTier("herb",  "t2", c.herb_T2)) return false;
+  if (!checkTier("herb",  "t3", c.herb_T3)) return false;
+  if (!checkTier("water", "t1", c.water_T1)) return false;
+  if (!checkTier("water", "t2", c.water_T2)) return false;
+  if (!checkTier("water", "t3", c.water_T3)) return false;
 
-  if (!checkTier("wood",   "t1", cost.wood_T1))   return false;
-  if (!checkTier("wood",   "t2", cost.wood_T2))   return false;
-  if (!checkTier("wood",   "t3", cost.wood_T3))   return false;
-  if (!checkTier("ore",    "t1", cost.ore_T1))    return false;
-  if (!checkTier("ore",    "t2", cost.ore_T2))    return false;
-  if (!checkTier("ore",    "t3", cost.ore_T3))    return false;
-  if (!checkTier("cloth",  "t1", cost.cloth_T1))  return false;
-  if (!checkTier("cloth",  "t2", cost.cloth_T2))  return false;
-  if (!checkTier("cloth",  "t3", cost.cloth_T3))  return false;
-  if (!checkTier("leather","t1", cost.leather_T1))return false;
-  if (!checkTier("leather","t2", cost.leather_T2))return false;
-  if (!checkTier("leather","t3", cost.leather_T3))return false;
+  if (!checkTier("wood",   "t1", c.wood_T1))   return false;
+  if (!checkTier("wood",   "t2", c.wood_T2))   return false;
+  if (!checkTier("wood",   "t3", c.wood_T3))   return false;
+  if (!checkTier("ore",    "t1", c.ore_T1))    return false;
+  if (!checkTier("ore",    "t2", c.ore_T2))    return false;
+  if (!checkTier("ore",    "t3", c.ore_T3))    return false;
+  if (!checkTier("cloth",  "t1", c.cloth_T1))  return false;
+  if (!checkTier("cloth",  "t2", c.cloth_T2))  return false;
+  if (!checkTier("cloth",  "t3", c.cloth_T3))  return false;
+  if (!checkTier("leather","t1", c.leather_T1))return false;
+  if (!checkTier("leather","t2", c.leather_T2))return false;
+  if (!checkTier("leather","t3", c.leather_T3))return false;
 
   if (typeof intermediateMats === "object") {
-    if (cost.woodPlank_T1      && (intermediateMats.woodPlank_T1      || 0) < cost.woodPlank_T1)      return false;
-    if (cost.woodPlank_T2      && (intermediateMats.woodPlank_T2      || 0) < cost.woodPlank_T2)      return false;
-    if (cost.woodPlank_T3      && (intermediateMats.woodPlank_T3      || 0) < cost.woodPlank_T3)      return false;
-    if (cost.ironIngot_T1      && (intermediateMats.ironIngot_T1      || 0) < cost.ironIngot_T1)      return false;
-    if (cost.ironIngot_T2      && (intermediateMats.ironIngot_T2      || 0) < cost.ironIngot_T2)      return false;
-    if (cost.ironIngot_T3      && (intermediateMats.ironIngot_T3      || 0) < cost.ironIngot_T3)      return false;
-    if (cost.clothBolt_T1      && (intermediateMats.clothBolt_T1      || 0) < cost.clothBolt_T1)      return false;
-    if (cost.clothBolt_T2      && (intermediateMats.clothBolt_T2      || 0) < cost.clothBolt_T2)      return false;
-    if (cost.clothBolt_T3      && (intermediateMats.clothBolt_T3      || 0) < cost.clothBolt_T3)      return false;
-    if (cost.toughLeather_T1   && (intermediateMats.toughLeather_T1   || 0) < cost.toughLeather_T1)   return false;
-    if (cost.toughLeather_T2   && (intermediateMats.toughLeather_T2   || 0) < cost.toughLeather_T2)   return false;
-    if (cost.toughLeather_T3   && (intermediateMats.toughLeather_T3   || 0) < cost.toughLeather_T3)   return false;
-    if (cost.mixHerb_T1        && (intermediateMats.mixHerb_T1        || 0) < cost.mixHerb_T1)        return false;
-    if (cost.mixHerb_T2        && (intermediateMats.mixHerb_T2        || 0) < cost.mixHerb_T2)        return false;
-    if (cost.mixHerb_T3        && (intermediateMats.mixHerb_T3        || 0) < cost.mixHerb_T3)        return false;
-    if (cost.distilledWater_T1 && (intermediateMats.distilledWater_T1 || 0) < cost.distilledWater_T1) return false;
-    if (cost.distilledWater_T2 && (intermediateMats.distilledWater_T2 || 0) < cost.distilledWater_T2) return false;
-    if (cost.distilledWater_T3 && (intermediateMats.distilledWater_T3 || 0) < cost.distilledWater_T3) return false;
+    if (c.woodPlank_T1      && (intermediateMats.woodPlank_T1      || 0) < c.woodPlank_T1)      return false;
+    if (c.woodPlank_T2      && (intermediateMats.woodPlank_T2      || 0) < c.woodPlank_T2)      return false;
+    if (c.woodPlank_T3      && (intermediateMats.woodPlank_T3      || 0) < c.woodPlank_T3)      return false;
+    if (c.ironIngot_T1      && (intermediateMats.ironIngot_T1      || 0) < c.ironIngot_T1)      return false;
+    if (c.ironIngot_T2      && (intermediateMats.ironIngot_T2      || 0) < c.ironIngot_T2)      return false;
+    if (c.ironIngot_T3      && (intermediateMats.ironIngot_T3      || 0) < c.ironIngot_T3)      return false;
+    if (c.clothBolt_T1      && (intermediateMats.clothBolt_T1      || 0) < c.clothBolt_T1)      return false;
+    if (c.clothBolt_T2      && (intermediateMats.clothBolt_T2      || 0) < c.clothBolt_T2)      return false;
+    if (c.clothBolt_T3      && (intermediateMats.clothBolt_T3      || 0) < c.clothBolt_T3)      return false;
+    if (c.toughLeather_T1   && (intermediateMats.toughLeather_T1   || 0) < c.toughLeather_T1)   return false;
+    if (c.toughLeather_T2   && (intermediateMats.toughLeather_T2   || 0) < c.toughLeather_T2)   return false;
+    if (c.toughLeather_T3   && (intermediateMats.toughLeather_T3   || 0) < c.toughLeather_T3)   return false;
+    if (c.mixHerb_T1        && (intermediateMats.mixHerb_T1        || 0) < c.mixHerb_T1)        return false;
+    if (c.mixHerb_T2        && (intermediateMats.mixHerb_T2        || 0) < c.mixHerb_T2)        return false;
+    if (c.mixHerb_T3        && (intermediateMats.mixHerb_T3        || 0) < c.mixHerb_T3)        return false;
+    if (c.distilledWater_T1 && (intermediateMats.distilledWater_T1 || 0) < c.distilledWater_T1) return false;
+    if (c.distilledWater_T2 && (intermediateMats.distilledWater_T2 || 0) < c.distilledWater_T2) return false;
+    if (c.distilledWater_T3 && (intermediateMats.distilledWater_T3 || 0) < c.distilledWater_T3) return false;
   }
   return true;
 }
 
 function hasCookingMaterials(cost){
   if (!cost || !cookingMats) return false;
+
+  refreshCraftSkillTreeBonus();
+  const rate = craftSkillTreeBonus.craftCostReduceRate || 0;
+
   return Object.keys(cost).every(k => {
-    const need = cost[k];
-    if (!need) return true;
+    const rawNeed = cost[k];
+    if (!rawNeed) return true;
+    let need = rawNeed;
+    if (rate > 0) {
+      need = Math.max(0, Math.floor(rawNeed * (1 - rate)));
+    }
     return (cookingMats[k] || 0) >= need;
   });
 }
 
 function consumeCookingMaterials(cost){
   if (!cost || !cookingMats) return;
+
+  refreshCraftSkillTreeBonus();
+  const rate = craftSkillTreeBonus.craftCostReduceRate || 0;
+
   Object.keys(cost).forEach(k => {
-    const need = cost[k];
-    if (!need) return;
+    const rawNeed = cost[k];
+    if (!rawNeed) return;
+    let need = rawNeed;
+    if (rate > 0) {
+      need = Math.max(0, Math.floor(rawNeed * (1 - rate)));
+    }
     const have = cookingMats[k] || 0;
     cookingMats[k] = Math.max(0, have - need);
   });
@@ -353,9 +428,17 @@ function consumeCookingMaterials(cost){
 function hasCookingMaterialsByRequires(recipe){
   if (!recipe || !Array.isArray(recipe.requires)) return false;
   const mats = window.cookingMats || {};
+
+  refreshCraftSkillTreeBonus();
+  const rate = craftSkillTreeBonus.craftCostReduceRate || 0;
+
   return recipe.requires.every(req => {
-    const need = req.amount;
-    if (!need) return true;
+    const rawNeed = req.amount;
+    if (!rawNeed) return true;
+    let need = rawNeed;
+    if (rate > 0) {
+      need = Math.max(0, Math.floor(rawNeed * (1 - rate)));
+    }
     return (mats[req.id] || 0) >= need;
   });
 }
@@ -363,9 +446,17 @@ function hasCookingMaterialsByRequires(recipe){
 function consumeCookingMaterialsByRequires(recipe){
   if (!recipe || !Array.isArray(recipe.requires)) return;
   const mats = window.cookingMats || {};
+
+  refreshCraftSkillTreeBonus();
+  const rate = craftSkillTreeBonus.craftCostReduceRate || 0;
+
   recipe.requires.forEach(req => {
-    const need = req.amount;
-    if (!need) return;
+    const rawNeed = req.amount;
+    if (!rawNeed) return;
+    let need = rawNeed;
+    if (rate > 0) {
+      need = Math.max(0, Math.floor(rawNeed * (1 - rate)));
+    }
     mats[req.id] = Math.max(0, (mats[req.id] || 0) - need);
   });
 }
@@ -385,12 +476,18 @@ function consumeOneMatTier(key, need){
 }
 
 function consumeMaterials(cost){
-  if(cost.wood)   consumeOneMatTier("wood",   cost.wood);
-  if(cost.ore)    consumeOneMatTier("ore",    cost.ore);
-  if(cost.herb)   consumeOneMatTier("herb",   cost.herb);
-  if(cost.cloth)  consumeOneMatTier("cloth",  cost.cloth);
-  if(cost.leather)consumeOneMatTier("leather",cost.leather);
-  if(cost.water)  consumeOneMatTier("water",  cost.water);
+  if (!cost) return;
+
+  // スキルツリーボーナスを反映したコストで消費
+  refreshCraftSkillTreeBonus();
+  const c = applyCraftCostReduction(cost) || {};
+
+  if(c.wood)   consumeOneMatTier("wood",   c.wood);
+  if(c.ore)    consumeOneMatTier("ore",    c.ore);
+  if(c.herb)   consumeOneMatTier("herb",   c.herb);
+  if(c.cloth)  consumeOneMatTier("cloth",  c.cloth);
+  if(c.leather)consumeOneMatTier("leather",c.leather);
+  if(c.water)  consumeOneMatTier("water",  c.water);
 
   const decTier = (base, tierKey, amount) => {
     if (!amount) return;
@@ -399,25 +496,25 @@ function consumeMaterials(cost){
     m[tierKey] = Math.max(0, (m[tierKey] || 0) - amount);
   };
 
-  decTier("herb",  "t1", cost.herb_T1);
-  decTier("herb",  "t2", cost.herb_T2);
-  decTier("herb",  "t3", cost.herb_T3);
-  decTier("water", "t1", cost.water_T1);
-  decTier("water", "t2", cost.water_T2);
-  decTier("water", "t3", cost.water_T3);
+  decTier("herb",  "t1", c.herb_T1);
+  decTier("herb",  "t2", c.herb_T2);
+  decTier("herb",  "t3", c.herb_T3);
+  decTier("water", "t1", c.water_T1);
+  decTier("water", "t2", c.water_T2);
+  decTier("water", "t3", c.water_T3);
 
-  decTier("wood",   "t1", cost.wood_T1);
-  decTier("wood",   "t2", cost.wood_T2);
-  decTier("wood",   "t3", cost.wood_T3);
-  decTier("ore",    "t1", cost.ore_T1);
-  decTier("ore",    "t2", cost.ore_T2);
-  decTier("ore",    "t3", cost.ore_T3);
-  decTier("cloth",  "t1", cost.cloth_T1);
-  decTier("cloth",  "t2", cost.cloth_T2);
-  decTier("cloth",  "t3", cost.cloth_T3);
-  decTier("leather","t1", cost.leather_T1);
-  decTier("leather","t2", cost.leather_T2);
-  decTier("leather","t3", cost.leather_T3);
+  decTier("wood",   "t1", c.wood_T1);
+  decTier("wood",   "t2", c.wood_T2);
+  decTier("wood",   "t3", c.wood_T3);
+  decTier("ore",    "t1", c.ore_T1);
+  decTier("ore",    "t2", c.ore_T2);
+  decTier("ore",    "t3", c.ore_T3);
+  decTier("cloth",  "t1", c.cloth_T1);
+  decTier("cloth",  "t2", c.cloth_T2);
+  decTier("cloth",  "t3", c.cloth_T3);
+  decTier("leather","t1", c.leather_T1);
+  decTier("leather","t2", c.leather_T2);
+  decTier("leather","t3", c.leather_T3);
 
   if (typeof intermediateMats === "object") {
     const dec = (k, n) => {
@@ -425,24 +522,24 @@ function consumeMaterials(cost){
       intermediateMats[k] = (intermediateMats[k] || 0) - n;
       if (intermediateMats[k] < 0) intermediateMats[k] = 0;
     };
-    dec("woodPlank_T1",      cost.woodPlank_T1);
-    dec("woodPlank_T2",      cost.woodPlank_T2);
-    dec("woodPlank_T3",      cost.woodPlank_T3);
-    dec("ironIngot_T1",      cost.ironIngot_T1);
-    dec("ironIngot_T2",      cost.ironIngot_T2);
-    dec("ironIngot_T3",      cost.ironIngot_T3);
-    dec("clothBolt_T1",      cost.clothBolt_T1);
-    dec("clothBolt_T2",      cost.clothBolt_T2);
-    dec("clothBolt_T3",      cost.clothBolt_T3);
-    dec("toughLeather_T1",   cost.toughLeather_T1);
-    dec("toughLeather_T2",   cost.toughLeather_T2);
-    dec("toughLeather_T3",   cost.toughLeather_T3);
-    dec("mixHerb_T1",        cost.mixHerb_T1);
-    dec("mixHerb_T2",        cost.mixHerb_T2);
-    dec("mixHerb_T3",        cost.mixHerb_T3);
-    dec("distilledWater_T1", cost.distilledWater_T1);
-    dec("distilledWater_T2", cost.distilledWater_T2);
-    dec("distilledWater_T3", cost.distilledWater_T3);
+    dec("woodPlank_T1",      c.woodPlank_T1);
+    dec("woodPlank_T2",      c.woodPlank_T2);
+    dec("woodPlank_T3",      c.woodPlank_T3);
+    dec("ironIngot_T1",      c.ironIngot_T1);
+    dec("ironIngot_T2",      c.ironIngot_T2);
+    dec("ironIngot_T3",      c.ironIngot_T3);
+    dec("clothBolt_T1",      c.clothBolt_T1);
+    dec("clothBolt_T2",      c.clothBolt_T2);
+    dec("clothBolt_T3",      c.clothBolt_T3);
+    dec("toughLeather_T1",   c.toughLeather_T1);
+    dec("toughLeather_T2",   c.toughLeather_T2);
+    dec("toughLeather_T3",   c.toughLeather_T3);
+    dec("mixHerb_T1",        c.mixHerb_T1);
+    dec("mixHerb_T2",        c.mixHerb_T2);
+    dec("mixHerb_T3",        c.mixHerb_T3);
+    dec("distilledWater_T1", c.distilledWater_T1);
+    dec("distilledWater_T2", c.distilledWater_T2);
+    dec("distilledWater_T3", c.distilledWater_T3);
   }
 }
 
@@ -747,23 +844,24 @@ function craftIntermediate(interId){
     return;
   }
 
-  const cost = {};
+  const rawCost = {};
   Object.keys(def.from).forEach(baseKey => {
     const tierInfo = def.from[baseKey];
     Object.keys(tierInfo).forEach(tierKey => {
       const need = tierInfo[tierKey] || 0;
       if (!need) return;
       const keyName = `${baseKey}_${tierKey.toUpperCase()}`;
-      cost[keyName] = (cost[keyName] || 0) + need;
+      rawCost[keyName] = (rawCost[keyName] || 0) + need;
     });
   });
 
-  if (!hasMaterials(cost)) {
+  // スキルツリー用に軽減したコストで判定＆消費
+  if (!hasMaterials(rawCost)) {
     appendLog("素材が足りない（中間素材）");
     return;
   }
 
-  consumeMaterials(cost);
+  consumeMaterials(rawCost);
 
   if (typeof intermediateMats === "object") {
     intermediateMats[interId] = (intermediateMats[interId] || 0) + 1;
@@ -772,6 +870,18 @@ function craftIntermediate(interId){
   // ★ 中間素材クラフトスキルにEXP
   if (craftSkills.material) {
     addCraftSkillExp("material");
+  }
+
+  // ★スキルツリー: 中間素材EXTRAチャンス（+1個）
+  if (typeof getGlobalSkillTreeBonus === "function") {
+    const b = getGlobalSkillTreeBonus() || {};
+    const extraChance = b.craftIntermediateExtraChance || 0;
+    if (extraChance > 0 && Math.random() < extraChance) {
+      if (typeof intermediateMats === "object") {
+        intermediateMats[interId] = (intermediateMats[interId] || 0) + 1;
+      }
+      appendLog("手際が良く、追加で中間素材をもう1つ作成できた！");
+    }
   }
 
   appendLog(`${def.name} を作成した`);

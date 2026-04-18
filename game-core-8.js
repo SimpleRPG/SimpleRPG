@@ -1059,12 +1059,33 @@ function tryUpgradeGatherBase(matKey) {
     return;
   }
 
-  const needInter = def.costs.intermediate || {};
-  const needStar  = def.costs.starShard || 0;
+  // 元定義
+  const baseNeedInter = def.costs.intermediate || {};
+  const needStar      = def.costs.starShard || 0;
 
   if (!intermediateMats) {
     appendLog("中間素材の所持データが見つからない。");
     return;
+  }
+
+  // ★スキルツリー: 採取拠点強化コスト軽減（中間素材にのみ適用、星屑は軽減しない）
+  let costReduceRate = 0;
+  if (typeof getGlobalSkillTreeBonus === "function") {
+    const b = getGlobalSkillTreeBonus() || {};
+    costReduceRate = b.gatherBaseUpgradeCostReduceRate || 0;
+  }
+
+  // 軽減後の必要中間素材を計算（1個未満にならないよう切り上げ）
+  const needInter = {};
+  for (const iid in baseNeedInter) {
+    const baseNeed = baseNeedInter[iid] || 0;
+    if (baseNeed <= 0) continue;
+    if (costReduceRate > 0) {
+      const reduced = Math.ceil(baseNeed * (1 - costReduceRate));
+      needInter[iid] = Math.max(1, reduced);
+    } else {
+      needInter[iid] = baseNeed;
+    }
   }
 
   logGatherBaseRequiredMats(matKey, currentLv, nextLv, needInter, needStar);
@@ -1112,8 +1133,28 @@ function tryUpgradeGatherBase(matKey) {
 // 自動採取ストック（6時間=72tick 上限）
 // =======================
 
+// ★スキルツリー（自動採取ストック上限）
+//   getGlobalSkillTreeBonus().gatherBaseStockMaxTicksAdd を加算する前提。
+//   未定義なら 0 扱い。
+let gatherBaseStockMaxBonusTicks = 0;
+
+function refreshGatherBaseStockBonus() {
+  if (typeof getGlobalSkillTreeBonus === "function") {
+    const b = getGlobalSkillTreeBonus() || {};
+    gatherBaseStockMaxBonusTicks = b.gatherBaseStockMaxTicksAdd || 0;
+  } else {
+    gatherBaseStockMaxBonusTicks = 0;
+  }
+}
+
+// ベースの72tickにスキルツリー分を加算した上限
+const GATHER_BASE_STOCK_BASE_TICKS = 72;
+function getGatherBaseStockMaxTicks() {
+  const extra = gatherBaseStockMaxBonusTicks || 0;
+  return Math.max(GATHER_BASE_STOCK_BASE_TICKS, GATHER_BASE_STOCK_BASE_TICKS + extra);
+}
+
 let gatherBaseStockTicks = 0;
-const GATHER_BASE_STOCK_MAX_TICKS = 72;
 
 function consumeGatherBaseStockTick() {
   if (gatherBaseStockTicks <= 0) return;
@@ -1122,7 +1163,11 @@ function consumeGatherBaseStockTick() {
 }
 
 function tickGatherBasesOnceStocked() {
-  if (gatherBaseStockTicks < GATHER_BASE_STOCK_MAX_TICKS) {
+  // 毎Tickごとに最新のスキルツリーボーナスを反映（再開後の振り直しにも対応）
+  refreshGatherBaseStockBonus();
+
+  const maxTicks = getGatherBaseStockMaxTicks();
+  if (gatherBaseStockTicks < maxTicks) {
     gatherBaseStockTicks++;
   }
   consumeGatherBaseStockTick();

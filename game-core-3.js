@@ -10,6 +10,33 @@
 let shieldBlowGuardTurnRemain = 0;
 
 // =======================
+// 戦闘用スキルツリーボーナスキャッシュ
+// =======================
+//
+// 毎回 getGlobalSkillTreeBonus() を呼ぶと重いので、
+// 戦闘中はゲーム開始時・スキル習得時・ステ再計算時に
+// まとめてキャッシュしておき、ここから読む。
+let battleSkillTreeBonus = {
+  combatGuardReductionRate: 0,
+  combatPostBattleHpRate: 0,
+  moneyGainRateBattle: 0
+};
+
+// スキルツリーボーナスの再読込（recalcStats / learnSkillNode 後などで呼ばれる想定）
+function refreshBattleSkillTreeBonus() {
+  if (typeof getGlobalSkillTreeBonus === "function") {
+    const b = getGlobalSkillTreeBonus() || {};
+    battleSkillTreeBonus.combatGuardReductionRate = b.combatGuardReductionRate || 0;
+    battleSkillTreeBonus.combatPostBattleHpRate   = b.combatPostBattleHpRate   || 0;
+    battleSkillTreeBonus.moneyGainRateBattle      = b.moneyGainRateBattle      || 0;
+  } else {
+    battleSkillTreeBonus.combatGuardReductionRate = 0;
+    battleSkillTreeBonus.combatPostBattleHpRate   = 0;
+    battleSkillTreeBonus.moneyGainRateBattle      = 0;
+  }
+}
+
+// =======================
 // バフソース種別定数
 // =======================
 //
@@ -870,6 +897,9 @@ function startBattleCommon(enemy, isBoss) {
 
   enemyStatuses = [];
 
+  // ★戦闘開始時にスキルツリーボーナスをキャッシュしておく
+  refreshBattleSkillTreeBonus();
+
   setBattleCommandVisible(true);
   setExploreUIVisible(false);
   if (typeof setFieldItemRowsVisible === "function") {
@@ -1024,6 +1054,12 @@ function enemyTurn() {
       dmg = Math.floor(dmg * 0.5);
       shieldBlowGuardTurnRemain = 0;
       appendLog("シールドブロウの効果でダメージが軽減された！");
+    }
+
+    // ★スキルツリー: 戦闘ガード系ボーナス（最終被ダメージ-％）
+    if (battleSkillTreeBonus.combatGuardReductionRate > 0) {
+      const rate = battleSkillTreeBonus.combatGuardReductionRate;
+      dmg = Math.max(1, Math.floor(dmg * (1 - rate)));
     }
 
     hp -= dmg;
@@ -1286,4 +1322,18 @@ function winBattle(killFlag, killSource) {
     // 保険として、敵撃破時に戦闘を終了
     endBattleCommon();
   }
+
+  // ★スキルツリー: 戦闘後HP追加回復（勝利時）
+  if (killFlag && typeof hp === "number" && typeof hpMax === "number") {
+    const rate = battleSkillTreeBonus.combatPostBattleHpRate || 0;
+    if (rate > 0) {
+      const heal = Math.max(1, Math.floor(hpMax * rate));
+      hp = Math.min(hpMax, hp + heal);
+      appendLog(`戦闘後、落ち着いて体勢を整えた… HPが${heal}回復した。`);
+    }
+  }
+
+  // ★スキルツリー: 戦闘ゴールドボーナスは onEnemyDefeatedCore 側で
+  // baseReward を決めてから掛けるのが自然なので、そちらで
+  // battleSkillTreeBonus.moneyGainRateBattle を見る想定。
 }

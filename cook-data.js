@@ -7,7 +7,9 @@
 // 先頭あたりに
 window.cookingMats = window.cookingMats || {};
 
-const COOKING_RECIPES = {
+// COOKING_RECIPES をグローバル(window)に置く。
+// 既にどこかで定義されていれば上書きしない。
+window.COOKING_RECIPES = window.COOKING_RECIPES || {
   food: [
     // ---- T1 ----
     // T1: 2枠（メイン＋サブ1）に統一
