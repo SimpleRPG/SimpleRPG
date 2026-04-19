@@ -28,7 +28,10 @@ function buildAppLayout() {
       <!-- ★今日の日替わりボーナス（ステータスバーの“外側・上”に独立行として表示） -->
       <div id="dailyBonusRow">
         <span id="dailyBonusLabel" class="clickable"></span>
-        <button id="toggleDetailBtn">▼詳細</button>
+        <!-- 日替わりボーナス用 詳細ボタン（小さめ） -->
+        <button id="toggleDailyBonusDetailBtn" style="font-size:11px; padding:2px 6px;">
+          ▼ボーナス詳細
+        </button>
       </div>
 
       <!-- ステータスバー -->
@@ -63,6 +66,10 @@ function buildAppLayout() {
         <div class="stat-money">
           所持金:
           <span id="money">0</span>G
+          <!-- プレイヤーステータス用 詳細ボタン -->
+          <button id="toggleDetailBtn" style="font-size:11px; padding:2px 6px; margin-left:4px;">
+            ▼詳細
+          </button>
         </div>
       </div>
 
@@ -88,13 +95,20 @@ function buildAppLayout() {
         </div>
       </div>
 
-      <!-- ★詳細パネル：空腹・水分バーの直下に常に配置（初期は非表示） -->
+      <!-- ★ステータス詳細パネル：空腹・水分バーの直下に常に配置（初期は非表示） -->
       <div id="detailPanel" style="display:none;">
         職業: <span id="jobName">未設定</span><br>
         装備中武器: <span id="equippedWeaponName">なし</span>,
         装備中防具: <span id="equippedArmorName">なし</span><br>
         攻撃力: <span id="atkTotal">0</span>,
         防御力: <span id="defTotal">0</span><br>
+      </div>
+
+      <!-- ★日替わりボーナス詳細パネル（新規・初期は非表示） -->
+      <div id="dailyBonusDetailPanel" style="display:none; font-size:12px; margin-top:4px;">
+        <div id="dailyBonusDetailText">
+          今日のボーナス内容の詳細がここに表示されます。
+        </div>
       </div>
 
       <!-- ペットの簡易ステータス（常時表示用） -->
@@ -137,7 +151,8 @@ function buildAppLayout() {
                   詳細▼
                 </button>
               </div>
-              <pre id="gatherMatDetail" style="display:none; font-size:11px; margin:2px 0 0;"></pre>
+              <!-- ★詳細はテーブルを入れるので div に変更 -->
+              <div id="gatherMatDetail" style="display:none; font-size:11px; margin:2px 0 0;"></div>
             </div>
 
             <!-- サブページ: 食材調達 -->
@@ -240,18 +255,8 @@ function buildAppLayout() {
             <div id="magicPageCraft" class="magic-sub-page active">
               <h3>クラフト</h3>
 
-              <div style="display:flex; align-items:center; gap:4px;">
-                <p id="craftMaterials" style="flex:1;">
-                  所持素材：-
-                </p>
-                <button id="toggleMatDetailBtn2" style="font-size:11px; padding:2px 6px;">
-                  詳細▼
-                </button>
-              </div>
-              <pre id="craftMatDetail" style="display:none; font-size:11px; margin:2px 0 0;"></pre>
-
               <!-- クラフトカテゴリタブ -->
-              <div id="craftCategoryTabs" style="margin:4px 0;">
+              <div id="craftCategoryTabs" style="margin:4px 0%;">
                 <button class="craft-cat-tab active" data-cat="weapon">武器</button>
                 <button class="craft-cat-tab" data-cat="armor">防具</button>
                 <button class="craft-cat-tab" data-cat="potion">ポーション</button>
@@ -261,7 +266,7 @@ function buildAppLayout() {
               </div>
 
               <!-- ティア選択 -->
-              <div id="craftTierRow" style="margin:4px 0;">
+              <div id="craftTierRow" style="margin:4px 0%;">
                 <label style="font-size:12px;">ティア:</label>
                 <select id="craftTierSelect">
                   <option value="all">すべて</option>
@@ -272,7 +277,7 @@ function buildAppLayout() {
               </div>
 
               <!-- 装備種別フィルタ -->
-              <div id="craftKindRow" style="margin:4px 0;">
+              <div id="craftKindRow" style="margin:4px 0%;">
                 <label style="font-size:12px;">装備種別:</label>
                 <select id="craftKindSelect">
                   <option value="all">すべて</option>
@@ -322,7 +327,7 @@ function buildAppLayout() {
               <div id="craftPanelCooking" class="craft-panel" style="display:none;">
                 <h3>料理クラフト</h3>
 
-                <div id="cookSubTabs" style="margin:4px 0;">
+                <div id="cookSubTabs" style="margin:4px 0%;">
                   <button class="cook-sub-tab active" data-sub="food">食べ物</button>
                   <button class="cook-sub-tab" data-sub="drink">飲み物</button>
                 </div>
@@ -350,8 +355,22 @@ function buildAppLayout() {
                 </div>
               </div>
 
-              <div id="craftCostInfo" style="font-size:11px; margin-top:4px; color:#ccc;">
-                必要素材：-
+              <!-- ★必要素材＋所持素材＋詳細を一つのブロックにまとめる -->
+              <div id="craftCostBlock" style="font-size:11px; margin-top:4px; color:#ccc;">
+                <div id="craftCostInfo">
+                  必要素材：-
+                </div>
+
+                <div style="display:flex; align-items:center; gap:4px; margin-top:4px;">
+                  <p id="craftMaterials" style="flex:1;">
+                    所持素材：-
+                  </p>
+                  <button id="toggleMatDetailBtn2" style="font-size:11px; padding:2px 6px;">
+                    詳細▼
+                  </button>
+                </div>
+                <!-- ★クラフト詳細テーブルをここに表示 -->
+                <div id="craftMatDetail" style="display:none; font-size:11px; margin:2px 0 0;"></div>
               </div>
             </div>
 
@@ -379,7 +398,7 @@ function buildAppLayout() {
               </div>
 
               <p style="font-size:11px; color:#ccc; margin-top:6px;">
-                ※強化済みや高品質の装備を素材にするときはログに警告が表示されます。
+                ※強化済みや高品質の装備を素材にする時はログに警告が表示されます。
               </p>
 
               <hr style="margin:8px 0;">

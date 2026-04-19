@@ -537,17 +537,42 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 
   // --------------------
-  // 詳細 ON/OFF
+  // 詳細 ON/OFF（ステータス用 + 日替わりボーナス用）
   // --------------------
-  const toggleDetailBtn = document.getElementById("toggleDetailBtn");
-  const detailPanel = document.getElementById("detailPanel");
+  // ステータス詳細（detailPanel）
+  const statusDetailBtn = document.getElementById("toggleDetailBtn");
+  const statusDetailPanel = document.getElementById("detailPanel");
 
-  if (toggleDetailBtn && detailPanel) {
-    toggleDetailBtn.addEventListener("click", () => {
-      const currentDisplay = window.getComputedStyle(detailPanel).display;
+  if (statusDetailBtn && statusDetailPanel) {
+    // 他のスクリプトやHTMLの onclick を無効化して、競合を防ぐ
+    statusDetailBtn.onclick = null;
+
+    statusDetailBtn.addEventListener("click", () => {
+      const currentDisplay = window.getComputedStyle(statusDetailPanel).display;
       const visible = currentDisplay !== "none";
-      detailPanel.style.display = visible ? "none" : "block";
-      toggleDetailBtn.textContent = visible ? "▼詳細" : "▲詳細";
+      statusDetailPanel.style.display = visible ? "none" : "block";
+      statusDetailBtn.textContent = visible ? "▼詳細" : "▲詳細";
+    });
+  }
+
+  // 日替わりボーナス詳細（dailyBonusDetailPanel）
+  const dailyBonusDetailBtn = document.getElementById("toggleDailyBonusDetailBtn");
+  const dailyBonusDetailPanel = document.getElementById("dailyBonusDetailPanel");
+  const dailyBonusDetailText = document.getElementById("dailyBonusDetailText");
+
+  if (dailyBonusDetailBtn && dailyBonusDetailPanel && dailyBonusDetailText) {
+    dailyBonusDetailBtn.onclick = null;
+
+    // 初期テキスト更新（関数があれば使う）
+    if (typeof getTodayDailyBonusLabel === "function") {
+      const label = getTodayDailyBonusLabel();
+      dailyBonusDetailText.textContent = `今日の対象: ${label}`;
+    }
+
+    dailyBonusDetailBtn.addEventListener("click", () => {
+      const visible = window.getComputedStyle(dailyBonusDetailPanel).display !== "none";
+      dailyBonusDetailPanel.style.display = visible ? "none" : "block";
+      dailyBonusDetailBtn.textContent = visible ? "▼ボーナス詳細" : "▲ボーナス詳細";
     });
   }
 
@@ -1009,4 +1034,5 @@ window.addEventListener("DOMContentLoaded", () => {
   if (typeof openJobModal === "function" && typeof jobId !== "undefined" && jobId === null) {
     openJobModal();
   }
+  
 });

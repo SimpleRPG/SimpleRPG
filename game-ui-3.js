@@ -7,19 +7,308 @@ function appendLog(msg) {
   const el = document.getElementById("log");
   if (!el) return;
 
-  let lines = el.textContent.split("\n").filter(line => line.trim() !== "");
+  let lines = el.textContent.split("\\n").filter(line => line.trim() !== "");
   lines.unshift(msg);
   if (lines.length > MAX_LOG_LINES) {
     lines = lines.slice(0, MAX_LOG_LINES);
   }
-  el.textContent = lines.join("\n");
+  el.textContent = lines.join("\\n");
   el.scrollTop = 0;
 }
 
+// ==========================
+// 統計系・採取系 UI 共通ヘルパー
+// ==========================
+
+// 採取拠点UIを任意コンテナに描画する共通関数
+function renderGatherBaseStatusInto(container) {
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  if (typeof getGatherBaseLevel !== "function" ||
+      typeof tryUpgradeGatherBase !== "function") {
+    return;
+  }
+
+  const materialDefs = [
+    { key: "wood",    label: "木拠点" },
+    { key: "ore",     label: "鉱石拠点" },
+    { key: "herb",    label: "草拠点" },
+    { key: "cloth",   label: "布拠点" },
+    { key: "leather", label: "皮拠点" },
+    { key: "water",   label: "水拠点" }
+  ];
+
+  materialDefs.forEach(def => {
+    const level = getGatherBaseLevel(def.key);
+    const mode  = (typeof getGatherBaseMode === "function")
+      ? getGatherBaseMode(def.key)
+      : "normal";
+
+    const row = document.createElement("div");
+    row.style.display = "flex";
+    row.style.alignItems = "center";
+    row.style.gap = "4px";
+    row.style.fontSize = "11px";
+
+    const labelSpan = document.createElement("span");
+    labelSpan.textContent = `${def.label} Lv${level}`;
+    row.appendChild(labelSpan);
+
+    const modeLabel = document.createElement("span");
+    let modeText = "ノーマル";
+    if (mode === "quantity") modeText = "量特化";
+    else if (mode === "quality") modeText = "質特化";
+    modeLabel.textContent = `（${modeText}）`;
+    modeLabel.style.color = "#c0bedf";
+    row.appendChild(modeLabel);
+
+    const upBtn = document.createElement("button");
+    upBtn.textContent = "Lv+1";
+    upBtn.style.fontSize = "10px";
+    upBtn.style.padding = "2px 6px";
+    upBtn.addEventListener("click", () => {
+      tryUpgradeGatherBase(def.key);
+
+      const s1 = document.querySelector("#statusGatherMaterials #gatherBaseStatus");
+      if (s1) renderGatherBaseStatusInto(s1);
+
+      const s2 = document.querySelector("#magicPageGather #gatherBaseStatus");
+      if (s2) renderGatherBaseStatusInto(s2);
+    });
+    row.appendChild(upBtn);
+
+    if (typeof setGatherBaseMode === "function") {
+      const mkBtn = (txt, modeVal) => {
+        const b = document.createElement("button");
+        b.textContent = txt;
+        b.style.fontSize = "10px";
+        b.style.padding = "2px 6px";
+        b.addEventListener("click", () => {
+          setGatherBaseMode(def.key, modeVal);
+
+          const s1 = document.querySelector("#statusGatherMaterials #gatherBaseStatus");
+          if (s1) renderGatherBaseStatusInto(s1);
+
+          const s2 = document.querySelector("#magicPageGather #gatherBaseStatus");
+          if (s2) renderGatherBaseStatusInto(s2);
+        });
+        return b;
+      };
+      row.appendChild(mkBtn("ノーマル", "normal"));
+      row.appendChild(mkBtn("量特化", "quantity"));
+      row.appendChild(mkBtn("質特化", "quality"));
+    }
+
+    container.appendChild(row);
+  });
+
+  if (typeof window.gatherBaseStockTicks !== "undefined") {
+    const stockInfo = document.createElement("div");
+    stockInfo.style.marginTop = "4px";
+    stockInfo.style.fontSize = "11px";
+    stockInfo.style.color = "#c0bedf";
+    stockInfo.textContent = `自動採取ストック: ${window.gatherBaseStockTicks} tick`;
+    container.appendChild(stockInfo);
+  }
+}
+
+// ★採取素材: T1/T2/T3 × 基本素材テーブル（在庫表示用）
+function renderBasicMaterialTableInto(container) {
+  if (!container || typeof window.materials === "undefined") return;
+
+  container.innerHTML = "";
+
+  const names = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
+  const keys  = ["wood","ore","herb","cloth","leather","water"];
+
+  const table = document.createElement("table");
+  table.className = "mat-table";
+
+  const thead = document.createElement("thead");
+  const headTr = document.createElement("tr");
+  const emptyTh = document.createElement("th");
+  emptyTh.textContent = "";
+  headTr.appendChild(emptyTh);
+  keys.forEach(key => {
+    const th = document.createElement("th");
+    th.textContent = names[key];
+    headTr.appendChild(th);
+  });
+  thead.appendChild(headTr);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  ["t1", "t2", "t3"].forEach((tierKey, idx) => {
+    const tr = document.createElement("tr");
+    const tierTh = document.createElement("th");
+    tierTh.textContent = `T${idx + 1}`;
+    tr.appendChild(tierTh);
+    keys.forEach(key => {
+      const mat = window.materials[key] || {};
+      const td = document.createElement("td");
+      const val = mat[tierKey] || 0;
+      td.textContent = val;
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+
+  container.appendChild(table);
+}
+
+// 採取統計テーブル（ステータス＞統計タブ内）
+// 仕様変更: 「サマリーだけ」にするので、ここでは何も描画しない
+function renderGatherStatsTable() {
+  const container = document.getElementById("gatherStatsContainer");
+  if (!container) return;
+  container.innerHTML = "";
+}
+
+// 採取素材テーブル群（基本素材 / 料理素材）描画
+// ※在庫テーブルは描画せず、拠点ステータスと統計 UI 呼び出しだけ
+function renderGatherMaterialTables() {
+  const gatherMatListBox = document.getElementById("gatherMaterialsList");
+  if (gatherMatListBox) {
+    gatherMatListBox.innerHTML = "";
+  }
+
+  const cookingMatListBox = document.getElementById("cookingMaterialsList");
+  if (cookingMatListBox) {
+    cookingMatListBox.innerHTML = "";
+  }
+
+  if (typeof getGatherBaseLevel === "function" &&
+      typeof tryUpgradeGatherBase === "function") {
+    const container = document.getElementById("gatherBaseStatus");
+    if (container) renderGatherBaseStatusInto(container);
+  }
+
+  // 採取統計 UI 初期化（サマリー＋統計テーブル）
+  if (typeof initGatherStatsUI === "function") {
+    initGatherStatsUI();
+  }
+}
+
+// 魚図鑑（ステータス＞統計タブ内）描画
+function renderFishDexInGatherTab() {
+  const summaryBox = document.getElementById("gatherFishDexSummary");
+  const listBox    = document.getElementById("gatherFishDexList");
+  if (!summaryBox || !listBox) return;
+
+  listBox.innerHTML = "";
+
+  if (typeof getFishDexList !== "function") {
+    summaryBox.textContent = "図鑑: データがありません。";
+    return;
+  }
+
+  const list = getFishDexList();
+  if (!list || !list.length) {
+    summaryBox.textContent = "図鑑: まだ魚を釣っていない…";
+    return;
+  }
+
+  const discovered = list.filter(f => f.discovered);
+  const total      = list.length;
+  const rareCount  = discovered.filter(f => f.rarity === "legend" || f.rarity === "rare").length;
+
+  summaryBox.textContent = `図鑑: ${discovered.length}/${total} 種（レア魚 ${rareCount}種）`;
+
+  const table = document.createElement("table");
+  table.className = "mat-table";
+
+  const thead = document.createElement("thead");
+  const htr = document.createElement("tr");
+  ["名前", "レア度", "累計匹数", "最大サイズ"].forEach(label => {
+    const th = document.createElement("th");
+    th.textContent = label;
+    htr.appendChild(th);
+  });
+  thead.appendChild(htr);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  list.forEach(f => {
+    const tr = document.createElement("tr");
+    if (!f.discovered) {
+      tr.style.opacity = "0.6";
+    }
+
+    const tdName = document.createElement("td");
+    tdName.textContent = f.discovered ? f.name : "？？？";
+
+    const tdRare = document.createElement("td");
+    let rareText = "-";
+    if (f.rarity === "legend")      rareText = "伝説";
+    else if (f.rarity === "rare")   rareText = "レア";
+    else if (f.rarity === "uncommon") rareText = "アンコモン";
+    else rareText = "ノーマル";
+    tdRare.textContent = rareText;
+
+    const tdCount = document.createElement("td");
+    tdCount.textContent = f.discovered ? (f.count || 0) : 0;
+
+    const tdSize = document.createElement("td");
+    tdSize.textContent = f.discovered ? ((f.maxSize || 0) + "cm") : "-";
+
+    tr.appendChild(tdName);
+    tr.appendChild(tdRare);
+    tr.appendChild(tdCount);
+    tr.appendChild(tdSize);
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  listBox.appendChild(table);
+}
+
+// ステータス＞統計：採取タブ内サブタブ初期化（旧レイアウト用・今は未使用想定）
+function initStatusGatherSubTabs() {
+  const gatherTabStats  = document.getElementById("statusGatherTabStats");
+  const gatherTabFish   = document.getElementById("statusGatherTabFish");
+  const gatherPageStats = document.getElementById("statusGatherPageStats");
+  const gatherPageFish  = document.getElementById("statusGatherPageFish");
+
+  if (!gatherTabStats || !gatherTabFish || !gatherPageStats || !gatherPageFish) {
+    return;
+  }
+
+  function setStatusGatherSubPage(kind) {
+    const isStats = kind === "stats";
+    const isFish  = kind === "fish";
+
+    gatherTabStats.classList.toggle("active", isStats);
+    gatherTabFish.classList.toggle("active", isFish);
+
+    gatherPageStats.style.display = isStats ? "" : "none";
+    gatherPageFish.style.display  = isFish  ? "" : "none";
+
+    if (isStats) {
+      renderGatherStatsTable();
+      renderGatherMaterialTables();
+      if (typeof initGatherStatsUI === "function") {
+        initGatherStatsUI();
+      }
+    }
+    if (isFish) {
+      renderFishDexInGatherTab();
+    }
+  }
+
+  gatherTabStats.addEventListener("click", () => setStatusGatherSubPage("stats"));
+  gatherTabFish.addEventListener("click",  () => setStatusGatherSubPage("fish"));
+
+  setStatusGatherSubPage("stats");
+}
+
+// --------------------
+// 採取統計タブ: 統計サブタブ（採取/クラフト/戦闘/釣り図鑑）
+// --------------------
+let statusStatsTabsInitialized = false;
+
 // ★ペット選択モーダル（動物使い初回用）
-// 「今は選ばない」2段階仕様:
-// 1回目 → 警告を出して閉じるだけ
-// 2回目 → フラグを立てて、最初の機会は二度と表示しない
 function openCompanionModalIfNeeded() {
   if (window.companionTypeId) return;
   if (window.companionSkipForever) return;
@@ -72,8 +361,8 @@ function openCompanionModalIfNeeded() {
   cancelBtn.addEventListener("click", (e) => {
     if (!window.companionSkipOnce) {
       const ok = window.confirm(
-        "最初のペットを選ばずに、今は選ばないを選びますか？\n" +
-        "このあとも草原のランダムイベント等で動物と出会える予定です。\n\n" +
+        "最初のペットを選ばずに、今は選ばないを選びますか？\\n" +
+        "このあとも草原のランダムイベント等で動物と出会える予定です。\\n\\n" +
         "本当に今はペットを選びませんか？"
       );
       if (!ok) {
@@ -102,19 +391,14 @@ function openCompanionModalIfNeeded() {
 function initJobPetRebirthUI() {
   console.log("initJobPetRebirthUI called");
 
-  // ステータスページ本体は game-ui-4.js の buildStatusPage で構築
   if (typeof buildStatusPage === "function") {
     buildStatusPage();
   }
 
-  // ステータスページ構築後に買い注文セレクトを初期化（実体は market-core2.js 側）
   if (typeof initMarketOrderItemSelect === "function") {
     initMarketOrderItemSelect();
   }
 
-  // ========= 職業 =========
-  // html1.js でレイアウトを組み立てる関係で、このタイミングで changeJobBtn が
-  // まだ存在しない可能性があるので、あれば即時、なければ後からもう一度試す。
   function bindChangeJobButtonOnce() {
     const changeJobBtn2 = document.getElementById("changeJobBtn");
     console.log("bindChangeJobButtonOnce:", changeJobBtn2, "openJobModal typeof:", typeof openJobModal);
@@ -130,20 +414,16 @@ function initJobPetRebirthUI() {
     return true;
   }
 
-  // まずは即時にバインドを試みる
   if (!bindChangeJobButtonOnce()) {
-    // うまくいかなかった場合、DOM構築完了後にもう一度だけ試す
     window.addEventListener("load", () => {
       bindChangeJobButtonOnce();
     }, { once: true });
   }
 
-  // ★追加: 職業モーダル内ボタンのイベント初期化
   if (typeof setupJobSelectUI === "function") {
     setupJobSelectUI();
   }
 
-  // ========= ペット成長タイプ =========
   const changePetGrowthBtn2 = document.getElementById("changePetGrowthBtn");
   if (changePetGrowthBtn2 && typeof changePetGrowthType === "function") {
     changePetGrowthBtn2.addEventListener("click", () => {
@@ -185,7 +465,6 @@ function initJobPetRebirthUI() {
     });
   }
 
-  // ========= 転生 =========
   const rebirthBtn2 = document.getElementById("rebirthBtn");
   if (rebirthBtn2 && typeof openRebirthModal === "function") {
     rebirthBtn2.addEventListener("click", () => {
@@ -197,7 +476,6 @@ function initJobPetRebirthUI() {
     });
   }
 
-  // ========= 日替わりボーナスラベル（ヘッダー） =========
   const dailyBonusLabelEl = document.getElementById("dailyBonusLabel");
   if (dailyBonusLabelEl && typeof getTodayDailyBonusLabel === "function") {
     const labelText = getTodayDailyBonusLabel();
@@ -217,7 +495,7 @@ function initJobPetRebirthUI() {
           "・採取ボーナスの日：対象カテゴリの採取量 +10%",
           "・クラフトボーナスの日：対象カテゴリのクラフト成功率 +5%",
           "・戦闘ボーナスの日：対象職業のゴールド +10%、ドロップ率 +10%"
-        ].join("\n");
+        ].join("\\n");
         showModal("日替わりボーナス", msg);
       } else {
         appendLog("今日の日替わりボーナス：" + currentLabel);
@@ -225,7 +503,6 @@ function initJobPetRebirthUI() {
     });
   }
 
-  // ========= 最終表示更新 =========
   if (typeof refreshEquipSelects === "function") {
     refreshEquipSelects();
   }
@@ -250,13 +527,27 @@ function initJobPetRebirthUI() {
   if (typeof refreshHousingStatusAndTab === "function") {
     refreshHousingStatusAndTab();
   }
+
+  if (typeof initGatherStatsUI === "function") {
+    initGatherStatsUI();
+  }
+
+  const craftCatTabs = document.querySelectorAll("#craftCategoryTabs .craft-cat-tab");
+  if (craftCatTabs && craftCatTabs.length > 0) {
+    craftCatTabs.forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (typeof updateCraftMatDetailText === "function") {
+          updateCraftMatDetailText();
+        }
+      });
+    });
+  }
 }
 
 // --------------------
 // 採取UI初期化
 // --------------------
 function initGatherUI() {
-  // 採取フィールド選択
   const gatherFieldSel = document.getElementById("gatherField");
   if (gatherFieldSel) {
     const onFieldChange = () => {
@@ -277,7 +568,6 @@ function initGatherUI() {
     });
   }
 
-  // 採取ボタン
   const gatherBtn = document.getElementById("gather");
   if (gatherBtn && typeof gather === "function") {
     const doGatherOnce = () => {
@@ -286,8 +576,15 @@ function initGatherUI() {
         return;
       }
       gather();
-      updateGatherMatDetailText();
-      updateCraftMatDetailText();
+      if (typeof updateGatherMatDetailText === "function") {
+        updateGatherMatDetailText();
+      }
+      if (typeof updateCraftMatDetailText === "function") {
+        updateCraftMatDetailText();
+      }
+      if (typeof refreshGatherStatsUI === "function") {
+        refreshGatherStatsUI();
+      }
     };
 
     gatherBtn.addEventListener("click", () => {
@@ -299,7 +596,6 @@ function initGatherUI() {
     }, 100);
   }
 
-  // 採取タブ内サブタブ
   const gatherTabNormal  = document.getElementById("gatherTabNormal");
   const gatherTabCooking = document.getElementById("gatherTabCooking");
   const gatherPageNormal  = document.getElementById("gatherPageNormal");
@@ -332,7 +628,6 @@ function initGatherUI() {
     setGatherSubTab("normal");
   }
 
-  // 食材調達内サブタブ
   const gatherCookTabHunt = document.getElementById("gatherCookTabHunt");
   const gatherCookTabFish = document.getElementById("gatherCookTabFish");
   const gatherCookTabFarm = document.getElementById("gatherCookTabFarm");
@@ -372,7 +667,6 @@ function initGatherUI() {
     setGatherCookingSubTab("hunt");
   }
 
-  // 釣り場・餌
   window.currentFishingArea = window.currentFishingArea || "river";
   window.currentFishingBait = window.currentFishingBait || "default";
 
@@ -390,7 +684,6 @@ function initGatherUI() {
     });
   }
 
-  // 狩猟・釣りボタン
   const gatherHuntBtn = document.getElementById("gatherHuntBtn");
   const gatherFishBtn = document.getElementById("gatherFishBtn");
 
@@ -401,7 +694,12 @@ function initGatherUI() {
         return;
       }
       gatherCooking("hunt");
-      updateGatherMatDetailText();
+      if (typeof updateGatherMatDetailText === "function") {
+        updateGatherMatDetailText();
+      }
+      if (typeof refreshGatherStatsUI === "function") {
+        refreshGatherStatsUI();
+      }
     };
 
     gatherHuntBtn.addEventListener("click", () => {
@@ -420,7 +718,12 @@ function initGatherUI() {
         return;
       }
       gatherCooking("fish");
-      updateGatherMatDetailText();
+      if (typeof updateGatherMatDetailText === "function") {
+        updateGatherMatDetailText();
+      }
+      if (typeof refreshGatherStatsUI === "function") {
+        refreshGatherStatsUI();
+      }
     };
 
     gatherFishBtn.addEventListener("click", () => {
@@ -439,7 +742,6 @@ function initGatherUI() {
     updateFarmAreaVisibility();
   }
 
-  // 中間素材クラフト（UI側）
   function initIntermediateCraft() {
     const sel = document.getElementById("intermediateSelect");
     const btn = document.getElementById("craftIntermediateBtn");
@@ -475,15 +777,105 @@ function initGatherUI() {
       if (!id) return;
       if (typeof craftIntermediate === "function") {
         craftIntermediate(id);
-        updateGatherMatDetailText();
-        updateCraftMatDetailText();
+        if (typeof updateGatherMatDetailText === "function") {
+          updateGatherMatDetailText();
+        }
+        if (typeof updateCraftMatDetailText === "function") {
+          updateCraftMatDetailText();
+        }
         if (typeof refreshEquipSelects === "function") {
           refreshEquipSelects();
         }
-        refreshCurrentCraftCost();
+        if (typeof refreshCurrentCraftCost === "function") {
+          refreshCurrentCraftCost();
+        }
       }
     });
   }
 
   initIntermediateCraft();
+}
+
+// ==========================
+// ステータス＞統計タブ内サブタブ切り替え
+// ==========================
+function initStatusStatsSubTabs() {
+  const tabGather = document.getElementById("statusStatsTabGather");
+  const tabCraft  = document.getElementById("statusStatsTabCraft");
+  const tabBattle = document.getElementById("statusStatsTabBattle");
+  const tabFish   = document.getElementById("statusStatsTabFish");
+
+  const pageGather = document.getElementById("statusStatsPageGather");
+  const pageCraft  = document.getElementById("statusStatsPageCraft");
+  const pageBattle = document.getElementById("statusStatsPageBattle");
+  const pageFish   = document.getElementById("statusStatsPageFish");
+
+  if (!tabGather || !tabCraft || !tabBattle || !tabFish ||
+      !pageGather || !pageCraft || !pageBattle || !pageFish) {
+    return;
+  }
+
+  function setStatsSubPage(kind) {
+    const isGather = kind === "gather";
+    const isCraft  = kind === "craft";
+    const isBattle = kind === "battle";
+    const isFish   = kind === "fish";
+
+    tabGather.classList.toggle("active", isGather);
+    tabCraft.classList.toggle("active",  isCraft);
+    tabBattle.classList.toggle("active", isBattle);
+    tabFish.classList.toggle("active",   isFish);
+
+    pageGather.style.display = isGather ? "block" : "none";
+    pageCraft.style.display  = isCraft  ? "block" : "none";
+    pageBattle.style.display = isBattle ? "block" : "none";
+    pageFish.style.display   = isFish   ? "block" : "none";
+
+    if (isGather) {
+      if (typeof renderGatherStatsTable === "function") {
+        renderGatherStatsTable();
+      }
+      if (typeof renderGatherMaterialTables === "function") {
+        renderGatherMaterialTables();
+      }
+      if (typeof initGatherStatsUI === "function") {
+        initGatherStatsUI();
+      }
+    }
+
+    if (isCraft) {
+      if (typeof initStatusCraftStats === "function") {
+        initStatusCraftStats();
+      } else if (typeof renderCraftStatsTable === "function") {
+        renderCraftStatsTable();
+      }
+    }
+
+    if (isBattle) {
+      if (typeof initStatusBattleStats === "function") {
+        initStatusBattleStats();
+      } else if (typeof renderBattleStatsTable === "function") {
+        renderBattleStatsTable();
+      }
+    }
+
+    if (isFish) {
+      if (typeof renderFishDexInGatherTab === "function") {
+        renderFishDexInGatherTab();
+      }
+    }
+  }
+
+  // イベント登録は一度きりにする
+  if (!statusStatsTabsInitialized) {
+    statusStatsTabsInitialized = true;
+
+    tabGather.addEventListener("click", () => setStatsSubPage("gather"));
+    tabCraft.addEventListener("click",  () => setStatsSubPage("craft"));
+    tabBattle.addEventListener("click", () => setStatsSubPage("battle"));
+    tabFish.addEventListener("click",   () => setStatsSubPage("fish"));
+  }
+
+  // initStatusStatsSubTabs が呼ばれるたび、描画は毎回行う
+  setStatsSubPage("gather");
 }

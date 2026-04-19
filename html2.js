@@ -13,7 +13,7 @@
 
       <div id="statusSubTabs" style="margin-bottom:8px;">
         <button id="statusTabMain"    class="status-sub-tab active" data-page="status-main">基本情報</button>
-        <button id="statusTabGather"  class="status-sub-tab"         data-page="status-gather-stats">採取統計</button>
+        <button id="statusTabStats"   class="status-sub-tab"         data-page="status-stats">統計</button>
         <button id="statusTabSkill"   class="status-sub-tab"         data-page="status-skill">スキルツリー</button>
       </div>
 
@@ -113,38 +113,60 @@
         </div>
       </div>
 
-      <!-- 採取統計 -->
-      <div id="statusPageGatherStats" class="status-sub-page" style="display:none;">
-        <h3>採取統計</h3>
+      <!-- 統計タブ -->
+      <div id="statusPageStats" class="status-sub-page" style="display:none;">
+        <h3>統計</h3>
 
-        <!-- 採取統計タブ内サブタブ -->
-        <div id="statusGatherSubTabs" style="margin-bottom:6px;">
-          <button id="statusGatherTabStats" class="status-gather-sub-tab active" data-page="gather-stats">統計一覧</button>
-          <button id="statusGatherTabFish"  class="status-gather-sub-tab"         data-page="gather-fishdex">魚図鑑</button>
+        <!-- 統計タブ内サブタブ -->
+        <div id="statusStatsSubTabs" style="margin-bottom:6px;">
+          <button id="statusStatsTabGather" class="status-stats-sub-tab active" data-page="stats-gather">採取</button>
+          <button id="statusStatsTabCraft"  class="status-stats-sub-tab"         data-page="stats-craft">クラフト</button>
+          <button id="statusStatsTabBattle" class="status-stats-sub-tab"         data-page="stats-battle">戦闘</button>
+          <button id="statusStatsTabFish"   class="status-stats-sub-tab"         data-page="stats-fishdex">釣り図鑑</button>
         </div>
 
-        <!-- 統計一覧ページ -->
-        <div id="statusGatherPageStats" class="status-gather-page" style="display:block;">
-          <div id="gatherStatsContainer" class="status-block" style="max-height:300px; overflow:auto; font-size:12px;"></div>
+        <!-- 採取統計ページ -->
+        <div id="statusStatsPageGather" class="status-stats-page" style="display:block;">
+          <h4>採取統計</h4>
 
+          <!-- ★採取の道のりサマリー -->
+          <div id="gatherStatsSummary" style="font-size:12px; color:#c0bedf; margin-bottom:4px;">
+            これまでの採取の記録がここに表示されます。
+          </div>
+
+          <!-- 統計テーブル（基本素材 / 料理素材）は下の statusGatherMaterials 内に描画 -->
           <div id="statusGatherMaterials">
             <h4>基本素材</h4>
-            <div id="gatherMaterialsList"></div>
+            <!-- ▼ 倉庫タブと ID が被らないよう、ステータス統計用の ID に変更 -->
+            <div id="gatherStatsMaterialsList"></div>
 
-            <h4>中間素材</h4>
-            <div id="intermediateMaterialsList"></div>
+            <!-- 中間素材はクラフト統計側に移したため削除 -->
 
             <h4>料理素材</h4>
-            <div id="cookingMaterialsList"></div>
+            <div id="cookingStatsMaterialsList"></div>
 
             <h4>採取拠点</h4>
             <div id="gatherBaseStatus"></div>
           </div>
         </div>
 
-        <!-- 魚図鑑ページ -->
-        <div id="statusGatherPageFish" class="status-gather-page" style="display:none;">
-          <h4>魚図鑑</h4>
+        <!-- クラフト統計ページ（中身は別JSで描画予定） -->
+        <div id="statusStatsPageCraft" class="status-stats-page" style="display:none;">
+          <h4>クラフト統計</h4>
+          <div id="craftStatsContainer" class="status-block" style="max-height:300px; overflow:auto; font-size:12px;">
+          </div>
+        </div>
+
+        <!-- 戦闘統計ページ（中身は別JSで描画予定） -->
+        <div id="statusStatsPageBattle" class="status-stats-page" style="display:none;">
+          <h4>戦闘統計</h4>
+          <div id="battleStatsContainer" class="status-block" style="max-height:300px; overflow:auto; font-size:12px;">
+          </div>
+        </div>
+
+        <!-- 釣り図鑑ページ（旧・魚図鑑） -->
+        <div id="statusStatsPageFish" class="status-stats-page" style="display:none;">
+          <h4>釣り図鑑</h4>
           <div id="gatherFishDexSummary" style="font-size:12px; color:#c0bedf; margin-bottom:4px;">図鑑: -</div>
           <div id="gatherFishDexList" class="status-block" style="max-height:260px; overflow:auto; font-size:12px;"></div>
         </div>

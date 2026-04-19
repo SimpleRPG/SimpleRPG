@@ -103,6 +103,75 @@ function addArmorInstance(id, quality, enhance) {
 }
 
 // =======================
+// クラフト統計
+// =======================
+
+// category: weapon/armor/potion/tool/material/food/drink
+// stats format: { success: number, fail: number }
+const craftStats = {
+  weapon:  { success: 0, fail: 0 },
+  armor:   { success: 0, fail: 0 },
+  potion:  { success: 0, fail: 0 },
+  tool:    { success: 0, fail: 0 },
+  material:{ success: 0, fail: 0 },
+  food:    { success: 0, fail: 0 },
+  drink:   { success: 0, fail: 0 }
+};
+
+// レシピ別に細かく見る場合用（今は UI ではカテゴリ集計だけ使用）
+const craftRecipeStats = {};
+
+// 内部用ヘルパー
+function addCraftStat(category, recipeId, isSuccess) {
+  if (!craftStats[category]) {
+    craftStats[category] = { success: 0, fail: 0 };
+  }
+  if (isSuccess) {
+    craftStats[category].success++;
+  } else {
+    craftStats[category].fail++;
+  }
+
+  if (recipeId) {
+    const key = category + ":" + recipeId;
+    if (!craftRecipeStats[key]) {
+      craftRecipeStats[key] = { success: 0, fail: 0 };
+    }
+    if (isSuccess) {
+      craftRecipeStats[key].success++;
+    } else {
+      craftRecipeStats[key].fail++;
+    }
+  }
+}
+
+// UI 用: カテゴリ別サマリを返す
+// 既存 UI の期待フォーマットに合わせている（id, recipeName, categoryName, success, fail）
+function getCraftStatsList() {
+  const rows = [];
+  const labelMap = {
+    weapon:   "武器",
+    armor:    "防具",
+    potion:   "ポーション",
+    tool:     "道具",
+    material: "中間素材",
+    food:     "料理（食べ物）",
+    drink:    "料理（飲み物）"
+  };
+  Object.keys(craftStats).forEach(cat => {
+    const s = craftStats[cat] || { success: 0, fail: 0 };
+    rows.push({
+      id: cat,
+      recipeName: "-",
+      categoryName: labelMap[cat] || cat,
+      success: s.success || 0,
+      fail: s.fail || 0
+    });
+  });
+  return rows;
+}
+
+// =======================
 // スキルツリー由来クラフトボーナス
 // =======================
 
@@ -622,6 +691,10 @@ function craftWeapon(){
   addCraftSkillExp("weapon");
 
   if (Math.random() >= successRate) {
+    // 統計: 失敗
+    if (typeof addCraftStat === "function") {
+      addCraftStat("weapon", recipe.id, false);
+    }
     appendLog(`${recipe.name} のクラフトに失敗した…（素材は消費された）`);
     updateDisplay();
     return;
@@ -633,6 +706,11 @@ function craftWeapon(){
   const master = weapons.find(w => w.id === recipe.id);
   const baseEnh = master ? (master.enhance || 0) : 0;
   addWeaponInstance(recipe.id, q, baseEnh);
+
+  // 統計: 成功
+  if (typeof addCraftStat === "function") {
+    addCraftStat("weapon", recipe.id, true);
+  }
 
   appendLog(`${qName}${recipe.name} をクラフトした`);
 
@@ -691,6 +769,9 @@ function craftArmor(){
   addCraftSkillExp("armor");
 
   if (Math.random() >= successRate) {
+    if (typeof addCraftStat === "function") {
+      addCraftStat("armor", recipe.id, false);
+    }
     appendLog(`${recipe.name} のクラフトに失敗した…（素材は消費された）`);
     updateDisplay();
     return;
@@ -702,6 +783,10 @@ function craftArmor(){
   const master = armors.find(a => a.id === recipe.id);
   const baseEnh = master ? (master.enhance || 0) : 0;
   addArmorInstance(recipe.id, q, baseEnh);
+
+  if (typeof addCraftStat === "function") {
+    addCraftStat("armor", recipe.id, true);
+  }
 
   appendLog(`${qName}${recipe.name} をクラフトした`);
 
@@ -760,6 +845,9 @@ function craftPotion(){
   addCraftSkillExp("potion");
 
   if (Math.random() >= successRate) {
+    if (typeof addCraftStat === "function") {
+      addCraftStat("potion", recipe.id, false);
+    }
     appendLog(`${recipe.name} のクラフトに失敗した…（素材は消費された）`);
     updateDisplay();
     refreshEquipSelects();
@@ -773,6 +861,10 @@ function craftPotion(){
 
   if (typeof addItemToInventory === "function") {
     addItemToInventory(recipe.id, 1);
+  }
+
+  if (typeof addCraftStat === "function") {
+    addCraftStat("potion", recipe.id, true);
   }
 
   appendLog(`${recipe.name} をクラフトした`);
@@ -832,6 +924,9 @@ function craftTool(){
   addCraftSkillExp("tool");
 
   if (Math.random() >= successRate) {
+    if (typeof addCraftStat === "function") {
+      addCraftStat("tool", recipe.id, false);
+    }
     appendLog(`${recipe.name} のクラフトに失敗した…（素材は消費された）`);
     updateDisplay();
     refreshEquipSelects();
@@ -845,6 +940,10 @@ function craftTool(){
 
   if (typeof addItemToInventory === "function") {
     addItemToInventory(recipe.id, 1);
+  }
+
+  if (typeof addCraftStat === "function") {
+    addCraftStat("tool", recipe.id, true);
   }
 
   appendLog(`${recipe.name} をクラフトした`);
@@ -902,6 +1001,11 @@ function craftIntermediate(interId){
   // ★ 中間素材クラフトスキルにEXP
   if (craftSkills.material) {
     addCraftSkillExp("material");
+  }
+
+  // 統計: 中間素材は成功扱いのみ
+  if (typeof addCraftStat === "function") {
+    addCraftStat("material", interId, true);
   }
 
   // ★スキルツリー: 中間素材EXTRAチャンス（+1個）
@@ -969,6 +1073,11 @@ function craftFood(){
     if (craftSkills.cooking) {
       addCraftSkillExp("cooking");
     }
+
+    if (typeof addCraftStat === "function") {
+      addCraftStat("food", recipe.id, false);
+    }
+
     appendLog(`${recipe.name} の料理に失敗した…（素材は消費された）`);
     updateDisplay();
     refreshEquipSelects();
@@ -989,6 +1098,10 @@ function craftFood(){
 
   if (typeof addItemToInventory === "function") {
     addItemToInventory(recipe.id, 1);
+  }
+
+  if (typeof addCraftStat === "function") {
+    addCraftStat("food", recipe.id, true);
   }
 
   appendLog(`${recipe.name} を作った`);
@@ -1061,6 +1174,11 @@ function craftDrink(){
     if (craftSkills.cooking) {
       addCraftSkillExp("cooking");
     }
+
+    if (typeof addCraftStat === "function") {
+      addCraftStat("drink", recipe.id, false);
+    }
+
     appendLog(`${recipe.name} の調理に失敗した…（素材は消費された）`);
     updateDisplay();
     refreshEquipSelects();
@@ -1081,6 +1199,10 @@ function craftDrink(){
 
   if (typeof addItemToInventory === "function") {
     addItemToInventory(recipe.id, 1);
+  }
+
+  if (typeof addCraftStat === "function") {
+    addCraftStat("drink", recipe.id, true);
   }
 
   appendLog(`${recipe.name} を作った`);

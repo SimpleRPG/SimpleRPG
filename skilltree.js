@@ -674,7 +674,6 @@ function renderSkillTree(containerId) {
     line.setAttribute("x2", end.x.toString());
     line.setAttribute("y2", end.y.toString());
     line.setAttribute("data-edge-id", `${edge.aId}__${edge.bId}`);
-    // line.setAttribute("mask", "url(#skillTreeLinesMask)"); // 今は未使用
     line.classList.add("skill-tree-edge");
 
     const aState = getSkillNodeState(getSkillNodeById(edge.aId));
@@ -700,7 +699,7 @@ function renderSkillTree(containerId) {
   highlightNeighbors(window.selectedSkillNodeId);
   applySkillTreeFilter();
   renderSkillTreeSummary();
-  enableSkillTreePan(); // ← 有効化
+  enableSkillTreePan();
 }
 
 function selectSkillNode(nodeId) {
@@ -918,17 +917,17 @@ function enableSkillTreePan() {
 
       pinchStartDist = distanceTouches(e.touches[0], e.touches[1]);
       pinchStartViewBox = getViewBox();
-      e.preventDefault();
+      // touchstart では preventDefault しない（クリック殺さない）[web:40]
       return;
     }
 
     if (e.touches && e.touches.length === 1) {
-      // 1本指ドラッグでパン
+      // 1本指ドラッグ候補（ここではまだパン開始しない）
       isPanning = true;
       isPinching = false;
       startPoint = getSvgPointFromEvent(e);
       startViewBox = getViewBox();
-      e.preventDefault();
+      // ここも preventDefault しない
       return;
     }
 
@@ -946,8 +945,7 @@ function enableSkillTreePan() {
       const newDist = distanceTouches(e.touches[0], e.touches[1]);
       if (!pinchStartDist) return;
 
-      let scale = pinchStartDist / newDist; // 指が広がると newDist > start → scale < 1 → ズームイン
-      // ズーム範囲の簡易制限
+      let scale = pinchStartDist / newDist;
       scale = Math.max(0.4, Math.min(scale, 3.0));
 
       const vb = {
@@ -957,12 +955,15 @@ function enableSkillTreePan() {
         height: pinchStartViewBox.height * scale
       };
       setViewBox(vb);
-      e.preventDefault(); // ページ全体のズームを防ぐ
+      e.preventDefault(); // touchmove でだけ preventDefault してページスクロール・ズームを防ぐ[web:40][web:39]
       return;
     }
 
-    // パン中
+    // パン中（1本指ドラッグ時）
     if (isPanning && startViewBox) {
+      // タッチが1本だけのときにだけパン
+      if (e.touches && e.touches.length !== 1) return;
+
       const p = getSvgPointFromEvent(e);
       const dx = p.x - startPoint.x;
       const dy = p.y - startPoint.y;
@@ -979,30 +980,35 @@ function enableSkillTreePan() {
   }
 
   function onPointerUp(e) {
-    isPanning = false;
-
-    if (e.touches && e.touches.length > 0) {
-      // まだ指が残っている場合は、その本数に応じて状態を更新
-      if (e.touches.length === 1) {
-        isPinching = false;
-        isPanning = true;
-        startPoint = getSvgPointFromEvent(e);
-        startViewBox = getViewBox();
-      } else if (e.touches.length >= 2) {
-        isPinching = true;
-        pinchStartDist = distanceTouches(e.touches[0], e.touches[1]);
-        pinchStartViewBox = getViewBox();
-      }
-    } else {
+    // 指が全部離れたら終了
+    if (!e.touches || e.touches.length === 0) {
+      isPanning = false;
       isPinching = false;
+      return;
+    }
+
+    // 2本→1本になった場合などの状態調整
+    if (e.touches.length === 1) {
+      isPinching = false;
+      isPanning = true;
+      startPoint = getSvgPointFromEvent(e);
+      startViewBox = getViewBox();
+    } else if (e.touches.length >= 2) {
+      isPinching = true;
+      isPanning = false;
+      pinchStartDist = distanceTouches(e.touches[0], e.touches[1]);
+      pinchStartViewBox = getViewBox();
     }
   }
 
   svg.addEventListener("mousedown", onPointerDown);
   svg.addEventListener("mousemove", onPointerMove);
-  window.addEventListener("mouseup", onPointerUp);
+  window.addEventListener("mouseup", () => {
+    isPanning = false;
+    isPinching = false;
+  });
 
-  svg.addEventListener("touchstart", onPointerDown, { passive: false });
+  svg.addEventListener("touchstart", onPointerDown, { passive: true });
   svg.addEventListener("touchmove", onPointerMove, { passive: false });
   svg.addEventListener("touchend", onPointerUp);
   svg.addEventListener("touchcancel", onPointerUp);

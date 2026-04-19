@@ -282,6 +282,11 @@ function harvestFarmSlot(index) {
 
   cookingMats[id] = (cookingMats[id] || 0) + amount;
 
+  // ★農園収穫も採取統計に反映（料理素材扱い）
+  if (typeof addGatherStat === "function") {
+    addGatherStat(id, amount);
+  }
+
   const name = shownNameForLog ||
                COOKING_MAT_NAMES[id] ||
                FARM_CROPS[id]?.name ||

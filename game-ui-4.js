@@ -1,100 +1,6 @@
 // game-ui-4.js
 // ステータス画面（基本情報 / 採取統計 / スキルツリー）＋ハウジング表示
 
-// 採取拠点UIを任意コンテナに描画する共通関数
-function renderGatherBaseStatusInto(container) {
-  if (!container) return;
-
-  container.innerHTML = "";
-
-  if (typeof getGatherBaseLevel !== "function" ||
-      typeof tryUpgradeGatherBase !== "function") {
-    return;
-  }
-
-  const materialDefs = [
-    { key: "wood",    label: "木拠点" },
-    { key: "ore",     label: "鉱石拠点" },
-    { key: "herb",    label: "草拠点" },
-    { key: "cloth",   label: "布拠点" },
-    { key: "leather", label: "皮拠点" },
-    { key: "water",   label: "水拠点" }
-  ];
-
-  materialDefs.forEach(def => {
-    const level = getGatherBaseLevel(def.key);
-    const mode  = (typeof getGatherBaseMode === "function")
-      ? getGatherBaseMode(def.key)
-      : "normal";
-
-    const row = document.createElement("div");
-    row.style.display = "flex";
-    row.style.alignItems = "center";
-    row.style.gap = "4px";
-    row.style.fontSize = "11px";
-
-    const labelSpan = document.createElement("span");
-    labelSpan.textContent = `${def.label} Lv${level}`;
-    row.appendChild(labelSpan);
-
-    const modeLabel = document.createElement("span");
-    let modeText = "ノーマル";
-    if (mode === "quantity") modeText = "量特化";
-    else if (mode === "quality") modeText = "質特化";
-    modeLabel.textContent = `（${modeText}）`;
-    modeLabel.style.color = "#c0bedf";
-    row.appendChild(modeLabel);
-
-    const upBtn = document.createElement("button");
-    upBtn.textContent = "Lv+1";
-    upBtn.style.fontSize = "10px";
-    upBtn.style.padding = "2px 6px";
-    upBtn.addEventListener("click", () => {
-      tryUpgradeGatherBase(def.key);
-
-      const s1 = document.querySelector("#statusGatherMaterials #gatherBaseStatus");
-      if (s1) renderGatherBaseStatusInto(s1);
-
-      const s2 = document.querySelector("#magicPageGather #gatherBaseStatus");
-      if (s2) renderGatherBaseStatusInto(s2);
-    });
-    row.appendChild(upBtn);
-
-    if (typeof setGatherBaseMode === "function") {
-      const mkBtn = (txt, modeVal) => {
-        const b = document.createElement("button");
-        b.textContent = txt;
-        b.style.fontSize = "10px";
-        b.style.padding = "2px 6px";
-        b.addEventListener("click", () => {
-          setGatherBaseMode(def.key, modeVal);
-
-          const s1 = document.querySelector("#statusGatherMaterials #gatherBaseStatus");
-          if (s1) renderGatherBaseStatusInto(s1);
-
-          const s2 = document.querySelector("#magicPageGather #gatherBaseStatus");
-          if (s2) renderGatherBaseStatusInto(s2);
-        });
-        return b;
-      };
-      row.appendChild(mkBtn("ノーマル", "normal"));
-      row.appendChild(mkBtn("量特化", "quantity"));
-      row.appendChild(mkBtn("質特化", "quality"));
-    }
-
-    container.appendChild(row);
-  });
-
-  if (typeof window.gatherBaseStockTicks !== "undefined") {
-    const stockInfo = document.createElement("div");
-    stockInfo.style.marginTop = "4px";
-    stockInfo.style.fontSize = "11px";
-    stockInfo.style.color = "#c0bedf";
-    stockInfo.textContent = `自動採取ストック: ${window.gatherBaseStockTicks} tick`;
-    container.appendChild(stockInfo);
-  }
-}
-
 // ★ハウジング関連: 拠点UIに土地レンタル状況を描画
 function renderHousingLandStatus() {
   const housingRoot = document.getElementById("housingRoot");
@@ -393,347 +299,34 @@ function buildStatusPage() {
   if (!page) return;
 
   // ===== サブタブ切り替え =====
-  const tabMain    = document.getElementById("statusTabMain");
-  const tabGather  = document.getElementById("statusTabGather");
-  const tabSkill   = document.getElementById("statusTabSkill");
-  const pageMain   = document.getElementById("statusPageMain");
-  const pageGather = document.getElementById("statusPageGatherStats");
-  const pageSkill  = document.getElementById("statusPageSkill");
-
-  function renderGatherStatsTable() {
-    const container = document.getElementById("gatherStatsContainer");
-    if (!container) return;
-    container.innerHTML = "";
-
-    if (typeof getGatherStatsList !== "function") {
-      const p = document.createElement("p");
-      p.textContent = "採取統計データがまだありません。";
-      container.appendChild(p);
-      return;
-    }
-
-    const stats = getGatherStatsList();
-    if (!stats || !stats.length) {
-      const p = document.createElement("p");
-      p.textContent = "まだ採取統計はありません。";
-      container.appendChild(p);
-      return;
-    }
-
-    const table = document.createElement("table");
-    table.className = "mat-table";
-
-    const thead = document.createElement("thead");
-    const htr = document.createElement("tr");
-    ["種別", "素材", "累計個数", "採取回数", "一度の最大数"].forEach(label => {
-      const th = document.createElement("th");
-      th.textContent = label;
-      htr.appendChild(th);
-    });
-    thead.appendChild(htr);
-    table.appendChild(thead);
-
-    const tbody = document.createElement("tbody");
-    stats.forEach(row => {
-      const tr = document.createElement("tr");
-      const kindTd = document.createElement("td");
-      kindTd.textContent = row.kind === "normal" ? "採取素材" : "料理素材";
-      tr.appendChild(kindTd);
-
-      const nameTd = document.createElement("td");
-      nameTd.textContent = row.name;
-      tr.appendChild(nameTd);
-
-      const totalTd = document.createElement("td");
-      totalTd.textContent = row.total;
-      tr.appendChild(totalTd);
-
-      const timesTd = document.createElement("td");
-      timesTd.textContent = row.times;
-      tr.appendChild(timesTd);
-
-      const maxTd = document.createElement("td");
-      maxTd.textContent = row.maxOnce;
-      tr.appendChild(maxTd);
-
-      tbody.appendChild(tr);
-    });
-
-    table.appendChild(tbody);
-    container.appendChild(table);
-  }
-
-  function renderGatherMaterialTables() {
-    const gatherMatListBox = document.getElementById("gatherMaterialsList");
-    if (gatherMatListBox && typeof window.materials !== "undefined") {
-      gatherMatListBox.innerHTML = "";
-      const names = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
-      const keys = ["wood","ore","herb","cloth","leather","water"];
-
-      const table = document.createElement("table");
-      table.className = "mat-table";
-
-      const thead = document.createElement("thead");
-      const headTr = document.createElement("tr");
-      const emptyTh = document.createElement("th");
-      emptyTh.textContent = "";
-      headTr.appendChild(emptyTh);
-      keys.forEach(key => {
-        const th = document.createElement("th");
-        th.textContent = names[key];
-        headTr.appendChild(th);
-      });
-      thead.appendChild(headTr);
-      table.appendChild(thead);
-
-      const tbody = document.createElement("tbody");
-      ["t1", "t2", "t3"].forEach((tierKey, idx) => {
-        const tr = document.createElement("tr");
-        const tierTh = document.createElement("th");
-        tierTh.textContent = `T${idx + 1}`;
-        tr.appendChild(tierTh);
-        keys.forEach(key => {
-          const mat = window.materials[key] || {};
-          const td = document.createElement("td");
-          const val = mat[tierKey] || 0;
-          td.textContent = val;
-          tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-      });
-      table.appendChild(tbody);
-      gatherMatListBox.appendChild(table);
-    }
-
-    const intermListBox = document.getElementById("intermediateMaterialsList");
-    if (intermListBox && Array.isArray(window.INTERMEDIATE_MATERIALS || INTERMEDIATE_MATERIALS)) {
-      const src  = window.INTERMEDIATE_MATERIALS || INTERMEDIATE_MATERIALS;
-      const mats = window.intermediateMats || {};
-      intermListBox.innerHTML = "";
-
-      const groups = {};
-      src.forEach(m => {
-        let tierKey = "t1";
-        let baseName = m.name;
-        if (m.name.startsWith("T1")) {
-          tierKey = "t1"; baseName = m.name.replace(/^T1/, "").trim();
-        } else if (m.name.startsWith("T2")) {
-          tierKey = "t2"; baseName = m.name.replace(/^T2/, "").trim();
-        } else if (m.name.startsWith("T3")) {
-          tierKey = "t3"; baseName = m.name.replace(/^T3/, "").trim();
-        }
-        const baseId = baseName;
-        if (!groups[baseId]) {
-          groups[baseId] = { name: baseName, t1:0, t2:0, t3:0 };
-        }
-        const need = mats[m.id] || 0;
-        groups[baseId][tierKey] = need;
-      });
-
-      const table = document.createElement("table");
-      table.className = "mat-table";
-      const thead = document.createElement("thead");
-      const htr = document.createElement("tr");
-      const thTier = document.createElement("th");
-      thTier.textContent = "";
-      htr.appendChild(thTier);
-
-      const baseOrder = ["板材","鉄インゴット","調合用薬草","布束","強化皮","蒸留水"];
-      baseOrder.forEach(baseName => {
-        if (groups[baseName]) {
-          const th = document.createElement("th");
-          th.textContent = baseName;
-          htr.appendChild(th);
-        }
-      });
-      thead.appendChild(htr);
-      table.appendChild(thead);
-
-      const tbody = document.createElement("tbody");
-      ["t1","t2","t3"].forEach((tierKey, idx) => {
-        const tr = document.createElement("tr");
-        const thT = document.createElement("th");
-        thT.textContent = `T${idx + 1}`;
-        tr.appendChild(thT);
-        baseOrder.forEach(baseName => {
-          if (groups[baseName]) {
-            const g = groups[baseName];
-            const td = document.createElement("td");
-            td.textContent = g[tierKey] || 0;
-            tr.appendChild(td);
-          }
-        });
-        tbody.appendChild(tr);
-      });
-      table.appendChild(tbody);
-      intermListBox.appendChild(table);
-    }
-
-    const cookingMatListBox = document.getElementById("cookingMaterialsList");
-    if (cookingMatListBox) {
-      cookingMatListBox.innerHTML = "";
-      if (typeof COOKING_MAT_NAMES !== "undefined") {
-        const mats = window.cookingMats || {};
-        const table = document.createElement("table");
-        table.className = "mat-table";
-        const thead = document.createElement("thead");
-        const htr = document.createElement("tr");
-        const thName = document.createElement("th");
-        thName.textContent = "素材";
-        const thCount = document.createElement("th");
-        thCount.textContent = "個数";
-        htr.appendChild(thName);
-        htr.appendChild(thCount);
-        thead.appendChild(htr);
-        table.appendChild(thead);
-
-        const tbody = document.createElement("tbody");
-        Object.keys(COOKING_MAT_NAMES).forEach(id => {
-          const tr = document.createElement("tr");
-          const tdName = document.createElement("td");
-          const tdCount = document.createElement("td");
-          tdName.textContent = COOKING_MAT_NAMES[id];
-          tdCount.textContent = mats[id] || 0;
-          tr.appendChild(tdName);
-          tr.appendChild(tdCount);
-          tbody.appendChild(tr);
-        });
-        table.appendChild(tbody);
-        cookingMatListBox.appendChild(table);
-      }
-    }
-
-    if (typeof getGatherBaseLevel === "function" &&
-        typeof tryUpgradeGatherBase === "function") {
-      const container = document.getElementById("gatherBaseStatus");
-      if (container) renderGatherBaseStatusInto(container);
-    }
-  }
-
-  // 魚図鑑（採取統計タブ内）描画
-  function renderFishDexInGatherTab() {
-    const summaryBox = document.getElementById("gatherFishDexSummary");
-    const listBox    = document.getElementById("gatherFishDexList");
-    if (!summaryBox || !listBox) return;
-
-    listBox.innerHTML = "";
-
-    if (typeof getFishDexList !== "function") {
-      summaryBox.textContent = "図鑑: データがありません。";
-      return;
-    }
-
-    const list = getFishDexList();
-    if (!list || !list.length) {
-      summaryBox.textContent = "図鑑: まだ魚を釣っていない…";
-      return;
-    }
-
-    const discovered = list.filter(f => f.discovered);
-    const total      = list.length;
-    const rareCount  = discovered.filter(f => f.rarity === "legend" || f.rarity === "rare").length;
-
-    summaryBox.textContent = `図鑑: ${discovered.length}/${total} 種（レア魚 ${rareCount}種）`;
-
-    const table = document.createElement("table");
-    table.className = "mat-table";
-
-    const thead = document.createElement("thead");
-    const htr = document.createElement("tr");
-    ["名前", "レア度", "累計匹数", "最大サイズ"].forEach(label => {
-      const th = document.createElement("th");
-      th.textContent = label;
-      htr.appendChild(th);
-    });
-    thead.appendChild(htr);
-    table.appendChild(thead);
-
-    const tbody = document.createElement("tbody");
-    list.forEach(f => {
-      const tr = document.createElement("tr");
-      if (!f.discovered) {
-        tr.style.opacity = "0.6";
-      }
-
-      const tdName = document.createElement("td");
-      tdName.textContent = f.discovered ? f.name : "？？？";
-
-      const tdRare = document.createElement("td");
-      let rareText = "-";
-      if (f.rarity === "legend")      rareText = "伝説";
-      else if (f.rarity === "rare")   rareText = "レア";
-      else if (f.rarity === "uncommon") rareText = "アンコモン";
-      else rareText = "ノーマル";
-      tdRare.textContent = rareText;
-
-      const tdCount = document.createElement("td");
-      tdCount.textContent = f.discovered ? (f.count || 0) : 0;
-
-      const tdSize = document.createElement("td");
-      tdSize.textContent = f.discovered ? ((f.maxSize || 0) + "cm") : "-";
-
-      tr.appendChild(tdName);
-      tr.appendChild(tdRare);
-      tr.appendChild(tdCount);
-      tr.appendChild(tdSize);
-      tbody.appendChild(tr);
-    });
-    table.appendChild(tbody);
-    listBox.appendChild(table);
-  }
-
-  // 採取統計タブ内サブタブ切り替え
-  const gatherTabStats  = document.getElementById("statusGatherTabStats");
-  const gatherTabFish   = document.getElementById("statusGatherTabFish");
-  const gatherPageStats = document.getElementById("statusGatherPageStats");
-  const gatherPageFish  = document.getElementById("statusGatherPageFish");
-
-  function setStatusGatherSubPage(kind) {
-    if (!gatherTabStats || !gatherTabFish || !gatherPageStats || !gatherPageFish) return;
-
-    const isStats = kind === "stats";
-    const isFish  = kind === "fish";
-
-    gatherTabStats.classList.toggle("active", isStats);
-    gatherTabFish.classList.toggle("active", isFish);
-
-    gatherPageStats.style.display = isStats ? "" : "none";
-    gatherPageFish.style.display  = isFish  ? "" : "none";
-
-    if (isStats) {
-      renderGatherStatsTable();
-      renderGatherMaterialTables();
-    }
-    if (isFish) {
-      renderFishDexInGatherTab();
-    }
-  }
-
-  if (gatherTabStats && gatherTabFish) {
-    gatherTabStats.addEventListener("click", () => setStatusGatherSubPage("stats"));
-    gatherTabFish.addEventListener("click",  () => setStatusGatherSubPage("fish"));
-    setStatusGatherSubPage("stats");
-  }
+  const tabMain  = document.getElementById("statusTabMain");
+  const tabStats = document.getElementById("statusTabStats");   // HTML に合わせて修正済み
+  const tabSkill = document.getElementById("statusTabSkill");
+  const pageMain  = document.getElementById("statusPageMain");
+  const pageStats = document.getElementById("statusPageStats"); // HTML に合わせて修正済み
+  const pageSkill = document.getElementById("statusPageSkill");
 
   function setStatusSubPage(kind) {
-    if (!tabMain || !tabGather || !tabSkill ||
-        !pageMain || !pageGather || !pageSkill) return;
+    if (!tabMain || !tabStats || !tabSkill ||
+        !pageMain || !pageStats || !pageSkill) return;
 
-    const isMain   = (kind === "main");
-    const isGather = (kind === "gather");
-    const isSkill  = (kind === "skill");
+    const isMain  = (kind === "main");
+    const isStats = (kind === "stats");
+    const isSkill = (kind === "skill");
 
-    tabMain.classList.toggle("active",   isMain);
-    tabGather.classList.toggle("active", isGather);
-    tabSkill.classList.toggle("active",  isSkill);
+    tabMain.classList.toggle("active",  isMain);
+    tabStats.classList.toggle("active", isStats);
+    tabSkill.classList.toggle("active", isSkill);
 
-    pageMain.style.display   = isMain   ? "" : "none";
-    pageGather.style.display = isGather ? "" : "none";
-    pageSkill.style.display  = isSkill  ? "" : "none";
+    pageMain.style.display  = isMain  ? "" : "none";
+    pageStats.style.display = isStats ? "" : "none";
+    pageSkill.style.display = isSkill ? "" : "none";
 
-    if (isGather) {
-      // 採取統計タブに入ったら、統計サブタブを初期表示
-      setStatusGatherSubPage("stats");
+    if (isStats) {
+      // 統計タブに入ったら、統計サブタブ（採取/クラフト/戦闘/釣り図鑑）を初期化
+      if (typeof initStatusStatsSubTabs === "function") {
+        initStatusStatsSubTabs();
+      }
     }
     if (isSkill) {
       renderSkillTreeBonusList();
@@ -744,10 +337,10 @@ function buildStatusPage() {
     }
   }
 
-  if (tabMain && tabGather && tabSkill) {
-    tabMain.addEventListener("click",   () => setStatusSubPage("main"));
-    tabGather.addEventListener("click", () => setStatusSubPage("gather"));
-    tabSkill.addEventListener("click",  () => setStatusSubPage("skill"));
+  if (tabMain && tabStats && tabSkill) {
+    tabMain.addEventListener("click",  () => setStatusSubPage("main"));
+    tabStats.addEventListener("click", () => setStatusSubPage("stats"));
+    tabSkill.addEventListener("click", () => setStatusSubPage("skill"));
     setStatusSubPage("main");
   }
 
@@ -784,7 +377,7 @@ function buildStatusPage() {
     setStatusSkillSubPage("tree");
   }
 
-  // ★追加: スキルツリーフィルターボタンにクリックイベントを登録
+  // ★スキルツリーフィルターボタンにクリックイベントを登録
   const filterButtons = document.querySelectorAll(".skill-filter-btn");
   filterButtons.forEach(btn => {
     btn.addEventListener("click", () => {
@@ -810,7 +403,7 @@ function buildStatusPage() {
 
   // 魔巧区 採取拠点タブ側の描画
   const magicGatherBox = document.querySelector("#magicPageGather #gatherBaseStatus");
-  if (magicGatherBox) {
+  if (magicGatherBox && typeof renderGatherBaseStatusInto === "function") {
     renderGatherBaseStatusInto(magicGatherBox);
   }
 
@@ -829,23 +422,13 @@ window.onFarmUIUpdated = function() {
   updateFarmAreaVisibility();
 };
 
-// 採取タブ用の素材詳細・クラフト素材詳細（元の関数をそのまま移植）
+// 採取タブ用の素材詳細・クラフト素材詳細（詳細は表描画）
 function updateGatherMatDetailText() {
   const label = document.getElementById("gatherMaterials");
   const area  = document.getElementById("gatherMatDetail");
   if (!label || !area || typeof window.materials === "undefined") return;
 
   const names = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
-  const keys = ["wood","ore","herb","cloth","leather","water"];
-
-  const lines = keys.map(k => {
-    const m  = window.materials[k] || {};
-    const t1 = m.t1 || 0;
-    const t2 = m.t2 || 0;
-    const t3 = m.t3 || 0;
-    return `${names[k]}: ${t1}/${t2}/${t3}`;
-  });
-  area.textContent = lines.join("\\n");
 
   let labelText = "所持素材：-";
 
@@ -879,6 +462,11 @@ function updateGatherMatDetailText() {
   }
 
   label.textContent = labelText;
+
+  // 詳細エリアには基本素材テーブルを出す（定義は game-ui-3.js 側）
+  if (typeof renderBasicMaterialTableInto === "function") {
+    renderBasicMaterialTableInto(area);
+  }
 }
 
 function updateCraftMatDetailText() {
@@ -887,35 +475,96 @@ function updateCraftMatDetailText() {
   if (!label || !area || typeof window.materials === "undefined") return;
 
   const names = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
-  function formatTierNums(matObj) {
-    const m = matObj || {};
-    const t1 = m.t1 || 0;
-    const t2 = m.t2 || 0;
-    const t3 = m.t3 || 0;
-    return `${t1}/${t2}/${t3}`;
+
+  // いまアクティブなクラフトカテゴリを判定（data-cat="cooking" が active なら料理タブ）
+  const cookingTabBtn = document.querySelector('#craftCategoryTabs .craft-cat-tab[data-cat="cooking"]');
+  const isCookingTabActive = cookingTabBtn && cookingTabBtn.classList.contains("active");
+
+  // 料理タブがアクティブのときは、倉庫の料理素材表と同じテーブルを表示
+  if (isCookingTabActive && typeof COOKING_MAT_NAMES !== "undefined") {
+    area.innerHTML = "";
+
+    const mats = window.cookingMats || {};
+    const table = document.createElement("table");
+    table.className = "mat-table";
+    const thead = document.createElement("thead");
+    const htr = document.createElement("tr");
+    const thName = document.createElement("th");
+    thName.textContent = "素材";
+    const thCount = document.createElement("th");
+    thCount.textContent = "個数";
+    htr.appendChild(thName);
+    htr.appendChild(thCount);
+    thead.appendChild(htr);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    Object.keys(COOKING_MAT_NAMES).forEach(id => {
+      const tr = document.createElement("tr");
+      const tdName = document.createElement("td");
+      const tdCount = document.createElement("td");
+      tdName.textContent = COOKING_MAT_NAMES[id];
+      tdCount.textContent = mats[id] || 0;
+      tr.appendChild(tdName);
+      tr.appendChild(tdCount);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    area.appendChild(table);
+
+    label.textContent = "所持素材：料理素材一覧";
+    return;
   }
 
-  const keys = ["wood","ore","herb","cloth","leather","water"];
-  const lines = keys.map(k => {
-    const m = window.materials[k] || {};
-    return `${names[k]}: ${formatTierNums(m)}`;
-  });
-  area.textContent = lines.join("\\n");
+  // 通常クラフトカテゴリのとき: 基本素材テーブル＋中間素材テーブルを表示
+  area.innerHTML = "";
 
+  // 上段: 基本採取素材テーブル（定義は game-ui-3.js 側）
+  const basicBox = document.createElement("div");
+  if (typeof renderBasicMaterialTableInto === "function") {
+    renderBasicMaterialTableInto(basicBox);
+  }
+  area.appendChild(basicBox);
+
+  // 下段: 中間素材
   if (typeof window.intermediateMats !== "undefined" &&
       Array.isArray(window.INTERMEDIATE_MATERIALS || INTERMEDIATE_MATERIALS)) {
 
     const mats = window.intermediateMats || {};
     const src  = window.INTERMEDIATE_MATERIALS || INTERMEDIATE_MATERIALS;
 
-    const interLines = src.map(m => {
-      const have = mats[m.id] || 0;
-      return `${m.name}: ${have}`;
-    });
+    const title = document.createElement("div");
+    title.textContent = "中間素材";
+    title.style.marginTop = "4px";
+    title.style.fontSize = "11px";
+    area.appendChild(title);
 
-    if (interLines.length > 0) {
-      area.textContent += "\\n--- 中間素材 ---\\n" + interLines.join("\\n");
-    }
+    const table = document.createElement("table");
+    table.className = "mat-table";
+    const thead = document.createElement("thead");
+    const htr = document.createElement("tr");
+    const thName = document.createElement("th");
+    thName.textContent = "素材";
+    const thCount = document.createElement("th");
+    thCount.textContent = "個数";
+    htr.appendChild(thName);
+    htr.appendChild(thCount);
+    thead.appendChild(htr);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    src.forEach(m => {
+      const tr = document.createElement("tr");
+      const tdName = document.createElement("td");
+      const tdCount = document.createElement("td");
+      tdName.textContent = m.name;
+      tdCount.textContent = mats[m.id] || 0;
+      tr.appendChild(tdName);
+      tr.appendChild(tdCount);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    area.appendChild(table);
   }
 
   let labelText = "所持素材：-";

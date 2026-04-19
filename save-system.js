@@ -50,7 +50,9 @@ function makeSaveData() {
       jobId,
       jobChangedOnce,
       everBeastTamer,
-      money
+      money,
+      // ★追加: 職業初期ステ適用フラグもセーブ
+      initialJobStatsApplied: (typeof initialJobStatsApplied !== "undefined") ? initialJobStatsApplied : false
     };
   } catch (e) {
     throw e;
@@ -418,6 +420,16 @@ function applySaveData(data) {
       if ("everBeastTamer" in p) everBeastTamer = p.everBeastTamer;
 
       if ("money" in p)          money          = p.money;
+
+      // ★追加: 職業初期ステ適用フラグをロード
+      if ("initialJobStatsApplied" in p) {
+        if (typeof initialJobStatsApplied !== "undefined") {
+          initialJobStatsApplied = !!p.initialJobStatsApplied;
+        }
+        if (typeof window !== "undefined") {
+          window.initialJobStatsApplied = !!p.initialJobStatsApplied;
+        }
+      }
     }
   } catch (e) {
     throw e;
@@ -819,6 +831,11 @@ function applySaveData(data) {
     if (typeof refreshHousingFromState === "function") {
       refreshHousingFromState();
     }
+
+    // ★追加: セーブ反映後に採取統計UIも最新状態にする
+    if (typeof refreshGatherStatsUI === "function") {
+      refreshGatherStatsUI();
+    }
   } catch (e) {
     throw e;
   }
@@ -884,6 +901,12 @@ function loadFromLocal() {
     }
 
     applySaveData(data);
+
+    // ★ セーブロード後に採取統計UIを再描画
+    if (typeof refreshGatherStatsUI === "function") {
+      refreshGatherStatsUI();
+    }
+
     if (typeof appendLog === "function") {
       appendLog("ローカルのセーブデータを読み込みました");
     }
@@ -950,6 +973,11 @@ function importSaveData() {
       localStorage.setItem(SAVE_KEY, json);
     } catch (e3) {
       throw e3;
+    }
+
+    // ★ インポート直後も統計UIを最新にしておく
+    if (typeof refreshGatherStatsUI === "function") {
+      refreshGatherStatsUI();
     }
 
     if (typeof appendLog === "function") {

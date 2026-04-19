@@ -1,4 +1,4 @@
-// html2.js
+// htmllast.js
 // index.html から移せるだけ UI 初期化・イベント系をまとめたファイル
 // （ゲームロジックは既存の game-core / market-core / game-ui に任せる）
 
@@ -143,25 +143,6 @@ function setupGatherCookingTabs() {
   btnFarm.addEventListener("click", () => setCookingSub("farm"));
 
   setCookingSub("hunt");
-}
-
-// 採取ページ: 素材詳細トグル
-function setupGatherMaterialToggle() {
-  const btn1 = document.getElementById("toggleMatDetailBtn");
-  const pre1 = document.getElementById("gatherMatDetail");
-  const btn2 = document.getElementById("toggleMatDetailBtn2");
-  const pre2 = document.getElementById("craftMatDetail");
-
-  function attach(btn, pre) {
-    if (!btn || !pre) return;
-    btn.addEventListener("click", () => {
-      const show = pre.style.display === "none" || pre.style.display === "";
-      pre.style.display = show ? "block" : "none";
-    });
-  }
-
-  attach(btn1, pre1);
-  attach(btn2, pre2);
 }
 
 // -----------------------------
@@ -374,20 +355,6 @@ function setupGuildInnerTabs() {
 }
 
 // -----------------------------
-// ステータス詳細パネルのトグル
-// -----------------------------
-function setupStatusDetailToggle() {
-  const btn = document.getElementById("toggleDetailBtn");
-  const panel = document.getElementById("detailPanel");
-  if (!btn || !panel) return;
-
-  btn.addEventListener("click", () => {
-    const visible = panel.style.display !== "none";
-    panel.style.display = visible ? "none" : "";
-  });
-}
-
-// -----------------------------
 // Socket.io 初期化
 // -----------------------------
 function setupSocketIoClient() {
@@ -446,12 +413,12 @@ document.addEventListener("DOMContentLoaded", () => {
   setupMainTabs();
   setupGatherSubTabs();
   setupGatherCookingTabs();
-  setupGatherMaterialToggle();
+  // setupGatherMaterialToggle(); // ← game-ui.js の実装と競合するため削除
   setupMagicDistTabs();
   setupCookingCraftTabs();
   setupWarehouseTabs();
   setupMarketTabs();
   setupGuildInnerTabs();
-  setupStatusDetailToggle();
+  // setupStatusDetailToggle(); // ← game-ui.js の実装と競合するため削除
   setupSocketIoClient();
 });

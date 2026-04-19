@@ -145,9 +145,9 @@ function getGatherStatsList() {
       id,
       name: COOKING_MAT_NAMES[id] || id,
       total: stats.total,
-      times: stats.maxOnce,
+      times: stats.times,      // ★修正：stats.maxOnce → stats.times
       maxOnce: stats.maxOnce,
-      kind: "cook"
+      kind: "cooking"
     });
   });
 
@@ -1010,4 +1010,44 @@ function gather(){
   if (typeof updateDisplay === "function") {
     updateDisplay();
   }
+}
+
+// =======================
+// 採取拠点の自動採取（tick）
+// =======================
+//
+// gatherBase まわりが別ファイルにある前提で、
+// ここでは「倉庫に入れる＋統計に反映する」だけを担当する。
+
+function tickGatherBasesOnce() {
+  if (typeof getGatherBaseStatus !== "function") return;
+  if (!window.materials) return;
+
+  const bases = getGatherBaseStatus(); // 例: { wood:{level,mode}, ore:{...}, ... }
+  if (!bases) return;
+
+  Object.keys(bases).forEach(key => {
+    const base = bases[key];
+    if (!base || base.level <= 0) return;
+
+    const mat = window.materials[key];
+    if (!mat) return;
+
+    // ここでは「1tickあたり T1/T2 をいくつ増やすか」のロジックを
+    // 既存仕様どおり別関数に任せている前提。
+    if (typeof calcGatherBaseTickAmount !== "function") return;
+
+    const result = calcGatherBaseTickAmount(key, base);
+    const t1Amount = result.t1 || 0;
+    const t2Amount = result.t2 || 0;
+
+    if (t1Amount > 0) {
+      mat.t1 = (mat.t1 || 0) + t1Amount;
+      if (typeof addGatherStat === "function") addGatherStat(key, t1Amount);
+    }
+    if (t2Amount > 0) {
+      mat.t2 = (mat.t2 || 0) + t2Amount;
+      if (typeof addGatherStat === "function") addGatherStat(key, t2Amount);
+    }
+  });
 }

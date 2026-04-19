@@ -306,6 +306,15 @@ function doPetTurn() {
       let base = calcPetDamage();
       let dmg = Math.floor(base * (s.powerRate || 1.6));
       enemyHp = Math.max(0, enemyHp - dmg);
+
+      // ★ ペットダメージとして最大値更新
+      if (typeof currentBattleMaxDamage === "number") {
+        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+      }
+      if (typeof currentBattleMaxPet === "number") {
+        currentBattleMaxPet = Math.max(currentBattleMaxPet, dmg);
+      }
+
       appendLog(`${petName}の${s.name}！ ${currentEnemy.name}に${dmg}ダメージ！`);
       usedSkill = true;
     } else if (s && s.id === "taunt") {
@@ -327,9 +336,27 @@ function doPetTurn() {
       const critBonus = 1.5;
       dmg = Math.floor(dmg * critBonus);
       enemyHp = Math.max(0, enemyHp - dmg);
+
+      // ★ ペットクリティカルダメージとして最大値更新
+      if (typeof currentBattleMaxDamage === "number") {
+        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+      }
+      if (typeof currentBattleMaxPet === "number") {
+        currentBattleMaxPet = Math.max(currentBattleMaxPet, dmg);
+      }
+
       appendLog(`${petName}の渾身の一撃！ ${currentEnemy.name} に${dmg}ダメージ！`);
     } else {
       enemyHp = Math.max(0, enemyHp - dmg);
+
+      // ★ ペット通常攻撃として最大値更新
+      if (typeof currentBattleMaxDamage === "number") {
+        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+      }
+      if (typeof currentBattleMaxPet === "number") {
+        currentBattleMaxPet = Math.max(currentBattleMaxPet, dmg);
+      }
+
       appendLog(`${petName}の攻撃！ ${currentEnemy.name} に${dmg}ダメージ`);
     }
   }
@@ -413,12 +440,30 @@ function castMagicFromUI() {
     const baseInt = getEffectiveIntForMagic();
     const dmg = 10 + baseInt * 2;
     enemyHp = Math.max(0, enemyHp - dmg);
+
+    // ★ 魔法ダメージとして最大値更新
+    if (typeof currentBattleMaxDamage === "number") {
+      currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+    }
+    if (typeof currentBattleMaxMagic === "number") {
+      currentBattleMaxMagic = Math.max(currentBattleMaxMagic, dmg);
+    }
+
     appendLog(`ファイアボルト！ ${currentEnemy.name} に${dmg}ダメージ`);
     didDamage = true;
   } else if (skillId === "iceLance") {
     const baseInt = getEffectiveIntForMagic();
     const dmg = 8 + Math.floor(baseInt * 1.8);
     enemyHp = Math.max(0, enemyHp - dmg);
+
+    // ★ 魔法ダメージとして最大値更新
+    if (typeof currentBattleMaxDamage === "number") {
+      currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+    }
+    if (typeof currentBattleMaxMagic === "number") {
+      currentBattleMaxMagic = Math.max(currentBattleMaxMagic, dmg);
+    }
+
     appendLog(`アイスランス！ ${currentEnemy.name} に${dmg}ダメージ（防御が下がった気がする）`);
     didDamage = true;
   } else if (skillId === "chainLightning") {
@@ -430,6 +475,15 @@ function castMagicFromUI() {
       total += one;
     }
     enemyHp = Math.max(0, enemyHp - total);
+
+    // ★ 多段の合計ダメージを魔法ダメージとして最大値更新
+    if (typeof currentBattleMaxDamage === "number") {
+      currentBattleMaxDamage = Math.max(currentBattleMaxDamage, total);
+    }
+    if (typeof currentBattleMaxMagic === "number") {
+      currentBattleMaxMagic = Math.max(currentBattleMaxMagic, total);
+    }
+
     appendLog(`チェインライトニング！ ${currentEnemy.name} に${hits}ヒット合計${total}ダメージ`);
     didDamage = true;
   } else if (skillId === "manaBurst") {
@@ -438,6 +492,15 @@ function castMagicFromUI() {
     enemyHp = Math.max(0, enemyHp - dmg);
     const extra = Math.floor(mpMax * 0.1);
     mp = Math.max(0, mp - extra);
+
+    // ★ 魔法ダメージとして最大値更新
+    if (typeof currentBattleMaxDamage === "number") {
+      currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+    }
+    if (typeof currentBattleMaxMagic === "number") {
+      currentBattleMaxMagic = Math.max(currentBattleMaxMagic, dmg);
+    }
+
     appendLog(`マナバースト！ ${currentEnemy.name} に${dmg}ダメージ（反動でMPを${extra}消費）`);
     didDamage = true;
   } else if (skillId === "beastHeal") {
@@ -591,12 +654,30 @@ function useSkillFromUI() {
   if (skillId === "powerSlash") {
     const dmg = Math.floor(getCurrentAtkForSkill() * 1.5);
     enemyHp = Math.max(0, enemyHp - dmg);
+
+    // ★ 物理スキルダメージとして最大値更新
+    if (typeof currentBattleMaxDamage === "number") {
+      currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+    }
+    if (typeof currentBattleMaxPhys === "number") {
+      currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
+    }
+
     appendLog(`パワースラッシュ！ ${currentEnemy.name} に${dmg}ダメージ`);
     didDamage = true;
   } else if (skillId === "shieldBlow") {
     const dmg = Math.floor(getCurrentAtkForSkill() * 1.2);
     enemyHp = Math.max(0, enemyHp - dmg);
     shieldBlowGuardTurnRemain = 1;
+
+    // ★ 物理スキルダメージとして最大値更新
+    if (typeof currentBattleMaxDamage === "number") {
+      currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+    }
+    if (typeof currentBattleMaxPhys === "number") {
+      currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
+    }
+
     appendLog(`シールドブロウ！ ${currentEnemy.name} に${dmg}ダメージ（次の被ダメージ軽減）`);
     didDamage = true;
   } else if (skillId === "braveCharge") {
@@ -607,11 +688,29 @@ function useSkillFromUI() {
     enemyHp = Math.max(0, enemyHp - dmg);
     // シールドブロウより長くガード
     shieldBlowGuardTurnRemain = 2;
+
+    // ★ 物理スキルダメージとして最大値更新
+    if (typeof currentBattleMaxDamage === "number") {
+      currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+    }
+    if (typeof currentBattleMaxPhys === "number") {
+      currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
+    }
+
     appendLog(`ガードインパクト！ ${currentEnemy.name} に${dmg}ダメージ（しばらく被ダメージ軽減）`);
     didDamage = true;
   } else if (skillId === "beastSlash") {
     const dmg = Math.floor(getCurrentAtkForSkill() * 1.3);
     enemyHp = Math.max(0, enemyHp - dmg);
+
+    // ★ 物理スキルダメージとして最大値更新
+    if (typeof currentBattleMaxDamage === "number") {
+      currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+    }
+    if (typeof currentBattleMaxPhys === "number") {
+      currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
+    }
+
     appendLog(`ビーストスラッシュ！ ${currentEnemy.name} に${dmg}ダメージ`);
     didDamage = true;
   } else if (skillId === "animalLink") {
