@@ -450,7 +450,12 @@ const STATUS_EFFECTS = {
     name: "飲み物:回復T1",
     baseDuration: 30,
     onTurnEnd(targetCtx) {
-      appendLog("ハーブティーの効果で精神が落ち着いた…");
+      const mpMax = targetCtx.mpMax();
+      const applyMp = targetCtx.applyMp;
+      const name = targetCtx.name;
+      const heal = Math.max(1, Math.floor(mpMax * 0.04)); // 4%
+      applyMp(heal);
+      appendLog(`${name}はハーブティーの効果でMPが${heal}回復した…`);
     }
   },
   drink_mp_regen_T2: {
@@ -458,7 +463,12 @@ const STATUS_EFFECTS = {
     name: "飲み物:回復T2",
     baseDuration: 45,
     onTurnEnd(targetCtx) {
-      appendLog("濃縮ハーブティーの効果で集中力が高まっている…");
+      const mpMax = targetCtx.mpMax();
+      const applyMp = targetCtx.applyMp;
+      const name = targetCtx.name;
+      const heal = Math.max(1, Math.floor(mpMax * 0.06)); // 6%
+      applyMp(heal);
+      appendLog(`${name}は濃縮ハーブティーの効果でMPが${heal}回復している…`);
     }
   },
   drink_mp_regen_T3: {
@@ -466,7 +476,12 @@ const STATUS_EFFECTS = {
     name: "飲み物:回復T3",
     baseDuration: 60,
     onTurnEnd(targetCtx) {
-      appendLog("祝福のハーブティーの効果で魔力があふれている…");
+      const mpMax = targetCtx.mpMax();
+      const applyMp = targetCtx.applyMp;
+      const name = targetCtx.name;
+      const heal = Math.max(1, Math.floor(mpMax * 0.08)); // 8%
+      applyMp(heal);
+      appendLog(`${name}は祝福のハーブティーの効果でMPが${heal}回復している…`);
     }
   },
   drink_sp_buff_T1: {
@@ -518,6 +533,14 @@ function makePlayerCtx() {
     hpMax: () => hpMax,
     applyHp: delta => {
       hp = Math.max(0, Math.min(hpMax, hp + delta));
+    },
+    // ★ MP 系（飲み物MPリジェネ用）
+    mp: () => (typeof mp === "number" ? mp : 0),
+    mpMax: () => (typeof mpMax === "number" ? mpMax : 0),
+    applyMp: delta => {
+      if (typeof mp === "number" && typeof mpMax === "number") {
+        mp = Math.max(0, Math.min(mpMax, mp + delta));
+      }
     }
   };
 }
@@ -745,6 +768,18 @@ function modifyAccuracyForEnemy(acc) {
     }
   }
   return a;
+}
+
+// ★クリティカル率補正（プレイヤー）
+function modifyCritRateForPlayer(baseRate) {
+  let r = baseRate;
+  for (const inst of playerStatuses) {
+    const def = STATUS_EFFECTS[inst.id];
+    if (def && def.modifyCritRate) {
+      r = def.modifyCritRate(r);
+    }
+  }
+  return r;
 }
 
 // =======================

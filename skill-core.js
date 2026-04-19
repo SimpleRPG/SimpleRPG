@@ -332,7 +332,13 @@ function doPetTurn() {
   if (!usedSkill) {
     let dmg = calcPetDamage();
 
-    if (Math.random() < 0.2) {
+    // ★ ここだけ調整: クリティカル率にステータスバフを反映（ベース20%は維持）
+    let critRate = 0.2;
+    if (typeof modifyCritRateForPlayer === "function") {
+      critRate = modifyCritRateForPlayer(critRate);
+    }
+
+    if (Math.random() < critRate) {
       const critBonus = 1.5;
       dmg = Math.floor(dmg * critBonus);
       enemyHp = Math.max(0, enemyHp - dmg);

@@ -569,25 +569,6 @@ function initGame() {
 }
 
 // =======================
-// ログ表示ヘルパー
-// =======================
-
-// ★ 重複定義を避けるため、appendLog は 1 つだけにする。
-//   game-ui-3.js 側の仕様（上に追加して古いログを押し下げる）に合わせた実装。
-function appendLog(msg) {
-  const el = document.getElementById("log");
-  if (!el) return;
-
-  let lines = el.textContent.split("\n").filter(line => line.trim() !== "");
-  lines.unshift(msg);
-  if (lines.length > 50) {
-    lines = lines.slice(0, 50);
-  }
-  el.textContent = lines.join("\n");
-  el.scrollTop = 0;
-}
-
-// =======================
 // 素材表示ヘルパー
 // =======================
 

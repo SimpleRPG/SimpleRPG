@@ -6,10 +6,6 @@ const ENEMIES = {
   slime: {
     id: "slime",
     name: "スライム",
-    name: "スライム",
-    name: "スライム",
-    name: "スライム",
-    name: "スライム",
     hp: 12,   // ほんの少しだけ増やす
     atk: 4,   // HP30に対して8発前後
     def: 0,

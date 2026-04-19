@@ -268,8 +268,9 @@ function playerAttack() {
     return;
   }
 
+  // ★修正: beforeActionPlayer から actionCtx を受け取り、混乱時ターゲット変更に使う
   const pre = beforeActionPlayer();
-  if (!pre.canAct) {
+  if (!pre || !pre.canAct) {
     enemyTurn();
     tickStatusesTurnEndForBoth();
     renderPlayerStatusIcons();
@@ -277,70 +278,247 @@ function playerAttack() {
     updateDisplay();
     return;
   }
+  const actionCtx = pre.actionCtx || {};
 
-  let hitRate = 0.95;
-  hitRate = modifyAccuracyForPlayer(hitRate);
-  if (Math.random() > hitRate) {
-    appendLog("あなたの攻撃は外れた！");
-    enemyTurn();
-    tickStatusesTurnEndForBoth();
-    renderPlayerStatusIcons();
-    updateEnemyStatusUI();
-    updateDisplay();
-    return;
+  // ターゲット決定（混乱で自分を殴る場合にのみ変化）
+  let targetType = "enemy"; // "enemy" | "self"
+  if (actionCtx.forceTarget === "selfOrAlly") {
+    targetType = "self";
   }
 
+  // 命中判定は「敵に向けた攻撃」の時だけ行う（自傷は必中扱い）
+  let isHit = true;
+  if (targetType === "enemy") {
+    let hitRate = 0.95;
+    hitRate = modifyAccuracyForPlayer(hitRate);
+    if (Math.random() > hitRate) {
+      appendLog("あなたの攻撃は外れた！");
+      enemyTurn();
+      tickStatusesTurnEndForBoth();
+      renderPlayerStatusIcons();
+      updateEnemyStatusUI();
+      updateDisplay();
+      return;
+    }
+  }
+
+  // ダメージ計算共通部分（物理攻撃）
   let baseDamage = Math.max(1, atkTotal - (currentEnemy.def || 0));
   baseDamage = applyAttackBuffsForPlayer(baseDamage);
   baseDamage = applyDefenseBuffsForEnemy(baseDamage);
 
-  enemyHp -= baseDamage;
-
-  // ★戦闘内の最大与ダメージを更新（物理系としてもカウント）
-  if (baseDamage > currentBattleMaxDamage) {
-    currentBattleMaxDamage = baseDamage;
+  // ★修正: クリティカル判定（ベース5%をステータスバフで補正）
+  let critRate = 0.05;
+  if (typeof modifyCritRateForPlayer === "function") {
+    critRate = modifyCritRateForPlayer(critRate);
   }
-  if (baseDamage > currentBattleMaxPhys) {
-    currentBattleMaxPhys = baseDamage;
+  let isCrit = Math.random() < critRate;
+  let finalDamage = baseDamage;
+  if (isCrit) {
+    finalDamage = Math.floor(finalDamage * 1.5);
   }
 
-  onEnemyDamagedByPlayer();
-  appendLog(`あなたの攻撃！ ${currentEnemy.name}に${baseDamage}ダメージ！`);
+  if (targetType === "enemy") {
+    enemyHp -= finalDamage;
 
-  if (enemyHp <= 0) {
-    enemyHp = 0;
-
-    // 物理通常攻撃でトドメを刺したので、ギルド用ヘルパーに通知
-    if (typeof onEnemyKilledForGuild === "function") {
-      onEnemyKilledForGuild({ by: "phys", isBoss: !!isBossBattle });
+    // ★戦闘内の最大与ダメージを更新（物理系としてもカウント）
+    if (finalDamage > currentBattleMaxDamage) {
+      currentBattleMaxDamage = finalDamage;
+    }
+    if (finalDamage > currentBattleMaxPhys) {
+      currentBattleMaxPhys = finalDamage;
     }
 
-    winBattle(true, "phys");
-    return;
-  }
-
-  // ★修正: ペット選択済みかつHP>0のときのみペットターンを実行
-  if (typeof hasCompanion === "function" && hasCompanion() && petHp > 0) {
-    doPetTurn();
-  }
-
-  if (enemyHp <= 0) {
-    enemyHp = 0;
-
-    // ペットがトドメを刺した場合
-    if (typeof onEnemyKilledForGuild === "function") {
-      onEnemyKilledForGuild({ by: "pet", isBoss: !!isBossBattle });
+    onEnemyDamagedByPlayer();
+    if (isCrit) {
+      appendLog(`クリティカル！ あなたの攻撃！ ${currentEnemy.name}に${finalDamage}ダメージ！`);
+    } else {
+      appendLog(`あなたの攻撃！ ${currentEnemy.name}に${finalDamage}ダメージ！`);
     }
 
-    winBattle(true, "pet");
-    return;
-  }
+    if (enemyHp <= 0) {
+      enemyHp = 0;
 
-  enemyTurn();
-  tickStatusesTurnEndForBoth();
-  renderPlayerStatusIcons();
-  updateEnemyStatusUI();
-  updateDisplay();
+      // 物理通常攻撃でトドメを刺したので、ギルド用ヘルパーに通知
+      if (typeof onEnemyKilledForGuild === "function") {
+        onEnemyKilledForGuild({ by: "phys", isBoss: !!isBossBattle });
+      }
+
+      winBattle(true, "phys");
+      return;
+    }
+
+    // ★修正: ペット選択済みかつHP>0のときのみペットターンを実行
+    if (typeof hasCompanion === "function" && hasCompanion() && petHp > 0) {
+      doPetTurn();
+    }
+
+    if (enemyHp <= 0) {
+      enemyHp = 0;
+
+      // ペットがトドメを刺した場合
+      if (typeof onEnemyKilledForGuild === "function") {
+        onEnemyKilledForGuild({ by: "pet", isBoss: !!isBossBattle });
+      }
+
+      winBattle(true, "pet");
+      return;
+    }
+
+    enemyTurn();
+    tickStatusesTurnEndForBoth();
+    renderPlayerStatusIcons();
+    updateEnemyStatusUI();
+    updateDisplay();
+  } else {
+    // ====== 混乱時: 自分を殴る処理 ======
+    let selfDmg = finalDamage;
+
+    // プレイヤー側防御とバフ・デバフを通す
+    selfDmg = Math.max(1, selfDmg - defTotal);
+    selfDmg = applyDefenseBuffsForPlayer(selfDmg);
+
+    hp -= selfDmg;
+
+    // 被ダメージ統計更新
+    if (selfDmg > currentBattleMaxTaken) {
+      currentBattleMaxTaken = selfDmg;
+    }
+
+    if (isCrit) {
+      appendLog(`クリティカル！ 混乱したあなたは自分を攻撃し、${selfDmg}ダメージを受けた！`);
+    } else {
+      appendLog(`混乱したあなたは自分を攻撃し、${selfDmg}ダメージを受けた！`);
+    }
+
+    if (hp <= 0) {
+      hp = 0;
+      appendLog("あなたは倒れてしまった…");
+
+      // ★死亡時は撤退状態も必ずリセット（罠死亡と同じ挙動に揃える）
+      window.isRetreating     = false;
+      window.retreatTurnsLeft = 0;
+
+      window.isExploring   = false;
+      window.exploringArea = "field";
+
+      hp    = hpMax;
+      mp    = mpMax;
+      sp    = spMax;
+      petHp = petHpMax;
+
+      money = Math.floor(money / 2);
+
+      let brokeSomething = false;
+
+      function reduceDurabilityOnEquip() {
+        if (typeof equippedWeaponIndex === "number" &&
+            Array.isArray(window.weaponInstances)) {
+          const idx = equippedWeaponIndex;
+          const inst = window.weaponInstances[idx];
+          if (inst) {
+            inst.durability = Math.max(0, (inst.durability ?? MAX_DURABILITY) - 30);
+            if (inst.durability <= 0) {
+              const wName = (weapons.find(w => w.id === inst.id)?.name) || inst.id;
+              appendLog(`${wName} は壊れて消滅した…`);
+              const cnt = weaponCounts[inst.id] || 0;
+              weaponCounts[inst.id] = Math.max(0, cnt - 1);
+              window.weaponInstances.splice(idx, 1);
+              equippedWeaponIndex = null;
+              equippedWeaponId    = null;
+              brokeSomething = true;
+            } else {
+              brokeSomething = true;
+            }
+          }
+        }
+
+        if (typeof equippedArmorIndex === "number" &&
+            Array.isArray(window.armorInstances)) {
+          const idx = equippedArmorIndex;
+          const inst = window.armorInstances[idx];
+          if (inst) {
+            inst.durability = Math.max(0, (inst.durability ?? MAX_DURABILITY) - 30);
+            if (inst.durability <= 0) {
+              const aName = (armors.find(a => a.id === inst.id)?.name) || inst.id;
+              appendLog(`${aName} は壊れて消滅した…`);
+              const cnt = armorCounts[inst.id] || 0;
+              armorCounts[inst.id] = Math.max(0, cnt - 1);
+              window.armorInstances.splice(idx, 1);
+              equippedArmorIndex = null;
+              equippedArmorId    = null;
+              brokeSomething = true;
+            } else {
+              brokeSomething = true;
+            }
+          }
+        }
+
+        if (!Array.isArray(window.weaponInstances) && equippedWeaponId && Array.isArray(weapons)) {
+          const w = weapons.find(x => x.id === equippedWeaponId);
+          if (w && typeof w.durability === "number") {
+            w.durability = Math.max(0, w.durability - 30);
+            if (w.durability <= 0) {
+              const cnt = weaponCounts[w.id] || 0;
+              weaponCounts[w.id] = Math.max(0, cnt - 1);
+              appendLog(`${w.name} は壊れてしまった…`);
+              brokeSomething = true;
+              if (weaponCounts[w.id] <= 0 && equippedWeaponId === w.id) {
+                equippedWeaponId = null;
+              }
+            } else {
+              brokeSomething = true;
+            }
+          }
+        }
+
+        if (!Array.isArray(window.armorInstances) && equippedArmorId && Array.isArray(armors)) {
+          const a = armors.find(x => x.id === equippedArmorId);
+          if (a && typeof a.durability === "number") {
+            a.durability = Math.max(0, a.durability - 30);
+            if (a.durability <= 0) {
+              const cnt = armorCounts[a.id] || 0;
+              armorCounts[a.id] = Math.max(0, cnt - 1);
+              appendLog(`${a.name} は壊れてしまった…`);
+              brokeSomething = true;
+              if (armorCounts[a.id] <= 0 && equippedArmorId === a.id) {
+                equippedArmorId = null;
+              }
+            } else {
+              brokeSomething = true;
+            }
+          }
+        }
+
+        if (typeof refreshEquipSelects === "function") {
+          refreshEquipSelects();
+        }
+        if (typeof recalcStats === "function") {
+          recalcStats();
+        } else {
+          updateDisplay();
+        }
+      }
+
+      reduceDurabilityOnEquip();
+
+      if (brokeSomething) {
+        appendLog("街に戻った… 休んで回復し、所持ゴールドを半分失い、装備の耐久度が30減少した。");
+      } else {
+        appendLog("街に戻った… 休んで回復し、所持ゴールドを半分失った。");
+      }
+
+      // ★戦闘統計に「敗北」を反映
+      commitCurrentBattleStats("lose");
+
+      endBattleCommon();
+    } else {
+      tickSkillBuffTurns();
+      renderPlayerStatusIcons();
+      updateEnemyStatusUI();
+      updateDisplay();
+    }
+  }
 }
 
 function enemyTurn() {
