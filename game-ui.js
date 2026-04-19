@@ -563,14 +563,22 @@ window.addEventListener("DOMContentLoaded", () => {
   if (dailyBonusDetailBtn && dailyBonusDetailPanel && dailyBonusDetailText) {
     dailyBonusDetailBtn.onclick = null;
 
-    // 初期テキスト更新（関数があれば使う）
-    if (typeof getTodayDailyBonusLabel === "function") {
+    // 初期テキスト更新（詳細関数があればそれを使う）
+    if (typeof getTodayDailyBonusDetailsText === "function") {
+      dailyBonusDetailText.textContent = getTodayDailyBonusDetailsText();
+    } else if (typeof getTodayDailyBonusLabel === "function") {
       const label = getTodayDailyBonusLabel();
       dailyBonusDetailText.textContent = `今日の対象: ${label}`;
     }
 
     dailyBonusDetailBtn.addEventListener("click", () => {
       const visible = window.getComputedStyle(dailyBonusDetailPanel).display !== "none";
+
+      // 開くタイミングで毎回詳細テキストを最新化
+      if (!visible && typeof getTodayDailyBonusDetailsText === "function") {
+        dailyBonusDetailText.textContent = getTodayDailyBonusDetailsText();
+      }
+
       dailyBonusDetailPanel.style.display = visible ? "none" : "block";
       dailyBonusDetailBtn.textContent = visible ? "▼ボーナス詳細" : "▲ボーナス詳細";
     });

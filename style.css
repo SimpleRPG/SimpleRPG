@@ -1569,3 +1569,8 @@ foreignObject.neighbor .skill-node-btn,
     font-size: clamp(9px, 2.5vw, 11px);
   }
 }
+
+/* 日替わりボーナス詳細：改行をそのまま表示 */
+#dailyBonusDetailText {
+  white-space: pre-line;
+}

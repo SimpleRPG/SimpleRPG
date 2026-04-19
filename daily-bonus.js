@@ -19,6 +19,7 @@
 //   - getDailyCraftBonus("weapon")
 //   - getDailyBattleBonus(jobId)
 //   - getTodayDailyBonusLabel()
+//   - getTodayDailyBonusDetailsText()  ← 追加（ラベル＋効果一覧）
 // などを呼び出して使う。
 
 (function () {
@@ -226,6 +227,88 @@
   }
 
   // =======================
+  // ◆詳細テキスト生成（ラベル＋効果だけ）
+  // =======================
+
+  // 個々のキーに対応する「ラベル」と「効果テキスト」を返す。
+  function getDailyBonusLabelAndEffect(key) {
+    switch (key) {
+      // 採取（量 +10%）
+      case "gather_wood":
+        return { label: "採取：木", effect: "木の採取量が +10%" };
+      case "gather_ore":
+        return { label: "採取：鉱石", effect: "鉱石の採取量が +10%" };
+      case "gather_herb":
+        return { label: "採取：草", effect: "草の採取量が +10%" };
+      case "gather_cloth":
+        return { label: "採取：布", effect: "布の採取量が +10%" };
+      case "gather_leather":
+        return { label: "採取：皮", effect: "皮の採取量が +10%" };
+      case "gather_water":
+        return { label: "採取：水", effect: "水の採取量が +10%" };
+
+      case "gather_hunt":
+        return { label: "狩猟（料理素材）", effect: "狩猟で手に入る料理素材の量が +10%" };
+      case "gather_fish":
+        return { label: "釣り（料理素材）", effect: "釣りで手に入る料理素材の量が +10%" };
+      case "gather_farm":
+        return { label: "農園", effect: "農園で収穫できる作物の量が +10%" };
+      case "gather_garden":
+        return { label: "菜園", effect: "菜園で収穫できる作物の量が +10%" };
+
+      // クラフト（成功率 +5%）
+      case "craft_weapon":
+        return { label: "クラフト：武器", effect: "武器クラフトの成功率が +5%" };
+      case "craft_armor":
+        return { label: "クラフト：防具", effect: "防具クラフトの成功率が +5%" };
+      case "craft_potion":
+        return { label: "クラフト：ポーション", effect: "ポーションクラフトの成功率が +5%" };
+      case "craft_tool":
+        return { label: "クラフト：道具", effect: "道具クラフトの成功率が +5%" };
+      case "craft_material":
+        return { label: "クラフト：中間素材", effect: "中間素材クラフトの成功率が +5%" };
+      case "craft_food":
+        return { label: "料理：食べ物", effect: "料理（食べ物）の成功率が +5%" };
+      case "craft_drink":
+        return { label: "料理：飲み物", effect: "料理（飲み物）の成功率が +5%" };
+
+      // 戦闘（ゴールド・ドロップ +10%）
+      case "battle_warrior":
+        return { label: "戦闘：戦士", effect: "戦士で戦闘したときのゴールド・ドロップ率が +10%" };
+      case "battle_mage":
+        return { label: "戦闘：魔法使い", effect: "魔法使いで戦闘したときのゴールド・ドロップ率が +10%" };
+      case "battle_beast":
+        return { label: "戦闘：動物使い", effect: "動物使いで戦闘したときのゴールド・ドロップ率が +10%" };
+      case "battle_alchemist":
+        return { label: "戦闘：錬金術師", effect: "錬金術師で戦闘したときのゴールド・ドロップ率が +10%" };
+
+      default:
+        // 未定義キー用
+        return { label: key, effect: "効果未定義" };
+    }
+  }
+
+  // 今日の2つのボーナスについて、「ラベル＋効果」の複数行テキストを返す。
+  // 空行は入れず、常に1行間隔だけにする。
+  function getTodayDailyBonusDetailsText() {
+    var keys = getTodayDailyBonusKeys();
+    if (!keys || !keys.length) {
+      return "今日は日替わりボーナスはありません。";
+    }
+
+    var lines = [];
+    lines.push("【今日の日替わりボーナス】");
+
+    keys.forEach(function (key) {
+      var info = getDailyBonusLabelAndEffect(key);
+      lines.push("▼ " + info.label + " 効果: " + info.effect);
+    });
+
+    lines.push("※ボーナス内容は毎日0:00に切り替わります。");
+    return lines.join("\n");
+  }
+
+  // =======================
   // ボーナス値定義
   // =======================
 
@@ -318,12 +401,13 @@
   // =======================
 
   if (typeof window !== "undefined") {
-    window.getTodayDailyBonusKeys  = getTodayDailyBonusKeys;
-    window.isDailyBonusActive      = isDailyBonusActive;
-    window.getTodayDailyBonusLabel = getTodayDailyBonusLabel;
-    window.getDailyGatherBonus     = getDailyGatherBonus;
-    window.getDailyCraftBonus      = getDailyCraftBonus;
-    window.getDailyBattleBonus     = getDailyBattleBonus;
+    window.getTodayDailyBonusKeys        = getTodayDailyBonusKeys;
+    window.isDailyBonusActive            = isDailyBonusActive;
+    window.getTodayDailyBonusLabel       = getTodayDailyBonusLabel;
+    window.getTodayDailyBonusDetailsText = getTodayDailyBonusDetailsText; // 追加
+    window.getDailyGatherBonus           = getDailyGatherBonus;
+    window.getDailyCraftBonus            = getDailyCraftBonus;
+    window.getDailyBattleBonus           = getDailyBattleBonus;
   } else if (typeof module !== "undefined" && module.exports) {
     // 一応CommonJS対応（テスト用）
     module.exports = {
@@ -331,6 +415,7 @@
       getTodayDailyBonusKeys: getTodayDailyBonusKeys,
       isDailyBonusActive: isDailyBonusActive,
       getTodayDailyBonusLabel: getTodayDailyBonusLabel,
+      getTodayDailyBonusDetailsText: getTodayDailyBonusDetailsText, // 追加
       getDailyGatherBonus: getDailyGatherBonus,
       getDailyCraftBonus: getDailyCraftBonus,
       getDailyBattleBonus: getDailyBattleBonus

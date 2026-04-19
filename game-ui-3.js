@@ -7,12 +7,18 @@ function appendLog(msg) {
   const el = document.getElementById("log");
   if (!el) return;
 
-  let lines = el.textContent.split("\\n").filter(line => line.trim() !== "");
+  // ログ内部は本物の改行で管理する
+  if (typeof msg === "string") {
+    // もしメッセージ側が「\\n」（リテラル）を含んでいたら、本物の改行に変換
+    msg = msg.replace(/\\n/g, "\n");
+  }
+
+  let lines = el.textContent.split("\n").filter(line => line.trim() !== "");
   lines.unshift(msg);
   if (lines.length > MAX_LOG_LINES) {
     lines = lines.slice(0, MAX_LOG_LINES);
   }
-  el.textContent = lines.join("\\n");
+  el.textContent = lines.join("\n");
   el.scrollTop = 0;
 }
 
@@ -361,8 +367,8 @@ function openCompanionModalIfNeeded() {
   cancelBtn.addEventListener("click", (e) => {
     if (!window.companionSkipOnce) {
       const ok = window.confirm(
-        "最初のペットを選ばずに、今は選ばないを選びますか？\\n" +
-        "このあとも草原のランダムイベント等で動物と出会える予定です。\\n\\n" +
+        "最初のペットを選ばずに、今は選ばないを選びますか？\n" +
+        "このあとも草原のランダムイベント等で動物と出会える予定です。\n\n" +
         "本当に今はペットを選びませんか？"
       );
       if (!ok) {
@@ -389,8 +395,6 @@ function openCompanionModalIfNeeded() {
 
 // ★UI初期化（職業・ペット・転生まわり）
 function initJobPetRebirthUI() {
-  console.log("initJobPetRebirthUI called");
-
   if (typeof buildStatusPage === "function") {
     buildStatusPage();
   }
@@ -401,7 +405,6 @@ function initJobPetRebirthUI() {
 
   function bindChangeJobButtonOnce() {
     const changeJobBtn2 = document.getElementById("changeJobBtn");
-    console.log("bindChangeJobButtonOnce:", changeJobBtn2, "openJobModal typeof:", typeof openJobModal);
     if (!changeJobBtn2 || typeof openJobModal !== "function") return false;
 
     changeJobBtn2.addEventListener("click", () => {
@@ -486,18 +489,18 @@ function initJobPetRebirthUI() {
     }
 
     dailyBonusLabelEl.addEventListener("click", () => {
-      const currentLabel = getTodayDailyBonusLabel();
-      if (typeof showModal === "function") {
-        const msg = [
-          "今日の日替わりボーナス：",
-          "  " + currentLabel,
-          "",
-          "・採取ボーナスの日：対象カテゴリの採取量 +10%",
-          "・クラフトボーナスの日：対象カテゴリのクラフト成功率 +5%",
-          "・戦闘ボーナスの日：対象職業のゴールド +10%、ドロップ率 +10%"
-        ].join("\\n");
-        showModal("日替わりボーナス", msg);
+      const detailBtn = document.getElementById("toggleDailyBonusDetailBtn");
+
+      if (detailBtn) {
+        // ラベルクリックで詳細パネルのトグルボタンを代理クリック
+        detailBtn.click();
+      } else if (typeof getTodayDailyBonusDetailsText === "function" &&
+                 typeof showModal === "function") {
+        // パネルがない環境向けフォールバック：詳細テキストをモーダル表示
+        showModal("日替わりボーナス", getTodayDailyBonusDetailsText());
       } else {
+        // さらに簡易なフォールバック：ラベルだけログに出す
+        const currentLabel = getTodayDailyBonusLabel();
         appendLog("今日の日替わりボーナス：" + currentLabel);
       }
     });
@@ -832,13 +835,10 @@ function initStatusStatsSubTabs() {
     pageFish.style.display   = isFish   ? "block" : "none";
 
     if (isGather) {
-      if (typeof renderGatherStatsTable === "function") {
-        renderGatherStatsTable();
-      }
+      // 統計 UI は gather-stats-ui.js に一本化
       if (typeof renderGatherMaterialTables === "function") {
         renderGatherMaterialTables();
-      }
-      if (typeof initGatherStatsUI === "function") {
+      } else if (typeof initGatherStatsUI === "function") {
         initGatherStatsUI();
       }
     }
