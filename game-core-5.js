@@ -14,6 +14,20 @@ let areaBossAvailable = {
   mine:   false
 };
 
+// ★エリアごとの「連続探索回数（ボス用累積カウンタ）」と直前探索成功フラグ
+let consecutiveExplores = {
+  field: 0,
+  forest: 0,
+  cave:   0,
+  mine:   0
+};
+let lastExploreSuccess = {
+  field: true,
+  forest: true,
+  cave:   true,
+  mine:   true
+};
+
 // 探索滞在状態（UI側と共有）
 window.isExploring   = false;      // 街にいる: false / どこか探索中: true
 window.exploringArea = "field";    // 現在探索しているエリアID
@@ -221,7 +235,28 @@ function startRandomEncounter() {
 }
 
 // =======================
-// 探索時のボス発見判定
+// 累積ボス用ヘルパ
+// =======================
+
+function resetConsecutiveForArea(areaId) {
+  if (!consecutiveExplores[areaId] && consecutiveExplores[areaId] !== 0) return;
+  consecutiveExplores[areaId] = 0;
+  lastExploreSuccess[areaId] = false;
+}
+
+function resetConsecutiveAll() {
+  for (const k of Object.keys(consecutiveExplores)) {
+    consecutiveExplores[k] = 0;
+    lastExploreSuccess[k] = false;
+  }
+}
+
+function markExploreSuccess(areaId) {
+  lastExploreSuccess[areaId] = true;
+}
+
+// =======================
+// 探索時のボス発見判定（累積式・連続探索のみ）
 // =======================
 
 function tryFindBossOnExplore() {
@@ -230,11 +265,40 @@ function tryFindBossOnExplore() {
     : getCurrentArea();
   if (areaBossAvailable[area]) return;
 
+  // 直前探索で中断していた場合はリセットしてからカウント開始
+  if (!lastExploreSuccess[area]) {
+    consecutiveExplores[area] = 0;
+    lastExploreSuccess[area] = false;
+  }
+
+  consecutiveExplores[area] += 1;
+  const count = consecutiveExplores[area];
+
+  // 20回くらいを繰り返すと旧0.05%相当、40回で旧の倍、100回まで行けばほぼ確定、というイメージ
+  let p;
+  if (count <= 20) {
+    // 20回累積 ≒ 0.05%
+    p = 0.00002501;
+  } else if (count <= 40) {
+    // 40回累積 ≒ 0.1%
+    p = 0.00002502;
+  } else if (count <= 100) {
+    // 100回までにほぼ確定（累積 ≒ 99.9%）
+    p = 0.10873420;
+  } else {
+    // 100回を超えてなお探索を続けているなら高確率を維持
+    p = 0.15;
+  }
+
   const roll = Math.random();
-  if (roll < 0.001) {
+  if (roll < p) {
     areaBossAvailable[area] = true;
     appendLog("強い気配を感じる… このエリアのボスに挑めるようになった！");
-    updateBossButtonUI();
+    if (typeof updateBossButtonUI === "function") {
+      updateBossButtonUI();
+    }
+    // ボス発見したので、このエリアの累積は一旦リセットしておく
+    resetConsecutiveForArea(area);
   }
 }
 
@@ -259,6 +323,9 @@ function handleRetreatProgress() {
   window.exploringArea = "field";
 
   appendLog("なんとか街までたどり着いた… ひとまず安全だ。");
+
+  // 撤退完了は「探索中断」とみなし累積リセット
+  resetConsecutiveAll();
 
   if (typeof setBattleCommandVisible === "function") {
     setBattleCommandVisible(false);
@@ -300,18 +367,24 @@ function doExploreEvent(area) {
     return;
   }
 
+  // 毎探索でボス累積判定
   tryFindBossOnExplore();
 
   const roll = Math.random();
 
   if (roll < 0.2) {
     appendLog("何も見つからなかった…");
+    // 何も起きなくても「探索は成立した」とみなして成功マーク
+    markExploreSuccess(area);
     updateReturnTownButton();
     return;
   }
 
   if (roll < 0.4) {
     doExploreRandomEvent(area);
+    // doExploreRandomEvent 内で死亡しなかった場合は探索成功扱いとする
+    //（死亡時は内部で街送り＋リセット済み）
+    markExploreSuccess(area);
     updateReturnTownButton();
     return;
   }
@@ -319,12 +392,14 @@ function doExploreEvent(area) {
   const enemyId = pickRandomEnemyId(area);
   if (!enemyId) {
     appendLog("敵データが見つからない");
+    markExploreSuccess(area);
     updateReturnTownButton();
     return;
   }
   const enemy = createEnemyInstance(enemyId, false);
   if (!enemy) {
     appendLog("敵データの取得に失敗しました");
+    markExploreSuccess(area);
     updateReturnTownButton();
     return;
   }
@@ -343,6 +418,9 @@ function doExploreEvent(area) {
     },
     false
   );
+
+  // 敵が出たことも「探索成功」とみなす（戦闘中断は別ファイルで処理）
+  markExploreSuccess(area);
 
   updateReturnTownButton();
 }
@@ -470,6 +548,9 @@ function doExploreRandomEvent(area) {
         appendLog("街に戻った… 休んで回復し、所持ゴールドを半分失った。");
       }
 
+      // 死亡で探索中断なので累積も全リセット
+      resetConsecutiveAll();
+
       updateReturnTownButton();
       if (typeof setFieldItemRowsVisible === "function") {
         setFieldItemRowsVisible(true);
@@ -575,6 +656,9 @@ function startBossBattleForArea(areaId) {
   if (typeof updateBossButtonUI === "function") {
     updateBossButtonUI();
   }
+
+  // ボス戦に入る＝探索ループは一旦切れるので、そのエリアの累積をリセット
+  resetConsecutiveForArea(areaId);
 
   appendLog(`${boss.name} が立ちはだかった！`);
 
