@@ -445,10 +445,22 @@ function gatherCooking(mode) {
 
   // ========== 狩猟 or 釣りでの素材決定 ==========
   if (mode === "hunt") {
-    // 旧仕様そのまま：肉テーブルからランダム
+    // 肉テーブルからランダム（仕様そのまま）＋品質ロールを追加
     for (let i = 0; i < added; i++) {
       const id = pool[Math.floor(Math.random() * pool.length)];
-      cookingMats[id] = (cookingMats[id] || 0) + 1;
+
+      // 品質ロール（ベース確率＋将来ボーナス用）
+      const q = (typeof rollCookingMatQuality === "function")
+        ? rollCookingMatQuality()
+        : 0;
+
+      if (typeof addCookingMatWithQuality === "function") {
+        addCookingMatWithQuality(id, q);
+      } else {
+        // フォールバック：従来どおり
+        cookingMats[id] = (cookingMats[id] || 0) + 1;
+      }
+
       gained[id] = (gained[id] || 0) + 1;
     }
   } else if (mode === "fish") {
@@ -482,7 +494,17 @@ function gatherCooking(mode) {
         finalFishId = "fish_legend";
       }
 
-      cookingMats[finalFishId] = (cookingMats[finalFishId] || 0) + 1;
+      // 品質ロール
+      const q = (typeof rollCookingMatQuality === "function")
+        ? rollCookingMatQuality()
+        : 0;
+
+      if (typeof addCookingMatWithQuality === "function") {
+        addCookingMatWithQuality(finalFishId, q);
+      } else {
+        cookingMats[finalFishId] = (cookingMats[finalFishId] || 0) + 1;
+      }
+
       gained[finalFishId] = (gained[finalFishId] || 0) + 1;
 
       // サイズ＆図鑑更新（rollFishSize があれば）
@@ -516,7 +538,17 @@ function gatherCooking(mode) {
     const ids = Object.keys(gained);
     if (ids.length > 0) {
       const pickId = ids[Math.floor(Math.random() * ids.length)];
-      cookingMats[pickId] = (cookingMats[pickId] || 0) + 1;
+
+      const q = (typeof rollCookingMatQuality === "function")
+        ? rollCookingMatQuality()
+        : 0;
+
+      if (typeof addCookingMatWithQuality === "function") {
+        addCookingMatWithQuality(pickId, q);
+      } else {
+        cookingMats[pickId] = (cookingMats[pickId] || 0) + 1;
+      }
+
       gained[pickId]      = (gained[pickId]      || 0) + 1;
       appendLog("ペットが追加で料理素材を見つけてきた！");
     }

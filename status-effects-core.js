@@ -771,6 +771,7 @@ function modifyAccuracyForEnemy(acc) {
 }
 
 // ★クリティカル率補正（プレイヤー）
+//   → バフでどれだけ積んでも最後に最大70%で頭打ちにする
 function modifyCritRateForPlayer(baseRate) {
   let r = baseRate;
   for (const inst of playerStatuses) {
@@ -779,7 +780,22 @@ function modifyCritRateForPlayer(baseRate) {
       r = def.modifyCritRate(r);
     }
   }
+  // ソフトキャップ／ハード上限として 70% にクランプ
+  r = Math.min(r, 0.7);
   return r;
+}
+
+// ★クリティカルダメージ倍率補正（プレイヤー）
+//   現状はフックだけ用意し、実際の倍率計算は game-core 側で行う想定。
+function modifyCritMultForPlayer(baseMult) {
+  let m = baseMult;
+  for (const inst of playerStatuses) {
+    const def = STATUS_EFFECTS[inst.id];
+    if (def && def.modifyCritMult) {
+      m = def.modifyCritMult(m);
+    }
+  }
+  return m;
 }
 
 // =======================

@@ -586,3 +586,206 @@ function updateCraftMatDetailText() {
 
   label.textContent = labelText;
 }
+// =======================
+// 倉庫タブ：素材一覧（採取 / 中間 / 料理）描画
+// =======================
+
+// 採取素材テーブルを #gatherMaterialsList 内に描画
+function renderWarehouseGatherMaterials() {
+  const box = document.getElementById("gatherMaterialsList");
+  if (!box || !window.materials) return;
+
+  box.innerHTML = "";
+
+  const names = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
+  const kinds = ["wood","ore","herb","cloth","leather","water"];
+  const tiers = ["t1","t2","t3"];
+  const tierLabels = { t1:"T1", t2:"T2", t3:"T3" };
+
+  const table = document.createElement("table");
+  table.className = "mat-table";
+
+  // ヘッダ行（左端は空、その右に種類）
+  const thead = document.createElement("thead");
+  const htr = document.createElement("tr");
+
+  const thEmpty = document.createElement("th");
+  thEmpty.textContent = "Tier";
+  htr.appendChild(thEmpty);
+
+  kinds.forEach(k => {
+    const th = document.createElement("th");
+    th.textContent = names[k] || k;
+    htr.appendChild(th);
+  });
+
+  thead.appendChild(htr);
+  table.appendChild(thead);
+
+  // ボディ（行=Tier, 列=種類）
+  const tbody = document.createElement("tbody");
+
+  tiers.forEach(tKey => {
+    const tr = document.createElement("tr");
+
+    const thTier = document.createElement("th");
+    thTier.textContent = tierLabels[tKey] || tKey.toUpperCase();
+    tr.appendChild(thTier);
+
+    kinds.forEach(k => {
+      const td = document.createElement("td");
+      const m = window.materials[k] || {};
+      const val = m[tKey] || 0;
+      td.textContent = val;
+      tr.appendChild(td);
+    });
+
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  box.appendChild(table);
+}
+
+// 中間素材テーブルを #intermediateMaterialsList 内に描画
+function renderWarehouseIntermediateMaterials() {
+  const box = document.getElementById("intermediateMaterialsList");
+  if (!box) return;
+  if (typeof window.intermediateMats === "undefined" ||
+      !Array.isArray(window.INTERMEDIATE_MATERIALS || window.INTERMEDIATE_MATERIALS)) {
+    box.textContent = "中間素材はまだありません。";
+    return;
+  }
+
+  box.innerHTML = "";
+
+  const mats = window.intermediateMats || {};
+  const src  = window.INTERMEDIATE_MATERIALS || INTERMEDIATE_MATERIALS;
+
+  // 種類ごとに T1/T2/T3 をまとめたいので、id 接頭辞でグルーピング
+  // 例: woodPlank_T1/T2/T3 → key = woodPlank
+  const groups = {};
+  src.forEach(m => {
+    const id = m.id;
+    if (!id) return;
+    const baseKey = id.replace(/_T[123]$/, "");
+    if (!groups[baseKey]) {
+      groups[baseKey] = {
+        name: m.name.replace(/T[123]/, "").trim(), // ざっくり: 表示名から Tn を削る
+        t1: 0,
+        t2: 0,
+        t3: 0
+      };
+    }
+    if (id.endsWith("_T1")) groups[baseKey].t1 += mats[id] || 0;
+    else if (id.endsWith("_T2")) groups[baseKey].t2 += mats[id] || 0;
+    else if (id.endsWith("_T3")) groups[baseKey].t3 += mats[id] || 0;
+    else groups[baseKey].t1 += mats[id] || 0; // ティアなしはT1扱い
+  });
+
+  const table = document.createElement("table");
+  table.className = "mat-table";
+
+  const thead = document.createElement("thead");
+  const htr = document.createElement("tr");
+  ["素材","T1","T2","T3","合計"].forEach(label => {
+    const th = document.createElement("th");
+    th.textContent = label;
+    htr.appendChild(th);
+  });
+  thead.appendChild(htr);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  Object.keys(groups).forEach(key => {
+    const g = groups[key];
+    const total = g.t1 + g.t2 + g.t3;
+    if (total === 0) return;
+
+    const tr = document.createElement("tr");
+    const tdName = document.createElement("td");
+    tdName.textContent = g.name || key;
+    const tdT1 = document.createElement("td");
+    const tdT2 = document.createElement("td");
+    const tdT3 = document.createElement("td");
+    const tdTotal = document.createElement("td");
+    tdT1.textContent = g.t1;
+    tdT2.textContent = g.t2;
+    tdT3.textContent = g.t3;
+    tdTotal.textContent = total;
+
+    tr.appendChild(tdName);
+    tr.appendChild(tdT1);
+    tr.appendChild(tdT2);
+    tr.appendChild(tdT3);
+    tr.appendChild(tdTotal);
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  box.appendChild(table);
+}
+
+// 料理素材テーブルを #cookingMaterialsList 内に描画
+function renderWarehouseCookingMaterials() {
+  const box = document.getElementById("cookingMaterialsList");
+  if (!box) return;
+  if (typeof COOKING_MAT_NAMES === "undefined") {
+    box.textContent = "料理素材情報がありません。";
+    return;
+  }
+
+  box.innerHTML = "";
+
+  const mats  = window.cookingMats || {};
+  // 将来 quality を導入する前提で、手持ちがあれば cookingMatsQuality を見る
+  const quality = window.cookingMatsQuality || {}; // id -> [normal, silver, gold]
+
+  const table = document.createElement("table");
+  table.className = "mat-table";
+
+  const thead = document.createElement("thead");
+  const htr = document.createElement("tr");
+  ["素材","普通","銀","金","合計"].forEach(label => {
+    const th = document.createElement("th");
+    th.textContent = label;
+    htr.appendChild(th);
+  });
+  thead.appendChild(htr);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+
+  Object.keys(COOKING_MAT_NAMES).forEach(id => {
+    const name = COOKING_MAT_NAMES[id] || id;
+
+    const qArr = quality[id] || [0,0,0];
+    const normal = (mats[id] || 0) + (qArr[0] || 0); // 旧仕様ぶんは普通に足す
+    const silver = qArr[1] || 0;
+    const gold   = qArr[2] || 0;
+    const total  = normal + silver + gold;
+    if (total === 0) return;
+
+    const tr = document.createElement("tr");
+    const tdName   = document.createElement("td");
+    const tdNormal = document.createElement("td");
+    const tdSilver = document.createElement("td");
+    const tdGold   = document.createElement("td");
+    const tdTotal  = document.createElement("td");
+    tdName.textContent   = name;
+    tdNormal.textContent = normal;
+    tdSilver.textContent = silver;
+    tdGold.textContent   = gold;
+    tdTotal.textContent  = total;
+
+    tr.appendChild(tdName);
+    tr.appendChild(tdNormal);
+    tr.appendChild(tdSilver);
+    tr.appendChild(tdGold);
+    tr.appendChild(tdTotal);
+    tbody.appendChild(tr);
+  });
+
+  table.appendChild(tbody);
+  box.appendChild(table);
+}

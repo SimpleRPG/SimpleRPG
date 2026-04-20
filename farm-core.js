@@ -249,7 +249,7 @@ function harvestFarmSlot(index) {
   const id = harvestId;
   let amount = getRandomHarvestAmount();
 
-  // ★日替わりボーナス: 農園収穫量（畑=field→gather_farm / 菜園=garden→gather_garden）
+  // ★日替わりボーナス: 農園収穫量（畑=field→farm / 菜園=garden→garden）
   if (typeof getDailyGatherBonus === "function") {
     const info = FARM_CROPS[id];
     if (info && info.category) {
@@ -280,7 +280,17 @@ function harvestFarmSlot(index) {
     return;
   }
 
-  cookingMats[id] = (cookingMats[id] || 0) + amount;
+  // ★変更点: 農園収穫も品質付きで cookingMats に追加
+  if (typeof addCookingMatWithQuality === "function" &&
+      typeof rollCookingMatQuality === "function") {
+    for (let i = 0; i < amount; i++) {
+      const q = rollCookingMatQuality();
+      addCookingMatWithQuality(id, q);
+    }
+  } else {
+    // フォールバック（品質ヘルパーが無い環境でも従来どおり動かす）
+    cookingMats[id] = (cookingMats[id] || 0) + amount;
+  }
 
   // ★農園収穫も採取統計に反映（料理素材扱い）
   if (typeof addGatherStat === "function") {

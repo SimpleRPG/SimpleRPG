@@ -290,7 +290,7 @@ function confirmRebirth() {
 function doRebirth() {
   // ★ 先に基礎ステを初期値に戻す（レベルチェックは confirmRebirth 側に一本化）
   resetBaseStatsToInitial();
-
+  //転生ごとにランダムな成長タイプ、職業変更を促す一因に
   rebirthCount++;
   growthType = Math.floor(Math.random() * 5); // 0〜4の成長タイプに再ロール
   const bonusMsg = applyRebirthBonus();

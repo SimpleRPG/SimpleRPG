@@ -39,6 +39,68 @@ function refreshBattleSkillTreeBonus() {
 }
 
 // =======================
+// クリティカル関連ヘルパ
+// =======================
+
+// LUKから減衰付きの「素クリ率」を計算（バフを含まない部分）
+// 目的: LUK が無限に伸びても素クリ率は 50% 付近で頭打ち
+function getBaseCritRateFromLuk() {
+  const luk = typeof LUK_ === "number" ? LUK_ : 0;
+
+  // まず直線で「潜在クリ率」を計算（基礎5%＋LUK×0.2% 相当）
+  // LUK100 → 0.25, LUK200 → 0.45 くらいのイメージ
+  const raw = 0.05 + luk * 0.002;
+
+  // 飽和関数で 0.5 に収束させる
+  const K = 0.5; // 調整パラメータ
+  const baseCrit = (raw * 0.5) / (raw + K); // 最大 0.5 に近づく
+
+  // 念のためハード上限
+  return Math.min(baseCrit, 0.5);
+}
+
+// LUKから「素のクリティカルダメージ倍率」を計算
+// 基本1.5倍〜LUKを積むと2.0倍付近まで（バフなし）を想定
+function getBaseCritMultFromLuk() {
+  const luk = typeof LUK_ === "number" ? LUK_ : 0;
+
+  // LUKスケールを作る（大きいほど上がるが飽和）
+  const s = 0.01; // スケール
+  const x = luk * s; // LUK100 → 1.0, LUK300 → 3.0 など
+
+  // 0〜1のボーナスに変換して最大+0.5（=2.0倍）まで
+  const K = 1.5; // 調整パラメータ
+  const bonus = (x > 0) ? (x / (x + K)) : 0; // 0〜1に収束
+  const mult = 1.5 + 0.5 * bonus;           // 1.5〜2.0
+
+  return mult;
+}
+
+// クリダメ倍率に段階的減衰＋最終3.0倍上限を適用する
+function applyCritMultDiminishing(mult) {
+  let m = mult;
+
+  // 2.0〜2.5 の区間は伸びを半分に圧縮
+  if (m > 2.0) {
+    const over = m - 2.0;
+    m = 2.0 + over * 0.5;
+  }
+
+  // 2.5〜3.0 の区間はさらに1/3に圧縮
+  if (m > 2.5) {
+    const over = m - 2.5;
+    m = 2.5 + over * 0.33;
+  }
+
+  // 最終ハードキャップ 3.0倍
+  if (m > 3.0) {
+    m = 3.0;
+  }
+
+  return m;
+}
+
+// =======================
 // 戦闘統計
 // =======================
 //
@@ -307,15 +369,31 @@ function playerAttack() {
   baseDamage = applyAttackBuffsForPlayer(baseDamage);
   baseDamage = applyDefenseBuffsForEnemy(baseDamage);
 
-  // ★修正: クリティカル判定（ベース5%をステータスバフで補正）
+  // ★修正: クリティカル判定
+  // 素クリ率は LUK から計算し、バフは modifyCritRateForPlayer で加算（最終70%上限は status-effects 側）
   let critRate = 0.05;
+  if (typeof getBaseCritRateFromLuk === "function") {
+    critRate = getBaseCritRateFromLuk();
+  }
   if (typeof modifyCritRateForPlayer === "function") {
     critRate = modifyCritRateForPlayer(critRate);
   }
   let isCrit = Math.random() < critRate;
+
   let finalDamage = baseDamage;
   if (isCrit) {
-    finalDamage = Math.floor(finalDamage * 1.5);
+    // クリダメ倍率: LUK由来の素倍率 → バフ → 減衰 → 最終3.0倍上限
+    let critMult = 1.5;
+    if (typeof getBaseCritMultFromLuk === "function") {
+      critMult = getBaseCritMultFromLuk();
+    }
+    if (typeof modifyCritMultForPlayer === "function") {
+      critMult = modifyCritMultForPlayer(critMult);
+    }
+    if (typeof applyCritMultDiminishing === "function") {
+      critMult = applyCritMultDiminishing(critMult);
+    }
+    finalDamage = Math.floor(finalDamage * critMult);
   }
 
   if (targetType === "enemy") {

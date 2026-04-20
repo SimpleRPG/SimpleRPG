@@ -206,6 +206,65 @@ const RARE_GATHER_ITEM_NAME = "星屑の結晶";
 const RARE_GATHER_DROP_RATE = 0.0002;
 
 // =======================
+// 料理素材の品質設定
+// =======================
+
+// 品質レベル: 0=普通, 1=銀, 2=金
+const COOKING_QUALITY_POINTS = {
+  0: 1,  // 普通
+  1: 2,  // 銀
+  2: 3   // 金
+};
+
+// ベース品質確率（肥料・スキル補正なし）
+// 料理素材全般で共通の初期値として扱う。
+const COOKING_QUALITY_BASE_SILVER = 0.18; // 18%
+const COOKING_QUALITY_BASE_GOLD   = 0.02; // 2%;
+
+// 品質ポイントを取得するヘルパー
+function getCookingMatQualityPoint(quality) {
+  return COOKING_QUALITY_POINTS[quality] || 1;
+}
+
+// 品質ロール用ヘルパー
+// baseSilver/baseGold に加えて、肥料・スキル等のボーナスを渡せるようにしておく。
+function rollCookingMatQuality(
+  baseSilver = COOKING_QUALITY_BASE_SILVER,
+  baseGold   = COOKING_QUALITY_BASE_GOLD,
+  bonusSilver = 0,
+  bonusGold   = 0
+) {
+  let silver = baseSilver + bonusSilver;
+  let gold   = baseGold   + bonusGold;
+
+  if (gold > 0.5) gold = 0.5;
+  if (silver > 0.9) silver = 0.9;
+
+  const r = Math.random();
+  if (r < gold) return 2;                  // 金
+  if (r < gold + silver) return 1;         // 銀
+  return 0;                                // 普通
+}
+
+// 料理素材の品質別所持数
+// cookingMatsQuality[id] = { 0: 普通数, 1: 銀数, 2: 金数 }
+window.cookingMatsQuality = window.cookingMatsQuality || {};
+
+// 品質付きで料理素材を追加するヘルパー
+// ・quality を省略した場合は普通(0)扱い。
+// ・従来の cookingMats[id] も同時にインクリメントして互換性を保つ。
+function addCookingMatWithQuality(id, quality) {
+  if (!id) return;
+  const q = (quality === 0 || quality === 1 || quality === 2) ? quality : 0;
+
+  window.cookingMatsQuality[id] = window.cookingMatsQuality[id] || { 0: 0, 1: 0, 2: 0 };
+  cookingMatsQuality[id][q] = (cookingMatsQuality[id][q] || 0) + 1;
+
+  window.cookingMats = window.cookingMats || {};
+  cookingMats[id] = (cookingMats[id] || 0) + 1;
+}
+
+// =======================
 // 長押しオート連打ヘルパー
 // =======================
 //

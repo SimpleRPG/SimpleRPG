@@ -796,6 +796,20 @@ function refreshWarehouseUI() {
       });
     }
   }
+
+  // =======================
+  // ★追加: 倉庫タブ「素材」サブページの3表を描画
+  // （描画本体は game-ui-4.js 側の関数に委譲）
+  // =======================
+  if (typeof renderWarehouseGatherMaterials === "function") {
+    renderWarehouseGatherMaterials();
+  }
+  if (typeof renderWarehouseIntermediateMaterials === "function") {
+    renderWarehouseIntermediateMaterials();
+  }
+  if (typeof renderWarehouseCookingMaterials === "function") {
+    renderWarehouseCookingMaterials();
+  }
 }
 
 // =======================

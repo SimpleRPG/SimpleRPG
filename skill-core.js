@@ -339,8 +339,19 @@ function doPetTurn() {
     }
 
     if (Math.random() < critRate) {
-      const critBonus = 1.5;
-      dmg = Math.floor(dmg * critBonus);
+      // ★ プレイヤーと同じクリダメ倍率ロジックを適用（LUK＋バフ＋減衰＋3.0倍上限）
+      let critMult = 1.5;
+      if (typeof getBaseCritMultFromLuk === "function") {
+        critMult = getBaseCritMultFromLuk();
+      }
+      if (typeof modifyCritMultForPlayer === "function") {
+        critMult = modifyCritMultForPlayer(critMult);
+      }
+      if (typeof applyCritMultDiminishing === "function") {
+        critMult = applyCritMultDiminishing(critMult);
+      }
+
+      dmg = Math.floor(dmg * critMult);
       enemyHp = Math.max(0, enemyHp - dmg);
 
       // ★ ペットクリティカルダメージとして最大値更新
