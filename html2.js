@@ -314,6 +314,9 @@
         <!-- 拠点サブタブ: 既存の拠点UI -->
         <div id="housingPageMain" class="housing-sub-page active">
           <div id="housingRoot">
+            <!-- ★家具置き場グリッドを描画するエリア（拠点ボックスの中、家賃と借りられる土地の間に配置想定） -->
+            <div id="housingFurnitureArea" class="status-block" style="margin-top:8px;">
+            </div>
           </div>
         </div>
 

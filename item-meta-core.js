@@ -77,6 +77,12 @@
       craftCategory: "material",
       storageKind: "cooking",
       storageTab: "cookingMat"
+    },
+    // ★ 家具カテゴリ（家具クラフト・倉庫タブ用）
+    furniture: {
+      craftCategory: "furniture",
+      storageKind: "inventory",
+      storageTab: "furniture"
     }
   };
 
@@ -395,6 +401,7 @@
     food:     "料理（食べ物）",
     drink:    "料理（飲み物）",
     cookingMat: "料理素材",
+    furniture: "家具",
     other:    "その他"
   };
 

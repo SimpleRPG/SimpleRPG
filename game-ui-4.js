@@ -83,7 +83,7 @@ function renderHousingLandStatus() {
   }
 
   // ============================
-  // 2) 通常表示（従来仕様）: 現在の拠点＋借りられる土地一覧
+  // 2) 通常表示（従来仕様）: 現在の拠点＋家具置き場＋借りられる土地一覧
   // ============================
 
   const currentBox = document.createElement("div");
@@ -145,8 +145,23 @@ function renderHousingLandStatus() {
     currentBox.appendChild(none);
   }
 
+  // 1) 現在拠点ボックス
   housingRoot.appendChild(currentBox);
 
+  // 2) 家具置き場グリッド（現在拠点と借りられる土地の“間”に毎回生成）
+  let furnitureArea = document.getElementById("housingFurnitureArea");
+  // housingRoot.innerHTML = "" 実行で消えている可能性があるため、毎回新規に作成して追加する
+  furnitureArea = document.createElement("div");
+  furnitureArea.id = "housingFurnitureArea";
+  furnitureArea.className = "status-block";
+  furnitureArea.style.marginTop = "8px";
+  housingRoot.appendChild(furnitureArea);
+
+  if (typeof renderHousingFurnitureGrid === "function") {
+    renderHousingFurnitureGrid(furnitureArea);
+  }
+
+  // 3) 借りられる土地リスト
   const listBox = document.createElement("div");
   listBox.className = "status-block";
   const listTitle = document.createElement("div");

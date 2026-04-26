@@ -954,6 +954,62 @@ function initBattleAndShopUI() {
     }
   }
 
+  // ★家具クラフト UI 初期化（クラフト関連）
+  (function initFurnitureCraftUI() {
+    const furnitureSelect = document.getElementById("furnitureSelect");
+    const furnitureBtn    = document.getElementById("craftFurnitureBtn");
+
+    if (!furnitureSelect || !furnitureBtn) {
+      return;
+    }
+    if (typeof getAllCraftRecipesByCategory !== "function") {
+      return;
+    }
+
+    // セレクトにレシピ一覧を流し込む
+    const recipes = getAllCraftRecipesByCategory("furniture") || [];
+    furnitureSelect.innerHTML = "";
+    recipes.forEach(r => {
+      const opt = document.createElement("option");
+      opt.value = r.id;
+      opt.textContent = r.name || r.id;
+      furnitureSelect.appendChild(opt);
+    });
+
+    function updateFurnitureCostInfo() {
+      const id = furnitureSelect.value;
+      if (!id || typeof updateCraftCostInfo !== "function") return;
+      window.lastCraftCategory = "furniture";
+      updateCraftCostInfo("furniture", id);
+    }
+
+    furnitureSelect.addEventListener("change", () => {
+      updateFurnitureCostInfo();
+    });
+
+    // 初期表示
+    updateFurnitureCostInfo();
+
+    furnitureBtn.addEventListener("click", () => {
+      if (window.isExploring || window.currentEnemy) {
+        if (typeof appendLog === "function") {
+          appendLog("探索中はクラフトできない！");
+        }
+        return;
+      }
+      if (typeof craftFurniture !== "function") return;
+      const id = furnitureSelect.value;
+      window.lastCraftCategory = "furniture";
+      craftFurniture();
+      if (typeof updateCraftCostInfo === "function" && id) {
+        updateCraftCostInfo("furniture", id);
+      }
+      if (typeof refreshWarehouseUI === "function") {
+        refreshWarehouseUI();
+      }
+    });
+  })();
+
   const castMagicBtn = document.getElementById("castMagicBtn");
   if (castMagicBtn && typeof castSelectedMagic === "function") {
     castMagicBtn.addEventListener("click", () => {

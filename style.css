@@ -1552,3 +1552,23 @@ foreignObject.neighbor .skill-node-btn,
 #dailyBonusDetailText {
   white-space: pre-line;
 }
+
+/* ======================
+   家具置き場グリッド（外枠だけ表示）
+   ====================== */
+
+.housing-grid-wrapper {
+  display: inline-block;
+  padding: 2px;
+  border: 1px solid #555;
+  border-radius: 2px;
+  background: #10101a;
+}
+
+.housing-grid {
+  /* ここは JS 側で display:grid 等を指定しているので補助だけなら空でも良い */
+}
+
+.housing-grid-cell {
+  border: none;
+}

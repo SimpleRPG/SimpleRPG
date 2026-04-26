@@ -818,17 +818,20 @@ function updateDisplay() {
   if (skGarden && gatherSkills.garden)   skGarden.textContent  = gatherSkills.garden.lv;
 
   // クラフトスキル表示
-  let skCraftWeapon   = document.getElementById("skCraftWeaponLv");
-  let skCraftArmor    = document.getElementById("skCraftArmorLv");
-  let skCraftPotion   = document.getElementById("skCraftPotionLv");
-  let skCraftTool     = document.getElementById("skCraftToolLv");
-  let skCraftMaterial = document.getElementById("skCraftMaterialLv");
-  let skCraftCooking  = document.getElementById("skCraftCookingLv");
+  let skCraftWeapon    = document.getElementById("skCraftWeaponLv");
+  let skCraftArmor     = document.getElementById("skCraftArmorLv");
+  let skCraftPotion    = document.getElementById("skCraftPotionLv");
+  let skCraftTool      = document.getElementById("skCraftToolLv");
+  let skCraftMaterial  = document.getElementById("skCraftMaterialLv");
+  let skCraftCooking   = document.getElementById("skCraftCookingLv");
+  // ★ 家具クラフトスキル表示（追加）
+  let skCraftFurniture = document.getElementById("skCraftFurnitureLv");
 
-  if (skCraftWeapon   && craftSkills.weapon)   skCraftWeapon.textContent   = craftSkills.weapon.lv;
-  if (skCraftArmor    && craftSkills.armor)    skCraftArmor.textContent    = craftSkills.armor.lv;
-  if (skCraftPotion   && craftSkills.potion)   skCraftPotion.textContent   = craftSkills.potion.lv;
-  if (skCraftTool     && craftSkills.tool)     skCraftTool.textContent     = craftSkills.tool.lv;
-  if (skCraftMaterial && craftSkills.material) skCraftMaterial.textContent = craftSkills.material.lv;
-  if (skCraftCooking  && craftSkills.cooking)  skCraftCooking.textContent  = craftSkills.cooking.lv;
+  if (skCraftWeapon   && craftSkills.weapon)    skCraftWeapon.textContent    = craftSkills.weapon.lv;
+  if (skCraftArmor    && craftSkills.armor)     skCraftArmor.textContent     = craftSkills.armor.lv;
+  if (skCraftPotion   && craftSkills.potion)    skCraftPotion.textContent    = craftSkills.potion.lv;
+  if (skCraftTool     && craftSkills.tool)      skCraftTool.textContent      = craftSkills.tool.lv;
+  if (skCraftMaterial && craftSkills.material)  skCraftMaterial.textContent  = craftSkills.material.lv;
+  if (skCraftCooking  && craftSkills.cooking)   skCraftCooking.textContent   = craftSkills.cooking.lv;
+  if (skCraftFurniture && craftSkills.furniture) skCraftFurniture.textContent = craftSkills.furniture.lv;
 }
