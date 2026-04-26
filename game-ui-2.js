@@ -52,50 +52,58 @@ function refreshWarehouseUI() {
     return div;
   }
 
-  // 名前解決ヘルパ
+  // =======================
+  // 名前解決ヘルパ（ITEM_META ベースに変更）
+  // =======================
+  function getItemNameFromMeta(id) {
+    // 優先: 共通ヘルパがあればそれを使う
+    if (typeof getItemName === "function") {
+      const n = getItemName(id);
+      if (n) return n;
+    }
+    // フォールバック: 直接メタを見る
+    if (typeof getItemMeta === "function") {
+      const meta = getItemMeta(id);
+      if (meta && meta.name) return meta.name;
+    }
+    return id;
+  }
+
   function getPotionName(id) {
-    if (!Array.isArray(potions)) return id;
-    const p = potions.find(x => x.id === id);
-    return p ? p.name : id;
+    return getItemNameFromMeta(id);
   }
-  function getWeaponMaster(id) {
-    if (!Array.isArray(weapons)) return null;
-    return weapons.find(x => x.id === id) || null;
-  }
+
   function getWeaponName(id) {
-    const w = getWeaponMaster(id);
-    return w ? w.name : id;
+    return getItemNameFromMeta(id);
   }
-  function getArmorMaster(id) {
-    if (!Array.isArray(armors)) return null;
-    return armors.find(x => x.id === id) || null;
-  }
+
   function getArmorName(id) {
-    const a = getArmorMaster(id);
-    return a ? a.name : id;
+    return getItemNameFromMeta(id);
   }
+
   function getFoodName(id) {
     if (typeof COOKING_RECIPES === "undefined") return id;
     const r = COOKING_RECIPES.food.find(x => x.id === id);
     return r ? r.name : id;
   }
+
   function getDrinkName(id) {
     if (typeof COOKING_RECIPES === "undefined") return id;
     const r = COOKING_RECIPES.drink.find(x => x.id === id);
     return r ? r.name : id;
   }
+
   function getToolName(id) {
-    if (id === "bomb")   return "爆弾";
+    if (id === "bomb")    return "爆弾";
     if (id === "bomb_T1") return "爆弾T1";
     if (id === "bomb_T2") return "爆弾T2";
     if (id === "bomb_T3") return "爆弾T3";
-    return id;
+    return getItemNameFromMeta(id);
   }
 
   // インスタンスからラベルを生成（単体）
   function buildWeaponLabelFromInstance(inst) {
-    const base = getWeaponMaster(inst.id);
-    const name = base ? base.name : inst.id;
+    const name = getWeaponName(inst.id);
 
     let qLabel = "";
     if (inst.quality === 2) qLabel = "【傑作】";
@@ -111,8 +119,7 @@ function refreshWarehouseUI() {
   }
 
   function buildArmorLabelFromInstance(inst) {
-    const base = getArmorMaster(inst.id);
-    const name = base ? base.name : inst.id;
+    const name = getArmorName(inst.id);
 
     let qLabel = "";
     if (inst.quality === 2) qLabel = "【傑作】";

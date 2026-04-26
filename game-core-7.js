@@ -101,14 +101,22 @@ function refreshEquipSelects(){
     });
   }
 
-  // 武器クラフトセレクト
+  // =======================
+  // 武器クラフトセレクト（ITEM_META.craft 由来）
+  // =======================
   if (wCraftSel){
     wCraftSel.innerHTML = "";
     const weaponSkillLv = getCraftSkillLevel("weapon");
 
-    CRAFT_RECIPES.weapon.forEach(r => {
+    const recipes = typeof getAllCraftRecipesByCategory === "function"
+      ? getAllCraftRecipesByCategory("weapon")
+      : [];
+
+    recipes.forEach(r => {
+      // tierFilter: all / T1 / T2 / T3
       if (tierFilter !== "all") {
-        if (!r.id.includes("_" + tierFilter)) return;
+        const t = r.tier || getTierFromId(r.id);
+        if (t !== tierFilter) return;
       }
       const k = r.kind || "normal";
       if (kindFilter !== "all" && k !== kindFilter) return;
@@ -117,14 +125,20 @@ function refreshEquipSelects(){
 
       const opt = document.createElement("option");
       opt.value = r.id;
+
       const m = r.id.match(/_T(\d)/);
       const tierLabel = m ? `T${m[1]}` : "";
-      const baseName  = r.name.replace(/T\d$/, "");
+      const baseName  = (r.name || "").replace(/T\d$/, "");
       const owned     = weaponCounts[r.id] || 0;
       const ownedText = owned > 0 ? `（所持${owned}）` : "";
-      opt.textContent = tierLabel ? `${tierLabel}${baseName}${ownedText}` : `${r.name}${ownedText}`;
+
+      opt.textContent = tierLabel
+        ? `${tierLabel}${baseName}${ownedText}`
+        : `${r.name || r.id}${ownedText}`;
+
       wCraftSel.appendChild(opt);
     });
+
     if (prevWeaponId &&
         Array.from(wCraftSel.options).some(o => o.value === prevWeaponId)) {
       wCraftSel.value = prevWeaponId;
@@ -133,14 +147,21 @@ function refreshEquipSelects(){
     }
   }
 
+  // =======================
   // 防具クラフトセレクト
+  // =======================
   if (aCraftSel){
     aCraftSel.innerHTML = "";
     const armorSkillLv = getCraftSkillLevel("armor");
 
-    CRAFT_RECIPES.armor.forEach(r => {
+    const recipes = typeof getAllCraftRecipesByCategory === "function"
+      ? getAllCraftRecipesByCategory("armor")
+      : [];
+
+    recipes.forEach(r => {
       if (tierFilter !== "all") {
-        if (!r.id.includes("_" + tierFilter)) return;
+        const t = r.tier || getTierFromId(r.id);
+        if (t !== tierFilter) return;
       }
       const k = r.kind || "normal";
       if (kindFilter !== "all" && k !== kindFilter) return;
@@ -149,14 +170,20 @@ function refreshEquipSelects(){
 
       const opt = document.createElement("option");
       opt.value = r.id;
+
       const m = r.id.match(/_T(\d)/);
       const tierLabel = m ? `T${m[1]}` : "";
-      const baseName  = r.name.replace(/T\d$/, "");
+      const baseName  = (r.name || "").replace(/T\d$/, "");
       const owned     = armorCounts[r.id] || 0;
       const ownedText = owned > 0 ? `（所持${owned}）` : "";
-      opt.textContent = tierLabel ? `${tierLabel}${baseName}${ownedText}` : `${r.name}${ownedText}`;
+
+      opt.textContent = tierLabel
+        ? `${tierLabel}${baseName}${ownedText}`
+        : `${r.name || r.id}${ownedText}`;
+
       aCraftSel.appendChild(opt);
     });
+
     if (prevArmorId &&
         Array.from(aCraftSel.options).some(o => o.value === prevArmorId)) {
       aCraftSel.value = prevArmorId;
@@ -165,81 +192,120 @@ function refreshEquipSelects(){
     }
   }
 
+  // =======================
+  // ポーションクラフトセレクト
+  // =======================
   if (pCraftSel){
     pCraftSel.innerHTML = "";
     const potionSkillLv = getCraftSkillLevel("potion");
 
-    CRAFT_RECIPES.potion.forEach(r => {
+    const recipes = typeof getAllCraftRecipesByCategory === "function"
+      ? getAllCraftRecipesByCategory("potion")
+      : [];
+
+    recipes.forEach(r => {
       if (tierFilter !== "all") {
-        if (!r.id.includes(tierFilter)) return;
+        const t = r.tier || getTierFromId(r.id);
+        if (t !== tierFilter) return;
       }
 
       if (!canShowByTierAndSkill(r.id, potionSkillLv)) return;
 
       const opt = document.createElement("option");
       opt.value = r.id;
+
       const m = r.id.match(/T(\d)$/);
       const tierLabel = m ? `T${m[1]}` : "";
-      const baseName  = r.name.replace(/T\d$/, "");
-      const owned     = potionCounts[r.id] || 0;
+      const baseName  = (r.name || "").replace(/T\d$/, "");
+      const owned     = typeof potionCounts === "object"
+        ? (potionCounts[r.id] || 0)
+        : 0;
       const ownedText = owned > 0 ? `（所持${owned}）` : "";
-      opt.textContent = tierLabel ? `${tierLabel}${baseName}${ownedText}` : `${r.name}${ownedText}`;
+
+      opt.textContent = tierLabel
+        ? `${tierLabel}${baseName}${ownedText}`
+        : `${r.name || r.id}${ownedText}`;
+
       pCraftSel.appendChild(opt);
     });
+
     if (prevPotionId &&
         Array.from(pCraftSel.options).some(o => o.value === prevPotionId)) {
       pCraftSel.value = prevPotionId;
     }
   }
 
+  // =======================
+  // 道具クラフトセレクト
+  // =======================
   if (tCraftSel){
     tCraftSel.innerHTML = "";
     const toolSkillLv = getCraftSkillLevel("tool");
 
-    CRAFT_RECIPES.tool.forEach(r => {
+    const recipes = typeof getAllCraftRecipesByCategory === "function"
+      ? getAllCraftRecipesByCategory("tool")
+      : [];
+
+    recipes.forEach(r => {
       if (tierFilter !== "all") {
-        if (!r.id.includes("_" + tierFilter)) return;
+        const t = r.tier || getTierFromId(r.id);
+        if (t !== tierFilter) return;
       }
 
       if (!canShowByTierAndSkill(r.id, toolSkillLv)) return;
 
       const opt = document.createElement("option");
       opt.value = r.id;
+
       const m = r.id.match(/_T(\d)/);
       const tierLabel = m ? `T${m[1]}` : "";
-      const baseName  = r.name.replace(/T\d$/, "");
-      opt.textContent = tierLabel ? `${tierLabel}${baseName}` : r.name;
+      const baseName  = (r.name || "").replace(/T\d$/, "");
+      opt.textContent = tierLabel
+        ? `${tierLabel}${baseName}`
+        : (r.name || r.id);
+
       tCraftSel.appendChild(opt);
     });
+
     if (prevToolId &&
         Array.from(tCraftSel.options).some(o => o.value === prevToolId)) {
       tCraftSel.value = prevToolId;
     }
   }
 
+  // =======================
+  // 中間素材クラフトセレクト（ITEM_META.craft.material）
+  // =======================
   if (interSel) {
     interSel.innerHTML = "";
     const materialSkillLv = getCraftSkillLevel("material");
 
-    if (Array.isArray(INTERMEDIATE_MATERIALS)) {
-      INTERMEDIATE_MATERIALS.forEach(def => {
-        if (tierFilter !== "all") {
-          if (!def.id.includes("_" + tierFilter)) return;
-        }
-        if (!canShowByTierAndSkill(def.id, materialSkillLv)) return;
+    const recipes = typeof getAllCraftRecipesByCategory === "function"
+      ? getAllCraftRecipesByCategory("material")
+      : [];
 
-        const opt = document.createElement("option");
-        opt.value = def.id;
-        opt.textContent = def.name || def.id;
-        interSel.appendChild(opt);
-      });
-    }
+    recipes.forEach(r => {
+      if (tierFilter !== "all") {
+        const t = r.tier || getTierFromId(r.id);
+        if (t !== tierFilter) return;
+      }
+      if (!canShowByTierAndSkill(r.id, materialSkillLv)) return;
+
+      const opt = document.createElement("option");
+      opt.value = r.id;
+      opt.textContent = r.name || r.id;
+      interSel.appendChild(opt);
+    });
+
     if (prevInterId &&
         Array.from(interSel.options).some(o => o.value === prevInterId)) {
       interSel.value = prevInterId;
     }
   }
 
+  // =======================
+  // 料理（food/drink）は従来どおり COOKING_RECIPES 参照
+  // =======================
   if (foodSel) {
     foodSel.innerHTML = "";
     const cookingLv = getCraftSkillLevel("cooking") || 0;
@@ -815,6 +881,27 @@ function getArmorInstanceByKey(key) {
   return { inst, index: parsed.index };
 }
 
+// =======================
+// 星屑（強化用）ヘルパー（ITEM_META 版）
+// =======================
+
+function getStarShardCount() {
+  // 星屑の結晶は ITEM_META で RARE_GATHER_ITEM_ID として登録されている前提
+  if (typeof getItemCountByMeta !== "function") return 0;
+  return getItemCountByMeta(RARE_GATHER_ITEM_ID) || 0;
+}
+
+function consumeStarShard(num) {
+  num = num || STAR_SHARD_NEED_NUM;
+  if (num <= 0) return true;
+  if (typeof consumeItemByMeta !== "function") return false;
+  return consumeItemByMeta(RARE_GATHER_ITEM_ID, num);
+}
+
+// =======================
+// 強化ロジック
+// =======================
+
 function enhanceWeapon(){
   const targetSel = document.getElementById("enhanceWeaponTargetSelect");
   if (!targetSel || !targetSel.value) {
@@ -843,11 +930,7 @@ function enhanceWeapon(){
 
   const useStarShard = inst.enhance >= STAR_SHARD_NEED_LV;
   if (useStarShard) {
-    if (typeof itemCounts !== "object") {
-      appendLog("星屑の結晶の所持情報が取得できない");
-      return;
-    }
-    const haveShard = itemCounts[STAR_SHARD_ITEM_ID] || 0;
+    const haveShard = getStarShardCount();
     if (haveShard < STAR_SHARD_NEED_NUM) {
       appendLog(`星屑の結晶が足りない（${haveShard}/${STAR_SHARD_NEED_NUM}）`);
       return;
@@ -868,10 +951,11 @@ function enhanceWeapon(){
 
   // ★ 強化成功率 + 星屑スキルツリーボーナス
   let rate = ENHANCE_SUCCESS_RATES[inst.enhance];
+  let starBonus = 0;
   if (useStarShard && typeof getGlobalSkillTreeBonus === "function") {
     try {
       const b = getGlobalSkillTreeBonus() || {};
-      const starBonus = b.craftStarBonusRate || 0; // 例: 0.10 で +10%
+      starBonus = b.craftStarBonusRate || 0; // 例: 0.10 で +10%
       if (starBonus > 0) {
         rate *= (1 + starBonus);
       }
@@ -881,18 +965,41 @@ function enhanceWeapon(){
   }
   if (rate > 0.98) rate = 0.98;
 
-  const success = Math.random() < rate;
+  const roll = Math.random();
+  const success = roll < rate;
 
-  if (useStarShard && typeof itemCounts === "object") {
-    itemCounts[STAR_SHARD_ITEM_ID] =
-      Math.max(0, (itemCounts[STAR_SHARD_ITEM_ID] || 0) - STAR_SHARD_NEED_NUM);
+  if (useStarShard) {
+    if (!consumeStarShard(STAR_SHARD_NEED_NUM)) {
+      appendLog("星屑の結晶の消費に失敗しました（在庫不足？）");
+    }
   }
+
+  const beforeEnh = inst.enhance;
 
   if (success) {
     inst.enhance++;
     appendLog(`武器強化成功！ ${base.name}+${inst.enhance}になった（同名武器1本消費${inst.enhance - 1 >= STAR_SHARD_NEED_LV ? "＋星屑の結晶消費" : ""}）`);
   } else {
     appendLog(`武器強化失敗…（同名武器は消費された${inst.enhance >= STAR_SHARD_NEED_LV ? "／星屑の結晶も消費された" : ""}）`);
+  }
+
+  // ★ 強化ログ（仕様は変えず記録のみ）
+  if (typeof debugRecordEnhance === "function") {
+    try {
+      debugRecordEnhance({
+        type: "weapon",
+        itemId: inst.id,
+        baseName: base.name,
+        beforeEnhance: beforeEnh,
+        afterEnhance: inst.enhance,
+        success,
+        useStarShard,
+        moneyCost: cost,
+        successRate: rate,
+        starBonusRate: starBonus,
+        roll
+      });
+    } catch (e) {}
   }
 
   if (typeof onEquipEnhancedForGuild === "function") {
@@ -931,11 +1038,7 @@ function enhanceArmor(){
 
   const useStarShard = inst.enhance >= STAR_SHARD_NEED_LV;
   if (useStarShard) {
-    if (typeof itemCounts !== "object") {
-      appendLog("星屑の結晶の所持情報が取得できない");
-      return;
-    }
-    const haveShard = itemCounts[STAR_SHARD_ITEM_ID] || 0;
+    const haveShard = getStarShardCount();
     if (haveShard < STAR_SHARD_NEED_NUM) {
       appendLog(`星屑の結晶が足りない（${haveShard}/${STAR_SHARD_NEED_NUM}）`);
       return;
@@ -956,10 +1059,11 @@ function enhanceArmor(){
 
   // ★ 強化成功率 + 星屑スキルツリーボーナス
   let rate = ENHANCE_SUCCESS_RATES[inst.enhance];
+  let starBonus = 0;
   if (useStarShard && typeof getGlobalSkillTreeBonus === "function") {
     try {
       const b = getGlobalSkillTreeBonus() || {};
-      const starBonus = b.craftStarBonusRate || 0;
+      starBonus = b.craftStarBonusRate || 0;
       if (starBonus > 0) {
         rate *= (1 + starBonus);
       }
@@ -969,18 +1073,40 @@ function enhanceArmor(){
   }
   if (rate > 0.98) rate = 0.98;
 
-  const success = Math.random() < rate;
+  const roll = Math.random();
+  const success = roll < rate;
 
-  if (useStarShard && typeof itemCounts === "object") {
-    itemCounts[STAR_SHARD_ITEM_ID] =
-      Math.max(0, (itemCounts[STAR_SHARD_ITEM_ID] || 0) - STAR_SHARD_NEED_NUM);
+  if (useStarShard) {
+    if (!consumeStarShard(STAR_SHARD_NEED_NUM)) {
+      appendLog("星屑の結晶の消費に失敗しました（在庫不足？）");
+    }
   }
+
+  const beforeEnh = inst.enhance;
 
   if (success) {
     inst.enhance++;
     appendLog(`防具強化成功！ ${base.name}+${inst.enhance}になった（同名防具1つ消費${inst.enhance - 1 >= STAR_SHARD_NEED_LV ? "＋星屑の結晶消費" : ""}）`);
   } else {
     appendLog(`防具強化失敗…（同名防具は消費された${inst.enhance >= STAR_SHARD_NEED_LV ? "／星屑の結晶も消費された" : ""}）`);
+  }
+
+  if (typeof debugRecordEnhance === "function") {
+    try {
+      debugRecordEnhance({
+        type: "armor",
+        itemId: inst.id,
+        baseName: base.name,
+        beforeEnhance: beforeEnh,
+        afterEnhance: inst.enhance,
+        success,
+        useStarShard,
+        moneyCost: cost,
+        successRate: rate,
+        starBonusRate: starBonus,
+        roll
+      });
+    } catch (e) {}
   }
 
   if (typeof onEquipEnhancedForGuild === "function") {

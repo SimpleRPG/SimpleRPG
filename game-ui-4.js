@@ -19,13 +19,72 @@ function renderHousingLandStatus() {
     : "まだ市民権を得ていないため、拠点の手続きは行えません。";
   housingRoot.appendChild(statusText);
 
+  // 市民権がなければここで終了（従来どおり）
   if (!unlocked) return;
 
   const lands = window.HOUSING_LANDS || {};
+  // 可能なら housing-core.js のセーフヘルパーを使う
+  const hs = (typeof getHousingStateSafe === "function")
+    ? getHousingStateSafe()
+    : (typeof window.housingState !== "undefined" ? window.housingState : null);
   const current = (typeof getCurrentHousingLand === "function")
     ? getCurrentHousingLand()
     : null;
-  const hs = (typeof window.housingState !== "undefined") ? window.housingState : null;
+
+  // ============================
+  // 1) 滞納中なら拠点UIロック表示だけにする
+  // ============================
+  // 「追い出さないが、拠点UIや効果には触れさせない」＝
+  // 土地は保持したまま、ここでは家賃支払いUIのみを出して return する。
+  if (current && hs && hs.rentUnpaid) {
+    const overdueBox = document.createElement("div");
+    overdueBox.className = "status-block";
+    overdueBox.style.marginBottom = "8px";
+    overdueBox.style.border = "1px solid #a33";
+
+    // 現在の拠点名（ギルド寮なら所属ギルド名で差し替え）
+    let currentNameForDisplay = current.name;
+    if (current.kind === "guildDorm" && typeof window.getGuildDormDisplayName === "function") {
+      currentNameForDisplay = window.getGuildDormDisplayName(current.name);
+    }
+
+    const title = document.createElement("div");
+    title.textContent = `現在の拠点: ${currentNameForDisplay}`;
+    overdueBox.appendChild(title);
+
+    const info = document.createElement("div");
+    info.style.fontSize = "11px";
+    info.style.color = "#f88";
+    info.style.marginTop = "4px";
+    info.innerHTML =
+      "家賃の支払期限を過ぎているため、拠点の効果と機能は停止しています。<br>" +
+      "家賃を支払うと、拠点ボーナスや住宅機能を再び利用できます。";
+    overdueBox.appendChild(info);
+
+    const btnRow = document.createElement("div");
+    btnRow.style.marginTop = "6px";
+
+    const payBtn = document.createElement("button");
+    payBtn.textContent = "家賃を支払う";
+    payBtn.style.fontSize = "11px";
+    payBtn.style.padding = "3px 8px";
+    payBtn.addEventListener("click", () => {
+      if (typeof payHousingRent === "function") {
+        payHousingRent();
+      }
+    });
+    btnRow.appendChild(payBtn);
+
+    overdueBox.appendChild(btnRow);
+    housingRoot.appendChild(overdueBox);
+
+    // 滞納中は「借りられる土地」リストなど他の拠点UIには触れさせない
+    return;
+  }
+
+  // ============================
+  // 2) 通常表示（従来仕様）: 現在の拠点＋借りられる土地一覧
+  // ============================
 
   const currentBox = document.createElement("div");
   currentBox.className = "status-block";
@@ -33,7 +92,14 @@ function renderHousingLandStatus() {
 
   if (current && hs) {
     const title = document.createElement("div");
-    title.textContent = `現在借りている拠点: ${current.name}`;
+
+    // 現在借りている拠点名（ギルド寮なら所属ギルドに応じた名前を使う）
+    let currentNameForDisplay = current.name;
+    if (current.kind === "guildDorm" && typeof window.getGuildDormDisplayName === "function") {
+      currentNameForDisplay = window.getGuildDormDisplayName(current.name);
+    }
+
+    title.textContent = `現在借りている拠点: ${currentNameForDisplay}`;
     currentBox.appendChild(title);
 
     const info = document.createElement("div");
@@ -43,9 +109,8 @@ function renderHousingLandStatus() {
     if (hs.rentDueAt) {
       const now = Date.now();
       const remainMs = hs.rentDueAt - now;
-      if (hs.rentUnpaid) {
-        rentText = "家賃: 滞納中（効果停止中）";
-      } else if (remainMs <= 0) {
+      // rentUnpaid の場合は上で return 済みなのでここには来ない
+      if (remainMs <= 0) {
         rentText = "家賃: 支払期限切れ（効果停止中）";
       } else {
         const remainDays = Math.floor(remainMs / (24 * 60 * 60 * 1000));
@@ -103,7 +168,14 @@ function renderHousingLandStatus() {
     card.style.background = "#10101a";
 
     const nameRow = document.createElement("div");
-    nameRow.textContent = land.name;
+
+    // リスト側の表示名もギルド寮なら動的名を利用
+    let landNameForDisplay = land.name;
+    if (land.kind === "guildDorm" && typeof window.getGuildDormDisplayName === "function") {
+      landNameForDisplay = window.getGuildDormDisplayName(land.name);
+    }
+
+    nameRow.textContent = landNameForDisplay;
     nameRow.style.fontWeight = "600";
     card.appendChild(nameRow);
 
@@ -113,8 +185,17 @@ function renderHousingLandStatus() {
       land.kind === "cityRoom" ? "（街の一室）" :
       land.kind === "suburbLand" ? "（郊外の土地）" :
       "";
+
+    // 郊外の土地だけ「5〜」表記にする（baseSlots 自体はコア定義どおり 5）
+    let slotText;
+    if (land.kind === "suburbLand") {
+      slotText = `${land.baseSlots}〜`;
+    } else {
+      slotText = `${land.baseSlots}`;
+    }
+
     infoRow.textContent =
-      `${kindText} 週家賃: ${land.weeklyRent}G / 家具スロット: ${land.baseSlots}`;
+      `${kindText} 週家賃: ${land.weeklyRent}G / 家具スロット: ${slotText}`;
     infoRow.style.fontSize = "11px";
     infoRow.style.color = "#c0bedf";
     card.appendChild(infoRow);
@@ -436,10 +517,10 @@ function updateGatherMatDetailText() {
 
   if (info && info.baseKey) {
     const baseKey = info.baseKey;
-    const mat = window.materials[baseKey] || {};
-    const t1Have = mat.t1 || 0;
-    const t2Have = mat.t2 || 0;
-    const t3Have = mat.t3 || 0;
+    const matArr = window.materials[baseKey] || [];
+    const t1Have = matArr[0] || 0;
+    const t2Have = matArr[1] || 0;
+    const t3Have = matArr[2] || 0;
     const name   = names[baseKey] || baseKey;
 
     let picked = "";
@@ -586,6 +667,7 @@ function updateCraftMatDetailText() {
 
   label.textContent = labelText;
 }
+
 // =======================
 // 倉庫タブ：素材一覧（採取 / 中間 / 料理）描画
 // =======================
@@ -605,7 +687,7 @@ function renderWarehouseGatherMaterials() {
   const table = document.createElement("table");
   table.className = "mat-table";
 
-  // ヘッダ行（左端は空、その右に種類）
+  // ヘッダ行（左端は Tier、その右に種類）
   const thead = document.createElement("thead");
   const htr = document.createElement("tr");
 
@@ -634,8 +716,25 @@ function renderWarehouseGatherMaterials() {
 
     kinds.forEach(k => {
       const td = document.createElement("td");
-      const m = window.materials[k] || {};
-      const val = m[tKey] || 0;
+      let val = 0;
+
+      // materials-core.js のAPIを優先的に使用
+      if (typeof getMatTierCount === "function") {
+        const tierNum =
+          (tKey === "t1") ? 1 :
+          (tKey === "t2") ? 2 :
+          (tKey === "t3") ? 3 : 1;
+        val = getMatTierCount(k, tierNum);
+      } else {
+        // フォールバック：配列の index から読む
+        const mArr = window.materials[k] || [];
+        const idx =
+          (tKey === "t1") ? 0 :
+          (tKey === "t2") ? 1 :
+          (tKey === "t3") ? 2 : 0;
+        val = mArr[idx] || 0;
+      }
+
       td.textContent = val;
       tr.appendChild(td);
     });
@@ -704,11 +803,11 @@ function renderWarehouseIntermediateMaterials() {
 
     const tr = document.createElement("tr");
     const tdName = document.createElement("td");
-    tdName.textContent = g.name || key;
     const tdT1 = document.createElement("td");
     const tdT2 = document.createElement("td");
     const tdT3 = document.createElement("td");
     const tdTotal = document.createElement("td");
+    tdName.textContent = g.name || key;
     tdT1.textContent = g.t1;
     tdT2.textContent = g.t2;
     tdT3.textContent = g.t3;

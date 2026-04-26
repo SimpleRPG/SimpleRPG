@@ -173,6 +173,20 @@ function commitCurrentBattleStats(resultType) {
   if (currentBattleMaxPet > battleStats.maxPetDamage) {
     battleStats.maxPetDamage = currentBattleMaxPet;
   }
+
+  // ★追加: デバッグ戦闘ログ（簡易版）
+  if (typeof debugRecordBattle === "function") {
+    try {
+      debugRecordBattle({
+        win: resultType === "win",
+        damageDealt: currentBattleMaxDamage,
+        damageTaken: currentBattleMaxTaken,
+        turns: currentBattleMaxCombo || 0 // コンボ未実装なので暫定
+      });
+    } catch (e) {
+      // 失敗してもゲーム進行に影響しないよう握りつぶす
+    }
+  }
 }
 
 // =======================
@@ -480,12 +494,21 @@ function playerAttack() {
       window.isExploring   = false;
       window.exploringArea = "field";
 
+      // ★デバッグ用: 経済ログ（死亡による所持金半減）
+      const moneyBefore = money;
+
       hp    = hpMax;
       mp    = mpMax;
       sp    = spMax;
       petHp = petHpMax;
 
       money = Math.floor(money / 2);
+
+      if (typeof debugRecordEconomy === "function") {
+        try {
+          debugRecordEconomy(moneyBefore, money, "deathPenalty");
+        } catch (e) {}
+      }
 
       let brokeSomething = false;
 
@@ -586,7 +609,7 @@ function playerAttack() {
         appendLog("街に戻った… 休んで回復し、所持ゴールドを半分失った。");
       }
 
-      // ★戦闘統計に「敗北」を反映
+      // ★戦闘統計に「敗北」を反映（ここから debugRecordBattle も呼ばれる）
       commitCurrentBattleStats("lose");
 
       endBattleCommon();
@@ -656,12 +679,21 @@ function enemyTurn() {
       window.isExploring   = false;
       window.exploringArea = "field";
 
+      // ★デバッグ用: 経済ログ（死亡による所持金半減）
+      const moneyBefore = money;
+
       hp    = hpMax;
       mp    = mpMax;
       sp    = spMax;
       petHp = petHpMax;
 
       money = Math.floor(money / 2);
+
+      if (typeof debugRecordEconomy === "function") {
+        try {
+          debugRecordEconomy(moneyBefore, money, "deathPenalty");
+        } catch (e) {}
+      }
 
       let brokeSomething = false;
 
@@ -762,7 +794,7 @@ function enemyTurn() {
         appendLog("街に戻った… 休んで回復し、所持ゴールドを半分失った。");
       }
 
-      // ★戦闘統計に「敗北」を反映
+      // ★戦闘統計に「敗北」を反映（ここから debugRecordBattle も呼ばれる）
       commitCurrentBattleStats("lose");
 
       endBattleCommon();
@@ -879,7 +911,7 @@ function tryEscape() {
     appendLog("うまく逃げ切れた！");
     escapeFailBonus = 0;
 
-    // ★戦闘統計に「逃走」を反映
+    // ★戦闘統計に「逃走」を反映（ここから debugRecordBattle も呼ばれる）
     commitCurrentBattleStats("escape");
 
     endBattleCommon();
@@ -901,6 +933,10 @@ function tryEscape() {
 // killFlag: true のときは「この関数を呼んだ時点で敵HP0＝撃破済み」を意味する
 // killSource: "phys" / "magic" / "pet" など、将来用に拡張しておく
 function winBattle(killFlag, killSource) {
+  // 戦闘報酬計算用に、関数内部で money を増減する前後を debugRecordEconomy で挟みたい場合は、
+  // onEnemyDefeatedCore 側で individual に debugRecordEconomy を呼ぶ運用にする。
+  const moneyBefore = (typeof money === "number") ? money : null;
+
   if (typeof onEnemyDefeatedCore === "function") {
     if (currentEnemy) {
       onEnemyDefeatedCore(currentEnemy, killFlag, killSource);
@@ -912,7 +948,14 @@ function winBattle(killFlag, killSource) {
     endBattleCommon();
   }
 
-  // ★戦闘統計に「勝利」を反映
+  // onEnemyDefeatedCore 内で money が動いた可能性があるので、ここで経済ログを一発だけ残す
+  if (typeof debugRecordEconomy === "function" && moneyBefore != null && typeof money === "number") {
+    try {
+      debugRecordEconomy(moneyBefore, money, "battleReward");
+    } catch (e) {}
+  }
+
+  // ★戦闘統計に「勝利」を反映（ここから debugRecordBattle も呼ばれる）
   commitCurrentBattleStats("win");
 
   // ★スキルツリー: 戦闘後HP追加回復（勝利時）

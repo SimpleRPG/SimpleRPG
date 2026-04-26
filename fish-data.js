@@ -6,6 +6,29 @@
 window.fishDex = window.fishDex || {}; 
 // fishDex[fishId] = { count, maxSize, firstTime, lastTime }
 
+// ITEM_META 側に登録された魚メタから情報を引くヘルパー
+// cook-data.js で、fish_* に対して
+//   tags: ["cooking","material","fish"],
+//   fishRarity, fishSizeMin, fishSizeMax, fishValue
+// が設定されている前提。
+function getFishMetaFromItemMeta(fishId) {
+  if (typeof getItemMeta !== "function") return null;
+  const meta = getItemMeta(fishId);
+  if (!meta) return null;
+  if (!meta.tags || !meta.tags.includes("fish")) return null;
+
+  return {
+    id: meta.id,
+    name: meta.name || meta.id,
+    rarity: meta.fishRarity || "common",
+    baseSizeMin: typeof meta.fishSizeMin === "number" ? meta.fishSizeMin : 0,
+    baseSizeMax: typeof meta.fishSizeMax === "number" ? meta.fishSizeMax : 0,
+    value: typeof meta.fishValue === "number" ? meta.fishValue : 0
+  };
+}
+
+// 互換用マスタ（キー集合の保持とフォールバック用）
+// ※数値・名前は実際には ITEM_META 側が正となる
 const FISH_MASTER = {
   fish_small: {
     id: "fish_small",
@@ -574,7 +597,8 @@ function rollFishKind(area, bait, date = new Date()) {
 // サイズロール
 // =======================
 function rollFishSize(fishId) {
-  const m = FISH_MASTER[fishId];
+  const metaFromItem = getFishMetaFromItemMeta(fishId);
+  const m = metaFromItem || FISH_MASTER[fishId];
   if (!m) return null;
   const min = m.baseSizeMin;
   const max = m.baseSizeMax;
@@ -633,8 +657,9 @@ function updateFishDex(fishId, meta) {
 
   // ★サイズ更新時のログ（appendLogがある場合のみ）
   if (typeof appendLog === "function" && size != null) {
-    const m = FISH_MASTER[fishId];
-    const name = m ? m.name : fishId;
+    const metaFromItem = getFishMetaFromItemMeta(fishId);
+    const fallback = FISH_MASTER[fishId];
+    const name = metaFromItem ? metaFromItem.name : (fallback ? fallback.name : fishId);
 
     if (isFirstCatch) {
       appendLog(`【釣り】${name}を初めて釣り上げた！ サイズ: ${size}cm`);
@@ -650,12 +675,17 @@ function updateFishDex(fishId, meta) {
 function getFishDexList() {
   const list = [];
   Object.keys(FISH_MASTER).forEach(id => {
-    const m = FISH_MASTER[id];
+    const metaFromItem = getFishMetaFromItemMeta(id);
+    const fallback = FISH_MASTER[id];
     const d = window.fishDex[id] || null;
+
+    const name = metaFromItem ? metaFromItem.name : (fallback ? fallback.name : id);
+    const rarity = metaFromItem ? metaFromItem.rarity : (fallback ? fallback.rarity : "common");
+
     list.push({
       id,
-      name: m.name,
-      rarity: m.rarity,
+      name,
+      rarity,
       count: d ? d.count : 0,
       maxSize: d ? d.maxSize : 0,
       discovered: !!d

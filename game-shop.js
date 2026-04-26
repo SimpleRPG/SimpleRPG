@@ -333,6 +333,9 @@ function buildSellableList() {
 function sellOneItem(entry) {
   if (!entry) return;
 
+  // ★経済ログ用：売却前所持金
+  const moneyBefore = (typeof money === "number") ? money : null;
+
   let success = false;
 
   switch (entry.kind) {
@@ -401,6 +404,13 @@ function sellOneItem(entry) {
 
   money += entry.price;
   appendLog(`「${entry.name}」を ${entry.price}G で売った。`);
+
+  // ★経済ログ: ショップ売却
+  if (typeof debugRecordEconomy === "function" && moneyBefore != null && typeof money === "number") {
+    try {
+      debugRecordEconomy(moneyBefore, money, "shopSell");
+    } catch (e) {}
+  }
 
   updateShopGoldDisplay();
   if (typeof updateDisplay === "function") {
@@ -512,6 +522,10 @@ function buyShopItem(item) {
     appendLog("ゴールドが足りない。");
     return;
   }
+
+  // ★経済ログ用: 購入前残高
+  const moneyBefore = money;
+
   money -= priceToPay;
 
   if (shopCurrentCategory === "item") {
@@ -549,6 +563,13 @@ function buyShopItem(item) {
       }
       appendLog("定食を食べ、お腹も喉も少し満たされた。");
     }
+  }
+
+  // ★経済ログ: ショップ購入
+  if (typeof debugRecordEconomy === "function" && typeof money === "number") {
+    try {
+      debugRecordEconomy(moneyBefore, money, "shopBuy");
+    } catch (e) {}
   }
 
   updateShopGoldDisplay();

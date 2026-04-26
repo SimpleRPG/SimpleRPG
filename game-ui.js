@@ -1,7 +1,7 @@
 // game-ui.js
 // 各種ボタン・タブ・セレクトのイベントバインドとUI制御
 
-console.log("game-ui.js srt");
+console.log("game-ui.js start");
 
 // ---------------------------------------
 // レイアウト切り替え
@@ -68,6 +68,8 @@ function refreshCurrentCraftCost() {
   const activeCatBtn = document.querySelector(".craft-cat-tab.active");
   const cat = activeCatBtn ? activeCatBtn.dataset.cat : "weapon";
 
+  console.log("[refreshCurrentCraftCost] activeCat =", cat);
+
   if (cat === "weapon") {
     const sel = document.getElementById("weaponSelect");
     if (sel && sel.value) {
@@ -104,6 +106,8 @@ function refreshCurrentCraftCost() {
     const foodSel  = document.getElementById("foodSelect");
     const drinkSel = document.getElementById("drinkSelect");
 
+    console.log("[refreshCurrentCraftCost] cooking sub =", sub);
+
     if (sub === "drink") {
       if (drinkSel && drinkSel.value) {
         updateCraftCostInfo("cookingDrink", drinkSel.value);
@@ -115,17 +119,85 @@ function refreshCurrentCraftCost() {
         return;
       }
     }
+  } else if (cat === "life") {
+    // 生活タブ（農園など）のコスト更新
+    const activeLifeSubTab = document.querySelector(".life-sub-tab.active");
+    const sub = activeLifeSubTab ? activeLifeSubTab.dataset.sub : "farm";
+    console.log("[refreshCurrentCraftCost] life sub =", sub);
+
+    if (sub === "farm") {
+      const fertSel = document.getElementById("fertilizerSelect");
+      console.log("[refreshCurrentCraftCost] fertSel =", fertSel, "value =", fertSel && fertSel.value);
+      if (fertSel && fertSel.value) {
+        updateCraftCostInfo("fertilizer", fertSel.value);
+        return;
+      }
+    }
   }
 
   infoEl.textContent = "必要素材：-";
 }
 
 // ---------------------------------------
+// 肥料セレクト初期化
+// ---------------------------------------
+function initFertilizerSelect() {
+  console.log("=== initFertilizerSelect ENTER ===");
+  const fertSelect = document.getElementById("fertilizerSelect");
+  console.log("[initFertilizerSelect] fertSelect =", fertSelect);
+
+  if (!fertSelect) {
+    console.warn("[initFertilizerSelect] fertilizerSelect element not found (return)");
+    console.warn("[initFertilizerSelect] appRoot =", document.getElementById("appRoot"));
+    console.warn("[initFertilizerSelect] magicPageCraft =", document.getElementById("magicPageCraft"));
+    return;
+  }
+
+  const defs = window.FERTILIZERS || {};
+  const keys = Object.keys(defs);
+  console.log("[initFertilizerSelect] window.FERTILIZERS keys =", keys);
+
+  const ids = keys.sort((a, b) => {
+    const ta = defs[a] && typeof defs[a].tier === "number" ? defs[a].tier : 0;
+    const tb = defs[b] && typeof defs[b].tier === "number" ? defs[b].tier : 0;
+    return ta - tb;
+  });
+  console.log("[initFertilizerSelect] sorted ids =", ids);
+
+  console.log("[initFertilizerSelect] before clear, options length =", fertSelect.options.length);
+  fertSelect.innerHTML = "";
+
+  ids.forEach(id => {
+    const f = defs[id];
+    if (!f) return;
+    const opt = document.createElement("option");
+    opt.value = f.id;
+    opt.textContent = f.name;
+    fertSelect.appendChild(opt);
+  });
+
+  console.log("[initFertilizerSelect] after append, options length =", fertSelect.options.length);
+  console.log("[initFertilizerSelect] current value =", fertSelect.value);
+
+  if (fertSelect.value && typeof updateCraftCostInfo === "function") {
+    console.log("[initFertilizerSelect] call updateCraftCostInfo('fertilizer',", fertSelect.value, ")");
+    updateCraftCostInfo("fertilizer", fertSelect.value);
+  } else {
+    console.log("[initFertilizerSelect] skip updateCraftCostInfo, value or function missing");
+  }
+
+  console.log("=== initFertilizerSelect LEAVE ===");
+}
+
+// ---------------------------------------
 // DOMContentLoaded 後の初期化
 // ---------------------------------------
 window.addEventListener("DOMContentLoaded", () => {
+  console.log("[DOMContentLoaded] start, window.FERTILIZERS keys =", Object.keys(window.FERTILIZERS || {}));
+
   // コア初期化
   if (typeof initGame === "function") {
+    console.log("[DOMContentLoaded] call initGame");
     initGame();
   }
 
@@ -151,6 +223,8 @@ window.addEventListener("DOMContentLoaded", () => {
     .filter(Boolean);
 
   function showTabByPageId(pageId) {
+    console.log("[showTabByPageId] pageId =", pageId);
+
     // 探索中制限
     if (window.isExploring || window.currentEnemy) {
       const allowed = ["pageExplore", "pageStatus"];
@@ -179,6 +253,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
     // 魔巧区タブを開いたとき
     if (pageId === "pageMagicDist") {
+      console.log("[showTabByPageId] enter pageMagicDist");
       setMagicSubPage("magic-craft");
 
       if (typeof refreshEquipSelects === "function") {
@@ -189,6 +264,8 @@ window.addEventListener("DOMContentLoaded", () => {
       const activeCatBtn = document.querySelector(".craft-cat-tab.active");
       const activeCat = activeCatBtn ? activeCatBtn.dataset.cat : "weapon";
 
+      console.log("[showTabByPageId] active craft category =", activeCat);
+
       const w        = document.getElementById("weaponSelect");
       const a        = document.getElementById("armorSelect");
       const p        = document.getElementById("potionSelect");
@@ -196,6 +273,7 @@ window.addEventListener("DOMContentLoaded", () => {
       const interSel = document.getElementById("intermediateSelect");
       const foodSel  = document.getElementById("foodSelect");
       const drinkSel = document.getElementById("drinkSelect");
+      const fertSel  = document.getElementById("fertilizerSelect");
 
       if (activeCat === "weapon" && w && w.value) {
         updateCraftCostInfo("weapon", w.value);
@@ -210,6 +288,7 @@ window.addEventListener("DOMContentLoaded", () => {
       } else if (activeCat === "cooking") {
         const activeSubTab = document.querySelector(".cook-sub-tab.active");
         const sub = activeSubTab ? activeSubTab.dataset.sub : "food";
+        console.log("[showTabByPageId] cooking sub =", sub);
 
         if (sub === "drink") {
           if (drinkSel && drinkSel.value) {
@@ -223,6 +302,20 @@ window.addEventListener("DOMContentLoaded", () => {
           } else if (infoEl) {
             infoEl.textContent = "必要素材：-";
           }
+        }
+      } else if (activeCat === "life") {
+        const activeLifeSubTab = document.querySelector(".life-sub-tab.active");
+        const sub = activeLifeSubTab ? activeLifeSubTab.dataset.sub : "farm";
+        console.log("[showTabByPageId] life sub =", sub, "fertSel =", fertSel, "value =", fertSel && fertSel.value);
+
+        if (sub === "farm") {
+          if (fertSel && fertSel.value) {
+            updateCraftCostInfo("fertilizer", fertSel.value);
+          } else if (infoEl) {
+            infoEl.textContent = "必要素材：-";
+          }
+        } else if (infoEl) {
+          infoEl.textContent = "必要素材：-";
         }
       } else if (infoEl) {
         infoEl.textContent = "必要素材：-";
@@ -312,6 +405,8 @@ window.addEventListener("DOMContentLoaded", () => {
   };
 
   function setMagicSubPage(key) {
+    console.log("[setMagicSubPage] key =", key);
+
     magicTabButtons.forEach(btn => {
       if (btn.dataset.page === key) btn.classList.add("active");
       else                          btn.classList.remove("active");
@@ -380,6 +475,8 @@ window.addEventListener("DOMContentLoaded", () => {
   const guildPageReward = document.getElementById("guildPageReward");
 
   function setGuildSubPage(kind) {
+    console.log("[setGuildSubPage] kind =", kind);
+
     if (!guildPageList || !guildPageQuest || !guildPageReward) return;
 
     const mapping = {
@@ -544,7 +641,6 @@ window.addEventListener("DOMContentLoaded", () => {
   const statusDetailPanel = document.getElementById("detailPanel");
 
   if (statusDetailBtn && statusDetailPanel) {
-    // 他のスクリプトやHTMLの onclick を無効化して、競合を防ぐ
     statusDetailBtn.onclick = null;
 
     statusDetailBtn.addEventListener("click", () => {
@@ -563,7 +659,6 @@ window.addEventListener("DOMContentLoaded", () => {
   if (dailyBonusDetailBtn && dailyBonusDetailPanel && dailyBonusDetailText) {
     dailyBonusDetailBtn.onclick = null;
 
-    // 初期テキスト更新（詳細関数があればそれを使う）
     if (typeof getTodayDailyBonusDetailsText === "function") {
       dailyBonusDetailText.textContent = getTodayDailyBonusDetailsText();
     } else if (typeof getTodayDailyBonusLabel === "function") {
@@ -574,7 +669,6 @@ window.addEventListener("DOMContentLoaded", () => {
     dailyBonusDetailBtn.addEventListener("click", () => {
       const visible = window.getComputedStyle(dailyBonusDetailPanel).display !== "none";
 
-      // 開くタイミングで毎回詳細テキストを最新化
       if (!visible && typeof getTodayDailyBonusDetailsText === "function") {
         dailyBonusDetailText.textContent = getTodayDailyBonusDetailsText();
       }
@@ -722,10 +816,13 @@ window.addEventListener("DOMContentLoaded", () => {
     potion:   document.getElementById("craftPanelPotion"),
     tool:     document.getElementById("craftPanelTool"),
     material: document.getElementById("craftPanelMaterial"),
-    cooking:  document.getElementById("craftPanelCooking")
+    cooking:  document.getElementById("craftPanelCooking"),
+    life:     document.getElementById("craftPanelLife")
   };
 
   function setCraftCategory(cat) {
+    console.log("[setCraftCategory] cat =", cat);
+
     craftCatTabs.forEach(btn => {
       if (btn.dataset.cat === cat) btn.classList.add("active");
       else                         btn.classList.remove("active");
@@ -759,6 +856,8 @@ window.addEventListener("DOMContentLoaded", () => {
       const activeSubTab = document.querySelector(".cook-sub-tab.active");
       const sub = activeSubTab ? activeSubTab.dataset.sub : "food";
 
+      console.log("[setCraftCategory] cooking sub =", sub);
+
       if (sub === "drink") {
         if (drinkSel && drinkSel.value) {
           updateCraftCostInfo("cookingDrink", drinkSel.value);
@@ -767,6 +866,19 @@ window.addEventListener("DOMContentLoaded", () => {
       } else {
         if (foodSel && foodSel.value) {
           updateCraftCostInfo("cookingFood", foodSel.value);
+          return;
+        }
+      }
+    } else if (cat === "life") {
+      const activeLifeSubTab = document.querySelector(".life-sub-tab.active");
+      const sub = activeLifeSubTab ? activeLifeSubTab.dataset.sub : "farm";
+      const fertSel = document.getElementById("fertilizerSelect");
+
+      console.log("[setCraftCategory] life sub =", sub, "fertSel =", fertSel, "options length =", fertSel ? fertSel.options.length : "N/A", "value =", fertSel && fertSel.value);
+
+      if (sub === "farm") {
+        if (fertSel && fertSel.value) {
+          updateCraftCostInfo("fertilizer", fertSel.value);
           return;
         }
       }
@@ -804,6 +916,8 @@ window.addEventListener("DOMContentLoaded", () => {
         const foodSel  = document.getElementById("foodSelect");
         const drinkSel = document.getElementById("drinkSelect");
 
+        console.log("[cook-sub-tab] click sub =", sub);
+
         if (sub === "food") {
           panelFood.style.display  = "";
           panelDrink.style.display = "none";
@@ -827,10 +941,59 @@ window.addEventListener("DOMContentLoaded", () => {
     });
 
     const first = subTabs[0];
+    console.log("[initCookingSubTabs] first subTab =", first);
     if (first) first.click();
   }
 
   initCookingSubTabs();
+
+  // --------------------
+  // 生活サブタブ（農園など）
+  // --------------------
+  function initLifeSubTabs() {
+    const subTabs      = document.querySelectorAll(".life-sub-tab");
+    const panelFarm    = document.getElementById("lifePanelFarm");
+    const panelHousing = document.getElementById("lifePanelHousing");
+
+    console.log("[initLifeSubTabs] subTabs length =", subTabs.length, "panelFarm =", panelFarm, "panelHousing =", panelHousing);
+
+    if (!subTabs.length || !panelFarm) return;
+
+    subTabs.forEach(tab => {
+      tab.addEventListener("click", () => {
+        subTabs.forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+
+        const sub = tab.dataset.sub;
+        const infoEl = document.getElementById("craftCostInfo");
+        const fertSel = document.getElementById("fertilizerSelect");
+
+        console.log("[life-sub-tab] click: sub =", sub, "fertSel =", fertSel, "options length =", fertSel ? fertSel.options.length : "N/A", "value =", fertSel && fertSel.value);
+
+        if (sub === "farm") {
+          if (panelFarm)    panelFarm.style.display = "";
+          if (panelHousing) panelHousing.style.display = "none";
+
+          if (fertSel && fertSel.value) {
+            updateCraftCostInfo("fertilizer", fertSel.value);
+          } else if (infoEl) {
+            infoEl.textContent = "必要素材：-";
+          }
+        } else {
+          if (panelFarm)    panelFarm.style.display = "none";
+          if (panelHousing) panelHousing.style.display = "";
+
+          if (infoEl) infoEl.textContent = "必要素材：-";
+        }
+      });
+    });
+
+    const first = subTabs[0];
+    console.log("[initLifeSubTabs] first subTab =", first);
+    if (first) first.click();
+  }
+
+  initLifeSubTabs();
 
   // --------------------
   // クラフトボタン・セレクト
@@ -885,6 +1048,56 @@ window.addEventListener("DOMContentLoaded", () => {
         return;
       }
       craftTool();
+      updateGatherMatDetailText();
+      updateCraftMatDetailText();
+      refreshCurrentCraftCost();
+    });
+  }
+
+  // 肥料クラフト（自動）ボタン
+  const fertAutoBtn = document.getElementById("craftFertilizerAutoBtn");
+  console.log("[fertAutoBtn] element =", fertAutoBtn, "typeof craftFertilizerAuto =", typeof craftFertilizerAuto);
+  if (fertAutoBtn && typeof craftFertilizerAuto === "function") {
+    fertAutoBtn.addEventListener("click", () => {
+      console.log("[fertAutoBtn] click, isExploring =", window.isExploring, "currentEnemy =", window.currentEnemy);
+      if (window.isExploring || window.currentEnemy) {
+        appendLog("探索中はクラフトできない！");
+        return;
+      }
+      const fertSel = document.getElementById("fertilizerSelect");
+      const fertId  = fertSel ? fertSel.value : "";
+      console.log("[fertAutoBtn] selected fertId =", fertId, "fertSel =", fertSel);
+      if (!fertId) {
+        appendLog("作る肥料を選んでいない。");
+        return;
+      }
+      craftFertilizerAuto(fertId);
+      updateGatherMatDetailText();
+      updateCraftMatDetailText();
+      refreshCurrentCraftCost();
+    });
+  }
+
+  // 手動クラフトボタン（UIは保留）
+  const fertManualBtn = document.getElementById("craftFertilizerManualBtn");
+  if (fertManualBtn && typeof craftFertilizerManual === "function") {
+    fertManualBtn.addEventListener("click", () => {
+      if (window.isExploring || window.currentEnemy) {
+        appendLog("探索中はクラフトできない！");
+        return;
+      }
+      const fertSel = document.getElementById("fertilizerSelect");
+      const fertId  = fertSel ? fertSel.value : "";
+      if (!fertId) {
+        appendLog("作る肥料を選んでいない。");
+        return;
+      }
+      const materials = window.selectedFertilizerMaterials || [];
+      if (!materials.length) {
+        appendLog("手動クラフト用の素材が選択されていない。");
+        return;
+      }
+      craftFertilizerManual(fertId, materials);
       updateGatherMatDetailText();
       updateCraftMatDetailText();
       refreshCurrentCraftCost();
@@ -952,6 +1165,16 @@ window.addEventListener("DOMContentLoaded", () => {
     drinkSelect.addEventListener("change", e => {
       const id = e.target.value;
       if (id) updateCraftCostInfo("cookingDrink", id);
+    });
+  }
+
+  const fertSelect = document.getElementById("fertilizerSelect");
+  console.log("[fertSelect change-bind] fertSelect =", fertSelect);
+  if (fertSelect) {
+    fertSelect.addEventListener("change", e => {
+      const id = e.target.value;
+      console.log("[fertSelect change] id =", id);
+      if (id) updateCraftCostInfo("fertilizer", id);
     });
   }
 
@@ -1026,11 +1249,9 @@ window.addEventListener("DOMContentLoaded", () => {
   if (typeof initBattleAndShopUI === "function") {
     initBattleAndShopUI();
   }
-  // 職業・ペット・転生 UI は game-ui-3.js 側
   if (typeof initJobPetRebirthUI === "function") {
     initJobPetRebirthUI();
   }
-  // 採取UIは game-ui-3.js の initGatherUI で初期化
   if (typeof initGatherUI === "function") {
     initGatherUI();
   }
@@ -1039,8 +1260,15 @@ window.addEventListener("DOMContentLoaded", () => {
     initFarmSystem();
   }
 
+  // ★肥料セレクト初期化
+  console.log("[DOMContentLoaded] before initFertilizerSelect, fertSelect =", document.getElementById("fertilizerSelect"));
+  initFertilizerSelect();
+  console.log("[DOMContentLoaded] after initFertilizerSelect, fertSelect =", document.getElementById("fertilizerSelect"),
+              "options length =", (document.getElementById("fertilizerSelect") || {}).options?.length);
+
   if (typeof openJobModal === "function" && typeof jobId !== "undefined" && jobId === null) {
     openJobModal();
   }
-  
+
+  console.log("[DOMContentLoaded] end");
 });

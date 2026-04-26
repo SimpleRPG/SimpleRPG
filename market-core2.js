@@ -423,6 +423,7 @@ function refreshMarketSellItems(){
       maxCountForSelected = toolCounts[itemSel.value] || 0;
     }
   } else if (category === "materialBase") {
+    
     const mats = [
       { id:"wood",    name:"木",    count: getMatTotal("wood") },
       { id:"ore",     name:"鉱石",  count: getMatTotal("ore") },

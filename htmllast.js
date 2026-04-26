@@ -88,6 +88,163 @@ function setupMainTabs() {
 }
 
 // -----------------------------
+// ステータス内サブタブ（基本情報 / 統計 / スキルツリー / GMデバッグ）
+// -----------------------------
+function setStatusSubPage(pageId) {
+  const pages = document.querySelectorAll(".status-sub-page");
+  pages.forEach(p => {
+    p.style.display = (p.id === pageId) ? "block" : "none";
+  });
+}
+
+function setupStatusTabs() {
+  const tabMain  = document.getElementById("statusTabMain");
+  const tabStats = document.getElementById("statusTabStats");
+  const tabSkill = document.getElementById("statusTabSkill");
+  const tabGM    = document.getElementById("statusTabGM");
+
+  const tabs = [tabMain, tabStats, tabSkill, tabGM];
+
+  function activate(tab, pageId) {
+    tabs.forEach(t => {
+      if (!t) return;
+      t.classList.remove("active");
+    });
+    if (tab) tab.classList.add("active");
+    setStatusSubPage(pageId);
+  }
+
+  if (tabMain) {
+    tabMain.addEventListener("click", () => {
+      activate(tabMain, "statusPageMain");
+    });
+  }
+  if (tabStats) {
+    tabStats.addEventListener("click", () => {
+      activate(tabStats, "statusPageStats");
+    });
+  }
+  if (tabSkill) {
+    tabSkill.addEventListener("click", () => {
+      activate(tabSkill, "statusPageSkill");
+    });
+  }
+  if (tabGM) {
+    tabGM.addEventListener("click", () => {
+      activate(tabGM, "statusPageGM");
+      // GMタブに切り替えたタイミングでデバッグUIを描画/更新
+      if (typeof window.renderGmDebugPanel === "function") {
+        window.renderGmDebugPanel();
+      } else if (typeof window.initDebugStats === "function") {
+        window.initDebugStats();
+      }
+    });
+  }
+
+  // 初期状態: 基本情報
+  setStatusSubPage("statusPageMain");
+  if (tabMain) tabMain.classList.add("active");
+  // GMタブ初期描画（タブを開いたときにも再描画される）
+  if (typeof window.initDebugStats === "function") {
+    window.initDebugStats();
+  }
+}
+
+// -----------------------------
+// 統計タブ内サブタブ（採取 / クラフト / 戦闘 / 釣り図鑑）
+// -----------------------------
+function setupStatusStatsTabs() {
+  const tabGather = document.getElementById("statusStatsTabGather");
+  const tabCraft  = document.getElementById("statusStatsTabCraft");
+  const tabBattle = document.getElementById("statusStatsTabBattle");
+  const tabFish   = document.getElementById("statusStatsTabFish");
+
+  const tabs = [tabGather, tabCraft, tabBattle, tabFish];
+
+  function showStatsPage(pageId) {
+    const pages = document.querySelectorAll(".status-stats-page");
+    pages.forEach(p => {
+      p.style.display = (p.id === pageId) ? "block" : "none";
+    });
+  }
+
+  function activate(tab, pageId) {
+    tabs.forEach(t => {
+      if (!t) return;
+      t.classList.remove("active");
+    });
+    if (tab) tab.classList.add("active");
+    showStatsPage(pageId);
+  }
+
+  if (tabGather) {
+    tabGather.addEventListener("click", () => {
+      activate(tabGather, "statusStatsPageGather");
+    });
+  }
+  if (tabCraft) {
+    tabCraft.addEventListener("click", () => {
+      activate(tabCraft, "statusStatsPageCraft");
+    });
+  }
+  if (tabBattle) {
+    tabBattle.addEventListener("click", () => {
+      activate(tabBattle, "statusStatsPageBattle");
+    });
+  }
+  if (tabFish) {
+    tabFish.addEventListener("click", () => {
+      activate(tabFish, "statusStatsPageFish");
+    });
+  }
+
+  // 初期状態
+  showStatsPage("statusStatsPageGather");
+  if (tabGather) tabGather.classList.add("active");
+}
+
+// -----------------------------
+// スキルタブ内サブタブ（ツリー / 効果一覧）
+// -----------------------------
+function setupStatusSkillTabs() {
+  const tabTree  = document.getElementById("statusSkillTabTree");
+  const tabBonus = document.getElementById("statusSkillTabBonus");
+
+  const tabs = [tabTree, tabBonus];
+
+  function showSkillPage(pageId) {
+    const pages = document.querySelectorAll(".status-skill-page");
+    pages.forEach(p => {
+      p.style.display = (p.id === pageId) ? "block" : "none";
+    });
+  }
+
+  function activate(tab, pageId) {
+    tabs.forEach(t => {
+      if (!t) return;
+      t.classList.remove("active");
+    });
+    if (tab) tab.classList.add("active");
+    showSkillPage(pageId);
+  }
+
+  if (tabTree) {
+    tabTree.addEventListener("click", () => {
+      activate(tabTree, "statusSkillTreePage");
+    });
+  }
+  if (tabBonus) {
+    tabBonus.addEventListener("click", () => {
+      activate(tabBonus, "statusSkillBonusPage");
+    });
+  }
+
+  // 初期状態
+  showSkillPage("statusSkillTreePage");
+  if (tabTree) tabTree.classList.add("active");
+}
+
+// -----------------------------
 // 採取ページ内サブタブ（通常 / 食材調達）
 // -----------------------------
 function setupGatherSubTabs() {
@@ -360,10 +517,7 @@ function setupGuildInnerTabs() {
 function setupSocketIoClient() {
   try {
     if (typeof io === "undefined") {
-      console.log("Socket.io client library not loaded (io is undefined)");
-      if (typeof appendLog === "function") {
-        appendLog("[SYS] Socket.ioクライアントが読み込まれていません");
-      }
+      // Socket.io クライアントライブラリが読み込まれていない場合は、静かに諦める
       return;
     }
 
@@ -374,10 +528,7 @@ function setupSocketIoClient() {
     window.globalSocket = socket;
 
     socket.on("connect", () => {
-      console.log("Socket.io connected:", socket.id);
-      if (typeof appendLog === "function") {
-        appendLog("[SYS] Socket.io接続: " + socket.id);
-      }
+      // 接続時のログ出力は行わない（必要なら appendLog などを再度追加）
       socket.emit("ping-from-client");
 
       if (typeof window.setupMarketSocketSync === "function") {
@@ -386,23 +537,14 @@ function setupSocketIoClient() {
     });
 
     socket.on("pong-from-server", () => {
-      console.log("Received pong-from-server");
-      if (typeof appendLog === "function") {
-        appendLog("[SYS] サーバーからpong受信");
-      }
+      // pong 受信時のログ出力は行わない
     });
 
-    socket.on("connect_error", (err) => {
-      console.log("Socket.io connect_error:", err.message);
-      if (typeof appendLog === "function") {
-        appendLog("[SYS] Socket接続エラー: " + err.message);
-      }
+    socket.on("connect_error", () => {
+      // 接続エラー時のログ出力は行わない
     });
   } catch (e) {
-    console.log("Socket.io init error:", e);
-    if (typeof appendLog === "function") {
-      appendLog("[SYS] Socket.io初期化エラー: " + e.message);
-    }
+    // 初期化エラー時のログ出力も行わない
   }
 }
 
@@ -411,6 +553,9 @@ function setupSocketIoClient() {
 // -----------------------------
 document.addEventListener("DOMContentLoaded", () => {
   setupMainTabs();
+  setupStatusTabs();
+  setupStatusStatsTabs();
+  setupStatusSkillTabs();
   setupGatherSubTabs();
   setupGatherCookingTabs();
   // setupGatherMaterialToggle(); // ← game-ui.js の実装と競合するため削除
@@ -422,3 +567,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // setupStatusDetailToggle(); // ← game-ui.js の実装と競合するため削除
   setupSocketIoClient();
 });
+
+// 必要なら setStatusSubPage を他から呼べるように
+if (typeof window !== "undefined") {
+  window.setStatusSubPage = setStatusSubPage;
+}

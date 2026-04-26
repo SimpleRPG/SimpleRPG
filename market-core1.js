@@ -88,43 +88,44 @@ function addSellLog(buyerLabel, category, itemId, amount, totalPrice) {
 // -----------------------
 // 素材ヘルパー
 // -----------------------
-
-// materials[key].t1,t2,t3 の合算
-function getMatTotal(key) {
-  if (typeof materials !== "object") return 0;
-  const m = materials[key];
-  if (!m) return 0;
-  return (m.t1 || 0) + (m.t2 || 0) + (m.t3 || 0);
-}
+//
+// materials-core.js 側で materials[key] は [T1,T2,T3,...] 配列、
+// getMatTotal / getMatTierCount / addMatTierCount が定義されている前提。
+// ここでは旧仕様の t1/t2/t3 直接アクセスをやめ、
+// それらのヘルパーを利用するだけにする。
 
 // 合計から指定量を減らす（T1→T2→T3 の順で消費）
 function consumeBaseMaterials(key, amount) {
-  if (typeof materials !== "object") return false;
-  const m = materials[key];
-  if (!m) return false;
+  if (typeof window.getMatTotal !== "function" ||
+      typeof window.getMatTierCount !== "function" ||
+      typeof window.addMatTierCount !== "function") {
+    return false;
+  }
+
   const total = getMatTotal(key);
   if (total < amount) return false;
 
   let remain = amount;
 
-  const tiers = ["t1", "t2", "t3"];
-  for (const t of tiers) {
-    const have = m[t] || 0;
+  // T1 → T2 → T3 の順で減らす
+  const maxTier = typeof window.MATERIAL_MAX_T === "number" ? window.MATERIAL_MAX_T : 3;
+  for (let tier = 1; tier <= maxTier && remain > 0; tier++) {
+    const have = getMatTierCount(key, tier);
     if (have <= 0) continue;
     const use = Math.min(have, remain);
-    m[t] = have - use;
+    addMatTierCount(key, tier, -use);
     remain -= use;
-    if (remain <= 0) break;
   }
+
   return true;
 }
 
 // 指定量を追加（基本は T1 に入れる）
 function addBaseMaterials(key, amount) {
-  if (typeof materials !== "object") return;
-  const m = materials[key];
-  if (!m) return;
-  m.t1 = (m.t1 || 0) + amount;
+  if (typeof window.addMatTierCount !== "function") return;
+  amount = amount | 0;
+  if (amount <= 0) return;
+  addMatTierCount(key, 1, amount);
 }
 
 // -----------------------
@@ -517,7 +518,7 @@ function doMarketSell(){
                 category: serverListing.category || categoryForMarket,
                 itemId: serverListing.itemKey || itemKey,
                 itemKey: serverListing.itemKey || itemKey,
-                price: serverListing.price != null ? serverListing.price : price,
+                price: serverListing.price !=null ? serverListing.price : price,
                 amount: serverListing.amount,
                 sellerId: serverListing.sellerId || myId,
                 owner: serverListing.sellerId || myId

@@ -4,7 +4,6 @@
 // =======================
 // 採取フィールド定義
 // =======================
-// materials を必ず window 配下にそろえる
 
 const GATHER_FIELDS = [
   { id: "field1", name: "近郊の原っぱ" },
@@ -14,25 +13,21 @@ const GATHER_FIELDS = [
 ];
 
 // 採取スキルレベルによるフィールド解放条件
-// フィールド × 資源(target) ごとに必要Lvを持つ
-// wood / ore / herb / cloth / leather / water
 const GATHER_FIELD_REQUIRE_LV = {
-  field1: { wood: 0,  ore: 0,  herb: 0,  cloth: 0,  leather: 0,  water: 0 },
+  field1: { wood: 0,  ore: 0,  herb: 0,  cloth: 0,  leather: 0, water: 0 },
   field2: { wood: 10, ore: 10, herb: 10, cloth: 10, leather: 10, water: 10 },
   field3: { wood: 20, ore: 20, herb: 20, cloth: 20, leather: 20, water: 20 }
 };
 
-// 「星屑の結晶」強化用定数（他ファイルで上書きしてもOK）
-const STAR_SHARD_ITEM_ID  = "starShard"; // itemCounts で使うキー名
-const STAR_SHARD_NEED_LV  = 5;           // この強化段階（現在値）以上から星屑要求
-const STAR_SHARD_NEED_NUM = 1;           // 1回の強化で必要な個数
+// 「星屑の結晶」強化用定数
+const STAR_SHARD_ITEM_ID  = "starShard";
+const STAR_SHARD_NEED_LV  = 5;
+const STAR_SHARD_NEED_NUM = 1;
 
 // =======================
 // 採取用スキルツリーボーナスキャッシュ
 // =======================
-//
-// 毎回 getGlobalSkillTreeBonus() を呼ぶと重いので、
-// 採取行動ごとに軽く読む用のキャッシュを用意しておく。
+
 let gatherSkillTreeBonus = {
   gatherAmountBonusRate: 0,
   extraGatherBonusRateAdd: 0,
@@ -45,12 +40,10 @@ function refreshGatherSkillTreeBonus() {
     const b = getGlobalSkillTreeBonus() || {};
     gatherSkillTreeBonus.gatherAmountBonusRate    = b.gatherAmountBonusRate    || 0;
     gatherSkillTreeBonus.extraGatherBonusRateAdd  = b.extraGatherBonusRateAdd  || 0;
-    gatherSkillTreeBonus.gatherFailPenaltyRate    = (b.gatherFailPenaltyRate   || 0) || 0;
     gatherSkillTreeBonus.gatherEquipBonusChanceAdd= b.gatherEquipBonusChanceAdd|| 0;
 
-    // gatherFailPenaltyRate は「失敗率×(1-rate)」で扱いたいので、ここで整形しておく
-    // 例: skill が 0.3 なら 失敗率×0.7 にする。
-    gatherSkillTreeBonus.gatherFailPenaltyRate = Math.max(0, 1 - gatherSkillTreeBonus.gatherFailPenaltyRate);
+    const failRateReduce = b.gatherFailPenaltyRate || 0;
+    gatherSkillTreeBonus.gatherFailPenaltyRate = Math.max(0, 1 - failRateReduce);
   } else {
     gatherSkillTreeBonus.gatherAmountBonusRate     = 0;
     gatherSkillTreeBonus.extraGatherBonusRateAdd   = 0;
@@ -63,20 +56,17 @@ function refreshGatherSkillTreeBonus() {
 // 1時間ごとの採取ボーナスカテゴリ
 // =======================
 
-// 対象カテゴリ一覧（通常6＋料理4＝10）
 const HOURLY_GATHER_BONUS_CATEGORIES = [
   "wood", "ore", "herb", "cloth", "leather", "water",
   "hunt", "fish", "farm", "garden"
 ];
 
-// 現在の時間から、今のボーナスカテゴリを決定する。
-// 「1時間ごとに全員同じ」になるよう、時刻→インデックスへの簡単な決定関数。
 function getHourlyGatherBonusCategory() {
   const now = new Date();
   const y = now.getFullYear();
-  const m = now.getMonth() + 1; // 1-12
+  const m = now.getMonth() + 1;
   const d = now.getDate();
-  const h = now.getHours();     // 0-23
+  const h = now.getHours();
 
   const seed = y * 10000 + m * 100 + d;
   const value = seed + h * 37;
@@ -85,14 +75,12 @@ function getHourlyGatherBonusCategory() {
   return HOURLY_GATHER_BONUS_CATEGORIES[idx];
 }
 
-// 「たまにちょっと多めに取れる」確率（通常／料理共通）
-const EXTRA_GATHER_BONUS_RATE = 0.05; // 5%
+const EXTRA_GATHER_BONUS_RATE = 0.05;
 
 // =======================
 // 採取統計（素材ごと）
 // =======================
 
-// gatherStats[materialId] = { total: 累計個数, times: 採取回数, maxOnce: 一度の最大数 }
 window.gatherStats = window.gatherStats || {};
 
 function addGatherStat(materialId, gainedCount) {
@@ -106,12 +94,9 @@ function addGatherStat(materialId, gainedCount) {
   window.gatherStats[materialId] = stats;
 }
 
-// 統計タブ用：素材ごとの統計一覧を返すヘルパー
-// 戻り値: [{ id, name, total, times, maxOnce, kind: "normal" | "cook" }, ...]
 function getGatherStatsList() {
   const list = [];
 
-  // 通常素材名テーブル
   const NORMAL_MAT_NAMES = {
     wood: "木",
     ore: "鉱石",
@@ -123,7 +108,6 @@ function getGatherStatsList() {
 
   const normalOrder = ["wood", "ore", "herb", "cloth", "leather", "water"];
 
-  // 通常素材
   normalOrder.forEach(id => {
     const stats = window.gatherStats[id];
     if (!stats) return;
@@ -137,15 +121,25 @@ function getGatherStatsList() {
     });
   });
 
-  // 料理素材（COOKING_MAT_NAMES のキー順）
-  Object.keys(COOKING_MAT_NAMES).forEach(id => {
+  // 料理素材統計: gatherStats 側にある ID を見て、名前は ITEM_META 優先で取得
+  Object.keys(window.gatherStats).forEach(id => {
+    if (normalOrder.includes(id)) return; // 通常素材は上で処理済み
+
     const stats = window.gatherStats[id];
     if (!stats) return;
+
+    let name = id;
+    if (typeof getItemName === "function") {
+      name = getItemName(id);
+    } else if (COOKING_MAT_NAMES && COOKING_MAT_NAMES[id]) {
+      name = COOKING_MAT_NAMES[id];
+    }
+
     list.push({
       id,
-      name: COOKING_MAT_NAMES[id] || id,
+      name,
       total: stats.total,
-      times: stats.times,      // ★修正：stats.maxOnce → stats.times
+      times: stats.times,
       maxOnce: stats.maxOnce,
       kind: "cooking"
     });
@@ -155,11 +149,9 @@ function getGatherStatsList() {
 }
 
 // =======================
-// ペット特性: 兎の別枠+10%ボーナス共通ヘルパー
+// ペット特性: 兎の別枠+10%ボーナス
 // =======================
 
-// 「行動1回につき一度だけ」callback を呼ぶ可能性がある。
-// 兎特性（extraGatherRate=0.10）のみ有効、それ以外は何もしない。
 function tryCompanionExtraGatherOnce(onExtra) {
   if (typeof onExtra !== "function") return;
   if (typeof hasCompanion !== "function" ||
@@ -174,19 +166,18 @@ function tryCompanionExtraGatherOnce(onExtra) {
   }
 }
 
-// 採取スキルでフィールド解放をチェックするフック
-function checkGatherAreaUnlockBySkill(resourceKey) {
-  // いまは何もしないダミーでOK（将来「新しい採取場所に行けそうだ」ログを出す用）
-}
+// =======================
+// セレクト系ヘルパー
+// =======================
 
-// 現在選択中の target（木／鉱石…）を取得するヘルパー
+function checkGatherAreaUnlockBySkill(resourceKey) {}
+
 function getCurrentGatherTarget() {
   const targetSel = document.getElementById("gatherTarget");
   if (!targetSel) return null;
-  return targetSel.value || null; // wood / ore / herb / cloth / leather / water
+  return targetSel.value || null;
 }
 
-// フィールドに応じて採取ターゲットセレクトの中身を切り替える
 function refreshGatherTargetSelect() {
   const targetSel = document.getElementById("gatherTarget");
   const fieldSel  = document.getElementById("gatherField");
@@ -197,9 +188,6 @@ function refreshGatherTargetSelect() {
 
   targetSel.innerHTML = "";
 
-  // =======================
-  // 通常フィールド: 木/鉱石/草/布/皮/水
-  // =======================
   const targets = [
     { id: "wood",    name: "木" },
     { id: "ore",     name: "鉱石" },
@@ -236,7 +224,6 @@ function refreshGatherTargetSelect() {
   }
 }
 
-// このフィールドに「今の target で」入れるか判定
 function canEnterGatherFieldForTarget(fieldId, target) {
   if (!target) return false;
 
@@ -249,7 +236,6 @@ function canEnterGatherFieldForTarget(fieldId, target) {
   return lv >= needLv;
 }
 
-// 採取場所セレクトを更新
 function refreshGatherFieldSelect() {
   const sel = document.getElementById("gatherField");
   if (!sel) return;
@@ -261,8 +247,6 @@ function refreshGatherFieldSelect() {
 
   const unlocked = [];
 
-  // 全採取スキルが Lv0 かどうかチェック
-  // ※料理用は hunt / fish / fieldFarm / garden の4種
   const allGatherLv0 =
     gatherSkills.wood.lv      === 0 &&
     gatherSkills.ore.lv       === 0 &&
@@ -276,12 +260,10 @@ function refreshGatherFieldSelect() {
     gatherSkills.garden.lv    === 0;
 
   GATHER_FIELDS.forEach(f => {
-    // 全採取スキルLv0なら field1 だけ表示（field2/3 は隠す）
     if (allGatherLv0 && f.id !== "field1") {
       return;
     }
 
-    // target が null（＝まだ何も選んでない）ときは field1 だけ出す
     if (!currentTarget) {
       if (f.id === "field1") {
         const opt = document.createElement("option");
@@ -293,7 +275,6 @@ function refreshGatherFieldSelect() {
       return;
     }
 
-    // target が決まっている場合だけスキルチェック
     if (!canEnterGatherFieldForTarget(f.id, currentTarget)) return;
 
     const opt = document.createElement("option");
@@ -316,28 +297,19 @@ function refreshGatherFieldSelect() {
 }
 
 // =======================
-// 食材調達（狩猟 / 釣り / 農園）
+// 食材調達（狩猟 / 釣り）
 // =======================
 
-// currentFishingArea / currentFishingBait は、
-// HTML 側のセレクト value をそのまま使って、
-// area: "river" | "lake" | "sea"
-// bait: "default" | "worm" | "deep" | "strong"
-// になる前提（index.html の value と一致）。
-
-// 食材調達タブから呼ぶ想定
-// mode: "hunt" / "fish" / "farm"
 function gatherCooking(mode) {
-  // 毎回スキルツリーボーナスを最新状態にしておく
+  const startTime = Date.now(); // ★デバッグ用: 所要時間計測用
+
   refreshGatherSkillTreeBonus();
 
-  // 農園は farm-core 側で処理・経験値付与する
   if (mode === "farm") {
     appendLog("農園の管理・収穫は農園メニューで行ってください。");
     return;
   }
 
-  // 対応する採取スキルで量を計算（狩猟 / 釣り）
   let skillKey;
   if (mode === "hunt" || mode === "fish") {
     skillKey = mode;
@@ -348,22 +320,18 @@ function gatherCooking(mode) {
 
   let added = calcGatherAmount(skillKey);
 
-  // ★スキルツリー: 採取量ボーナス（料理採取にも乗算）
   if (gatherSkillTreeBonus.gatherAmountBonusRate > 0) {
     const rate = gatherSkillTreeBonus.gatherAmountBonusRate;
     added = Math.max(1, Math.floor(added * (1 + rate)));
   }
 
-  // ★日替わりボーナス: 料理採取用（hunt/fish）の量ボーナス
   if (typeof getDailyGatherBonus === "function") {
-    const daily = getDailyGatherBonus(mode); // "hunt" or "fish"
+    const daily = getDailyGatherBonus(mode);
     if (daily && typeof daily.amountRate === "number" && daily.amountRate !== 1) {
       added = Math.max(1, Math.floor(added * daily.amountRate));
     }
   }
 
-  // ★肉の餌ペナルティ: 釣りかつ currentFishingBait が strong のとき
-  // 50% の確率で採れたスタックから 1 個減らす（最低1個保証なし）
   if (mode === "fish" && window.currentFishingBait === "strong") {
     if (Math.random() < 0.5) {
       added -= 1;
@@ -377,9 +345,6 @@ function gatherCooking(mode) {
     "meat_premium",
     "meat_magic"
   ];
-
-  // 釣りは fish-data.js のテーブルを使うので、ここでは固定テーブルを使わない
-  // 旧釣りテーブルは廃止（フォールバック用途も含めて未使用にする）
 
   let pool = [];
   if (mode === "hunt") {
@@ -396,14 +361,12 @@ function gatherCooking(mode) {
     return;
   }
 
-  // 1時間ボーナス（料理カテゴリ）
   let bonusChanceCook = 0;
   const hourlyBonus = getHourlyGatherBonusCategory();
   if (hourlyBonus === mode) {
     bonusChanceCook += 0.20;
   }
 
-  // 食材ギルドのランクボーナスも料理採取に適用
   if (typeof getGuildGatherExtraBonusChance === "function") {
     const guildExtra = getGuildGatherExtraBonusChance();
     if (guildExtra > 0) {
@@ -411,10 +374,8 @@ function gatherCooking(mode) {
     }
   }
 
-  // 「たまに多めに取れる」イベント（料理）
   let extraRateCook = EXTRA_GATHER_BONUS_RATE;
 
-  // ★スキルツリー: 料理採取の「ちょっと多め」確率にも加算
   if (gatherSkillTreeBonus.extraGatherBonusRateAdd > 0) {
     extraRateCook += gatherSkillTreeBonus.extraGatherBonusRateAdd;
   }
@@ -423,12 +384,11 @@ function gatherCooking(mode) {
   if (extraRateCook > 1) extraRateCook = 1;
 
   if (Math.random() < extraRateCook) {
-    const extra = 1 + Math.floor(Math.random() * 3); // 1〜3
+    const extra = 1 + Math.floor(Math.random() * 3);
     added += extra;
     appendLog(`手際が良く、いつもより多く料理素材を集められた！（+${extra}）`);
   }
 
-  // 料理の＋1抽選（1時間ボーナス＋ギルドボーナス）
   if (bonusChanceCook > 0) {
     const guaranteed = Math.floor(bonusChanceCook);
     const fraction   = bonusChanceCook - guaranteed;
@@ -441,32 +401,33 @@ function gatherCooking(mode) {
   }
 
   let gained = {};
-  let hasRareFish = false; // ★レア食材フラグ（大物・深海・伝説）
+  let hasRareFish = false;
 
-  // ========== 狩猟 or 釣りでの素材決定 ==========
   if (mode === "hunt") {
-    // 肉テーブルからランダム（仕様そのまま）＋品質ロールを追加
     for (let i = 0; i < added; i++) {
       const id = pool[Math.floor(Math.random() * pool.length)];
 
-      // 品質ロール（ベース確率＋将来ボーナス用）
       const q = (typeof rollCookingMatQuality === "function")
         ? rollCookingMatQuality()
         : 0;
 
+      // 品質テーブル更新（従来仕様）
       if (typeof addCookingMatWithQuality === "function") {
         addCookingMatWithQuality(id, q);
+      }
+
+      // 在庫カウントは ITEM_META 経由を優先（cooking ストレージ）
+      if (typeof addItemByMeta === "function") {
+        addItemByMeta(id, 1);
       } else {
-        // フォールバック：従来どおり
         cookingMats[id] = (cookingMats[id] || 0) + 1;
       }
 
       gained[id] = (gained[id] || 0) + 1;
     }
   } else if (mode === "fish") {
-    // ★新仕様：fish-data.js のテーブルと図鑑を使う（旧釣りロジック廃止）
-    const area = window.currentFishingArea || "river";      // river / lake / sea など
-    const bait = window.currentFishingBait || "default";    // default / worm / deep / strong
+    const area = window.currentFishingArea || "river";
+    const bait = window.currentFishingBait || "default";
 
     for (let i = 0; i < added; i++) {
       let fishId;
@@ -474,8 +435,6 @@ function gatherCooking(mode) {
       if (typeof rollFishKind === "function") {
         fishId = rollFishKind(area, bait);
       } else {
-        // rollFishKind が存在しない場合でも、何も取れずに終わるよりは
-        // 小魚1匹だけでも返しておく（旧仕様「必ず何かは釣れる」を維持）
         fishId = "fish_small";
       }
 
@@ -483,31 +442,32 @@ function gatherCooking(mode) {
         fishId = "fish_small";
       }
 
-      // ★ここで同時に「伝説上書き抽選」を行う
       let finalFishId = fishId;
 
       let legendRate = 0.0004;
       if (bait === "strong") {
-        legendRate *= 2; // 肉餌だけ2倍
+        legendRate *= 2;
       }
       if (Math.random() < legendRate) {
         finalFishId = "fish_legend";
       }
 
-      // 品質ロール
       const q = (typeof rollCookingMatQuality === "function")
         ? rollCookingMatQuality()
         : 0;
 
       if (typeof addCookingMatWithQuality === "function") {
         addCookingMatWithQuality(finalFishId, q);
+      }
+
+      if (typeof addItemByMeta === "function") {
+        addItemByMeta(finalFishId, 1);
       } else {
         cookingMats[finalFishId] = (cookingMats[finalFishId] || 0) + 1;
       }
 
       gained[finalFishId] = (gained[finalFishId] || 0) + 1;
 
-      // サイズ＆図鑑更新（rollFishSize があれば）
       let size = null;
       if (typeof rollFishSize === "function") {
         size = rollFishSize(finalFishId);
@@ -521,19 +481,16 @@ function gatherCooking(mode) {
         });
       }
 
-      // レアフラグ（大物・深海・伝説）
       if (finalFishId === "fish_big" || finalFishId === "fish_deep" || finalFishId === "fish_legend") {
         hasRareFish = true;
       }
 
-      // ★伝説を釣ったときは、テーブル直撃でも追加抽選でも必ず特別ログ
       if (finalFishId === "fish_legend") {
         appendLog("🌟 伝説の魚を釣り上げた！");
       }
     }
   }
 
-  // ★ペット特性: 狩猟・釣りの別枠+10%（兎）
   tryCompanionExtraGatherOnce(() => {
     const ids = Object.keys(gained);
     if (ids.length > 0) {
@@ -545,6 +502,10 @@ function gatherCooking(mode) {
 
       if (typeof addCookingMatWithQuality === "function") {
         addCookingMatWithQuality(pickId, q);
+      }
+
+      if (typeof addItemByMeta === "function") {
+        addItemByMeta(pickId, 1);
       } else {
         cookingMats[pickId] = (cookingMats[pickId] || 0) + 1;
       }
@@ -554,12 +515,10 @@ function gatherCooking(mode) {
     }
   });
 
-  // 料理素材ごとの統計更新
   Object.keys(gained).forEach(id => {
     addGatherStat(id, gained[id]);
   });
 
-  // 狩猟/釣りのみ、ここで採取スキル経験値を付与
   addGatherSkillExp(skillKey);
 
   const modeLabel =
@@ -568,11 +527,15 @@ function gatherCooking(mode) {
     mode;
 
   const parts = Object.keys(gained).map(id => {
-    const name = COOKING_MAT_NAMES[id] || id;
+    let name = id;
+    if (typeof getItemName === "function") {
+      name = getItemName(id);
+    } else if (COOKING_MAT_NAMES && COOKING_MAT_NAMES[id]) {
+      name = COOKING_MAT_NAMES[id];
+    }
     return `${name}×${gained[id]}`;
   });
 
-  // ★追加: 釣りで何も得られなかった場合のメッセージ
   if (mode === "fish" && parts.length === 0) {
     appendLog("【釣り】何も釣れなかった…");
   } else {
@@ -585,7 +548,6 @@ function gatherCooking(mode) {
     gained: gained
   };
 
-  // 食材ギルド用：料理素材採取依頼を進行
   if (typeof onGatherCompletedForGuild === "function") {
     let totalCount = 0;
     Object.keys(gained).forEach(id => {
@@ -595,15 +557,15 @@ function gatherCooking(mode) {
       kind: "food",
       total: totalCount,
       rare: hasRareFish,
-      mode: mode // ★ 狩猟/釣りカテゴリ判定用に mode を渡す
+      mode: mode
     });
   }
 
   if (typeof RARE_GATHER_DROP_RATE === "number" &&
       typeof RARE_GATHER_ITEM_ID === "string") {
     if (Math.random() < RARE_GATHER_DROP_RATE) {
-      if (typeof itemCounts === "object") {
-        itemCounts[RARE_GATHER_ITEM_ID] = (itemCounts[RARE_GATHER_ITEM_ID] || 0) + 1;
+      if (typeof addItemByMeta === "function") {
+        addItemByMeta(RARE_GATHER_ITEM_ID, 1);
       }
       appendLog("✨ 星屑の結晶を手に入れた！（料理採取）");
     }
@@ -628,6 +590,18 @@ function gatherCooking(mode) {
 
   if (typeof updateDisplay === "function") {
     updateDisplay();
+  }
+
+  // ★デバッグ用: 料理採取ログ（簡易）
+  if (typeof debugRecordGather === "function") {
+    try {
+      let total = 0;
+      Object.keys(gained).forEach(id => { total += gained[id]; });
+      const timeSec = (Date.now() - startTime) / 1000;
+      debugRecordGather(mode, null, total, timeSec, {
+        skillLv: (gatherSkills[skillKey] && gatherSkills[skillKey].lv) || null
+      });
+    } catch (e) {}
   }
 }
 
@@ -664,7 +638,6 @@ function calcGatherAmount(resourceKey){
     total += 1;
   }
 
-  // ★スキルツリー: 採取量ボーナス（通常採取向けの汎用ヘルパ）
   if (gatherSkillTreeBonus.gatherAmountBonusRate > 0) {
     const rate = gatherSkillTreeBonus.gatherAmountBonusRate;
     total = Math.max(1, Math.floor(total * (1 + rate)));
@@ -673,7 +646,6 @@ function calcGatherAmount(resourceKey){
   return Math.max(1, total);
 }
 
-// 料理素材名テーブル（ログ表示用）
 const COOKING_MAT_NAMES = {
   meat_hard: "固い肉",
   meat_soft: "やわらかい肉",
@@ -704,25 +676,18 @@ const COOKING_MAT_NAMES = {
   spice_secret: "秘伝スパイス"
 };
 
-// 直近の通常素材採取情報
 window.lastGatherInfo = window.lastGatherInfo || null;
 
 // =======================
 // 採取装備ボーナス判定
 // =======================
 
-// 現在装備中の採取用武器/防具が target に対応しているかを判定して
-// 「+1個ボーナス抽選」の確率を返す。
-// セット時: T1=20% / T2=40% / T3=60%
-// 片方だけ: T1=5% / T2=15% / T3=25%
 function getGatherBonusChance(target) {
-  // 装備情報が無ければボーナス無し
   const weapon = window.currentWeapon || null;
   const armor  = window.currentArmor || null;
   const weaponId = weapon && weapon.id ? weapon.id : (weapon && weapon.itemId ? weapon.itemId : null);
   const armorId  = armor  && armor.id  ? armor.id  : (armor  && armor.itemId  ? armor.itemId  : null);
 
-  // 対応する採取武器IDの prefix
   const weaponPrefixMap = {
     wood:    "gatherAxe",
     ore:     "gatherPick",
@@ -732,7 +697,6 @@ function getGatherBonusChance(target) {
     water:   "gatherFlask"
   };
 
-  // 対応する採取防具IDの prefix
   const armorPrefixMap = {
     wood:    "gatherArmorWood",
     ore:     "gatherArmorOre",
@@ -750,7 +714,6 @@ function getGatherBonusChance(target) {
   const hasArmor  = armorId  && armorId.startsWith(aPrefix);
   if (!hasWeapon && !hasArmor) return 0;
 
-  // ティア判定（ID末尾の _T1/_T2/_T3）
   const getTier = (id) => {
     if (!id) return null;
     if (id.endsWith("_T3")) return "T3";
@@ -762,7 +725,6 @@ function getGatherBonusChance(target) {
   const wTier = hasWeapon ? getTier(weaponId) : null;
   const aTier = hasArmor  ? getTier(armorId)  : null;
 
-  // 両方装備している場合は「低い方のティア」をセットティアとして採用
   const pairTier = (wTier && aTier)
     ? (wTier === "T1" || aTier === "T1" ? "T1"
       : (wTier === "T2" || aTier === "T2" ? "T2" : "T3"))
@@ -771,19 +733,16 @@ function getGatherBonusChance(target) {
   let chance = 0;
 
   if (hasWeapon && hasArmor && pairTier) {
-    // セット装備時
     if (pairTier === "T1") chance = 0.20;
     else if (pairTier === "T2") chance = 0.40;
     else if (pairTier === "T3") chance = 0.60;
   } else {
-    // 片方だけ装備時（弱め）
     const singleTier = wTier || aTier;
     if (singleTier === "T1") chance = 0.05;
     else if (singleTier === "T2") chance = 0.15;
     else if (singleTier === "T3") chance = 0.25;
   }
 
-  // ★スキルツリー: 採取装備ボーナス発動率に加算
   if (gatherSkillTreeBonus.gatherEquipBonusChanceAdd) {
     chance += gatherSkillTreeBonus.gatherEquipBonusChanceAdd;
   }
@@ -795,19 +754,16 @@ function getGatherBonusChance(target) {
 }
 
 function gather(){
+  const startTime = Date.now(); // ★デバッグ用: 所要時間計測用
+
   const targetSel = document.getElementById("gatherTarget");
   if (!targetSel) return;
-  const target = targetSel.value; // wood / ore / herb / cloth / leather / water
+  const target = targetSel.value;
 
   const fieldSel = document.getElementById("gatherField");
   const field = fieldSel ? fieldSel.value : "field1";
 
-  // 毎回スキルツリーボーナスを最新状態にしておく
   refreshGatherSkillTreeBonus();
-
-  // =======================
-  // 通常素材採取（木/鉱石/草/布/皮/水）
-  // =======================
 
   const s = gatherSkills[target];
   const lv = s ? s.lv : 0;
@@ -840,15 +796,13 @@ function gather(){
   added += jobBonus + lukBonus;
   if (added < 0) added = 0;
 
-  // ★ 日替わりボーナス: 通常採取の量ボーナス
   if (typeof getDailyGatherBonus === "function") {
-    const daily = getDailyGatherBonus(target); // "wood" など
+    const daily = getDailyGatherBonus(target);
     if (daily && typeof daily.amountRate === "number" && daily.amountRate !== 1) {
       added = Math.max(0, Math.floor(added * daily.amountRate));
     }
   }
 
-  // ★ 空腹・水分による「採取失敗」抽選（ボーナスとは別）
   if (typeof currentHunger === "number" && typeof currentThirst === "number") {
     let failChance = 0;
     if (currentHunger < 25 || currentThirst < 25) {
@@ -858,7 +812,6 @@ function gather(){
       failChance = 0.50;
     }
 
-    // ★スキルツリー: 失敗率に対して軽減係数を掛ける
     if (failChance > 0 && gatherSkillTreeBonus.gatherFailPenaltyRate >= 0) {
       failChance *= gatherSkillTreeBonus.gatherFailPenaltyRate;
     }
@@ -869,23 +822,27 @@ function gather(){
     }
   }
 
-  if (!materials || !materials[target]) {
-    appendLog("採取素材の定義が見つかりません");
-    return;
-  }
-
   if (added === 0) {
     appendLog("何も採取できなかった…");
     if (typeof updateDisplay === "function") {
       updateDisplay();
     }
+
+    // ★デバッグ用: 失敗もログに残したい場合
+    if (typeof debugRecordGather === "function") {
+      try {
+        const timeSec = (Date.now() - startTime) / 1000;
+        debugRecordGather(target, null, 0, timeSec, {
+          skillLv: (gatherSkills[target] && gatherSkills[target].lv) || null
+        });
+      } catch (e) {}
+    }
+
     return;
   }
 
-  // 「たまに多めに取れる」イベント（通常）
   let extraRate = EXTRA_GATHER_BONUS_RATE;
 
-  // ★スキルツリー: 通常採取の「ちょっと多め」確率にも加算
   if (gatherSkillTreeBonus.extraGatherBonusRateAdd > 0) {
     extraRate += gatherSkillTreeBonus.extraGatherBonusRateAdd;
   }
@@ -894,33 +851,26 @@ function gather(){
   if (extraRate > 1) extraRate = 1;
 
   if (Math.random() < extraRate) {
-    const extra = 1 + Math.floor(Math.random() * 3); // 1〜3
+    const extra = 1 + Math.floor(Math.random() * 3);
     added += extra;
     appendLog(`手際が良く、いつもより多く採取できた！（+${extra}）`);
   }
 
-  // 採取装備ボーナス（+1個抽選）＋ 空腹・水分＋1時間カテゴリボーナスによる加算補正（上限なし）
   let bonusChance = getGatherBonusChance(target);
 
-  // 空腹・水分補正
   if (typeof currentHunger === "number" && typeof currentThirst === "number") {
-    // バフ: 両方80%以上 → +0.20
     if (currentHunger >= 80 && currentThirst >= 80) {
       bonusChance += 0.20;
-    }
-    // デバフ: どちらか25%以下 → -0.20
-    else if (currentHunger <= 25 || currentThirst <= 25) {
+    } else if (currentHunger <= 25 || currentThirst <= 25) {
       bonusChance -= 0.20;
     }
   }
 
-  // 1時間ごとのカテゴリボーナス
   const hourlyBonusCategory = getHourlyGatherBonusCategory();
   if (hourlyBonusCategory === target) {
     bonusChance += 0.20;
   }
 
-  // ギルドボーナス（採取ギルド / 食材ギルド）
   if (typeof getGuildGatherExtraBonusChance === "function") {
     const guildExtra = getGuildGatherExtraBonusChance();
     if (guildExtra > 0) {
@@ -929,8 +879,8 @@ function gather(){
   }
 
   if (bonusChance > 0) {
-    const guaranteed = Math.floor(bonusChance);       // 1.2 → 1
-    const fraction   = bonusChance - guaranteed;      // 1.2 → 0.2
+    const guaranteed = Math.floor(bonusChance);
+    const fraction   = bonusChance - guaranteed;
 
     if (guaranteed > 0) {
       added += guaranteed;
@@ -942,13 +892,10 @@ function gather(){
 
   let t1 = 0, t2 = 0, t3 = 0;
 
-  // per-item 抽選方式
   for (let i = 0; i < added; i++) {
     if (field === "field1") {
-      // 近郊の原っぱ: すべてT1
       t1 += 1;
     } else if (field === "field2") {
-      // 星降りの丘: 1個ごとに20%でT2、それ以外はT1
       const r = Math.random();
       if (r < 0.20) {
         t2 += 1;
@@ -956,43 +903,57 @@ function gather(){
         t1 += 1;
       }
     } else if (field === "field3") {
-      // 翠風の谷:
-      //  1個ごとに 10%でT3, それ以外で 30%でT2, それ以外はT1
       const r = Math.random();
       if (r < 0.10) {
         t3 += 1;
-      } else if (r < 0.10 + 0.30) {
+      } else if (r < 0.40) {
         t2 += 1;
       } else {
         t1 += 1;
       }
     } else {
-      // 想定外フィールドは全部T1
       t1 += 1;
     }
   }
 
-  materials[target].t1 += t1;
-  materials[target].t2 += t2;
-  materials[target].t3 += t3;
+  // 一次素材を materials-core 経由 or メタ経由で追加
+  if (typeof window.addMatTierCount === "function") {
+    if (t1 > 0) window.addMatTierCount(target, 1, t1);
+    if (t2 > 0) window.addMatTierCount(target, 2, t2);
+    if (t3 > 0) window.addMatTierCount(target, 3, t3);
+  } else if (typeof addItemByMeta === "function") {
+    if (t1 > 0) addItemByMeta(`${target}_T1`, t1);
+    if (t2 > 0) addItemByMeta(`${target}_T2`, t2);
+    if (t3 > 0) addItemByMeta(`${target}_T3`, t3);
+  }
 
-  // ★ペット特性: 通常採取の別枠+10%（兎）
   tryCompanionExtraGatherOnce(() => {
-    // フィールドに応じて、同じティア体系で+1
+    let addT1 = 0, addT2 = 0, addT3 = 0;
     if (field === "field3") {
-      t3 += 1;
-      materials[target].t3 += 1;
+      addT3 = 1;
     } else if (field === "field2") {
-      t2 += 1;
-      materials[target].t2 += 1;
+      addT2 = 1;
     } else {
-      t1 += 1;
-      materials[target].t1 += 1;
+      addT1 = 1;
     }
+
+    if (typeof window.addMatTierCount === "function") {
+      if (addT1 > 0) window.addMatTierCount(target, 1, addT1);
+      if (addT2 > 0) window.addMatTierCount(target, 2, addT2);
+      if (addT3 > 0) window.addMatTierCount(target, 3, addT3);
+    } else if (typeof addItemByMeta === "function") {
+      if (addT1 > 0) addItemByMeta(`${target}_T1`, addT1);
+      if (addT2 > 0) addItemByMeta(`${target}_T2`, addT2);
+      if (addT3 > 0) addItemByMeta(`${target}_T3`, addT3);
+    }
+
+    t1 += addT1;
+    t2 += addT2;
+    t3 += addT3;
+
     appendLog("ペットが追加で素材を見つけてきた！");
   });
 
-  // 通常素材ごとの統計更新（target単位で合計）
   const gainedTotal = t1 + t2 + t3;
   addGatherStat(target, gainedTotal);
 
@@ -1008,7 +969,6 @@ function gather(){
   if (t2 > 0) appendLog(`T2${names[target]}を${t2}つ採取した！`);
   if (t3 > 0) appendLog(`T3${names[target]}を${t3}つ採取した！`);
 
-  // 採取ギルド／食材ギルド用：通常素材採取依頼を進行
   if (typeof onGatherCompletedForGuild === "function") {
     onGatherCompletedForGuild({
       kind: "gather",
@@ -1016,15 +976,15 @@ function gather(){
       t1: t1,
       t2: t2,
       t3: t3,
-      target: target   // wood / ore / herb / cloth / leather / water
+      target: target
     });
   }
 
   if (typeof RARE_GATHER_DROP_RATE === "number" &&
       typeof RARE_GATHER_ITEM_ID === "string") {
     if (Math.random() < RARE_GATHER_DROP_RATE) {
-      if (typeof itemCounts === "object") {
-        itemCounts[RARE_GATHER_ITEM_ID] = (itemCounts[RARE_GATHER_ITEM_ID] || 0) + 1;
+      if (typeof addItemByMeta === "function") {
+        addItemByMeta(RARE_GATHER_ITEM_ID, 1);
       }
       appendLog("✨ 星屑の結晶を手に入れた！");
     }
@@ -1042,44 +1002,49 @@ function gather(){
   if (typeof updateDisplay === "function") {
     updateDisplay();
   }
+
+  // ★デバッグ用: 通常採取ログ
+  if (typeof debugRecordGather === "function") {
+    try {
+      const timeSec = (Date.now() - startTime) / 1000;
+      debugRecordGather(target, null, gainedTotal, timeSec, {
+        skillLv: (gatherSkills[target] && gatherSkills[target].lv) || null
+      });
+    } catch (e) {}
+  }
 }
 
 // =======================
 // 採取拠点の自動採取（tick）
 // =======================
-//
-// gatherBase まわりが別ファイルにある前提で、
-// ここでは「倉庫に入れる＋統計に反映する」だけを担当する。
 
 function tickGatherBasesOnce() {
   if (typeof getGatherBaseStatus !== "function") return;
-  if (!window.materials) return;
 
-  const bases = getGatherBaseStatus(); // 例: { wood:{level,mode}, ore:{...}, ... }
+  const bases = getGatherBaseStatus();
   if (!bases) return;
 
   Object.keys(bases).forEach(key => {
     const base = bases[key];
     if (!base || base.level <= 0) return;
 
-    const mat = window.materials[key];
-    if (!mat) return;
-
-    // ここでは「1tickあたり T1/T2 をいくつ増やすか」のロジックを
-    // 既存仕様どおり別関数に任せている前提。
     if (typeof calcGatherBaseTickAmount !== "function") return;
 
     const result = calcGatherBaseTickAmount(key, base);
     const t1Amount = result.t1 || 0;
     const t2Amount = result.t2 || 0;
 
-    if (t1Amount > 0) {
-      mat.t1 = (mat.t1 || 0) + t1Amount;
-      if (typeof addGatherStat === "function") addGatherStat(key, t1Amount);
+    if (typeof window.addMatTierCount === "function") {
+      if (t1Amount > 0) window.addMatTierCount(key, 1, t1Amount);
+      if (t2Amount > 0) window.addMatTierCount(key, 2, t2Amount);
+    } else if (typeof addItemByMeta === "function") {
+      if (t1Amount > 0) addItemByMeta(`${key}_T1`, t1Amount);
+      if (t2Amount > 0) addItemByMeta(`${key}_T2`, t2Amount);
     }
-    if (t2Amount > 0) {
-      mat.t2 = (mat.t2 || 0) + t2Amount;
-      if (typeof addGatherStat === "function") addGatherStat(key, t2Amount);
+
+    if (typeof addGatherStat === "function") {
+      const gained = (t1Amount || 0) + (t2Amount || 0);
+      if (gained > 0) addGatherStat(key, gained);
     }
   });
 }

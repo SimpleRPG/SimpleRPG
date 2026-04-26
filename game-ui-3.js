@@ -151,13 +151,32 @@ function renderBasicMaterialTableInto(container) {
     const tierTh = document.createElement("th");
     tierTh.textContent = `T${idx + 1}`;
     tr.appendChild(tierTh);
+
     keys.forEach(key => {
-      const mat = window.materials[key] || {};
       const td = document.createElement("td");
-      const val = mat[tierKey] || 0;
+      let val = 0;
+
+      // materials-core.js のAPIを優先
+      if (typeof getMatTierCount === "function") {
+        const tierNum =
+          (tierKey === "t1") ? 1 :
+          (tierKey === "t2") ? 2 :
+          (tierKey === "t3") ? 3 : 1;
+        val = getMatTierCount(key, tierNum);
+      } else {
+        // フォールバック：配列 index から読む（initMaterials 後の構造）
+        const matArr = window.materials[key] || [];
+        const idxArr =
+          (tierKey === "t1") ? 0 :
+          (tierKey === "t2") ? 1 :
+          (tierKey === "t3") ? 2 : 0;
+        val = matArr[idxArr] || 0;
+      }
+
       td.textContent = val;
       tr.appendChild(td);
     });
+
     tbody.appendChild(tr);
   });
   table.appendChild(tbody);
@@ -545,6 +564,11 @@ function initJobPetRebirthUI() {
       });
     });
   }
+
+  // ★拠点タブ内サブタブ（拠点 / 倉庫）の初期化
+  if (typeof initHousingSubTabs === "function") {
+    initHousingSubTabs();
+  }
 }
 
 // --------------------
@@ -878,4 +902,44 @@ function initStatusStatsSubTabs() {
 
   // initStatusStatsSubTabs が呼ばれるたび、描画は毎回行う
   setStatsSubPage("gather");
+}
+
+// ==========================
+// 拠点タブ内サブタブ（拠点 / 倉庫）
+// ==========================
+function initHousingSubTabs() {
+  const tabContainer = document.getElementById("housingSubTabs");
+  const pageMain = document.getElementById("housingPageMain");
+  const pageWh   = document.getElementById("housingPageWarehouse");
+  if (!tabContainer || !pageMain || !pageWh) return;
+
+  const tabs = tabContainer.querySelectorAll(".housing-sub-tab");
+  if (!tabs.length) return;
+
+  function setHousingPage(kind) {
+    tabs.forEach(btn => {
+      const k = btn.dataset.housingPage;
+      btn.classList.toggle("active", k === kind);
+    });
+
+    const isMain = (kind === "housing-main");
+    pageMain.style.display = isMain ? "" : "none";
+    pageWh.style.display   = isMain ? "none" : "";
+
+    // 倉庫サブタブを開いたときに倉庫UIを更新
+    if (!isMain && typeof refreshWarehouseUI === "function") {
+      refreshWarehouseUI();
+    }
+  }
+
+  tabs.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const kind = btn.dataset.housingPage;
+      if (!kind) return;
+      setHousingPage(kind);
+    });
+  });
+
+  // 初期は拠点ページを表示
+  setHousingPage("housing-main");
 }

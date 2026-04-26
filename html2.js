@@ -15,6 +15,7 @@
         <button id="statusTabMain"    class="status-sub-tab active" data-page="status-main">基本情報</button>
         <button id="statusTabStats"   class="status-sub-tab"         data-page="status-stats">統計</button>
         <button id="statusTabSkill"   class="status-sub-tab"         data-page="status-skill">スキルツリー</button>
+        <button id="statusTabGM"      class="status-sub-tab"         data-page="status-gm">GMデバッグ</button>
       </div>
 
       <!-- 基本情報 -->
@@ -194,6 +195,8 @@
                   <button class="skill-filter-btn" data-filter="gather">採取</button>
                   <button class="skill-filter-btn" data-filter="craft">クラフト</button>
                   <button class="skill-filter-btn" data-filter="econ">経済・拠点</button>
+                `
+  + `
                 </div>
               </div>
 
@@ -232,6 +235,14 @@
 
         <div id="statusSkillBonusPage" class="status-skill-page" style="display:none;">
           <div class="status-block" id="skillTreeBonusList" style="font-size:12px;"></div>
+        </div>
+      </div>
+
+      <!-- GMデバッグ -->
+      <div id="statusPageGM" class="status-sub-page" style="display:none;">
+        <h3>GMデバッグ</h3>
+        <div id="gmDebugContainer" class="status-block" style="font-size:12px;">
+          <!-- GMデバッグ用のUIは別JSからここに差し込みます -->
         </div>
       </div>
     `;
@@ -292,7 +303,132 @@
   if (pageHousing) {
     pageHousing.innerHTML = `
       <h2>拠点</h2>
-      <div id="housingRoot">
+
+      <!-- 拠点ページ内サブタブ -->
+      <div id="housingSubTabs" style="margin-bottom:8px;">
+        <button class="housing-sub-tab active" data-housing-page="housing-main">拠点</button>
+        <button class="housing-sub-tab" data-housing-page="housing-warehouse">倉庫</button>
+      </div>
+
+      <div id="housingPages">
+        <!-- 拠点サブタブ: 既存の拠点UI -->
+        <div id="housingPageMain" class="housing-sub-page active">
+          <div id="housingRoot">
+          </div>
+        </div>
+
+        <!-- 倉庫サブタブ: 上部の倉庫タブと同じ内容を表示するための枠 -->
+        <div id="housingPageWarehouse" class="housing-sub-page" style="display:none;">
+          <h3>倉庫</h3>
+
+          <div id="housingWarehouseInner">
+            <div>
+              <div id="housingWarehouseSubTabs" style="margin-bottom:8px;">
+                <button id="housingWarehouseTabItems" class="warehouse-sub-tab active">装備・アイテム</button>
+                <button id="housingWarehouseTabMaterials" class="warehouse-sub-tab">素材</button>
+              </div>
+
+              <div id="housingWarehousePageItems" class="warehouse-sub-page active">
+                <div id="housingWarehouseLists">
+                  <div class="warehouse-box">
+                    <h3>手持ち</h3>
+
+                    <p>装備中</p>
+                    <div id="housingEquippedWeaponSlot"></div>
+                    <div id="housingEquippedArmorSlot"></div>
+
+                    <p>ポーション（最大10本）</p>
+                    <div id="housingCarryPotionsList"></div>
+
+                    <p>料理（食べ物 最大3品）</p>
+                    <div id="housingCarryFoodsList"></div>
+
+                    <p>料理（飲み物 最大3杯）</p>
+                    <div id="housingCarryDrinksList"></div>
+
+                    <p>武器（最大2本）</p>
+                    <div id="housingCarryWeaponsList"></div>
+
+                    <p>防具（最大2着）</p>
+                    <div id="housingCarryArmorsList"></div>
+
+                    <p>道具（最大3個）</p>
+                    <div id="housingCarryToolsList"></div>
+                  </div>
+
+                  <div class="warehouse-box">
+                    <h3>倉庫</h3>
+                    <p>ポーション</p>
+                    <div id="housingWarehousePotionsList"></div>
+
+                    <p>料理（食べ物）</p>
+                    <div id="housingWarehouseFoodsList"></div>
+
+                    <p>料理（飲み物）</p>
+                    <div id="housingWarehouseDrinksList"></div>
+
+                    <p>武器</p>
+                    <div id="housingWarehouseWeaponsList"></div>
+
+                    <p>防具</p>
+                    <div id="housingWarehouseArmorsList"></div>
+
+                    <p>道具</p>
+                    <div id="housingWarehouseToolsList"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div id="housingWarehousePageMaterials" class="warehouse-sub-page" style="display:none;">
+                <h3>素材一覧</h3>
+
+                <h4>採取素材</h4>
+                <div id="housingGatherMaterialsList">
+                </div>
+
+                <h4>中間素材</h4>
+                <div id="housingIntermediateMaterialsList">
+                </div>
+
+                <h4>料理素材</h4>
+                <div id="housingCookingMaterialsList">
+                </div>
+              </div>
+            </div>
+
+            <aside id="housingWarehouseInfoPanel">
+              <h3>インベントリ情報</h3>
+              <p>倉庫と手持ちの出し入れができます。</p>
+              <div class="carry-limit-row">
+                <span>ポーション</span>
+                <span class="value" id="housingCarryLimitPotionsText">0 / 10</span>
+              </div>
+              <div class="carry-limit-row">
+                <span>食べ物</span>
+                <span class="value" id="housingCarryLimitFoodsText">0 / 3</span>
+              </div>
+              <div class="carry-limit-row">
+                <span>飲み物</span>
+                <span class="value" id="housingCarryLimitDrinksText">0 / 3</span>
+              </div>
+              <div class="carry-limit-row">
+                <span>武器</span>
+                <span class="value" id="housingCarryLimitWeaponsText">0 / 2</span>
+              </div>
+              <div class="carry-limit-row">
+                <span>防具</span>
+                <span class="value" id="housingCarryLimitArmorsText">0 / 2</span>
+              </div>
+              <div class="carry-limit-row">
+                <span>道具</span>
+                <span class="value" id="housingCarryLimitToolsText">0 / 3</span>
+              </div>
+              <p style="margin-top:6px; font-size:11px;">
+                ※上部の倉庫タブと同じ内容がここからも確認できます。
+              </p>
+            </aside>
+          </div>
+        </div>
       </div>
     `;
   }
@@ -315,7 +451,7 @@
     jobModal.id = "jobModal";
     jobModal.className = "modal-center hidden";
     jobModal.innerHTML = `
-      <div id="jobModalInner">
+      <div id="jobModalInner" class="modal-box">
         <h3 id="jobModalTitle">最初の職業を選択</h3>
         <p id="jobModalMessage" style="font-size:0.9em;">
           最初に職業を1つ選んでください（変更は後から100Gで可能）。<br>
@@ -346,7 +482,7 @@
     rebirthModal.id = "rebirthModal";
     rebirthModal.className = "modal-center hidden";
     rebirthModal.innerHTML = `
-      <div id="rebirthModalInner">
+      <div id="rebirthModalInner" class="modal-box">
         <h3>転生の確認</h3>
         <p id="rebirthModalMessage" style="font-size:0.9em;">
         </p>
@@ -365,7 +501,7 @@
     petGrowthModal.id = "petGrowthModal";
     petGrowthModal.className = "modal-center hidden";
     petGrowthModal.innerHTML = `
-      <div id="petGrowthModalInner">
+      <div id="petGrowthModalInner" class="modal-box">
         <h3>ペット成長タイプを変更</h3>
         <p style="font-size:0.9em;">
           ペットの成長タイプを選んでください。<br>
@@ -410,7 +546,7 @@
     companionModal.id = "companionModal";
     companionModal.className = "modal-center hidden";
     companionModal.innerHTML = `
-      <div id="companionModalInner">
+      <div id="companionModalInner" class="modal-box">
         <h3>最初のペットを選ぶ</h3>
         <p style="font-size:0.9em;">
           一緒に旅をするペットを1種類選んでください。<br>

@@ -6,7 +6,6 @@
 // グローバル状態（探索・ボス）
 // =======================
 
-// エリアごとの「今ボスに挑める状態か」
 let areaBossAvailable = {
   field:  false,
   forest: false,
@@ -14,7 +13,6 @@ let areaBossAvailable = {
   mine:   false
 };
 
-// ★エリアごとの「連続探索回数（ボス用累積カウンタ）」と直前探索成功フラグ
 let consecutiveExplores = {
   field: 0,
   forest: 0,
@@ -28,16 +26,13 @@ let lastExploreSuccess = {
   mine:   true
 };
 
-// 探索滞在状態（UI側と共有）
-window.isExploring   = false;      // 街にいる: false / どこか探索中: true
-window.exploringArea = "field";    // 現在探索しているエリアID
+window.isExploring   = false;
+window.exploringArea = "field";
 
-// 撤退状態管理（UI と共有するため window 配下に載せる）
-window.isRetreating     = false;   // 撤退中かどうか
-window.retreatTurnsLeft = 0;       // 帰還までに必要な残りターン数
-window.RETREAT_TURNS    = 3;       // 撤退開始時に必要なターン数（調整用）
+window.isRetreating     = false;
+window.retreatTurnsLeft = 0;
+window.RETREAT_TURNS    = 3;
 
-// ポーション選択の記憶
 let lastSelectedFieldPotionId  = null;
 let lastSelectedBattleItemId   = null;
 
@@ -51,7 +46,7 @@ function getCurrentArea() {
 }
 
 // =======================
-// 探索UI（行き先＋探索ボタン）の表示切替
+// 探索UI表示切替
 // =======================
 
 function setExploreUIVisible(visible) {
@@ -60,7 +55,7 @@ function setExploreUIVisible(visible) {
 }
 
 // =======================
-// フィールド用アイテム行の表示切替
+// フィールド用アイテム行表示切替
 // =======================
 
 function setFieldItemRowsVisible(visible) {
@@ -129,11 +124,7 @@ function updateBossButtonUI() {
     ? (window.exploringArea || getCurrentArea())
     : getCurrentArea();
 
-  if (areaBossAvailable[area]) {
-    bossBtn.style.display = "inline-block";
-  } else {
-    bossBtn.style.display = "none";
-  }
+  bossBtn.style.display = areaBossAvailable[area] ? "inline-block" : "none";
 }
 
 // =======================
@@ -149,11 +140,7 @@ function updateReturnTownButton() {
     return;
   }
 
-  if (window.isExploring) {
-    btn.style.display = "inline-block";
-  } else {
-    btn.style.display = "none";
-  }
+  btn.style.display = window.isExploring ? "inline-block" : "none";
 }
 
 // =======================
@@ -256,7 +243,7 @@ function markExploreSuccess(areaId) {
 }
 
 // =======================
-// 探索時のボス発見判定（累積式・連続探索のみ）
+// 探索時のボス発見判定
 // =======================
 
 function tryFindBossOnExplore() {
@@ -265,7 +252,6 @@ function tryFindBossOnExplore() {
     : getCurrentArea();
   if (areaBossAvailable[area]) return;
 
-  // 直前探索で中断していた場合はリセットしてからカウント開始
   if (!lastExploreSuccess[area]) {
     consecutiveExplores[area] = 0;
     lastExploreSuccess[area] = false;
@@ -274,19 +260,14 @@ function tryFindBossOnExplore() {
   consecutiveExplores[area] += 1;
   const count = consecutiveExplores[area];
 
-  // 20回くらいを繰り返すと旧0.05%相当、40回で旧の倍、100回まで行けばほぼ確定、というイメージ
   let p;
   if (count <= 20) {
-    // 20回累積 ≒ 0.05%
     p = 0.00002501;
   } else if (count <= 40) {
-    // 40回累積 ≒ 0.1%
     p = 0.00002502;
   } else if (count <= 100) {
-    // 100回までにほぼ確定（累積 ≒ 99.9%）
     p = 0.10873420;
   } else {
-    // 100回を超えてなお探索を続けているなら高確率を維持
     p = 0.15;
   }
 
@@ -297,7 +278,6 @@ function tryFindBossOnExplore() {
     if (typeof updateBossButtonUI === "function") {
       updateBossButtonUI();
     }
-    // ボス発見したので、このエリアの累積は一旦リセットしておく
     resetConsecutiveForArea(area);
   }
 }
@@ -315,7 +295,6 @@ function handleRetreatProgress() {
     return false;
   }
 
-  // 帰還確定
   window.isRetreating     = false;
   window.retreatTurnsLeft = 0;
 
@@ -324,7 +303,6 @@ function handleRetreatProgress() {
 
   appendLog("なんとか街までたどり着いた… ひとまず安全だ。");
 
-  // 撤退完了は「探索中断」とみなし累積リセット
   resetConsecutiveAll();
 
   if (typeof setBattleCommandVisible === "function") {
@@ -362,19 +340,16 @@ function doExploreEvent(area) {
   window.exploringArea = area;
   window.isExploring = true;
 
-  // 撤退進行を先に処理し、このターンで街に着いたら以降の処理を行わない
   if (handleRetreatProgress()) {
     return;
   }
 
-  // 毎探索でボス累積判定
   tryFindBossOnExplore();
 
   const roll = Math.random();
 
   if (roll < 0.2) {
     appendLog("何も見つからなかった…");
-    // 何も起きなくても「探索は成立した」とみなして成功マーク
     markExploreSuccess(area);
     updateReturnTownButton();
     return;
@@ -382,8 +357,6 @@ function doExploreEvent(area) {
 
   if (roll < 0.4) {
     doExploreRandomEvent(area);
-    // doExploreRandomEvent 内で死亡しなかった場合は探索成功扱いとする
-    //（死亡時は内部で街送り＋リセット済み）
     markExploreSuccess(area);
     updateReturnTownButton();
     return;
@@ -419,7 +392,6 @@ function doExploreEvent(area) {
     false
   );
 
-  // 敵が出たことも「探索成功」とみなす（戦闘中断は別ファイルで処理）
   markExploreSuccess(area);
 
   updateReturnTownButton();
@@ -439,7 +411,6 @@ function doExploreRandomEvent(area) {
       hp = 0;
       appendLog("あなたは罠で倒れてしまった…");
 
-      // 撤退状態は死亡でリセット
       window.isRetreating     = false;
       window.retreatTurnsLeft = 0;
 
@@ -451,7 +422,15 @@ function doExploreRandomEvent(area) {
       sp = spMax;
       petHp = petHpMax;
 
+      // ★経済ログ用: 罠死亡による所持金半減（戦闘死亡とは区別しておく）
+      const moneyBefore = money;
       money = Math.floor(money / 2);
+
+      if (typeof debugRecordEconomy === "function") {
+        try {
+          debugRecordEconomy(moneyBefore, money, "deathPenaltyTrap");
+        } catch (e) {}
+      }
 
       let brokeSomething = false;
 
@@ -548,7 +527,6 @@ function doExploreRandomEvent(area) {
         appendLog("街に戻った… 休んで回復し、所持ゴールドを半分失った。");
       }
 
-      // 死亡で探索中断なので累積も全リセット
       resetConsecutiveAll();
 
       updateReturnTownButton();
@@ -576,9 +554,18 @@ function doExploreRandomEvent(area) {
       goldMin = 30;  goldMax = 40;
     }
 
+    // ★経済ログ用: 宝箱前後の所持金
+    const moneyBeforeChest = (typeof money === "number") ? money : 0;
+
     const goldGain = goldMin + Math.floor(Math.random() * (goldMax - goldMin + 1));
     money = (money || 0) + goldGain;
     appendLog("小さな宝箱を見つけた！" + goldGain + "Gを手に入れた。");
+
+    if (typeof debugRecordEconomy === "function") {
+      try {
+        debugRecordEconomy(moneyBeforeChest, money, "chest");
+      } catch (e) {}
+    }
 
     const dropCount = 1 + Math.floor(Math.random() * 2);
     const baseKeys = ["wood","ore","herb","cloth","leather","water"];
@@ -586,30 +573,35 @@ function doExploreRandomEvent(area) {
 
     for (let i = 0; i < dropCount; i++) {
       const matKey = baseKeys[Math.floor(Math.random() * baseKeys.length)];
-      const m = materials[matKey];
-      if (!m) continue;
 
-      let tier = "t1";
+      // ティア決定
+      let tierNum = 1;
       if (area === "field") {
-        tier = (Math.random() < 0.9) ? "t1" : "t2";
+        tierNum = (Math.random() < 0.9) ? 1 : 2;
       } else if (area === "forest") {
         const r = Math.random();
-        if      (r < 0.1) tier = "t1";
-        else if (r < 0.9) tier = "t2";
-        else              tier = "t3";
+        if      (r < 0.1) tierNum = 1;
+        else if (r < 0.9) tierNum = 2;
+        else              tierNum = 3;
       } else if (area === "cave") {
         const r = Math.random();
-        if      (r < 0.1) tier = "t2";
-        else              tier = "t3"; // t4 は出さない
+        if      (r < 0.1) tierNum = 2;
+        else              tierNum = 3;
       } else if (area === "mine") {
         const r = Math.random();
-        if      (r < 0.2) tier = "t2";
-        else              tier = "t3";
+        if      (r < 0.2) tierNum = 2;
+        else              tierNum = 3;
       }
 
-      m[tier] = (m[tier] || 0) + 1;
+      // 在庫追加: materials-core 経由 or メタ経由
+      if (typeof window.addMatTierCount === "function") {
+        window.addMatTierCount(matKey, tierNum, 1);
+      } else if (typeof addItemByMeta === "function") {
+        const id = `${matKey}_T${tierNum}`;
+        addItemByMeta(id, 1);
+      }
 
-      const tierLabel = tier.toUpperCase();
+      const tierLabel = `T${tierNum}`;
       const name = baseNames[matKey] || matKey;
       appendLog(`宝箱の中から ${tierLabel}${name} を1つ手に入れた。`);
     }
@@ -657,7 +649,6 @@ function startBossBattleForArea(areaId) {
     updateBossButtonUI();
   }
 
-  // ボス戦に入る＝探索ループは一旦切れるので、そのエリアの累積をリセット
   resetConsecutiveForArea(areaId);
 
   appendLog(`${boss.name} が立ちはだかった！`);

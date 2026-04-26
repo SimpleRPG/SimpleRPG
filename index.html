@@ -12,15 +12,23 @@
   <div id="appRoot"></div>
 
   <!-- ===== データ系 ===== -->
-  
+  <!-- アイテム共通メタ管理（cook-data.js や今後の equip/gather-equip から参照） -->
+  <script src="item-meta-core.js"></script>
+  <!-- ★追加: 素材（一次素材・中間素材）と ITEM_META 連携コア -->
+  <script src="materials-core.js"></script>
+
   <script src="enemy-data.js"></script>
   <script src="gather-data.js"></script>
-  <script src="equip-data.js"></script>
-  <script src="craft-data.js"></script>
+  <script src="combat-equip-data.js"></script>
+  <!-- 採取用武器・採取用防具マスタ（戦闘装備から分離した新ファイル） -->
+  <script src="gather-equip-data.js"></script>
+  <script src="craft-item-data.js"></script>
   <script src="game-shop.js"></script>
   <script src="cook-data.js"></script>
   <script src="inventory-core.js"></script>
   <script src="farm-core.js"></script>
+  <!-- 畑・菜園用 肥料システム -->
+  <script src="fertilizer-core.js"></script>
   <script src="fish-data.js"></script>
   <script src="status-effects-core.js"></script>
   <!-- ペット種・特性ロジック -->
@@ -73,9 +81,27 @@
   <script src="game-ui-4.js"></script>
   <script src="gather-stats-ui.js"></script>
   <script src="asobikata.js"></script>
+  <!-- ★追加: 倉庫UI共通ロジック（倉庫タブ + 拠点倉庫サブタブ） -->
+  <script src="game-ui-5.js"></script>
 
   <!-- Socket.io クライアント（io() を使う前に読み込む） -->
   <script src="/socket.io/socket.io.js"></script>
+
+  <!-- ===== テストプレイヤー（テトちゃん） ===== -->
+  <!-- ベースの自動テストプレイヤー本体 -->
+  <script src="teto-ai.js"></script>
+  <!-- 性格・賢さレイヤーなどの拡張ロジック（teto-ai.js の後に読む） -->
+  <script src="teto-ai2.js"></script>
+  <script src="teto-ai3.js"></script>
+  <script src="teto-ai4.js"></script>
+
+  <!-- ===== デバッグ系 ===== -->
+  <!-- 統計・内部状態をまとめるコア -->
+  <script src="debug-stats-core.js"></script>
+  <!-- ★追加: テトちゃん評価・寄与評価ロジック -->
+  <script src="debug-stats-core2.js"></script>
+  <!-- GMタブの UI（tetoPersonality / tetoAiLevel などもここから触る想定） -->
+  <script src="debug-ui.js"></script>
 
   <!-- 2: タブ切り替え・市場・ギルド・Socket 初期化など UI イベント -->
   <!-- ※旧 html2.js を htmllast.js に改名した前提 -->

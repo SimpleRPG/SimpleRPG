@@ -14,10 +14,9 @@ function buildAppLayout() {
       <button id="tabExplore"   class="tab-button">探索</button>
       <button id="tabMagicDist" class="tab-button">魔巧区</button>
       <button id="tabWarehouse" class="tab-button">倉庫</button>
-      <button id="tabStatus"    class="tab-button">ステータス</button>
       <!-- ★拠点タブ: 初期は非表示、市民権取得後に JS 側で表示する -->
       <button id="tabHousing"   class="tab-button" style="display:none;">拠点</button>
-      <!-- ★追加ここまで -->
+      <button id="tabStatus"    class="tab-button">ステータス</button>
       <!-- ★追加: ギルドタブ -->
       <button id="tabGuild"     class="tab-button">ギルド</button>
       <button id="tabHelp"      class="tab-button">あそびかた</button>
@@ -223,9 +222,15 @@ function buildAppLayout() {
                   <div id="farmDetail">
                     <div id="farmDetailTitle"></div>
                     <div id="farmDetailInfo"></div>
+                    <!-- ★肥料状態表示行 -->
+                    <div id="farmDetailFertilizerInfo" style="font-size:11px; color:#ccc;">
+                      肥料：なし
+                    </div>
                     <div id="farmDetailButtons">
                       <button id="farmDetailPlantBtn">植える / 植え替え</button>
                       <button id="farmDetailHarvestBtn">収穫</button>
+                      <!-- ★肥料を使うボタン（どの区画に肥料をまくかの入口） -->
+                      <button id="farmDetailFertilizerBtn">肥料を使う</button>
                     </div>
                   </div>
 
@@ -243,7 +248,7 @@ function buildAppLayout() {
             <h2>魔巧区</h2>
 
             <!-- 魔巧区内サブタブ -->
-            <div id="magicDistTabs" style="margin:4px 0;">
+            <div id="magicDistTabs" style="margin:4px 0%;">
               <button class="magic-tab-button active" data-page="magic-craft">クラフト</button>
               <button class="magic-tab-button" data-page="magic-enhance">装備手入れ場</button>
               <button class="magic-tab-button" data-page="magic-shop">ショップ</button>
@@ -263,6 +268,8 @@ function buildAppLayout() {
                 <button class="craft-cat-tab" data-cat="tool">道具</button>
                 <button class="craft-cat-tab" data-cat="material">素材</button>
                 <button class="craft-cat-tab" data-cat="cooking">料理</button>
+                <!-- ★生活クラフトタブを追加 -->
+                <button class="craft-cat-tab" data-cat="life">生活</button>
               </div>
 
               <!-- ティア選択 -->
@@ -351,6 +358,35 @@ function buildAppLayout() {
                   </div>
                   <div style="font-size:11px; color:#ccc;">
                     飲み物バフも1種類だけ有効になります。
+                  </div>
+                </div>
+              </div>
+
+              <!-- 生活クラフトパネル（農園・拠点） -->
+              <div id="craftPanelLife" class="craft-panel" style="display:none;">
+                <h3>生活クラフト</h3>
+
+                <div id="lifeSubTabs" style="margin:4px 0%;">
+                  <button class="life-sub-tab active" data-sub="farm">農園</button>
+                  <button class="life-sub-tab" data-sub="housing">拠点</button>
+                </div>
+
+                <!-- 農園タブ: 肥料クラフト -->
+                <div id="lifePanelFarm">
+                  <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
+                    <label style="font-size:12px;">肥料:</label>
+                    <select id="fertilizerSelect" style="flex:1;"></select>
+                    <button id="craftFertilizerAutoBtn">自動で作る</button>
+                  </div>
+                  <div style="font-size:11px; color:#ccc;">
+                    料理素材ポイント（通常=1pt / 銀=2pt / 金=3pt）の合計で肥料をクラフトします。
+                  </div>
+                </div>
+
+                <!-- 拠点クラフト（将来用のダミー） -->
+                <div id="lifePanelHousing" style="display:none;">
+                  <div style="font-size:11px; color:#ccc;">
+                    将来、家具や内装クラフトをここから行う予定です。
                   </div>
                 </div>
               </div>

@@ -620,8 +620,16 @@ function refreshCarryPotionSelects() {
     Object.keys(carryPotions).forEach(id => {
       const cnt = carryPotions[id] || 0;
       if (cnt <= 0) return;
-      const p = potions.find(x => x.id === id);
-      const name = p ? p.name : id;
+
+      // ★ ITEM_META を優先して名前を取得（fallback は従来どおり）
+      let name = id;
+      if (typeof getItemName === "function") {
+        name = getItemName(id);
+      } else if (Array.isArray(potions)) {
+        const p = potions.find(x => x.id === id);
+        if (p && p.name) name = p.name;
+      }
+
       const opt = document.createElement("option");
       opt.value = id;
       opt.textContent = `${name}（${cnt}）`;
@@ -662,8 +670,15 @@ function refreshBattleItemSelectWithCategory() {
     Object.keys(carryPotions).forEach(id => {
       const cnt = carryPotions[id] || 0;
       if (cnt <= 0) return;
-      const p = potions.find(x => x.id === id);
-      const name = p ? p.name : id;
+
+      let name = id;
+      if (typeof getItemName === "function") {
+        name = getItemName(id);
+      } else if (Array.isArray(potions)) {
+        const p = potions.find(x => x.id === id);
+        if (p && p.name) name = p.name;
+      }
+
       const opt = document.createElement("option");
       opt.value = id;
       opt.textContent = `${name}（${cnt}）`;
@@ -681,35 +696,41 @@ function refreshBattleItemSelectWithCategory() {
       const cnt = carryTools[id] || 0;
       if (cnt <= 0) return;
 
+      // ★ ITEM_META 優先で道具名を取得
       let label = id;
-      if (id === "bomb") {
-        label = "爆弾";
-      } else if (id === "bomb_T1") {
-        label = "爆弾T1";
-      } else if (id === "bomb_T2") {
-        label = "爆弾T2";
-      } else if (id === "bomb_T3") {
-        label = "爆弾T3";
-      } else if (id === "bomb_fire_T1") {
-        label = "火炎瓶T1";
-      } else if (id === "bomb_fire_T2") {
-        label = "火炎瓶T2";
-      } else if (id === "bomb_fire_T3") {
-        label = "火炎瓶T3";
-      } else if (id === "molotov_T1") {
-        label = "火炎瓶T1";
-      } else if (id === "paralyzeGas_T1") {
-        label = "麻痺ガス瓶T1";
-      } else if (id === "paralyzeGas_T2") {
-        label = "麻痺ガス瓶T2";
-      } else if (id === "paralyzeGas_T3") {
-        label = "麻痺ガス瓶T3";
-      } else if (id === "poisonNeedle_T1") {
-        label = "毒針T1";
-      } else if (id === "poisonNeedle_T2") {
-        label = "毒針T2";
-      } else if (id === "poisonNeedle_T3") {
-        label = "毒針T3";
+      if (typeof getItemName === "function") {
+        label = getItemName(id);
+      } else {
+        // 旧フォールバック（必要なら TOOLS_INIT 参照に変えることも可能）
+        if (id === "bomb") {
+          label = "爆弾";
+        } else if (id === "bomb_T1") {
+          label = "爆弾T1";
+        } else if (id === "bomb_T2") {
+          label = "爆弾T2";
+        } else if (id === "bomb_T3") {
+          label = "爆弾T3";
+        } else if (id === "bomb_fire_T1") {
+          label = "火炎瓶T1";
+        } else if (id === "bomb_fire_T2") {
+          label = "火炎瓶T2";
+        } else if (id === "bomb_fire_T3") {
+          label = "火炎瓶T3";
+        } else if (id === "molotov_T1") {
+          label = "火炎瓶T1";
+        } else if (id === "paralyzeGas_T1") {
+          label = "麻痺ガス瓶T1";
+        } else if (id === "paralyzeGas_T2") {
+          label = "麻痺ガス瓶T2";
+        } else if (id === "paralyzeGas_T3") {
+          label = "麻痺ガス瓶T3";
+        } else if (id === "poisonNeedle_T1") {
+          label = "毒針T1";
+        } else if (id === "poisonNeedle_T2") {
+          label = "毒針T2";
+        } else if (id === "poisonNeedle_T3") {
+          label = "毒針T3";
+        }
       }
 
       const opt = document.createElement("option");
@@ -762,10 +783,17 @@ function refreshCarryFoodDrinkSelects() {
     Object.keys(carryFoods).forEach(id => {
       const cnt = carryFoods[id] || 0;
       if (cnt <= 0) return;
-      const recipe = (typeof COOKING_RECIPES !== "undefined")
-        ? COOKING_RECIPES.food.find(r => r.id === id)
-        : null;
-      const name = recipe ? recipe.name : id;
+
+      let name = id;
+      if (typeof getItemName === "function") {
+        name = getItemName(id);
+      } else if (typeof COOKING_RECIPES !== "undefined" &&
+                 COOKING_RECIPES &&
+                 Array.isArray(COOKING_RECIPES.food)) {
+        const recipe = COOKING_RECIPES.food.find(r => r.id === id);
+        if (recipe && recipe.name) name = recipe.name;
+      }
+
       const opt  = document.createElement("option");
       opt.value = id;
       opt.textContent = `${name}（${cnt}）`;
@@ -790,10 +818,17 @@ function refreshCarryFoodDrinkSelects() {
     Object.keys(carryDrinks).forEach(id => {
       const cnt = carryDrinks[id] || 0;
       if (cnt <= 0) return;
-      const recipe = (typeof COOKING_RECIPES !== "undefined")
-        ? COOKING_RECIPES.drink.find(r => r.id === id)
-        : null;
-      const name = recipe ? recipe.name : id;
+
+      let name = id;
+      if (typeof getItemName === "function") {
+        name = getItemName(id);
+      } else if (typeof COOKING_RECIPES !== "undefined" &&
+                 COOKING_RECIPES &&
+                 Array.isArray(COOKING_RECIPES.drink)) {
+        const recipe = COOKING_RECIPES.drink.find(r => r.id === id);
+        if (recipe && recipe.name) name = recipe.name;
+      }
+
       const opt  = document.createElement("option");
       opt.value = id;
       opt.textContent = `${name}（${cnt}）`;
@@ -831,4 +866,90 @@ function refreshUseItemSelect() {
   if (typeof refreshCarryFoodDrinkSelects === "function") {
     refreshCarryFoodDrinkSelects();
   }
+}
+
+// =======================
+// ITEM_META 向けストレージ登録
+// =======================
+//
+// item-meta-core.js が読み込まれていて registerStorageImpl が
+// 利用可能な場合、storageKind: "inventory" の実装として
+// 既存の itemCounts 系を束ねて提供する。
+// （将来的に carry/倉庫の切り替えや materials なども分離可能）
+
+if (typeof registerStorageImpl === "function") {
+  // 通常インベントリ
+  registerStorageImpl("inventory", {
+    getCount: function (id) {
+      // ポーション（倉庫側）
+      if (typeof potionCounts === "object" && potionCounts[id]) {
+        return potionCounts[id] || 0;
+      }
+      // 料理（食べ物・飲み物）
+      if (typeof cookedFoods === "object" && cookedFoods[id]) {
+        return cookedFoods[id] || 0;
+      }
+      if (typeof cookedDrinks === "object" && cookedDrinks[id]) {
+        return cookedDrinks[id] || 0;
+      }
+      // 道具
+      if (typeof toolCounts === "object" && toolCounts[id]) {
+        return toolCounts[id] || 0;
+      }
+      // 武器・防具は倉庫カウント（インスタンス同期済み前提）
+      if (typeof weaponCounts === "object" && weaponCounts[id]) {
+        return weaponCounts[id] || 0;
+      }
+      if (typeof armorCounts === "object" && armorCounts[id]) {
+        return armorCounts[id] || 0;
+      }
+      // 肥料など、itemCounts に居るインベントリアイテム
+      if (typeof itemCounts === "object" && itemCounts[id]) {
+        return itemCounts[id] || 0;
+      }
+      return 0;
+    },
+    add: function (id, amount) {
+      amount = amount || 1;
+      if (amount <= 0) return;
+      // ここでは「どのカテゴリか」を判定せず、汎用 itemCounts に足す。
+      // 既存ロジックで個別に管理しているものについては、
+      // 必要に応じて addItemToInventory 側から呼ぶ想定。
+      window.itemCounts = window.itemCounts || {};
+      window.itemCounts[id] = (window.itemCounts[id] || 0) + amount;
+    },
+    remove: function (id, amount) {
+      amount = amount || 1;
+      if (amount <= 0) return;
+      if (!window.itemCounts || !window.itemCounts[id]) return;
+      window.itemCounts[id] -= amount;
+      if (window.itemCounts[id] <= 0) {
+        delete window.itemCounts[id];
+      }
+    }
+  });
+
+  // 料理素材用ストレージ（storageKind: "cooking"）
+  registerStorageImpl("cooking", {
+    getCount(id) {
+      const mats = window.cookingMats || {};
+      return mats[id] || 0;
+    },
+    add(id, amount) {
+      amount = amount | 0;
+      if (!amount) return;
+      if (!window.cookingMats) window.cookingMats = {};
+      const mats = window.cookingMats;
+      mats[id] = (mats[id] || 0) + amount;
+    },
+    remove(id, amount) {
+      amount = amount | 0;
+      if (!amount) return;
+      if (!window.cookingMats) return;
+      const mats = window.cookingMats;
+      const cur  = mats[id] || 0;
+      const next = cur - amount;
+      mats[id] = next > 0 ? next : 0;
+    }
+  });
 }

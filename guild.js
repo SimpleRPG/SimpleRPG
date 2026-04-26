@@ -724,3 +724,16 @@ function joinGuild(guildId) {
     renderGuildUI();
   }
 }
+
+// =======================
+// ギルド名取得ヘルパー（正式版）
+// =======================
+
+if (typeof window.getGuildNameById === "undefined") {
+  window.getGuildNameById = function (gid) {
+    if (!gid) return null;
+    if (!GUILDS || !GUILDS[gid]) return null;
+    const g = GUILDS[gid];
+    return g.name || null;
+  };
+}

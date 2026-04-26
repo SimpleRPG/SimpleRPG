@@ -509,3 +509,182 @@ window.COOKING_RECIPES = window.COOKING_RECIPES || {
     }
   ]
 };
+
+// ========================================
+// ITEM_META への登録（完成料理アイテム＋料理素材）
+// ========================================
+
+(function registerCookingToItemMeta() {
+  if (typeof registerItemDefs !== "function") return;
+
+  const defs = {};
+
+  // ---- 完成料理（食べ物） ----
+  (window.COOKING_RECIPES.food || []).forEach(r => {
+    const eff = r.effect || {};
+    defs[r.id] = {
+      id: r.id,
+      name: r.name,
+      category: "food",
+      craftCategory: "food",
+      storageKind: "inventory",
+      storageTab: "cooking",
+      tier: r.tier || null,
+      tags: ["cooking", "food"],
+
+      // 固定値: 料理効果もメタにコピーしておく
+      foodEffectKind: eff.kind || "food",
+      foodHpRegen: eff.hpRegen || 0,
+      foodMpRegen: eff.mpRegen || 0,
+      foodSpRegen: eff.spRegen || 0,
+      foodAtkUp: eff.atkUp || 0,
+      foodDefUp: eff.defUp || 0,
+      foodIntUp: eff.intUp || 0,
+      foodResistUp: eff.resistUp || 0,
+      foodDurationSec: eff.duration || 0,
+      foodStatusId: eff.statusId || null,
+      foodStatusTurns: eff.durationTurns || 0,
+      foodHungerRecover: eff.hungerRecover || 0,
+      foodThirstRecover: eff.thirstRecover || 0
+    };
+  });
+
+  // ---- 完成料理（飲み物） ----
+  (window.COOKING_RECIPES.drink || []).forEach(r => {
+    const eff = r.effect || {};
+    defs[r.id] = {
+      id: r.id,
+      name: r.name,
+      category: "drink",
+      craftCategory: "drink",
+      storageKind: "inventory",
+      storageTab: "cooking",
+      tier: r.tier || null,
+      tags: ["cooking", "drink"],
+
+      // 固定値: ドリンク効果もメタにコピー
+      drinkEffectKind: eff.kind || "drink",
+      drinkHpRegen: eff.hpRegen || 0,
+      drinkMpRegen: eff.mpRegen || 0,
+      drinkSpRegen: eff.spRegen || 0,
+      drinkSpMaxUp: eff.spMaxUp || 0,
+      drinkMoveSpeedUp: eff.moveSpeedUp || 0,
+      drinkDurationSec: eff.duration || 0,
+      drinkStatusId: eff.statusId || null,
+      drinkStatusTurns: eff.durationTurns || 0,
+      drinkHungerRecover: eff.hungerRecover || 0,
+      drinkThirstRecover: eff.thirstRecover || 0
+    };
+  });
+
+  // ---- 料理素材（cookingMats 用アイテム） ----
+  const cookingMatDefs = {
+    // 肉
+    meat_hard:    { id: "meat_hard",    name: "固い肉" },
+    meat_soft:    { id: "meat_soft",    name: "やわらかい肉" },
+    meat_fatty:   { id: "meat_fatty",   name: "脂身の多い肉" },
+    meat_premium: { id: "meat_premium", name: "高級肉" },
+    meat_magic:   { id: "meat_magic",   name: "不思議な肉" },
+
+    // 魚（釣りメタ付き）
+    fish_small: {
+      id: "fish_small",
+      name: "小魚",
+      fishRarity: "common",
+      fishSizeMin: 5,
+      fishSizeMax: 15,
+      fishValue: 1,
+      tags: ["cooking", "material", "fish"]
+    },
+    fish_river: {
+      id: "fish_river",
+      name: "川魚",
+      fishRarity: "common",
+      fishSizeMin: 10,
+      fishSizeMax: 30,
+      fishValue: 2,
+      tags: ["cooking", "material", "fish"]
+    },
+    fish_sea: {
+      id: "fish_sea",
+      name: "海魚",
+      fishRarity: "uncommon",
+      fishSizeMin: 15,
+      fishSizeMax: 50,
+      fishValue: 3,
+      tags: ["cooking", "material", "fish"]
+    },
+    fish_big: {
+      id: "fish_big",
+      name: "大きな魚",
+      fishRarity: "rare",
+      fishSizeMin: 40,
+      fishSizeMax: 80,
+      fishValue: 5,
+      tags: ["cooking", "material", "fish"]
+    },
+    fish_deep: {
+      id: "fish_deep",
+      name: "深海魚",
+      fishRarity: "rare",
+      fishSizeMin: 30,
+      fishSizeMax: 70,
+      fishValue: 5,
+      tags: ["cooking", "material", "fish"]
+    },
+    fish_legend: {
+      id: "fish_legend",
+      name: "伝説の魚",
+      fishRarity: "legend",
+      fishSizeMin: 80,
+      fishSizeMax: 150,
+      fishValue: 10,
+      tags: ["cooking", "material", "fish", "legendFish"]
+    },
+
+    // 畑向け: field
+    veg_root_rough: { id: "veg_root_rough", name: "ゴロゴロ根菜",   farmGrowable: true, farmCategory: "field" },
+    veg_leaf_crisp: { id: "veg_leaf_crisp", name: "シャキシャキ葉菜", farmGrowable: true, farmCategory: "field" },
+    veg_premium:    { id: "veg_premium",    name: "高級野菜",       farmGrowable: true, farmCategory: "field" },
+    grain_ancient:  { id: "grain_ancient",  name: "古代穀物",       farmGrowable: true, farmCategory: "field" },
+    grain_coarse:   { id: "grain_coarse",   name: "粗挽き穀物",     farmGrowable: true, farmCategory: "field" },
+    grain_refined:  { id: "grain_refined",  name: "精製穀物",       farmGrowable: true, farmCategory: "field" },
+    grain_mochi:    { id: "grain_mochi",    name: "もちもち穀物",   farmGrowable: true, farmCategory: "field" },
+
+    // 菜園向け: garden
+    veg_mushroom_aroma: { id: "veg_mushroom_aroma", name: "香るキノコ",   farmGrowable: true, farmCategory: "garden" },
+    veg_spice:          { id: "veg_spice",          name: "香辛料",       farmGrowable: true, farmCategory: "garden" },
+    veg_herb_aroma:     { id: "veg_herb_aroma",     name: "香草",         farmGrowable: true, farmCategory: "garden" },
+    veg_mountain:       { id: "veg_mountain",       name: "山菜",         farmGrowable: true, farmCategory: "garden" },
+    veg_dried:          { id: "veg_dried",          name: "乾物",         farmGrowable: true, farmCategory: "garden" },
+    spice_salt_rock:    { id: "spice_salt_rock",    name: "岩塩",         farmGrowable: true, farmCategory: "garden" },
+    spice_pepper:       { id: "spice_pepper",       name: "胡椒",         farmGrowable: true, farmCategory: "garden" },
+    spice_premium:      { id: "spice_premium",      name: "高級スパイス", farmGrowable: true, farmCategory: "garden" },
+    spice_secret:       { id: "spice_secret",       name: "秘伝スパイス", farmGrowable: true, farmCategory: "garden" }
+  };
+
+  Object.keys(cookingMatDefs).forEach(id => {
+    const base = cookingMatDefs[id];
+    defs[id] = {
+      id: base.id,
+      name: base.name,
+      category: "cookingMat",
+      craftCategory: "material",
+      storageKind: "cooking",     // 実ストレージ: cookingMats
+      storageTab: "cookingMat",   // 倉庫UI: 料理素材タブ
+      tags: base.tags || ["cooking", "material"],
+
+      // 畑用メタ（あるものだけ）
+      farmGrowable: !!base.farmGrowable,
+      farmCategory: base.farmCategory || null,
+
+      // 釣り用メタ（魚だけに有効）
+      fishRarity: base.fishRarity || null,
+      fishSizeMin: typeof base.fishSizeMin === "number" ? base.fishSizeMin : null,
+      fishSizeMax: typeof base.fishSizeMax === "number" ? base.fishSizeMax : null,
+      fishValue: typeof base.fishValue === "number" ? base.fishValue : null
+    };
+  });
+
+  registerItemDefs(defs);
+})();

@@ -669,31 +669,27 @@ input[type="text"] {
 }
 
 /* ======================
-   共通モーダルセンタリング
+   共通モーダル
    ====================== */
 
+/* 背景マスク＋中央寄せ */
 .modal-center {
   position: fixed;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(0,0,0,0.65);
+  z-index: 100; /* 基本値。個別IDで上書き可 */
 }
 
 .modal-center.hidden {
   display: none;
 }
 
-/* ======================
-   職業モーダル
-   ====================== */
-
-#jobModal {
-  background: rgba(0,0,0,0.65);
-  z-index: 100;
-}
-
-#jobModalInner {
+/* 共通モーダル本体 */
+.modal-box,
+.modal-center .modal-content {
   background: #11111c;
   border-radius: 10px;
   border: 1px solid rgba(200,190,255,0.95);
@@ -703,6 +699,27 @@ input[type="text"] {
   box-shadow:
     0 14px 32px rgba(0,0,0,0.9),
     0 0 12px rgba(159,123,255,0.8);
+  font-size: 13px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* 少し小さめにしたいモーダル用（肥料など） */
+.modal-box.small,
+.modal-center .modal-content.small {
+  max-width: 320px;
+}
+
+/* ======================
+   職業モーダル
+   ====================== */
+
+#jobModal {
+  z-index: 100;
+}
+
+#jobModalInner {
+  /* 見た目は modal-box に委譲 */
 }
 
 #jobModalInner h3 {
@@ -730,20 +747,11 @@ input[type="text"] {
 /* ペット成長タイプモーダル */
 
 #petGrowthModal {
-  background: rgba(0,0,0,0.65);
   z-index: 101;
 }
 
 #petGrowthModalInner {
-  background: #11111c;
-  border-radius: 10px;
-  border: 1px solid rgba(200,190,255,0.95);
-  padding: 14px 18px 16px;
-  max-width: 360px;
-  width: 92%;
-  box-shadow:
-    0 14px 32px rgba(0,0,0,0.9),
-    0 0 12px rgba(159,123,255,0.8);
+  /* 見た目は modal-box に委譲 */
 }
 
 #petGrowthModalInner h3 {
@@ -772,44 +780,23 @@ input[type="text"] {
    農園モーダル
    ====================== */
 
+/* 旧 .modal は z-index 用だけに縮小 */
 .modal {
-  background: rgba(0,0,0,0.65);
   z-index: 102;
 }
 
-.modal .modal-content {
-  background: #11111c;
-  border-radius: 10px;
-  border: 1px solid rgba(200,190,255,0.95);
-  padding: 14px 18px 16px;
-  max-width: 360px;
-  width: 92%;
-  box-shadow:
-    0 14px 32px rgba(0,0,0,0.9),
-    0 0 12px rgba(159,123,255,0.8);
-  font-size: 13px;
-}
+/* 中身の見た目は modal-box / .modal-center .modal-content 共通に統一 */
 
 /* ======================
    ペット選択モーダル
    ====================== */
 
 #companionModal {
-  background: rgba(0,0,0,0.65);
   z-index: 101;
 }
 
 #companionModalInner {
-  background: #11111c;
-  border-radius: 10px;
-  border: 1px solid rgba(200,190,255,0.95);
-  padding: 14px 18px 16px;
-  max-width: 360px;
-  width: 92%;
-  box-shadow:
-    0 14px 32px rgba(0,0,0,0.9),
-    0 0 12px rgba(159,123,255,0.8);
-  font-size: 13px;
+  /* 見た目は modal-box に委譲 */
 }
 
 #companionModalInner h3 {
@@ -1180,20 +1167,11 @@ input[type="text"] {
    ====================== */
 
 #rebirthModal {
-  background: rgba(0,0,0,0.65);
   z-index: 103;
 }
 
 #rebirthModalInner {
-  background: #11111c;
-  border-radius: 10px;
-  border: 1px solid rgba(200,190,255,0.95);
-  padding: 14px 18px 16px;
-  max-width: 360px;
-  width: 92%;
-  box-shadow:
-    0 14px 32px rgba(0,0,0,0.9),
-    0 0 12px rgba(159,123,255,0.8);
+  /* 見た目は modal-box に委譲 */
   font-size: 13px;
 }
 
@@ -1211,11 +1189,11 @@ input[type="text"] {
   min-width: 90px;
 }
 
+/* 共通で縦スクロール許可 */
 #jobModalInner,
 #petGrowthModalInner,
 #rebirthModalInner,
-#companionModalInner,
-.modal .modal-content {
+#companionModalInner {
   max-height: 90vh;
   overflow-y: auto;
 }

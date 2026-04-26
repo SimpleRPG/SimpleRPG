@@ -17,15 +17,15 @@ if (typeof window.citizenshipUnlocked === "undefined") {
 // ハウジング用ステート（既存フィールドはそのまま残しつつ拡張）
 if (typeof window.housingState === "undefined") {
   window.housingState = {
-    hasBase: false,     // 住宅を取得済みかどうか（将来用）
-    baseLevel: 0,       // 住宅レベル（将来用）
+    hasBase: false,     // 住宅を取得済みかどうか（將来用）
+    baseLevel: 0,       // 住宅レベル（將来用）
     lastGuildId: null,  // 市民権をくれたギルドID（演出用）
 
     // 追加: 土地レンタル関連
     landId: null,       // 現在借りている土地プランID ("guildDorm_warrior" など)
     rentDueAt: null,    // 次の家賃支払期限（Unix ms）
     rentUnpaid: false,  // 期限超過で滞納中かどうか
-    furnitureSlots: []  // 家具スロット情報（将来の拡張用）
+    furnitureSlots: []  // 家具スロット情報（將来の拡張用）
   };
 } else {
   // 既存セーブに対して、追加フィールドだけ安全に補完
@@ -51,35 +51,70 @@ if (typeof window.housingState === "undefined") {
 // だけに留めている（具体ボーナスは他モジュール側で参照する）。
 
 window.HOUSING_LANDS = window.HOUSING_LANDS || {
-  // ギルド寮（例: 戦士ギルド寮）
-  // 実際にはギルドごとに複数定義してもよいが、
-  // ここではサンプルとして1つだけ用意しておく。
+  // ギルド寮
+  // 「自分の所属しているギルドの寮」というニュアンスを出したいが、
+  // 現仕様では land 定義は固定なので、ここでは「戦士ギルド寮」を基準にしつつ
+  // 所属チェックは「何かしらのギルドに所属しているか」で見る（guildId はメタ情報として残す）。
   "guildDorm_warrior": {
     id: "guildDorm_warrior",
     kind: "guildDorm",
-    name: "戦士ギルド寮",
-    weeklyRent: 200,
+    name: "戦士ギルド寮",   // 表示テキスト。実際の表示は getGuildDormDisplayName で差し替え。
+    // weeklyRent: 200, // 元の家賃（バランス調整前）
+    weeklyRent: 0,
     baseSlots: 2,
     guildId: "warrior"
   },
 
   // 街の一室（市民なら誰でも借りられる）
+  // 家具スロットは 5 に引き上げ（將来の家具システムを見越した仕様）
   "cityRoom": {
     id: "cityRoom",
     kind: "cityRoom",
     name: "街の一室",
-    weeklyRent: 800,
-    baseSlots: 3
+    // weeklyRent: 800, // 元の家賃（バランス調整前）
+    weeklyRent: 0,
+    baseSlots: 5
   },
 
   // 郊外の土地（高めの維持費・スロット多め）
+  // 「5〜」の「〜」部分は、家の種類や増築で上乗せする前提なので、
+  // コア定義としては 5 をベース値にしておく。
   "suburbLand": {
     id: "suburbLand",
     kind: "suburbLand",
     name: "郊外の土地",
-    weeklyRent: 2000,
+    // weeklyRent: 2000, // 元の家賃（バランス調整前）
+    weeklyRent: 0,
     baseSlots: 5
   }
+};
+
+/**
+ * ギルド寮の表示名を、現在の所属ギルドに応じて返すヘルパー。
+ * ・既存 land 定義（id / guildId / weeklyRent など）は一切変更しない
+ * ・UI 側で「表示に使う name だけ」これを通して動的に差し替える想定
+ */
+window.getGuildDormDisplayName = function(baseName) {
+  const defaultName = baseName || "ギルド寮";
+
+  // 現在所属しているギルドID
+  const gid = (typeof window.playerGuildId !== "undefined") ? window.playerGuildId : null;
+  if (!gid) return defaultName;
+
+  // ギルド名が取れるなら、「〇〇ギルド寮」風の名前にする
+  if (typeof getGuildNameById === "function") {
+    try {
+      const gname = getGuildNameById(gid);
+      if (gname) {
+        // 例: 「食材ギルド」の場合 → 「食材ギルド寮」
+        return `${gname}寮`;
+      }
+    } catch (e) {
+      // 失敗しても既定名のまま
+    }
+  }
+
+  return defaultName;
 };
 
 // ==============================
@@ -121,12 +156,12 @@ window.onCitizenshipUnlockedFromGuild = function(guildId) {
 
   // ステータス画面やタブの表示を更新
   if (typeof refreshHousingStatusAndTab === "function") {
-    refreshHousingStatusAndTab();
+    try { refreshHousingStatusAndTab(); } catch (e) {}
   }
 
   // 倉庫タブ / 拠点タブの表示を即反映（html.js 側のヘルパ）
   if (typeof updateHousingWarehouseTabs === "function") {
-    updateHousingWarehouseTabs();
+    try { updateHousingWarehouseTabs(); } catch (e) {}
   }
 
   // セーブシステムがあればここで即セーブしてもよい（任意）
@@ -157,6 +192,25 @@ function getHousingStateSafe() {
 }
 
 /**
+ * UI側から使いやすいフラグヘルパ
+ * 仕様は既存の isHousingActive と同じ前提で、「UIでどう見せるか」を分けるためだけに追加。
+ */
+
+// 拠点UIをフルに利用できるかどうか（＝土地があり、滞納していない）
+window.canUseHousingUIFully = function() {
+  const hs = getHousingStateSafe();
+  if (!hs.landId) return false;
+  if (hs.rentUnpaid) return false;
+  return true;
+};
+
+// 土地はあるが、家賃滞納中でロック状態かどうか
+window.isHousingRentOverdue = function() {
+  const hs = getHousingStateSafe();
+  return !!(hs.landId && hs.rentUnpaid);
+};
+
+/**
  * 現在の土地プランを取得（なければ null）。
  */
 window.getCurrentHousingLand = function() {
@@ -170,7 +224,7 @@ window.getCurrentHousingLand = function() {
  * 土地を借りられるかどうかのチェックだけ行う。
  * 仕様:
  *  - landId が存在しない場合はNG
- *  - ギルド寮(kind: "guildDorm") の場合、対応ギルド所属が必須
+ *  - ギルド寮(kind: "guildDorm") の場合、何かしらギルドに所属している必要がある
  *  - 市民権が必要であれば citizenshipUnlocked を参照
  *  - 家賃分の money が無ければNG
  */
@@ -186,12 +240,13 @@ window.canRentLand = function(landId) {
     return { ok: false, reason: "すでに借りている" };
   }
 
-  // ギルド寮の場合は対応ギルド所属が必要
+  // ギルド寮の場合は「何かしらのギルドに所属していれば借りられる」
   if (land.kind === "guildDorm") {
     const pgid = (typeof window.playerGuildId !== "undefined") ? window.playerGuildId : null;
-    if (!pgid || land.guildId && land.guildId !== pgid) {
+    if (!pgid) {
       return { ok: false, reason: "対応するギルドに所属していない" };
     }
+    // land.guildId は判定には使わず、メタ情報として保持したままにする
   }
 
   // 市民権必須にしたい土地があればここで判定（例: cityRoom, suburbLand）
@@ -241,8 +296,14 @@ window.rentLand = function(landId) {
   hs.rentDueAt = now + weekMs;
   hs.rentUnpaid = false;
 
+  // 表示名だけ、必要なら動的なギルド寮名に差し替える
+  let landNameForLog = land.name;
+  if (land.kind === "guildDorm" && typeof window.getGuildDormDisplayName === "function") {
+    landNameForLog = window.getGuildDormDisplayName(land.name);
+  }
+
   if (typeof appendLog === "function") {
-    appendLog(`[拠点] ${land.name} を1週間レンタルした（家賃 ${rent}G）`);
+    appendLog(`[拠点] ${landNameForLog} を1週間レンタルした（家賃 ${rent}G）`);
   }
 
   if (typeof refreshHousingFromState === "function") {
@@ -340,7 +401,7 @@ window.isHousingActive = function() {
 // ==============================
 
 /**
- * 将来、ゲーム起動／ロード時に呼ばれて、
+ * 將来、ゲーム起動／ロード時に呼ばれて、
  * 市民権フラグに応じてUI側を更新するためのヘルパ。
  * （現状は initJobPetRebirthUI の最後で refreshHousingStatusAndTab を直接叩いているので、
  *  必須ではないが、保存データ読み込み直後に呼びたい場合などに使える）

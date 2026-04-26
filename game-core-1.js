@@ -139,24 +139,15 @@ let equippedArmorId     = window.equippedArmorId;
 // =======================
 // 素材・中間素材
 // =======================
-
-// ★ ティア付き基本素材（T1/T3）
-let materials = {
-  wood:    { t1: 0, t2: 0, t3: 0 },
-  ore:     { t1: 0, t2: 0, t3: 0 },
-  herb:    { t1: 0, t2: 0, t3: 0 },
-  cloth:   { t1: 0, t2: 0, t3: 0 },
-  leather: { t1: 0, t2: 0, t3: 0 },
-  water:   { t1: 0, t2: 0, t3: 0 }
-};
+//
+// materials の本体定義は materials-core.js 側に移動。
+// ここでは window.materials を参照するだけにして、
+// 既存コードとの仕様を変えずに依存関係だけ整理する。
+let materials = window.materials || {};
 window.materials = materials;
 
-// 合計値を返すヘルパー
-function getMatTotal(key) {
-  let m = materials[key];
-  if (!m) return 0;
-  return (m.t1 || 0) + (m.t2 || 0) + (m.t3 || 0);
-}
+// ★ getMatTotal は materials-core.js 側の実装をそのまま使う。
+//   ここでは再定義しない。
 
 // 中間素材
 // グローバル共有のため window 経由に統一

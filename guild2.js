@@ -1,8 +1,6 @@
 // guild2.js
 // ギルドシステム：UI描画専用（guild.js の後に読み込む）
 
-console.log("guild2.js start (ui)");
-
 // =======================
 // UI: ヘッダ
 // =======================
@@ -189,8 +187,7 @@ function claimGuildQuestReward(guildId, questDef, isSpecial) {
 
   // 特別依頼（市民権クエスト）
   if (isSpecial) {
-    // 公式フラグを立てる
-    window.citizenshipUnlocked = true;
+    // ※フラグ本体は housing-core.js の onCitizenshipUnlockedFromGuild 側で立てる
 
     // 進捗の保存
     const stored = window.guildQuestProgress[id] || {};
