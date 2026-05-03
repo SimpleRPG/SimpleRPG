@@ -12,31 +12,69 @@ const QUALITY_NAMES = ["", "【良品】", "【傑作】"];
 const QUALITY_RATE = [1.0, 1.05, 1.12];
 
 // ★ tier 判定ヘルパー（文字列）
+// T1〜T10 まで対応
 function getTierFromId(id) {
-  if (id.endsWith("_T1") || id.endsWith("T1")) return "T1";
-  if (id.endsWith("_T2") || id.endsWith("T2")) return "T2";
-  if (id.endsWith("_T3") || id.endsWith("T3")) return "T3";
+  if (id.endsWith("_T1")  || id.endsWith("T1"))  return "T1";
+  if (id.endsWith("_T2")  || id.endsWith("T2"))  return "T2";
+  if (id.endsWith("_T3")  || id.endsWith("T3"))  return "T3";
+  if (id.endsWith("_T4")  || id.endsWith("T4"))  return "T4";
+  if (id.endsWith("_T5")  || id.endsWith("T5"))  return "T5";
+  if (id.endsWith("_T6")  || id.endsWith("T6"))  return "T6";
+  if (id.endsWith("_T7")  || id.endsWith("T7"))  return "T7";
+  if (id.endsWith("_T8")  || id.endsWith("T8"))  return "T8";
+  if (id.endsWith("_T9")  || id.endsWith("T9"))  return "T9";
+  if (id.endsWith("_T10") || id.endsWith("T10")) return "T10";
   return "T1";
 }
 
 // ★ guild.js に渡す用の tier 数値ヘルパー
+// T1〜T10 まで対応
 function getTierNumberFromId(id) {
-  const t = getTierFromId(id); // "T1" / "T2" / "T3"
-  if (t === "T2") return 2;
-  if (t === "T3") return 3;
+  const t = getTierFromId(id); // "T1"〜"T10"
+  if (t === "T2")  return 2;
+  if (t === "T3")  return 3;
+  if (t === "T4")  return 4;
+  if (t === "T5")  return 5;
+  if (t === "T6")  return 6;
+  if (t === "T7")  return 7;
+  if (t === "T8")  return 8;
+  if (t === "T9")  return 9;
+  if (t === "T10") return 10;
   return 1;
 }
 
 // ★ tier × スキルLvで表示可否を決める共通ヘルパー
+// 既存仕様:
+//   T1: 常に表示
+//   T2: Lv10〜
+//   T3: Lv20〜
+// 仕様を保ったまま、同じ刻みで T10 まで拡張:
+//   T4: Lv30〜
+//   T5: Lv40〜
+//   T6: Lv50〜
+//   T7: Lv60〜
+//   T8: Lv70〜
+//   T9: Lv80〜
+//   T10: Lv90〜
 function canShowByTierAndSkill(idOrTier, skillLv) {
   const tier =
-    idOrTier === "T1" || idOrTier === "T2" || idOrTier === "T3"
+    idOrTier === "T1" || idOrTier === "T2" || idOrTier === "T3" ||
+    idOrTier === "T4" || idOrTier === "T5" || idOrTier === "T6" ||
+    idOrTier === "T7" || idOrTier === "T8" || idOrTier === "T9" ||
+    idOrTier === "T10"
       ? idOrTier
       : getTierFromId(idOrTier);
 
-  if (tier === "T1") return true;
-  if (tier === "T2") return skillLv >= 10;
-  if (tier === "T3") return skillLv >= 20;
+  if (tier === "T1")  return true;
+  if (tier === "T2")  return skillLv >= 10;
+  if (tier === "T3")  return skillLv >= 20;
+  if (tier === "T4")  return skillLv >= 30;
+  if (tier === "T5")  return skillLv >= 40;
+  if (tier === "T6")  return skillLv >= 50;
+  if (tier === "T7")  return skillLv >= 60;
+  if (tier === "T8")  return skillLv >= 70;
+  if (tier === "T9")  return skillLv >= 80;
+  if (tier === "T10") return skillLv >= 90;
   return true;
 }
 
@@ -226,6 +264,11 @@ function applyCraftCostReduction(rawCost) {
 function updateCraftCostInfo(category, recipeId){
   const infoEl = document.getElementById("craftCostInfo");
   if (!infoEl) return;
+
+  // ★アクティブなクラフトカテゴリと違う呼び出しは UI 更新しない
+  if (window.activeCraftCategory && window.activeCraftCategory !== category) {
+    return;
+  }
 
   // 表示時点でもスキルツリーボーナスが分かるようにリフレッシュ
   refreshCraftSkillTreeBonus();

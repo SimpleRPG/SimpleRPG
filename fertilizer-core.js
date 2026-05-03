@@ -33,7 +33,7 @@ function getFertilizerEffectByTier(tier) {
 // 肥料データ定義（T1〜T10）
 // =======================
 //
-// ID: fert_T1 〜 fert_T10
+// ID: T1_fert 〜 T10_fert
 // costPoint: T×2 （レシピ設計用）
 // uses: 効果が乗る「収穫回数」
 //       例: T1=22回 / T10=40回くらいのイメージ
@@ -41,9 +41,9 @@ function getFertilizerEffectByTier(tier) {
 const FERTILIZERS = {};
 for (let t = 1; t <= 10; t++) {
   const ef = getFertilizerEffectByTier(t);
-  FERTILIZERS[`fert_T${t}`] = {
-    id: `fert_T${t}`,
-    name: `肥料T${t}`,
+  FERTILIZERS[`T${t}_fert`] = {
+    id: `T${t}_fert`,
+    name: `T${t}肥料`,
     tier: t,
     costPoint: getFertilizerCostPoint(t),
     desc: `畑の成長・収穫量・水やりに小さなボーナスを与える肥料（T${t}）。`,
@@ -62,7 +62,7 @@ window.FERTILIZERS = window.FERTILIZERS || FERTILIZERS;
 // =======================
 //
 // 各スロットは farm-core.js 側で
-//   slot.fertilizer = { id: "fert_Tx", remainUses: number } or null
+//   slot.fertilizer = { id: "T1_fert", remainUses: number } or null
 // を持つ前提。
 
 function isFarmSlotFertilizerActive(slotIndex) {
@@ -85,7 +85,7 @@ function getFarmFertilizerInfoForSlot(slotIndex) {
 // 肥料アイテム使用API（スロット単位）
 // =======================
 //
-// 例: UIボタンから useFarmFertilizerItem("fert_T1", 0) を呼ぶ
+// 例: UIボタンから useFarmFertilizerItem("T1_fert", 0) を呼ぶ
 //     → 区画1に肥料T1をセット
 
 function useFarmFertilizerItem(fertId, slotIndex) {

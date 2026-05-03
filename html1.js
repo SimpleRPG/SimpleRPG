@@ -362,13 +362,13 @@ function buildAppLayout() {
                 </div>
               </div>
 
-              <!-- 生活クラフトパネル（農園・拠点＋家具） -->
+              <!-- 生活クラフトパネル（農園・家具） -->
               <div id="craftPanelLife" class="craft-panel" style="display:none;">
                 <h3>生活クラフト</h3>
 
                 <div id="lifeSubTabs" style="margin:4px 0%;">
                   <button class="life-sub-tab active" data-sub="farm">農園</button>
-                  <button class="life-sub-tab" data-sub="housing">拠点</button>
+                  <button class="life-sub-tab" data-sub="furniture">家具</button>
                 </div>
 
                 <!-- 農園タブ: 肥料クラフト -->
@@ -383,59 +383,24 @@ function buildAppLayout() {
                   </div>
                 </div>
 
-                <!-- 拠点タブ: さらに中に「家具」タブを持つ -->
-                <div id="lifePanelHousing" style="display:none;">
+                <!-- 家具タブ: 家具クラフト -->
+                <div id="lifePanelFurniture" style="display:none;">
+                  <p style="font-size:11px; color:#ccc; margin-bottom:4px;">
+                    拠点に設置できる家具をクラフトします。
+                  </p>
 
-                  <!-- 拠点内サブタブ -->
-                  <div id="housingSubTabs" style="margin:4px 0%;">
-                    <button class="housing-sub-tab active" data-housing-sub="housing-facility">拠点</button>
-                    <button class="housing-sub-tab" data-housing-sub="housing-furniture">家具</button>
-                  </div>
-
-                  <!-- 拠点（施設）側：今後の拠点機能用 -->
-                  <div id="housing-facility" class="housing-sub-page">
-                    <div style="font-size:11px; color:#ccc;">
-                      拠点の施設や各種生活機能はここから操作します。（仮）
+                  <div id="housingFurnitureCraftArea" style="margin-bottom:6px;">
+                    <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
+                      <label style="font-size:12px;">家具:</label>
+                      <select id="furnitureSelect" style="flex:1;"></select>
+                      <button id="craftFurnitureBtn">家具を作る</button>
                     </div>
                   </div>
-
-                  <!-- 家具クラフト側 -->
-                  <div id="housing-furniture" class="housing-sub-page" style="display:none;">
-                    <h4>家具クラフト</h4>
-                    <p style="font-size:11px; color:#ccc; margin-bottom:4px;">
-                      拠点に設置できる家具をクラフトします。
-                    </p>
-
-                    <div id="housingFurnitureCraftArea" style="margin-bottom:6px;">
-                      <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
-                        <label style="font-size:12px;">家具:</label>
-                        <select id="furnitureSelect" style="flex:1;"></select>
-                        <button id="craftFurnitureBtn">家具を作る</button>
-                      </div>
-                    </div>
-
-                    <!-- 魔巧区クラフト共通のコスト表示を流用 -->
-                    <div id="craftCostBlockHousing" style="font-size:11px; margin-top:4px; color:#ccc;">
-                      <div id="craftCostInfo">
-                        必要素材：-
-                      </div>
-
-                      <div style="display:flex; align-items:center; gap:4px; margin-top:4px;">
-                        <p id="craftMaterials" style="flex:1;">
-                          所持素材：-
-                        </p>
-                        <button id="toggleMatDetailBtn2" style="font-size:11px; padding:2px 6px;">
-                          詳細▼
-                        </button>
-                      </div>
-                      <div id="craftMatDetail" style="display:none; font-size:11px; margin:2px 0 0;"></div>
-                    </div>
-                  </div>
-
+                  <!-- コスト表示は下の共通 craftCostBlock を利用 -->
                 </div>
               </div>
 
-              <!-- ★必要素材＋所持素材＋詳細を一つのブロックにまとめる（既存） -->
+              <!-- ★必要素材＋所持素材＋詳細を一つのブロックにまとめる（既存・共通） -->
               <!-- ※家具クラフトでも同じ craftCostInfo / craftMaterials / craftMatDetail を使う -->
               <div id="craftCostBlock" style="font-size:11px; margin-top:4px; color:#ccc;">
                 <div id="craftCostInfo">

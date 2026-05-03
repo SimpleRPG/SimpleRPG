@@ -23,21 +23,46 @@
   //  - クラフト成功率: +1〜10%（craftSuccessRateAdd）
 
   for (let n = 1; n <= 10; n++) {
-    const id = `bed_T${n}`;
+    const id = `T${n}_bed`;
     const nameBase =
       (n <= 3)  ? "簡素なベッド" :
       (n <= 6)  ? "上質なベッド" :
       (n <= 9)  ? "高級ベッド"   :
                   "王侯のベッド";
 
-    // クラフトコスト定義（tier が上がるほど素材が増える）
-    const woodCost = 10 + (n - 1) * 5;   // T1=10, T2=15, ..., T10=55
-    const clothCost = 5 + (n - 1) * 3;   // T1=5, T2=8, ..., T10=32
-    const ironCost = n > 3 ? (n - 3) * 2 : 0; // T4以降は鉄も必要
+    // -----------------------------
+    // クラフトコスト定義
+    // -----------------------------
+    // 既存の中間素材 ID に合わせる:
+    //   木材板: T1_woodPlank〜T3_woodPlank
+    //   布束:   T1_clothBolt〜T3_clothBolt
+    //   鉄インゴット: T1_ironIngot〜T3_ironIngot
+    //
+    // ベッドの tier(n) が 1〜10 なので、
+    //   T1〜T3 → 中間素材T1
+    //   T4〜T6 → 中間素材T2
+    //   T7〜T10 → 中間素材T3
+    // という段階制にしておく（既存中間素材の上限T3と噛み合う）。
+    const matTier =
+      (n <= 3) ? 1 :
+      (n <= 6) ? 2 :
+                 3;
 
-    const craftCost = { wood: woodCost, cloth: clothCost };
-    if (ironCost > 0) {
-      craftCost.iron = ironCost;
+    const woodPlankId  = `T${matTier}_woodPlank`;
+    const clothBoltId  = `T${matTier}_clothBolt`;
+    const ironIngotId  = `T${matTier}_ironIngot`;
+
+    // 必要個数は、元の wood/cloth/iron の伸びを少し圧縮した形で tier に応じてスケールさせる。
+    // ここでは「ベッドの tier に応じて徐々に増える」性質だけ維持している。
+    const woodPlankCost = 2 + (n - 1);           // T1=2, T2=3, ... T10=11
+    const clothBoltCost = 1 + Math.floor((n-1)/2); // T1=1, T2=1, T3=2, ... T10あたりで4〜5
+    const ironIngotCost = (n > 3) ? Math.floor((n-3)/2) : 0; // T4から少しずつ増える
+
+    const craftCost = {};
+    craftCost[woodPlankId] = woodPlankCost;
+    craftCost[clothBoltId] = clothBoltCost;
+    if (ironIngotCost > 0) {
+      craftCost[ironIngotId] = ironIngotCost;
     }
 
     // クラフト成功率（tier が高いほど難しい）
@@ -45,12 +70,15 @@
 
     defs[id] = {
       id,
-      name: `${nameBase} (T${n})`,
-      // 家具用の category は既存に合わせて調整してOK
-      // ここでは汎用 "other" にしておき、storage はインベントリ扱いにする。
-      category: "other",
+      name: `T${n}${nameBase}`,
+
+      // ★家具カテゴリとして登録（item-meta-core.js の CATEGORY_DEFAULTS.furniture に合わせる）
+      category: "furniture",
+      // storageKind は CATEGORY_DEFAULTS.furniture でも inventory なので、明示しておく
       storageKind: "inventory",
-      storageTab: "other",
+      // 倉庫タブも家具用タブに出したいので "furniture" にする
+      storageTab: "furniture",
+
       tier: n,
       tags: ["furniture", "bed", "rest"],
 

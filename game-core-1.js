@@ -834,4 +834,9 @@ function updateDisplay() {
   if (skCraftMaterial && craftSkills.material)  skCraftMaterial.textContent  = craftSkills.material.lv;
   if (skCraftCooking  && craftSkills.cooking)   skCraftCooking.textContent   = craftSkills.cooking.lv;
   if (skCraftFurniture && craftSkills.furniture) skCraftFurniture.textContent = craftSkills.furniture.lv;
+
+  // ★追加: 倉庫UIの更新（料理・装備などを最新にする）
+  if (typeof refreshWarehouseUI === "function") {
+    refreshWarehouseUI();
+  }
 }

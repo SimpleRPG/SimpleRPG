@@ -42,7 +42,7 @@
   <script src="game-core-3.js"></script>
   <script src="game-core-4.js"></script>
   <script src="game-core-5.js"></script>
-  <script src="game-core-7.js"></script>
+  <script src="equip-enhance.js"></script>
   <script src="game-core-8.js"></script>
 
   <!-- ★追加: クラフト共通ロジック（素材チェック・統計・スキルEXP） -->
@@ -81,7 +81,9 @@
   <script src="html2.js"></script>
   
   <!-- ===== UI ロジック群（DOM操作系） ===== -->
-  <script src="game-ui.js"></script>
+  <!-- ★旧 game-ui.js を分割・改名 -->
+  <script src="ui-core.js"></script>
+  <script src="ui-craft-and-farm.js"></script>
   <script src="game-ui-2.js"></script>
   <script src="game-ui-3.js"></script>
   <script src="game-ui-4.js"></script>
@@ -89,8 +91,6 @@
   <script src="housing-ui-grid.js"></script>
   <script src="gather-stats-ui.js"></script>
   <script src="asobikata.js"></script>
-  <!-- ★追加: 倉庫UI共通ロジック（倉庫タブ + 拠点倉庫サブタブ） -->
-  <script src="game-ui-5.js"></script>
 
   <!-- Socket.io クライアント（io() を使う前に読み込む） -->
   <script src="/socket.io/socket.io.js"></script>
@@ -102,6 +102,7 @@
   <script src="teto-ai2.js"></script>
   <script src="teto-ai3.js"></script>
   <script src="teto-ai4.js"></script>
+  <script src="teto-ai5.js"></script>  
 
   <!-- ===== デバッグ系 ===== -->
   <!-- 統計・内部状態をまとめるコア -->

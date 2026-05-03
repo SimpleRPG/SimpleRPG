@@ -2,740 +2,434 @@
 // 採取用武器・採取用防具マスタ＋クラフト情報（ITEM_META に一元化）
 
 const GATHER_BASE_DURABILITY = 3;
+const GATHER_MAX_TIER = 3;
+
+// =======================
+// テンプレート定義（採取用武器）
+// =======================
+
+const GATHER_WEAPON_TEMPLATES = [
+  // 伐採用ツール
+  {
+    baseId: "gatherAxe",
+    baseName: "伐採用ツール",
+    baseAtk: Math.round(5 / 3),  // T1
+    atkPerTier: Math.round(4 / 3), // 5→9→13
+    baseScaleStr: 0.06,
+    scaleStrPerTier: 0.02,       // 0.06→0.08→0.10
+    baseScaleInt: 0.00,
+    scaleIntPerTier: 0.00,
+    baseRate: 0.8,
+    ratePerTier: -0.05,          // 0.8→0.75→0.7
+    enhanceStep: 1,
+    costPattern: tier => ({
+      [`T${tier}_woodPlank`]: 2,
+      [`T${tier}_ironIngot`]: 1
+    })
+  },
+
+  // 採掘用ツール
+  {
+    baseId: "gatherPick",
+    baseName: "採掘用ツール",
+    baseAtk: Math.round(5 / 3),
+    atkPerTier: Math.round(4 / 3),
+    baseScaleStr: 0.06,
+    scaleStrPerTier: 0.02,
+    baseScaleInt: 0.00,
+    scaleIntPerTier: 0.00,
+    baseRate: 0.8,
+    ratePerTier: -0.05,
+    enhanceStep: 1,
+    costPattern: tier => ({
+      [`T${tier}_ironIngot`]: 2,
+      [`T${tier}_woodPlank`]: 1
+    })
+  },
+
+  // 採草用ツール
+  {
+    baseId: "gatherKnife",
+    baseName: "採草用ツール",
+    baseAtk: Math.round(3 / 3),
+    atkPerTier: Math.round(3 / 3), // 3→6→9
+    baseScaleStr: 0.05,
+    scaleStrPerTier: 0.02,         // 0.05→0.07→0.09
+    baseScaleInt: 0.00,
+    scaleIntPerTier: 0.00,
+    baseRate: 0.8,
+    ratePerTier: -0.05,
+    enhanceStep: 1,
+    costPattern: tier => ({
+      [`T${tier}_clothBolt`]: 1,
+      [`T${tier}_toughLeather`]: 1
+    })
+  },
+
+  // 布採取用ツール
+  {
+    baseId: "gatherShears",
+    baseName: "布採取用ツール",
+    baseAtk: Math.round(3 / 3),
+    atkPerTier: Math.round(3 / 3),
+    baseScaleStr: 0.05,
+    scaleStrPerTier: 0.02,
+    baseScaleInt: 0.00,
+    scaleIntPerTier: 0.00,
+    baseRate: 0.8,
+    ratePerTier: -0.05,
+    enhanceStep: 1,
+    costPattern: tier => ({
+      [`T${tier}_clothBolt`]: 2,
+      [`T${tier}_toughLeather`]: 1
+    })
+  },
+
+  // 皮採取用ツール
+  {
+    baseId: "gatherDagger",
+    baseName: "皮採取用ツール",
+    baseAtk: Math.round(2 / 3),
+    atkPerTier: Math.round(2 / 3), // 2→4→6
+    baseScaleStr: 0.05,
+    scaleStrPerTier: 0.02,
+    baseScaleInt: 0.00,
+    scaleIntPerTier: 0.00,
+    baseRate: 0.8,
+    ratePerTier: -0.05,
+    enhanceStep: 1,
+    costPattern: tier => ({
+      [`T${tier}_toughLeather`]: 2,
+      [`T${tier}_clothBolt`]: 1
+    })
+  },
+
+  // 水採取用ツール
+  {
+    baseId: "gatherFlask",
+    baseName: "水採取用ツール",
+    baseAtk: 0,
+    atkPerTier: 0,
+    baseScaleStr: 0.00,
+    scaleStrPerTier: 0.00,
+    baseScaleInt: 0.00,
+    scaleIntPerTier: 0.00,
+    baseRate: 0.8,
+    ratePerTier: -0.05,
+    enhanceStep: 1,
+    costPattern: tier => ({
+      [`T${tier}_distilledWater`]: 1,
+      [`T${tier}_ironIngot`]: 1
+    })
+  },
+
+  // 狩猟用ツール
+  {
+    baseId: "huntTool",
+    baseName: "狩猟用ツール",
+    baseAtk: Math.round(3 / 3),
+    atkPerTier: Math.round(3 / 3), // 3→6→9
+    baseScaleStr: 0.08,
+    scaleStrPerTier: 0.02,         // 0.08→0.10→0.12
+    baseScaleInt: 0.00,
+    scaleIntPerTier: 0.00,
+    baseRate: 0.8,
+    ratePerTier: -0.05,
+    enhanceStep: 1,
+    costPattern: tier => ({
+      [`T${tier}_ironIngot`]: 1,
+      [`T${tier}_toughLeather`]: 1
+    })
+  },
+
+  // 釣り用ツール
+  {
+    baseId: "fishTool",
+    baseName: "釣り用ツール",
+    baseAtk: 0,
+    atkPerTier: 0,
+    baseScaleStr: 0.00,
+    scaleStrPerTier: 0.00,
+    baseScaleInt: 0.00,
+    scaleIntPerTier: 0.00,
+    baseRate: 0.8,
+    ratePerTier: -0.05,
+    enhanceStep: 1,
+    costPattern: tier => ({
+      [`T${tier}_woodPlank`]: 1,
+      [`T${tier}_clothBolt`]: 1
+    })
+  },
+
+  // 畑作業用ツール
+  {
+    baseId: "farmTool",
+    baseName: "畑作業用ツール",
+    baseAtk: 0,
+    atkPerTier: 0,
+    baseScaleStr: 0.00,
+    scaleStrPerTier: 0.00,
+    baseScaleInt: 0.00,
+    scaleIntPerTier: 0.00,
+    baseRate: 0.8,
+    ratePerTier: -0.05,
+    enhanceStep: 1,
+    costPattern: tier => ({
+      [`T${tier}_woodPlank`]: 1,
+      [`T${tier}_mixHerb`]: 1
+    })
+  },
+
+  // 菜園用ツール
+  {
+    baseId: "gardenTool",
+    baseName: "菜園用ツール",
+    baseAtk: 0,
+    atkPerTier: 0,
+    baseScaleStr: 0.00,
+    scaleStrPerTier: 0.00,
+    baseScaleInt: 0.00,
+    scaleIntPerTier: 0.00,
+    baseRate: 0.8,
+    ratePerTier: -0.05,
+    enhanceStep: 1,
+    costPattern: tier => ({
+      [`T${tier}_clothBolt`]: 1,
+      [`T${tier}_mixHerb`]: 1
+    })
+  }
+];
+
+// =======================
+// テンプレート定義（採取用防具）
+// =======================
+
+const GATHER_ARMOR_TEMPLATES = [
+  // 伐採用防具
+  {
+    baseId: "gatherArmorWood",
+    baseName: "伐採用防具",
+    baseDef: Math.round(7 / 3),
+    defPerTier: Math.round(4 / 3),   // 7→11→15
+    baseScaleVit: 0.04,
+    scaleVitPerTier: 0.01,           // 0.04→0.05→0.06
+    baseBonusDex: 0,
+    bonusDexPerTier: 0,
+    baseRate: 0.8,
+    ratePerTier: -0.05,
+    enhanceStep: 1,
+    costPattern: tier => ({
+      [`T${tier}_toughLeather`]: 1,
+      [`T${tier}_clothBolt`]: 1
+    })
+  },
+
+  // 採掘用防具
+  {
+    baseId: "gatherArmorOre",
+    baseName: "採掘用防具",
+    baseDef: Math.round(7 / 3),
+    defPerTier: Math.round(4 / 3),
+    baseScaleVit: 0.04,
+    scaleVitPerTier: 0.01,
+    baseBonusDex: 0,
+    bonusDexPerTier: 0,
+    baseRate: 0.8,
+    ratePerTier: -0.05,
+    enhanceStep: 1,
+    costPattern: tier => ({
+      [`T${tier}_toughLeather`]: 1,
+      [`T${tier}_ironIngot`]: 1
+    })
+  },
+
+  // 採草用防具
+  {
+    baseId: "gatherArmorHerb",
+    baseName: "採草用防具",
+    baseDef: Math.round(4 / 3),
+    defPerTier: Math.round(3 / 3),   // 4→7→10
+    baseScaleVit: 0.03,
+    scaleVitPerTier: 0.01,           // 0.03→0.04→0.05
+    baseBonusDex: 1,
+    bonusDexPerTier: 1,              // 1→2→3
+    baseRate: 0.8,
+    ratePerTier: -0.05,
+    enhanceStep: 1,
+    costPattern: tier => ({
+      [`T${tier}_clothBolt`]: 1,
+      [`T${tier}_mixHerb`]: 1
+    })
+  },
+
+  // 布採取用防具
+  {
+    baseId: "gatherArmorCloth",
+    baseName: "布採取用防具",
+    baseDef: Math.round(4 / 3),
+    defPerTier: Math.round(3 / 3),
+    baseScaleVit: 0.03,
+    scaleVitPerTier: 0.01,
+    baseBonusDex: 1,
+    bonusDexPerTier: 1,
+    baseRate: 0.8,
+    ratePerTier: -0.05,
+    enhanceStep: 1,
+    costPattern: tier => ({
+      [`T${tier}_clothBolt`]: 2,
+      [`T${tier}_toughLeather`]: 1
+    })
+  },
+
+  // 皮採取用防具
+  {
+    baseId: "gatherArmorLeather",
+    baseName: "皮採取用防具",
+    baseDef: Math.round(4 / 3),
+    defPerTier: Math.round(3 / 3),
+    baseScaleVit: 0.03,
+    scaleVitPerTier: 0.01,
+    baseBonusDex: 1,
+    bonusDexPerTier: 1,
+    baseRate: 0.8,
+    ratePerTier: -0.05,
+    enhanceStep: 1,
+    costPattern: tier => ({
+      [`T${tier}_toughLeather`]: 2,
+      [`T${tier}_clothBolt`]: 1
+    })
+  },
+
+  // 水採取用防具
+  {
+    baseId: "gatherArmorWater",
+    baseName: "水採取用防具",
+    baseDef: Math.round(4 / 3),
+    defPerTier: Math.round(3 / 3),
+    baseScaleVit: 0.03,
+    scaleVitPerTier: 0.01,
+    baseBonusDex: 1,
+    bonusDexPerTier: 1,
+    baseRate: 0.8,
+    ratePerTier: -0.05,
+    enhanceStep: 1,
+    costPattern: tier => ({
+      [`T${tier}_distilledWater`]: 1,
+      [`T${tier}_clothBolt`]: 1
+    })
+  },
+
+  // 狩猟用防具
+  {
+    baseId: "gatherArmorHunt",
+    baseName: "狩猟用防具",
+    baseDef: Math.round(4 / 3),
+    defPerTier: Math.round(3 / 3),
+    baseScaleVit: 0.03,
+    scaleVitPerTier: 0.01,
+    baseBonusDex: 1,
+    bonusDexPerTier: 1,
+    baseRate: 0.8,
+    ratePerTier: -0.05,
+    enhanceStep: 1,
+    costPattern: tier => ({
+      [`T${tier}_toughLeather`]: 1,
+      [`T${tier}_ironIngot`]: 1
+    })
+  },
+
+  // 畑作業用防具
+  {
+    baseId: "gatherArmorFarm",
+    baseName: "畑作業用防具",
+    baseDef: Math.round(4 / 3),
+    defPerTier: Math.round(3 / 3),
+    baseScaleVit: 0.03,
+    scaleVitPerTier: 0.01,
+    baseBonusDex: 1,
+    bonusDexPerTier: 1,
+    baseRate: 0.8,
+    ratePerTier: -0.05,
+    enhanceStep: 1,
+    costPattern: tier => ({
+      [`T${tier}_clothBolt`]: 1,
+      [`T${tier}_mixHerb`]: 1
+    })
+  },
+
+  // 菜園用防具
+  {
+    baseId: "gatherArmorGarden",
+    baseName: "菜園用防具",
+    baseDef: Math.round(4 / 3),
+    defPerTier: Math.round(3 / 3),
+    baseScaleVit: 0.03,
+    scaleVitPerTier: 0.01,
+    baseBonusDex: 1,
+    bonusDexPerTier: 1,
+    baseRate: 0.8,
+    ratePerTier: -0.05,
+    enhanceStep: 1,
+    costPattern: tier => ({
+      [`T${tier}_clothBolt`]: 1,
+      [`T${tier}_mixHerb`]: 1
+    })
+  }
+];
+
+// =======================
+// テンプレートから T1〜T3 を生成
+// =======================
+
+function generateGatherWeaponTiers(tpl) {
+  const list = [];
+  for (let tier = 1; tier <= GATHER_MAX_TIER; tier++) {
+    list.push({
+      id: `T${tier}_${tpl.baseId}`,
+      name: `T${tier}${tpl.baseName}`,
+      atk: Math.round(tpl.baseAtk + tpl.atkPerTier * (tier - 1)),
+      scaleStr: +(tpl.baseScaleStr + tpl.scaleStrPerTier * (tier - 1)).toFixed(2),
+      scaleInt: +(tpl.baseScaleInt + tpl.scaleIntPerTier * (tier - 1)).toFixed(2),
+      cost: tpl.costPattern(tier),
+      rate: tpl.baseRate + tpl.ratePerTier * (tier - 1),
+      enhance: 0,
+      enhanceStep: tpl.enhanceStep,
+      durability: GATHER_BASE_DURABILITY
+    });
+  }
+  return list;
+}
+
+function generateGatherArmorTiers(tpl) {
+  const list = [];
+  for (let tier = 1; tier <= GATHER_MAX_TIER; tier++) {
+    list.push({
+      id: `T${tier}_${tpl.baseId}`,
+      name: `T${tier}${tpl.baseName}`,
+      def: Math.round(tpl.baseDef + tpl.defPerTier * (tier - 1)),
+      scaleVit: +(tpl.baseScaleVit + tpl.scaleVitPerTier * (tier - 1)).toFixed(2),
+      bonusDex: tpl.baseBonusDex + tpl.bonusDexPerTier * (tier - 1),
+      cost: tpl.costPattern(tier),
+      rate: tpl.baseRate + tpl.ratePerTier * (tier - 1),
+      enhance: 0,
+      enhanceStep: tpl.enhanceStep,
+      durability: GATHER_BASE_DURABILITY
+    });
+  }
+  return list;
+}
 
 // =======================
 // 採取用武器マスタ（性能）
 // =======================
 
-const GATHER_WEAPONS_INIT = [
-  // 伐採用ツール
-  {
-    id: "gatherAxe_T1",
-    name: "伐採用ツールT1",
-    atk: Math.round(5 / 3),
-    scaleStr: 0.06,
-    scaleInt: 0.00,
-    cost: { woodPlank_T1: 2, ironIngot_T1: 1 },
-    rate: 0.8,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherAxe_T2",
-    name: "伐採用ツールT2",
-    atk: Math.round(9 / 3),
-    scaleStr: 0.08,
-    scaleInt: 0.00,
-    cost: { woodPlank_T2: 2, ironIngot_T2: 1 },
-    rate: 0.75,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherAxe_T3",
-    name: "伐採用ツールT3",
-    atk: Math.round(13 / 3),
-    scaleStr: 0.10,
-    scaleInt: 0.00,
-    cost: { woodPlank_T3: 2, ironIngot_T3: 1 },
-    rate: 0.7,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-
-  // 採掘用ツール
-  {
-    id: "gatherPick_T1",
-    name: "採掘用ツールT1",
-    atk: Math.round(5 / 3),
-    scaleStr: 0.06,
-    scaleInt: 0.00,
-    cost: { ironIngot_T1: 2, woodPlank_T1: 1 },
-    rate: 0.8,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherPick_T2",
-    name: "採掘用ツールT2",
-    atk: Math.round(9 / 3),
-    scaleStr: 0.08,
-    scaleInt: 0.00,
-    cost: { ironIngot_T2: 2, woodPlank_T2: 1 },
-    rate: 0.75,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherPick_T3",
-    name: "採掘用ツールT3",
-    atk: Math.round(13 / 3),
-    scaleStr: 0.10,
-    scaleInt: 0.00,
-    cost: { ironIngot_T3: 2, woodPlank_T3: 1 },
-    rate: 0.7,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-
-  // 採草用ツール
-  {
-    id: "gatherKnife_T1",
-    name: "採草用ツールT1",
-    atk: Math.round(3 / 3),
-    scaleStr: 0.05,
-    scaleInt: 0.00,
-    cost: { clothBolt_T1: 1, toughLeather_T1: 1 },
-    rate: 0.8,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherKnife_T2",
-    name: "採草用ツールT2",
-    atk: Math.round(6 / 3),
-    scaleStr: 0.07,
-    scaleInt: 0.00,
-    cost: { clothBolt_T2: 1, toughLeather_T2: 1 },
-    rate: 0.75,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherKnife_T3",
-    name: "採草用ツールT3",
-    atk: Math.round(9 / 3),
-    scaleStr: 0.09,
-    scaleInt: 0.00,
-    cost: { clothBolt_T3: 1, toughLeather_T3: 1 },
-    rate: 0.7,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-
-  // 布採取用ツール
-  {
-    id: "gatherShears_T1",
-    name: "布採取用ツールT1",
-    atk: Math.round(3 / 3),
-    scaleStr: 0.05,
-    scaleInt: 0.00,
-    cost: { clothBolt_T1: 2, toughLeather_T1: 1 },
-    rate: 0.8,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherShears_T2",
-    name: "布採取用ツールT2",
-    atk: Math.round(6 / 3),
-    scaleStr: 0.07,
-    scaleInt: 0.00,
-    cost: { clothBolt_T2: 2, toughLeather_T2: 1 },
-    rate: 0.75,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherShears_T3",
-    name: "布採取用ツールT3",
-    atk: Math.round(9 / 3),
-    scaleStr: 0.09,
-    scaleInt: 0.00,
-    cost: { clothBolt_T3: 2, toughLeather_T3: 1 },
-    rate: 0.7,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-
-  // 皮採取用ツール
-  {
-    id: "gatherDagger_T1",
-    name: "皮採取用ツールT1",
-    atk: Math.round(2 / 3),
-    scaleStr: 0.05,
-    scaleInt: 0.00,
-    cost: { toughLeather_T1: 2, clothBolt_T1: 1 },
-    rate: 0.8,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherDagger_T2",
-    name: "皮採取用ツールT2",
-    atk: Math.round(4 / 3),
-    scaleStr: 0.07,
-    scaleInt: 0.00,
-    cost: { toughLeather_T2: 2, clothBolt_T2: 1 },
-    rate: 0.75,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherDagger_T3",
-    name: "皮採取用ツールT3",
-    atk: Math.round(6 / 3),
-    scaleStr: 0.09,
-    scaleInt: 0.00,
-    cost: { toughLeather_T3: 2, clothBolt_T3: 1 },
-    rate: 0.7,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-
-  // 水採取用ツール
-  {
-    id: "gatherFlask_T1",
-    name: "水採取用ツールT1",
-    atk: 0,
-    scaleStr: 0.00,
-    scaleInt: 0.00,
-    cost: { distilledWater_T1: 1, ironIngot_T1: 1 },
-    rate: 0.8,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherFlask_T2",
-    name: "水採取用ツールT2",
-    atk: 0,
-    scaleStr: 0.00,
-    scaleInt: 0.00,
-    cost: { distilledWater_T2: 1, ironIngot_T2: 1 },
-    rate: 0.75,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherFlask_T3",
-    name: "水採取用ツールT3",
-    atk: 0,
-    scaleStr: 0.00,
-    scaleInt: 0.00,
-    cost: { distilledWater_T3: 1, ironIngot_T3: 1 },
-    rate: 0.7,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-
-  // 狩猟用ツール
-  {
-    id: "huntTool_T1",
-    name: "狩猟用ツールT1",
-    atk: Math.round(3 / 3),
-    scaleStr: 0.08,
-    scaleInt: 0.00,
-    cost: { ironIngot_T1: 1, toughLeather_T1: 1 },
-    rate: 0.8,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "huntTool_T2",
-    name: "狩猟用ツールT2",
-    atk: Math.round(6 / 3),
-    scaleStr: 0.10,
-    scaleInt: 0.00,
-    cost: { ironIngot_T2: 1, toughLeather_T2: 1 },
-    rate: 0.75,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "huntTool_T3",
-    name: "狩猟用ツールT3",
-    atk: Math.round(9 / 3),
-    scaleStr: 0.12,
-    scaleInt: 0.00,
-    cost: { ironIngot_T3: 1, toughLeather_T3: 1 },
-    rate: 0.7,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-
-  // 釣り用ツール
-  {
-    id: "fishTool_T1",
-    name: "釣り用ツールT1",
-    atk: 0,
-    scaleStr: 0.00,
-    scaleInt: 0.00,
-    cost: { woodPlank_T1: 1, clothBolt_T1: 1 },
-    rate: 0.8,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "fishTool_T2",
-    name: "釣り用ツールT2",
-    atk: 0,
-    scaleStr: 0.00,
-    scaleInt: 0.00,
-    cost: { woodPlank_T2: 1, clothBolt_T2: 1 },
-    rate: 0.75,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "fishTool_T3",
-    name: "釣り用ツールT3",
-    atk: 0,
-    scaleStr: 0.00,
-    scaleInt: 0.00,
-    cost: { woodPlank_T3: 1, clothBolt_T3: 1 },
-    rate: 0.7,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-
-  // 畑作業用ツール
-  {
-    id: "farmTool_T1",
-    name: "畑作業用ツールT1",
-    atk: 0,
-    scaleStr: 0.00,
-    scaleInt: 0.00,
-    cost: { woodPlank_T1: 1, mixHerb_T1: 1 },
-    rate: 0.8,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "farmTool_T2",
-    name: "畑作業用ツールT2",
-    atk: 0,
-    scaleStr: 0.00,
-    scaleInt: 0.00,
-    cost: { woodPlank_T2: 1, mixHerb_T2: 1 },
-    rate: 0.75,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "farmTool_T3",
-    name: "畑作業用ツールT3",
-    atk: 0,
-    scaleStr: 0.00,
-    scaleInt: 0.00,
-    cost: { woodPlank_T3: 1, mixHerb_T3: 1 },
-    rate: 0.7,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-
-  // 菜園用ツール
-  {
-    id: "gardenTool_T1",
-    name: "菜園用ツールT1",
-    atk: 0,
-    scaleStr: 0.00,
-    scaleInt: 0.00,
-    cost: { clothBolt_T1: 1, mixHerb_T1: 1 },
-    rate: 0.8,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gardenTool_T2",
-    name: "菜園用ツールT2",
-    atk: 0,
-    scaleStr: 0.00,
-    scaleInt: 0.00,
-    cost: { clothBolt_T2: 1, mixHerb_T2: 1 },
-    rate: 0.75,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gardenTool_T3",
-    name: "菜園用ツールT3",
-    atk: 0,
-    scaleStr: 0.00,
-    scaleInt: 0.00,
-    cost: { clothBolt_T3: 1, mixHerb_T3: 1 },
-    rate: 0.7,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  }
-];
+const GATHER_WEAPONS_INIT = GATHER_WEAPON_TEMPLATES.flatMap(generateGatherWeaponTiers);
 
 // =======================
 // 採取用防具マスタ（性能）
 // =======================
 
-const GATHER_ARMORS_INIT = [
-  // 伐採用防具
-  {
-    id: "gatherArmorWood_T1",
-    name: "伐採用防具T1",
-    def: Math.round(7 / 3),
-    scaleVit: 0.04,
-    bonusDex: 0,
-    cost: { toughLeather_T1: 1, clothBolt_T1: 1 },
-    rate: 0.8,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherArmorWood_T2",
-    name: "伐採用防具T2",
-    def: Math.round(11 / 3),
-    scaleVit: 0.05,
-    bonusDex: 0,
-    cost: { toughLeather_T2: 1, clothBolt_T2: 1 },
-    rate: 0.75,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherArmorWood_T3",
-    name: "伐採用防具T3",
-    def: Math.round(15 / 3),
-    scaleVit: 0.06,
-    bonusDex: 0,
-    cost: { toughLeather_T3: 1, clothBolt_T3: 1 },
-    rate: 0.7,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-
-  // 採掘用防具
-  {
-    id: "gatherArmorOre_T1",
-    name: "採掘用防具T1",
-    def: Math.round(7 / 3),
-    scaleVit: 0.04,
-    bonusDex: 0,
-    cost: { toughLeather_T1: 1, ironIngot_T1: 1 },
-    rate: 0.8,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherArmorOre_T2",
-    name: "採掘用防具T2",
-    def: Math.round(11 / 3),
-    scaleVit: 0.05,
-    bonusDex: 0,
-    cost: { toughLeather_T2: 1, ironIngot_T2: 1 },
-    rate: 0.75,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherArmorOre_T3",
-    name: "採掘用防具T3",
-    def: Math.round(15 / 3),
-    scaleVit: 0.06,
-    bonusDex: 0,
-    cost: { toughLeather_T3: 1, ironIngot_T3: 1 },
-    rate: 0.7,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-
-  // 採草用防具
-  {
-    id: "gatherArmorHerb_T1",
-    name: "採草用防具T1",
-    def: Math.round(4 / 3),
-    scaleVit: 0.03,
-    bonusDex: 1,
-    cost: { clothBolt_T1: 1, mixHerb_T1: 1 },
-    rate: 0.8,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherArmorHerb_T2",
-    name: "採草用防具T2",
-    def: Math.round(7 / 3),
-    scaleVit: 0.04,
-    bonusDex: 2,
-    cost: { clothBolt_T2: 1, mixHerb_T2: 1 },
-    rate: 0.75,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherArmorHerb_T3",
-    name: "採草用防具T3",
-    def: Math.round(10 / 3),
-    scaleVit: 0.05,
-    bonusDex: 3,
-    cost: { clothBolt_T3: 1, mixHerb_T3: 1 },
-    rate: 0.7,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-
-  // 布採取用防具
-  {
-    id: "gatherArmorCloth_T1",
-    name: "布採取用防具T1",
-    def: Math.round(4 / 3),
-    scaleVit: 0.03,
-    bonusDex: 1,
-    cost: { clothBolt_T1: 2, toughLeather_T1: 1 },
-    rate: 0.8,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherArmorCloth_T2",
-    name: "布採取用防具T2",
-    def: Math.round(7 / 3),
-    scaleVit: 0.04,
-    bonusDex: 2,
-    cost: { clothBolt_T2: 2, toughLeather_T2: 1 },
-    rate: 0.75,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherArmorCloth_T3",
-    name: "布採取用防具T3",
-    def: Math.round(10 / 3),
-    scaleVit: 0.05,
-    bonusDex: 3,
-    cost: { clothBolt_T3: 2, toughLeather_T3: 1 },
-    rate: 0.7,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-
-  // 皮採取用防具
-  {
-    id: "gatherArmorLeather_T1",
-    name: "皮採取用防具T1",
-    def: Math.round(4 / 3),
-    scaleVit: 0.03,
-    bonusDex: 1,
-    cost: { toughLeather_T1: 2, clothBolt_T1: 1 },
-    rate: 0.8,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherArmorLeather_T2",
-    name: "皮採取用防具T2",
-    def: Math.round(7 / 3),
-    scaleVit: 0.04,
-    bonusDex: 2,
-    cost: { toughLeather_T2: 2, clothBolt_T2: 1 },
-    rate: 0.75,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherArmorLeather_T3",
-    name: "皮採取用防具T3",
-    def: Math.round(10 / 3),
-    scaleVit: 0.05,
-    bonusDex: 3,
-    cost: { toughLeather_T3: 2, clothBolt_T3: 1 },
-    rate: 0.7,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-
-  // 水採取用防具
-  {
-    id: "gatherArmorWater_T1",
-    name: "水採取用防具T1",
-    def: Math.round(4 / 3),
-    scaleVit: 0.03,
-    bonusDex: 1,
-    cost: { distilledWater_T1: 1, clothBolt_T1: 1 },
-    rate: 0.8,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherArmorWater_T2",
-    name: "水採取用防具T2",
-    def: Math.round(7 / 3),
-    scaleVit: 0.04,
-    bonusDex: 2,
-    cost: { distilledWater_T2: 1, clothBolt_T2: 1 },
-    rate: 0.75,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherArmorWater_T3",
-    name: "水採取用防具T3",
-    def: Math.round(10 / 3),
-    scaleVit: 0.05,
-    bonusDex: 3,
-    cost: { distilledWater_T3: 1, clothBolt_T3: 1 },
-    rate: 0.7,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-
-  // 狩猟用防具
-  {
-    id: "gatherArmorHunt_T1",
-    name: "狩猟用防具T1",
-    def: Math.round(4 / 3),
-    scaleVit: 0.03,
-    bonusDex: 1,
-    cost: { toughLeather_T1: 1, ironIngot_T1: 1 },
-    rate: 0.8,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherArmorHunt_T2",
-    name: "狩猟用防具T2",
-    def: Math.round(7 / 3),
-    scaleVit: 0.04,
-    bonusDex: 2,
-    cost: { toughLeather_T2: 1, ironIngot_T2: 1 },
-    rate: 0.75,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherArmorHunt_T3",
-    name: "狩猟用防具T3",
-    def: Math.round(10 / 3),
-    scaleVit: 0.05,
-    bonusDex: 3,
-    cost: { toughLeather_T3: 1, ironIngot_T3: 1 },
-    rate: 0.7,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-
-  // 畑作業用防具
-  {
-    id: "gatherArmorFarm_T1",
-    name: "畑作業用防具T1",
-    def: Math.round(4 / 3),
-    scaleVit: 0.03,
-    bonusDex: 1,
-    cost: { clothBolt_T1: 1, mixHerb_T1: 1 },
-    rate: 0.8,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherArmorFarm_T2",
-    name: "畑作業用防具T2",
-    def: Math.round(7 / 3),
-    scaleVit: 0.04,
-    bonusDex: 2,
-    cost: { clothBolt_T2: 1, mixHerb_T2: 1 },
-    rate: 0.75,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherArmorFarm_T3",
-    name: "畑作業用防具T3",
-    def: Math.round(10 / 3),
-    scaleVit: 0.05,
-    bonusDex: 3,
-    cost: { clothBolt_T3: 1, mixHerb_T3: 1 },
-    rate: 0.7,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-
-  // 菜園用防具
-  {
-    id: "gatherArmorGarden_T1",
-    name: "菜園用防具T1",
-    def: Math.round(4 / 3),
-    scaleVit: 0.03,
-    bonusDex: 1,
-    cost: { clothBolt_T1: 1, mixHerb_T1: 1 },
-    rate: 0.8,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherArmorGarden_T2",
-    name: "菜園用防具T2",
-    def: Math.round(7 / 3),
-    scaleVit: 0.04,
-    bonusDex: 2,
-    cost: { clothBolt_T2: 1, mixHerb_T2: 1 },
-    rate: 0.75,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  },
-  {
-    id: "gatherArmorGarden_T3",
-    name: "菜園用防具T3",
-    def: Math.round(10 / 3),
-    scaleVit: 0.05,
-    bonusDex: 3,
-    cost: { clothBolt_T3: 1, mixHerb_T3: 1 },
-    rate: 0.7,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: GATHER_BASE_DURABILITY
-  }
-];
+const GATHER_ARMORS_INIT = GATHER_ARMOR_TEMPLATES.flatMap(generateGatherArmorTiers);
 
 // 必要ならグローバル公開
 window.GATHER_WEAPONS_INIT = GATHER_WEAPONS_INIT;
@@ -786,7 +480,7 @@ if (typeof registerItemDefs === "function") {
     const defs = {};
 
     GATHER_WEAPONS_INIT.forEach(w => {
-      const m = w.id.match(/_T(\d)/) || w.id.match(/T(\d)$/);
+      const m = w.id.match(/^T(\d+)_/);
       const tierNum = m ? parseInt(m[1], 10) : null;
 
       defs[w.id] = {
@@ -802,7 +496,7 @@ if (typeof registerItemDefs === "function") {
         scaleInt: w.scaleInt,
         baseDurability: w.durability || GATHER_BASE_DURABILITY,
         enhanceStep: w.enhanceStep || 1,
-        baseEnhance: w.enhance || 0, // ★ 追加：クラフト時 baseEnh として利用
+        baseEnhance: w.enhance || 0, // ★ クラフト時 baseEnh として利用
 
         craft: {
           enabled: true,
@@ -816,7 +510,7 @@ if (typeof registerItemDefs === "function") {
     });
 
     GATHER_ARMORS_INIT.forEach(a => {
-      const m = a.id.match(/_T(\d)/) || a.id.match(/T(\d)$/);
+      const m = a.id.match(/^T(\d+)_/);
       const tierNum = m ? parseInt(m[1], 10) : null;
 
       defs[a.id] = {
@@ -831,7 +525,7 @@ if (typeof registerItemDefs === "function") {
         bonusDex: a.bonusDex || 0,
         baseDurability: a.durability || GATHER_BASE_DURABILITY,
         enhanceStep: a.enhanceStep || 1,
-        baseEnhance: a.enhance || 0, // ★ 追加：クラフト時 baseEnh として利用
+        baseEnhance: a.enhance || 0, // ★ クラフト時 baseEnh として利用
 
         craft: {
           enabled: true,

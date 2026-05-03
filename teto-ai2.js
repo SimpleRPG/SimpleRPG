@@ -202,14 +202,6 @@
         return true;
       }
     }
-
-    // ペット
-    if (pref === "pet" && typeof window.commandPetAttack === "function") {
-      window.commandPetAttack();
-      incCounterIfAvailable("skillUsesPet");
-      return true;
-    }
-
     return false;
   }
 
@@ -511,7 +503,13 @@
     }
 
     // 共通スキルツリー習得（戦闘以外モード優先）
-    if (mode === "gatherMain" || mode === "craftMain" || mode === "lifeMain" || mode === "mixed") {
+    if (
+      mode === "gatherMain"   ||
+      mode === "craftMain"    ||
+      mode === "lifeMain"     ||
+      mode === "mixed"        ||
+      mode === "balancedMain" // ★ 追加
+    ) {
       if (Math.random() < 0.05) {
         safeCall(tetoMaybeLearnGlobalSkillAdvanced, "maybeLearnGlobalSkillAdvanced");
       }

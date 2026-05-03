@@ -5,7 +5,16 @@
 window.lastCookingKind = window.lastCookingKind || null; // "food" | "drink"
 window.lastCookingId   = window.lastCookingId   || null;
 
-function refreshWarehouseUI() {
+// ★追加：今プレイヤーが見ているクラフトカテゴリ
+// weapon / armor / potion / tool / material / cookingFood / cookingDrink / furniture など
+window.activeCraftCategory = window.activeCraftCategory || null;
+
+// =======================
+// 共通倉庫UI本体（root + prefix で倉庫タブ／拠点倉庫タブ両対応）
+// =======================
+function renderFullWarehouseUI(root, prefix) {
+  if (!root) return;
+
   // =======================
   // ヘルパ（1行描画）
   // =======================
@@ -53,15 +62,9 @@ function refreshWarehouseUI() {
   }
 
   // =======================
-  // 名前解決ヘルパ（ITEM_META ベースに変更）
+  // 名前解決ヘルパ（ITEM_META 専用）
   // =======================
   function getItemNameFromMeta(id) {
-    // 優先: 共通ヘルパがあればそれを使う
-    if (typeof getItemName === "function") {
-      const n = getItemName(id);
-      if (n) return n;
-    }
-    // フォールバック: 直接メタを見る
     if (typeof getItemMeta === "function") {
       const meta = getItemMeta(id);
       if (meta && meta.name) return meta.name;
@@ -82,13 +85,13 @@ function refreshWarehouseUI() {
   }
 
   function getFoodName(id) {
-    if (typeof COOKING_RECIPES === "undefined") return id;
+    if (typeof COOKING_RECIPES === "undefined" || !COOKING_RECIPES.food) return id;
     const r = COOKING_RECIPES.food.find(x => x.id === id);
     return r ? r.name : id;
   }
 
   function getDrinkName(id) {
-    if (typeof COOKING_RECIPES === "undefined") return id;
+    if (typeof COOKING_RECIPES === "undefined" || !COOKING_RECIPES.drink) return id;
     const r = COOKING_RECIPES.drink.find(x => x.id === id);
     return r ? r.name : id;
   }
@@ -235,18 +238,18 @@ function refreshWarehouseUI() {
   }
 
   // =======================
-  // 要素取得
+  // 要素取得（root + prefix）
   // =======================
 
-  const carryPotionsBox = document.getElementById("carryPotionsList");
-  const carryFoodsBox   = document.getElementById("carryFoodsList");
-  const carryDrinksBox  = document.getElementById("carryDrinksList");
-  const carryWeaponsBox = document.getElementById("carryWeaponsList");
-  const carryArmorsBox  = document.getElementById("carryArmorsList");
-  const carryToolsBox   = document.getElementById("carryToolsList");
+  const carryPotionsBox = root.querySelector("#" + prefix + "carryPotionsList");
+  const carryFoodsBox   = root.querySelector("#" + prefix + "carryFoodsList");
+  const carryDrinksBox  = root.querySelector("#" + prefix + "carryDrinksList");
+  const carryWeaponsBox = root.querySelector("#" + prefix + "carryWeaponsList");
+  const carryArmorsBox  = root.querySelector("#" + prefix + "carryArmorsList");
+  const carryToolsBox   = root.querySelector("#" + prefix + "carryToolsList");
 
-  const equippedWeaponBox = document.getElementById("equippedWeaponSlot");
-  const equippedArmorBox  = document.getElementById("equippedArmorSlot");
+  const equippedWeaponBox = root.querySelector("#" + prefix + "equippedWeaponSlot");
+  const equippedArmorBox  = root.querySelector("#" + prefix + "equippedArmorSlot");
 
   // =======================
   // 装備欄の描画
@@ -382,6 +385,23 @@ function refreshWarehouseUI() {
       const name = getFoodName(id);
       const row = createRow(name, cnt, [
         {
+          label: "食べる",
+          onClick: () => {
+            // ★追加: 食べた記録をテトAI用に残す
+            if (typeof window.tetoRecordItemUse === "function") {
+              window.tetoRecordItemUse("food", id, {
+                context: "field",
+                hpBefore: typeof hp !== "undefined" ? hp : 0,
+                hpAfter: typeof hp !== "undefined" ? hp : 0
+              });
+            }
+            if (typeof consumeFoodFromCarry === "function") {
+              consumeFoodFromCarry(id);
+              refreshWarehouseUI();
+            }
+          }
+        },
+        {
           label: "↓倉庫へ",
           onClick: () => {
             if (moveFoodToWarehouse(id, 1)) {
@@ -404,6 +424,23 @@ function refreshWarehouseUI() {
       if (cnt <= 0) return;
       const name = getDrinkName(id);
       const row = createRow(name, cnt, [
+        {
+          label: "飲む",
+          onClick: () => {
+            // ★追加: 飲んだ記録をテトAI用に残す
+            if (typeof window.tetoRecordItemUse === "function") {
+              window.tetoRecordItemUse("drink", id, {
+                context: "field",
+                hpBefore: typeof hp !== "undefined" ? hp : 0,
+                hpAfter: typeof hp !== "undefined" ? hp : 0
+              });
+            }
+            if (typeof consumeDrinkFromCarry === "function") {
+              consumeDrinkFromCarry(id);
+              refreshWarehouseUI();
+            }
+          }
+        },
         {
           label: "↓倉庫へ",
           onClick: () => {
@@ -573,12 +610,12 @@ function refreshWarehouseUI() {
   // 倉庫側の描画
   // =======================
 
-  const whPotionsBox  = document.getElementById("warehousePotionsList");
-  const whFoodsBox    = document.getElementById("warehouseFoodsList");
-  const whDrinksBox   = document.getElementById("warehouseDrinksList");
-  const whWeaponsBox  = document.getElementById("warehouseWeaponsList");
-  const whArmorsBox   = document.getElementById("warehouseArmorsList");
-  const whToolsBox    = document.getElementById("warehouseToolsList");
+  const whPotionsBox  = root.querySelector("#" + prefix + "warehousePotionsList");
+  const whFoodsBox    = root.querySelector("#" + prefix + "warehouseFoodsList");
+  const whDrinksBox   = root.querySelector("#" + prefix + "warehouseDrinksList");
+  const whWeaponsBox  = root.querySelector("#" + prefix + "warehouseWeaponsList");
+  const whArmorsBox   = root.querySelector("#" + prefix + "warehouseArmorsList");
+  const whToolsBox    = root.querySelector("#" + prefix + "warehouseToolsList");
 
   if (whPotionsBox) {
     whPotionsBox.innerHTML = "";
@@ -613,6 +650,14 @@ function refreshWarehouseUI() {
         {
           label: "食べる",
           onClick: () => {
+            // ★追加: 倉庫から食べた記録をテトAI用に残す
+            if (typeof window.tetoRecordItemUse === "function") {
+              window.tetoRecordItemUse("food", id, {
+                context: "warehouse",
+                hpBefore: typeof hp !== "undefined" ? hp : 0,
+                hpAfter: typeof hp !== "undefined" ? hp : 0
+              });
+            }
             if (typeof consumeFoodFromWarehouse === "function") {
               consumeFoodFromWarehouse(id);
               refreshWarehouseUI();
@@ -645,6 +690,14 @@ function refreshWarehouseUI() {
         {
           label: "飲む",
           onClick: () => {
+            // ★追加: 倉庫から飲んだ記録をテトAI用に残す
+            if (typeof window.tetoRecordItemUse === "function") {
+              window.tetoRecordItemUse("drink", id, {
+                context: "warehouse",
+                hpBefore: typeof hp !== "undefined" ? hp : 0,
+                hpAfter: typeof hp !== "undefined" ? hp : 0
+              });
+            }
             if (typeof consumeDrinkFromWarehouse === "function") {
               consumeDrinkFromWarehouse(id);
               refreshWarehouseUI();
@@ -805,17 +858,36 @@ function refreshWarehouseUI() {
   }
 
   // =======================
-  // ★追加: 倉庫タブ「素材」サブページの3表を描画
-  // （描画本体は game-ui-4.js 側の関数に委譲）
+  // ★素材3表は「倉庫タブ側(root が pageWarehouseInner のときだけ)」で描画
+  // 拠点倉庫タブでは元仕様通りスキップ
   // =======================
-  if (typeof renderWarehouseGatherMaterials === "function") {
-    renderWarehouseGatherMaterials();
+  if (root.id === "pageWarehouseInner") {
+    if (typeof renderWarehouseGatherMaterials === "function") {
+      renderWarehouseGatherMaterials();
+    }
+    if (typeof renderWarehouseIntermediateMaterials === "function") {
+      renderWarehouseIntermediateMaterials();
+    }
+    if (typeof renderWarehouseCookingMaterials === "function") {
+      renderWarehouseCookingMaterials();
+    }
   }
-  if (typeof renderWarehouseIntermediateMaterials === "function") {
-    renderWarehouseIntermediateMaterials();
+}
+
+// =======================
+// 倉庫タブ & 拠点倉庫タブをまとめて更新
+// =======================
+function refreshWarehouseUI() {
+  const mainRoot    = document.getElementById("pageWarehouseInner");
+  const housingRoot = document.getElementById("housingWarehouseInner");
+
+  if (!mainRoot && !housingRoot) return;
+
+  if (mainRoot) {
+    renderFullWarehouseUI(mainRoot, "");
   }
-  if (typeof renderWarehouseCookingMaterials === "function") {
-    renderWarehouseCookingMaterials();
+  if (housingRoot) {
+    renderFullWarehouseUI(housingRoot, "housing");
   }
 }
 
@@ -897,6 +969,9 @@ function initBattleAndShopUI() {
       window.lastCraftCategory = "cookingFood";
       window.lastCookingKind = "food";
       window.lastCookingId = id;
+
+      window.activeCraftCategory = "cookingFood";
+
       if (typeof updateCraftCostInfo === "function" && id) {
         updateCraftCostInfo("cookingFood", id);
       }
@@ -909,6 +984,9 @@ function initBattleAndShopUI() {
       window.lastCraftCategory = "cookingDrink";
       window.lastCookingKind = "drink";
       window.lastCookingId = id;
+
+      window.activeCraftCategory = "cookingDrink";
+
       if (typeof updateCraftCostInfo === "function" && id) {
         updateCraftCostInfo("cookingDrink", id);
       }
@@ -921,6 +999,9 @@ function initBattleAndShopUI() {
       const id = foodSelect?.value;
       window.lastCookingKind = "food";
       window.lastCookingId = id;
+
+      window.activeCraftCategory = "cookingFood";
+
       craftFood();
       if (typeof updateCraftCostInfo === "function" && id) {
         updateCraftCostInfo("cookingFood", id);
@@ -934,6 +1015,9 @@ function initBattleAndShopUI() {
       const id = drinkSelect?.value;
       window.lastCookingKind = "drink";
       window.lastCookingId = id;
+
+      window.activeCraftCategory = "cookingDrink";
+
       craftDrink();
       if (typeof updateCraftCostInfo === "function" && id) {
         updateCraftCostInfo("cookingDrink", id);
@@ -946,10 +1030,16 @@ function initBattleAndShopUI() {
     if (window.lastCraftCategory === "cookingFood" && foodSelect && foodSelect.value) {
       window.lastCookingKind = "food";
       window.lastCookingId = foodSelect.value;
+
+      window.activeCraftCategory = "cookingFood";
+
       updateCraftCostInfo("cookingFood", foodSelect.value);
     } else if (window.lastCraftCategory === "cookingDrink" && drinkSelect && drinkSelect.value) {
       window.lastCookingKind = "drink";
       window.lastCookingId = drinkSelect.value;
+
+      window.activeCraftCategory = "cookingDrink";
+
       updateCraftCostInfo("cookingDrink", drinkSelect.value);
     }
   }
@@ -980,6 +1070,9 @@ function initBattleAndShopUI() {
       const id = furnitureSelect.value;
       if (!id || typeof updateCraftCostInfo !== "function") return;
       window.lastCraftCategory = "furniture";
+
+      window.activeCraftCategory = "furniture";
+
       updateCraftCostInfo("furniture", id);
     }
 
@@ -1000,6 +1093,8 @@ function initBattleAndShopUI() {
       if (typeof craftFurniture !== "function") return;
       const id = furnitureSelect.value;
       window.lastCraftCategory = "furniture";
+      window.activeCraftCategory = "furniture";
+
       craftFurniture();
       if (typeof updateCraftCostInfo === "function" && id) {
         updateCraftCostInfo("furniture", id);
@@ -1047,12 +1142,15 @@ function initBattleAndShopUI() {
     });
   }
 
-  // 倉庫タブ内のサブタブ（アイテム / 素材）
+  // 倉庫タブ内のサブタブ（アイテム / 素材）: 上部倉庫タブのみ対象
   (function () {
-    const tabItems      = document.getElementById("warehouseTabItems");
-    const tabMaterials  = document.getElementById("warehouseTabMaterials");
-    const pageItems     = document.getElementById("warehousePageItems");
-    const pageMaterials = document.getElementById("warehousePageMaterials");
+    const pageWarehouseInner = document.getElementById("pageWarehouseInner");
+    if (!pageWarehouseInner) return;
+
+    const tabItems      = pageWarehouseInner.querySelector("#warehouseTabItems");
+    const tabMaterials  = pageWarehouseInner.querySelector("#warehouseTabMaterials");
+    const pageItems     = pageWarehouseInner.querySelector("#warehousePageItems");
+    const pageMaterials = pageWarehouseInner.querySelector("#warehousePageMaterials");
 
     if (!tabItems || !tabMaterials || !pageItems || !pageMaterials) {
       return;

@@ -20,7 +20,7 @@ window.MATERIAL_KEYS = window.MATERIAL_KEYS || [
 // いまは既存仕様に合わせて T3 までにしておく。
 // T を増やすときは、ここを 10 に変更して、
 // T3 まで固定で回しているループを「MATERIAL_MAX_T まで」に変えればOK。
-window.MATERIAL_MAX_T = window.MATERIAL_MAX_T || 3;
+window.MATERIAL_MAX_T = window.MATERIAL_MAX_T || 10;
 
 const MATERIAL_KEYS   = window.MATERIAL_KEYS;
 const MATERIAL_MAX_T  = window.MATERIAL_MAX_T;
@@ -150,21 +150,21 @@ window.getMaterialBaseName = window.getMaterialBaseName || getMaterialBaseName;
 // Tier付きIDユーティリティ（一次素材・中間素材共通）
 // =======================
 
-// "wood_T1" / "woodPlank_T2" など → { baseId, tier }
+// "T1_wood" / "T2_woodPlank" など → { baseId, tier }
 function parseTieredId(id) {
   if (typeof id !== "string") return null;
-  const match = id.match(/^(.+)_T(\d+)$/);
+  const match = id.match(/^T(\d+)_(.+)$/);
   if (!match) return null;
-  const tier = parseInt(match[2], 10) || 0;
+  const tier = parseInt(match[1], 10) || 0;
   if (!tier) return null;
   return {
-    baseId: match[1],
+    baseId: match[2],
     tier: tier
   };
 }
 
 // 旧の parseMaterialId 互換（一次素材用）
-// IDパーサー: 'wood_T1' → { key: 'wood', tier: 1 }
+// IDパーサー: 'T1_wood' → { key: 'wood', tier: 1 }
 function parseMaterialId(id) {
   const parsed = parseTieredId(id);
   if (!parsed) return null;
@@ -181,7 +181,7 @@ window.parseMaterialId = window.parseMaterialId || parseMaterialId;
 //
 // storageKind: "materials" 向けに、IDベースの薄いラッパを追加する。
 // 仕様:
-//   ID 形式: "wood_T1" のように、<素材キー>_T<ティア> を前提とする。
+//   ID 形式: "T1_wood" のように、T<ティア>_<素材キー> を前提とする。
 //   既存の materials 構造・セーブデータ形式には一切手を入れない。
 
 if (typeof window.registerStorageImpl === "function") {
@@ -219,7 +219,7 @@ if (typeof window.registerStorageImpl === "function") {
 // =======================
 //
 // 在庫構造自体は従来どおり intermediateMats[id] を利用し、
-// Tier 付きID（woodPlank_T1 など）から操作する薄いラッパを提供する。
+// Tier 付きID（T1_woodPlank など）から操作する薄いラッパを提供する。
 
 function getIntermediateTierCountById(id) {
   if (!window.intermediateMats) return 0;
@@ -236,12 +236,12 @@ function addIntermediateTierCountById(id, amount) {
 
 // baseId + tier で扱いたい場合用（例: "woodPlank", 1）
 function getIntermediateTierCount(baseId, tier) {
-  const id = `${baseId}_T${tier}`;
+  const id = `T${tier}_${baseId}`;
   return getIntermediateTierCountById(id);
 }
 
 function addIntermediateTierCount(baseId, tier, amount) {
-  const id = `${baseId}_T${tier}`;
+  const id = `T${tier}_${baseId}`;
   addIntermediateTierCountById(id, amount);
 }
 
@@ -315,7 +315,7 @@ if (typeof window.registerStorageImpl === "function") {
 
   baseKeys.forEach(key => {
     for (let tier = 1; tier <= MATERIAL_MAX_T; tier++) {
-      const id = `${key}_T${tier}`;
+      const id = `T${tier}_${key}`;
       defs[id] = {
         name: formatMaterialName(key, tier), // 例: T1木材
         category: "material",
@@ -325,8 +325,8 @@ if (typeof window.registerStorageImpl === "function") {
     }
   });
 
-  // 中間素材（craft-data.js 側で定義されている想定）
-  // 例: { id: "woodPlank_T1", name: "T1板材", ... }
+  // 中間素材（craft-item-data.js 側で定義されている想定）
+  // 例: { id: "T1_woodPlank", name: "T1板材", ... }
   if (Array.isArray(window.INTERMEDIATE_MATERIALS)) {
     window.INTERMEDIATE_MATERIALS.forEach(m => {
       const id = m.id;

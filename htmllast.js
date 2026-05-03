@@ -375,6 +375,40 @@ function setupCookingCraftTabs() {
 }
 
 // -----------------------------
+// 生活クラフト内サブタブ（農園 / 家具）
+// -----------------------------
+function setupLifeCraftTabs() {
+  const tabs = document.querySelectorAll("#lifeSubTabs .life-sub-tab");
+  const panelFarm = document.getElementById("lifePanelFarm");
+  const panelFurniture = document.getElementById("lifePanelFurniture");
+  if (!tabs.length || !panelFarm || !panelFurniture) return;
+
+  function setLifeSub(kind) {
+    tabs.forEach(btn => {
+      const k = btn.dataset.sub;
+      const active = k === kind;
+      btn.classList.toggle("active", active);
+    });
+
+    const isFarm = kind === "farm";
+    panelFarm.style.display = isFarm ? "" : "none";
+    panelFurniture.style.display = isFarm ? "none" : "";
+    // ★ここでは activeCraftCategory や updateCraftCostInfo は触らない
+    //   （クラフト系の状態管理は ui-craft-and-farm.js 側に任せる）
+  }
+
+  tabs.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const k = btn.dataset.sub || "farm";
+      setLifeSub(k);
+    });
+  });
+
+  // 初期状態は農園タブ
+  setLifeSub("farm");
+}
+
+// -----------------------------
 // 倉庫内サブタブ（装備・アイテム / 素材）
 // -----------------------------
 function setupWarehouseTabs() {
@@ -561,6 +595,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // setupGatherMaterialToggle(); // ← game-ui.js の実装と競合するため削除
   setupMagicDistTabs();
   setupCookingCraftTabs();
+  setupLifeCraftTabs();
   setupWarehouseTabs();
   setupMarketTabs();
   setupGuildInnerTabs();

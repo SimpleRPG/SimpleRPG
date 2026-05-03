@@ -5,18 +5,35 @@
 // 採取フィールド定義
 // =======================
 
+const MAX_MAT_TIER = 10;
+
 const GATHER_FIELDS = [
-  { id: "field1", name: "近郊の原っぱ" },
-  { id: "field2", name: "星降りの丘" },
-  { id: "field3", name: "翠風の谷" }
+  { id: "field1",  name: "近郊の原っぱ",  maxTier: 1 },
+  { id: "field2",  name: "星降りの丘",    maxTier: 2 },
+  { id: "field3",  name: "翠風の谷",      maxTier: 3 },
+  { id: "field4",  name: "碧露の森",      maxTier: 4 },
+  { id: "field5",  name: "深紺の鉱山",    maxTier: 5 },
+  { id: "field6",  name: "霧雨の湿原",    maxTier: 6 },
+  { id: "field7",  name: "紅葉の峡谷",    maxTier: 7 },
+  { id: "field8",  name: "白銀の雪原",    maxTier: 8 },
+  { id: "field9",  name: "黎明の樹海",    maxTier: 9 },
+  { id: "field10", name: "黒曜の断崖",    maxTier: 10 }
   // 食材調達はフィールドではなく、採取タブ内の専用タブ＋ボタンで扱う
 ];
 
 // 採取スキルレベルによるフィールド解放条件
+// ※元の field1〜3 の仕様はそのまま、field4〜10 は素直に 10刻みで拡張
 const GATHER_FIELD_REQUIRE_LV = {
-  field1: { wood: 0,  ore: 0,  herb: 0,  cloth: 0,  leather: 0, water: 0 },
-  field2: { wood: 10, ore: 10, herb: 10, cloth: 10, leather: 10, water: 10 },
-  field3: { wood: 20, ore: 20, herb: 20, cloth: 20, leather: 20, water: 20 }
+  field1:  { wood: 0,  ore: 0,  herb: 0,  cloth: 0,  leather: 0,  water: 0 },
+  field2:  { wood: 10, ore: 10, herb: 10, cloth: 10, leather: 10, water: 10 },
+  field3:  { wood: 20, ore: 20, herb: 20, cloth: 20, leather: 20, water: 20 },
+  field4:  { wood: 30, ore: 30, herb: 30, cloth: 30, leather: 30, water: 30 },
+  field5:  { wood: 40, ore: 40, herb: 40, cloth: 40, leather: 40, water: 40 },
+  field6:  { wood: 50, ore: 50, herb: 50, cloth: 50, leather: 50, water: 50 },
+  field7:  { wood: 60, ore: 60, herb: 60, cloth: 60, leather: 60, water: 60 },
+  field8:  { wood: 70, ore: 70, herb: 70, cloth: 70, leather: 70, water: 70 },
+  field9:  { wood: 80, ore: 80, herb: 80, cloth: 80, leather: 80, water: 80 },
+  field10: { wood: 90, ore: 90, herb: 90, cloth: 90, leather: 90, water: 90 }
 };
 
 // 「星屑の結晶」強化用定数
@@ -753,6 +770,48 @@ function getGatherBonusChance(target) {
   return chance;
 }
 
+// =======================
+// フィールドごとのティア分布（%）
+// 既存 field1〜3 は元の仕様と完全一致になるように設定
+// field4〜10 は「高ティアほど出にくい」方向で拡張
+// 配列は [T1, T2, ..., TN] で合計100になるように調整
+// =======================
+
+const FIELD_TIER_DIST = {
+  field1:  [100],                    // T1のみ
+  field2:  [80, 20],                 // T1:80, T2:20
+  field3:  [60, 30, 10],             // T1:60, T2:30, T3:10 （元コードの挙動と一致する比率）
+  field4:  [45, 30, 15, 10],
+  field5:  [35, 28, 18, 11, 8],
+  field6:  [28, 25, 20, 12, 9, 6],
+  field7:  [23, 23, 20, 13, 9, 7, 5],
+  field8:  [19, 22, 20, 14, 10, 7, 5, 3],
+  field9:  [16, 21, 20, 15, 10, 7, 5, 4, 2],
+  field10: [14, 20, 20, 15, 10, 7, 5, 4, 3, 2]
+};
+
+function getFieldMaxTier(fieldId) {
+  const f = GATHER_FIELDS.find(f => f.id === fieldId);
+  if (!f || !f.maxTier) return 1;
+  return Math.min(f.maxTier, MAX_MAT_TIER);
+}
+
+function rollGatherTierForField(fieldId) {
+  const dist = FIELD_TIER_DIST[fieldId];
+  if (!dist || !dist.length) {
+    // 定義がなければ安全側で T1 のみ
+    return 1;
+  }
+  let r = Math.random() * 100;
+  for (let i = 0; i < dist.length; i++) {
+    r -= dist[i];
+    if (r <= 0) {
+      return i + 1; // tier = 1〜dist.length
+    }
+  }
+  return dist.length;
+}
+
 function gather(){
   const startTime = Date.now(); // ★デバッグ用: 所要時間計測用
 
@@ -890,71 +949,69 @@ function gather(){
     }
   }
 
-  let t1 = 0, t2 = 0, t3 = 0;
+  // ティアごとのカウント（T1〜T10）
+  const tierCounts = new Array(MAX_MAT_TIER).fill(0);
 
   for (let i = 0; i < added; i++) {
-    if (field === "field1") {
-      t1 += 1;
-    } else if (field === "field2") {
-      const r = Math.random();
-      if (r < 0.20) {
-        t2 += 1;
-      } else {
-        t1 += 1;
-      }
-    } else if (field === "field3") {
-      const r = Math.random();
-      if (r < 0.10) {
-        t3 += 1;
-      } else if (r < 0.40) {
-        t2 += 1;
-      } else {
-        t1 += 1;
-      }
-    } else {
-      t1 += 1;
-    }
+    const tier = rollGatherTierForField(field);
+    const idx = Math.max(1, Math.min(tier, MAX_MAT_TIER)) - 1;
+    tierCounts[idx] += 1;
   }
+
+  // 旧ロジック互換用（T1〜T3）
+  let t1 = tierCounts[0] || 0;
+  let t2 = tierCounts[1] || 0;
+  let t3 = tierCounts[2] || 0;
 
   // 一次素材を materials-core 経由 or メタ経由で追加
   if (typeof window.addMatTierCount === "function") {
-    if (t1 > 0) window.addMatTierCount(target, 1, t1);
-    if (t2 > 0) window.addMatTierCount(target, 2, t2);
-    if (t3 > 0) window.addMatTierCount(target, 3, t3);
+    for (let tier = 1; tier <= MAX_MAT_TIER; tier++) {
+      const cnt = tierCounts[tier - 1] || 0;
+      if (cnt > 0) {
+        window.addMatTierCount(target, tier, cnt);
+      }
+    }
   } else if (typeof addItemByMeta === "function") {
-    if (t1 > 0) addItemByMeta(`${target}_T1`, t1);
-    if (t2 > 0) addItemByMeta(`${target}_T2`, t2);
-    if (t3 > 0) addItemByMeta(`${target}_T3`, t3);
+    for (let tier = 1; tier <= MAX_MAT_TIER; tier++) {
+      const cnt = tierCounts[tier - 1] || 0;
+      if (cnt > 0) {
+        addItemByMeta(`${target}_T${tier}`, cnt);
+      }
+    }
   }
 
   tryCompanionExtraGatherOnce(() => {
-    let addT1 = 0, addT2 = 0, addT3 = 0;
+    // ペット分は「そのフィールドで最も出やすい下位ティア」を1つ追加する扱いにする
+    // 元仕様では field3 ならT3, field2ならT2, それ以外T1だったので、
+    // それに近い挙動として「field3までは専用分岐、それ以降は maxTier を優先」
+    let addTier = 1;
     if (field === "field3") {
-      addT3 = 1;
+      addTier = 3;
     } else if (field === "field2") {
-      addT2 = 1;
+      addTier = 2;
     } else {
-      addT1 = 1;
+      const maxTier = getFieldMaxTier(field);
+      addTier = Math.min(1, maxTier);
     }
+
+    const idx = Math.max(1, Math.min(addTier, MAX_MAT_TIER)) - 1;
+    tierCounts[idx] += 1;
 
     if (typeof window.addMatTierCount === "function") {
-      if (addT1 > 0) window.addMatTierCount(target, 1, addT1);
-      if (addT2 > 0) window.addMatTierCount(target, 2, addT2);
-      if (addT3 > 0) window.addMatTierCount(target, 3, addT3);
+      window.addMatTierCount(target, addTier, 1);
     } else if (typeof addItemByMeta === "function") {
-      if (addT1 > 0) addItemByMeta(`${target}_T1`, addT1);
-      if (addT2 > 0) addItemByMeta(`${target}_T2`, addT2);
-      if (addT3 > 0) addItemByMeta(`${target}_T3`, addT3);
+      addItemByMeta(`${target}_T${addTier}`, 1);
     }
 
-    t1 += addT1;
-    t2 += addT2;
-    t3 += addT3;
+    // 旧互換カウント更新
+    if (addTier === 1) t1 += 1;
+    else if (addTier === 2) t2 += 1;
+    else if (addTier === 3) t3 += 1;
 
     appendLog("ペットが追加で素材を見つけてきた！");
   });
 
-  const gainedTotal = t1 + t2 + t3;
+  const gainedTotal = tierCounts.reduce((a, b) => a + b, 0);
   addGatherStat(target, gainedTotal);
 
   const names = {
@@ -968,6 +1025,8 @@ function gather(){
   if (t1 > 0) appendLog(`T1${names[target]}を${t1}つ採取した！`);
   if (t2 > 0) appendLog(`T2${names[target]}を${t2}つ採取した！`);
   if (t3 > 0) appendLog(`T3${names[target]}を${t3}つ採取した！`);
+
+  // T4以上もログ出したければここに追加で appendLog を書ける
 
   if (typeof onGatherCompletedForGuild === "function") {
     onGatherCompletedForGuild({
@@ -993,7 +1052,12 @@ function gather(){
   lastGatherInfo = {
     baseKey: target,
     field: field,
-    tiers: { t1, t2, t3 }
+    tiers: {
+      t1,
+      t2,
+      t3
+      // 必要なら tierCounts 全体もここに載せられる
+    }
   };
 
   if (typeof handleHungerThirstOnAction === "function") {

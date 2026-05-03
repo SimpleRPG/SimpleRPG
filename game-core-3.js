@@ -187,6 +187,57 @@ function commitCurrentBattleStats(resultType) {
       // 失敗してもゲーム進行に影響しないよう握りつぶす
     }
   }
+
+  // ★テト用フック: テトが操作しているときだけ戦闘結果を通知
+  if (window.isTetoControlling && typeof window.tetoOnBattleCommitted === "function") {
+    try {
+      window.tetoOnBattleCommitted(resultType, {
+        maxDamage: currentBattleMaxDamage,
+        maxTaken:  currentBattleMaxTaken,
+        resultType
+      });
+    } catch (e) {
+      if (window.console && console.error) console.error(e);
+    }
+  }
+
+  // ★テト用フック: balanced 用の戦闘結果フィードバック
+  if (window.isTetoControlling && typeof window.tetoBalancedOnBattleResult === "function") {
+    try {
+      window.tetoBalancedOnBattleResult(resultType === "win");
+    } catch (e) {
+      if (window.console && console.error) console.error(e);
+    }
+  }
+}
+
+// =======================
+// ★追加: テト用戦闘死亡ログヘルパー
+// =======================
+//
+// 仕様を変えず、「死亡処理の直後に 1 行呼ぶだけ」のユーティリティ。
+// - window.isTetoControlling が true の時だけ動作
+// - tetoRecordDeath("battle", {...}) 経由で debugRecordDeath にも届く
+function recordBattleDeathForDebug(moneyBefore, moneyAfter, equipBroken) {
+  if (!window.isTetoControlling || typeof window.tetoRecordDeath !== "function") {
+    return;
+  }
+  try {
+    const ctx = {
+      enemyId: (typeof currentEnemy === "object" && currentEnemy) ? currentEnemy.id : null,
+      area: (typeof getCurrentArea === "function") ? getCurrentArea() : (window.exploringArea || null),
+      hp: 0,
+      hunger: (typeof getHungerValue === "function") ? getHungerValue() : null,
+      thirst: (typeof getThirstValue === "function") ? getThirstValue() : null,
+      moneyLost: (typeof moneyBefore === "number" && typeof moneyAfter === "number")
+        ? Math.max(0, moneyBefore - moneyAfter)
+        : 0,
+      equipBroken: !!equipBroken
+    };
+    window.tetoRecordDeath("battle", ctx);
+  } catch (e) {
+    if (window.console && console.error) console.error(e);
+  }
 }
 
 // =======================
@@ -487,6 +538,15 @@ function playerAttack() {
       hp = 0;
       appendLog("あなたは倒れてしまった…");
 
+      // ★テト用フック: 戦闘死
+      if (window.isTetoControlling && typeof window.tetoOnPlayerDeath === "function") {
+        try {
+          window.tetoOnPlayerDeath("battle");
+        } catch (e) {
+          if (window.console && console.error) console.error(e);
+        }
+      }
+
       // ★死亡時は撤退状態も必ずリセット（罠死亡と同じ挙動に揃える）
       window.isRetreating     = false;
       window.retreatTurnsLeft = 0;
@@ -502,6 +562,7 @@ function playerAttack() {
       sp    = spMax;
       petHp = petHpMax;
 
+      const moneyAfterBeforePenalty = money;
       money = Math.floor(money / 2);
 
       if (typeof debugRecordEconomy === "function") {
@@ -608,6 +669,9 @@ function playerAttack() {
       } else {
         appendLog("街に戻った… 休んで回復し、所持ゴールドを半分失った。");
       }
+
+      // ★テト用: 戦闘死亡ログ記録（経済ペナルティ反映後の金額と装備破損フラグを渡す）
+      recordBattleDeathForDebug(moneyBefore, money, brokeSomething);
 
       // ★戦闘統計に「敗北」を反映（ここから debugRecordBattle も呼ばれる）
       commitCurrentBattleStats("lose");
@@ -672,6 +736,15 @@ function enemyTurn() {
       hp = 0;
       appendLog("あなたは倒れてしまった…");
 
+      // ★テト用フック: 戦闘死
+      if (window.isTetoControlling && typeof window.tetoOnPlayerDeath === "function") {
+        try {
+          window.tetoOnPlayerDeath("battle");
+        } catch (e) {
+          if (window.console && console.error) console.error(e);
+        }
+      }
+
       // ★死亡時は撤退状態も必ずリセット（罠死亡と同じ挙動に揃える）
       window.isRetreating     = false;
       window.retreatTurnsLeft = 0;
@@ -687,6 +760,7 @@ function enemyTurn() {
       sp    = spMax;
       petHp = petHpMax;
 
+      const moneyAfterBeforePenalty = money;
       money = Math.floor(money / 2);
 
       if (typeof debugRecordEconomy === "function") {
@@ -793,6 +867,9 @@ function enemyTurn() {
       } else {
         appendLog("街に戻った… 休んで回復し、所持ゴールドを半分失った。");
       }
+
+      // ★テト用: 戦闘死亡ログ記録
+      recordBattleDeathForDebug(moneyBefore, money, brokeSomething);
 
       // ★戦闘統計に「敗北」を反映（ここから debugRecordBattle も呼ばれる）
       commitCurrentBattleStats("lose");

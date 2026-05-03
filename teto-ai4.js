@@ -1,13 +1,26 @@
 // teto-ai4.js
 // テトちゃん（自動テストプレイヤー）本体ロジック
 // - 状態スナップショット
-// - 行動プリミティブ（戦闘/採取/クラフト/ギルド/拠点/市場/ペット/転生）
+// - 行動プリミティブ（戦闘/採取/ギルド/拠点/市場/ペット/転生）
 // - balanced 用 状態評価
 // - モード別 1 tick 行動
 // - グローバル公開: tetoGet***, tetoTick*** など
 
 (function () {
   "use strict";
+
+  // =========================
+  // テト制御フラグ（他ファイルのフック用）
+  // =========================
+  if (typeof window !== "undefined") {
+    window.isTetoControlling = window.isTetoControlling || false;
+    // 立て直し用の簡易状態
+    window._tetoRecoveryState = window._tetoRecoveryState || {
+      lastFailCount: 0,
+      mode: null,              // "gather" / "craft" / null
+      ticksSinceStart: 0
+    };
+  }
 
   // =========================
   // 状態スナップショット層
@@ -85,7 +98,9 @@
       carryPotions: typeof window.carryPotions === "object" ? { ...window.carryPotions } : {},
       carryTools: typeof window.carryTools === "object" ? { ...window.carryTools } : {},
       carryFoods: typeof window.carryFoods === "object" ? { ...window.carryFoods } : {},
-      carryDrinks: typeof window.carryDrinks === "object" ? { ...window.carryDrinks } : {}
+      carryDrinks: typeof window.carryDrinks === "object" ? { ...window.carryDrinks } : {},
+      cookedFoods: typeof window.cookedFoods === "object" ? { ...window.cookedFoods } : {},
+      cookedDrinks: typeof window.cookedDrinks === "object" ? { ...window.cookedDrinks } : {}
     };
   }
 
@@ -120,10 +135,6 @@
     };
   }
 
-  function tetoGetPersonality() {
-    return window.tetoPersonality || "balanced";
-  }
-
   function tetoGetAiLevel() {
     return window.tetoAiLevel || "normal";
   }
@@ -136,7 +147,6 @@
 
   function tetoUseBattleItemIfNeeded() {
     const bs = tetoGetBattleStatus();
-    const rs = tetoGetResourceStatus();
     if (!bs.currentEnemy) return false;
 
     if (bs.hp != null && bs.hpMax != null && bs.hp < bs.hpMax * 0.35) {
@@ -158,9 +168,7 @@
     const bs = tetoGetBattleStatus();
     if (!bs.currentEnemy) return false;
 
-    // jobId に応じて「スキル or 魔法」を優先
     if (bs.jobId === 1 || bs.jobId === 2 || bs.jobId === 3) {
-      // 魔法職/混成職: 魔法優先
       const magicSel = document.getElementById("magicSelect");
       if (magicSel && magicSel.value && typeof castMagicFromUI === "function") {
         castMagicFromUI();
@@ -171,7 +179,6 @@
       }
     }
     if (bs.jobId === 0 || bs.jobId === 2 || bs.jobId === 3) {
-      // 物理スキルも試す
       const skillSel = document.getElementById("skillSelect");
       if (skillSel && skillSel.value && typeof useSkillFromUI === "function") {
         useSkillFromUI();
@@ -185,7 +192,6 @@
     return false;
   }
 
-  // 戦闘中の逃走（探索撤退とは別物）
   function tetoMaybeEscapeBattle() {
     if (typeof window.tryEscape !== "function") return false;
 
@@ -196,7 +202,6 @@
     if (!bs.currentEnemy) return false;
     if (bs.hp == null || bs.hpMax == null || bs.hpMax <= 0) return false;
 
-    // simple は「絶対に逃げない」キャラのままにする
     if (level === "simple") return false;
 
     const hpRate = bs.hp / bs.hpMax;
@@ -204,23 +209,14 @@
       inv.carryPotions && Object.keys(inv.carryPotions).length > 0;
     const recentFail = window._tetoRecentBattleFailCount || 0;
 
-    // 逃走検討条件:
-    // - HP 20% 以下
-    // - ポーション無し
     if (hpRate > 0.2) return false;
     if (hasPotion) return false;
 
-    // ★性格に依存しない標準の逃走しやすさ
-    let escapeChance = 0.25; // 基本 25%
+    let escapeChance = 0.25;
 
-    // HP が 10% 未満ならさらに上乗せ
     if (hpRate < 0.1) escapeChance += 0.2;
-
-    // 連敗しているほど逃げたくなる
     if (recentFail >= 2) escapeChance += 0.1;
     if (recentFail >= 4) escapeChance += 0.1;
-
-    // AI レベル smart は少しだけ逃走判断を強める
     if (level === "smart") escapeChance += 0.1;
 
     if (escapeChance <= 0) return false;
@@ -238,12 +234,9 @@
   function tetoDoOneBattleStep() {
     const bs = tetoGetBattleStatus();
     if (!bs.currentEnemy) {
-      // 敵がいなければ「探索ボタン」を押す扱い
       if (typeof doExploreEvent === "function") {
-        // area は game-core 側で isExploring / exploringArea / getCurrentArea を使って決まる
         doExploreEvent();
       } else if (typeof startRandomEncounter === "function") {
-        // 旧仕様フォールバック: 探索APIがない環境用
         startRandomEncounter();
       }
       return;
@@ -253,16 +246,10 @@
       window.tetoIncCounter("battles");
     }
 
-    // まず戦闘逃走を検討（探索撤退とは別）
     if (tetoMaybeEscapeBattle()) return;
-
-    // HP やばければポーション
     if (tetoUseBattleItemIfNeeded()) return;
-
-    // スキル/魔法もできるだけ使う
     if (tetoUseSkillIfReasonable()) return;
 
-    // それ以外は普通に攻撃
     if (typeof playerAttack === "function") {
       playerAttack();
     }
@@ -271,33 +258,36 @@
   // --- 採取関連プリミティブ ---
 
   function tetoDoOneGatherStep() {
-    // 探索中・戦闘中は採取しない（UIと同じ制約）
     if (window.isExploring || window.currentEnemy) {
       return;
     }
 
     const gatherTab = document.getElementById("pageGather");
     if (gatherTab && gatherTab.style.display === "none") {
-      // タブが隠れていても gather() 自体は動く想定なので、そのまま叩く
+      // タブ非表示でも gather() 自体は動く想定
     }
 
-    // 通常採取 or 食材調達をランダムに分散
+    let didAny = false;
+
     if (typeof gather === "function" && Math.random() < 0.6) {
       gather();
       if (typeof window.tetoIncCounter === "function") {
         window.tetoIncCounter("gathers");
       }
-      return;
-    }
-
-    if (typeof gatherCooking === "function") {
+      didAny = true;
+    } else if (typeof gatherCooking === "function") {
       const roll = Math.random();
-      const mode = roll < 0.34 ? "hunt" : (roll < 0.67 ? "fish" : "farm");
+      const mode = roll < 0.34 ? "hunt" : (roll < 0.67 ? "fish" : "hunt"); // farm を hunt に寄せる
       gatherCooking(mode);
       if (typeof window.tetoIncCounter === "function") {
         window.tetoIncCounter("gathers");
       }
-      return;
+      didAny = true;
+    }
+
+    // 採取に成功したら、農園に少し成長ポイントを入れる
+    if (didAny && typeof addFarmGrowthPoint === "function") {
+      addFarmGrowthPoint("gather");
     }
   }
 
@@ -306,14 +296,12 @@
     if (!gb.bases) return;
 
     const keys = Object.keys(gb.bases);
-    // 低レベルの拠点を優先して強化
     const target = keys.find(k => gb.bases[k] && (gb.bases[k].level || 0) <= 0);
     if (target && typeof tryUpgradeGatherBase === "function") {
       tryUpgradeGatherBase(target);
       return;
     }
 
-    // モード切り替えも行う（normal→quantity→quality ローテ）
     keys.forEach(k => {
       const base = gb.bases[k];
       if (!base || !base.mode) return;
@@ -330,11 +318,18 @@
     });
   }
 
-  // --- クラフト関連プリミティブ ---
+  // --- クラフト関連（本体は teto-ai5.js 側に委譲） ---
 
-  // ざっくり「今の選択状態でクラフトしても意味がありそうか」を見る軽いガード
-  // 実際の素材チェックなどはゲーム本体側に任せる。
-  function tetoCanCraftCurrentSelection() {
+  function tetoDoOneCraftStep() {
+    if (typeof window.tetoDoOneCraftStepV5 === "function") {
+      window.tetoDoOneCraftStepV5();
+      return;
+    }
+
+    if (window.isExploring || window.currentEnemy) {
+      return;
+    }
+
     const inv = tetoGetInventoryStatus();
     const res = tetoGetResourceStatus();
 
@@ -344,29 +339,13 @@
       Object.keys(inv.carryDrinks).length > 0 ||
       Object.keys(inv.carryPotions).length > 0;
 
-    // 完全に手持ちゼロ & 所持金もほぼゼロなら、クラフトしても何も起きない可能性が高いとみなす
     if (!hasAnyItem && (!res.money || res.money <= 0)) {
-      return false;
-    }
-
-    return true;
-  }
-
-  function tetoDoOneCraftStep() {
-    // 探索中・戦闘中はクラフトできない仕様なのでチェック
-    if (window.isExploring || window.currentEnemy) {
-      return;
-    }
-
-    // 明らかに意味がなさそうな状態なら、クラフトをスキップ扱いにする
-    if (!tetoCanCraftCurrentSelection()) {
       window._tetoRecentCraftSkipCount = (window._tetoRecentCraftSkipCount || 0) + 1;
       return;
     }
 
     let didCraft = false;
 
-    // 装備 → ポーション → 道具 → 料理 → 飲み物 の順で試す
     const wSel = document.getElementById("weaponSelect");
     if (wSel && wSel.value && typeof craftWeapon === "function") {
       craftWeapon();
@@ -428,7 +407,134 @@
     }
   }
 
+  // --- 農園関連プリミティブ ---
+
+  function tetoMaybePlantFarmSeeds() {
+    if (typeof getAllFarmCropIds !== "function" ||
+        typeof plantFarmSlot !== "function" ||
+        !window.farmState || !Array.isArray(window.farmState.slots)) {
+      return;
+    }
+
+    const ids = getAllFarmCropIds();
+    if (!ids.length) return;
+
+    // 手持ちの cookingMats から、実際に持っている種候補だけに絞る
+    const ownedFarmIds = ids.filter(id => {
+      if (typeof window.cookingMats !== "object") return false;
+      return (window.cookingMats[id] || 0) > 0;
+    });
+
+    // 謎の種も候補に含める（持っていなくても無料で植えられる仕様）
+    const canUseMystery = true;
+
+    const slots = window.farmState.slots;
+    for (let i = 0; i < slots.length; i++) {
+      const slot = slots[i];
+      if (!slot || slot.cropId) continue; // 何か植わっている
+
+      // 空き区画を見つけたら、ある程度の確率で植える（暴走防止）
+      if (Math.random() >= 0.4) continue;
+
+      let seedId = null;
+
+      if (ownedFarmIds.length > 0) {
+        seedId = ownedFarmIds[Math.floor(Math.random() * ownedFarmIds.length)];
+      } else if (canUseMystery && typeof FARM_MYSTERY_SEED_ID !== "undefined") {
+        seedId = FARM_MYSTERY_SEED_ID;
+      }
+
+      if (!seedId) continue;
+
+      try {
+        plantFarmSlot(i, seedId);
+      } catch (e) {
+        // 植えられなかった場合は無視
+      }
+    }
+  }
+
+  function tetoMaybeCareFarm() {
+    if (typeof careFarmAll !== "function") return;
+    if (Math.random() < 0.15) {
+      try {
+        careFarmAll();
+      } catch (e) {}
+    }
+  }
+
+  function tetoMaybeHarvestFarm() {
+    if (typeof harvestFarmAll !== "function") return;
+    if (Math.random() < 0.2) {
+      try {
+        harvestFarmAll();
+      } catch (e) {}
+    }
+  }
+
   // --- 空腹/喉/回復関連 ---
+
+  // carry から「どの食べ物を食べるか」を雑に選ぶ
+  function tetoPickFoodIdFromCarry(inv) {
+    const ids = Object.keys(inv.carryFoods || {});
+    if (!ids.length) return null;
+    // 仕様を変えないため、ここでは単純ランダム
+    return ids[Math.floor(Math.random() * ids.length)];
+  }
+
+  function tetoPickDrinkIdFromCarry(inv) {
+    const ids = Object.keys(inv.carryDrinks || {});
+    if (!ids.length) return null;
+    return ids[Math.floor(Math.random() * ids.length)];
+  }
+
+  // 倉庫の料理・飲み物をその場で直食いする（拠点用）
+  function tetoMaybeEatFromWarehouse(res, inv) {
+    if (window.isExploring || window.currentEnemy) return false;
+
+    const hungerLow = res.hunger != null && res.hunger < 40;
+    const thirstLow = res.thirst != null && res.thirst < 40;
+
+    // 食べ物
+    if (hungerLow &&
+        inv.carryFoods &&
+        Object.keys(inv.carryFoods).length === 0 &&
+        inv.cookedFoods &&
+        Object.keys(inv.cookedFoods).length > 0 &&
+        typeof consumeFoodFromWarehouse === "function") {
+
+      const foodIds = Object.keys(inv.cookedFoods).filter(id => inv.cookedFoods[id] > 0);
+      if (foodIds.length > 0) {
+        const id = foodIds[Math.floor(Math.random() * foodIds.length)];
+        consumeFoodFromWarehouse(id);
+        if (typeof window.tetoIncCounter === "function") {
+          window.tetoIncCounter("foodUsed");
+        }
+        return true;
+      }
+    }
+
+    // 飲み物
+    if (thirstLow &&
+        inv.carryDrinks &&
+        Object.keys(inv.carryDrinks).length === 0 &&
+        inv.cookedDrinks &&
+        Object.keys(inv.cookedDrinks).length > 0 &&
+        typeof consumeDrinkFromWarehouse === "function") {
+
+      const drinkIds = Object.keys(inv.cookedDrinks).filter(id => inv.cookedDrinks[id] > 0);
+      if (drinkIds.length > 0) {
+        const id = drinkIds[Math.floor(Math.random() * drinkIds.length)];
+        consumeDrinkFromWarehouse(id);
+        if (typeof window.tetoIncCounter === "function") {
+          window.tetoIncCounter("drinkUsed");
+        }
+        return true;
+      }
+    }
+
+    return false;
+  }
 
   function tetoMaybeUseFoodDrink() {
     const res = tetoGetResourceStatus();
@@ -438,19 +544,39 @@
     const lowHunger = res.hunger < 40;
     const lowThirst = res.thirst < 40;
 
+    // まず carry にあるものをフィールドで食べる／飲む
     if (lowHunger && Object.keys(inv.carryFoods).length > 0 && typeof eatFoodInField === "function") {
+      const foodId = tetoPickFoodIdFromCarry(inv);
+      const sel = document.getElementById("fieldFoodSelect");
+      if (sel && foodId) {
+        // セレクトを食べたい料理に合わせてからボタン相当を呼ぶ
+        sel.value = foodId;
+      }
       eatFoodInField();
       if (typeof window.tetoIncCounter === "function") {
         window.tetoIncCounter("foodUsed");
       }
       return;
     }
+
     if (lowThirst && Object.keys(inv.carryDrinks).length > 0 && typeof drinkInField === "function") {
+      const drinkId = tetoPickDrinkIdFromCarry(inv);
+      const sel = document.getElementById("fieldDrinkSelect");
+      if (sel && drinkId) {
+        sel.value = drinkId;
+      }
       drinkInField();
       if (typeof window.tetoIncCounter === "function") {
         window.tetoIncCounter("drinkUsed");
       }
       return;
+    }
+
+    // carry に無いが、街側（非探索中）で倉庫に在庫があるなら、倉庫から直食い
+    if (!window.isExploring && !window.currentEnemy) {
+      if (tetoMaybeEatFromWarehouse(res, inv)) {
+        return;
+      }
     }
   }
 
@@ -466,6 +592,8 @@
     if (!target) return;
 
     const sel = document.getElementById("repairTargetSelect");
+    const repairExecBtn      = document.getElementById("repairExecBtn");
+
     if (sel && typeof refreshRepairUI === "function" && typeof execRepairSelected === "function") {
       refreshRepairUI();
       for (let i = 0; i < sel.options.length; i++) {
@@ -509,11 +637,14 @@
     const gs = tetoGetGuildStatus();
     if (gs.playerGuildId) return;
 
-    if (typeof joinGuild !== "function" || !Array.isArray(window.GUILDS)) return;
+    if (typeof joinGuild !== "function") return;
+    if (!window.GUILDS || !window.GUILD_ORDER || !Array.isArray(window.GUILD_ORDER)) return;
 
-    const ids = window.GUILDS.map(g => g.id);
+    // GUILD_ORDER からランダムに選び、その ID を joinGuild に渡す
+    const ids = window.GUILD_ORDER.slice();
+    if (!ids.length) return;
     const target = ids[Math.floor(Math.random() * ids.length)];
-    if (!target) return;
+    if (!target || !window.GUILDS[target]) return;
 
     joinGuild(target);
     if (typeof window.tetoIncCounter === "function") {
@@ -523,47 +654,55 @@
 
   function tetoMaybeAcceptGuildQuest() {
     if (typeof acceptGuildQuest !== "function") return;
-    if (!Array.isArray(window.GUILD_QUESTS)) return;
 
     const gs = tetoGetGuildStatus();
     const gid = gs.playerGuildId;
     if (!gid) return;
 
-    const candidates = window.GUILD_QUESTS.filter(q => q.guildId === gid);
-    if (!candidates.length) return;
+    if (!window.GUILD_QUESTS) return;
+    const list = window.GUILD_QUESTS[gid];
+    if (!Array.isArray(list) || !list.length) return;
 
-    const q = candidates[Math.floor(Math.random() * candidates.length)];
-    if (!q) return;
+    // すでに受注している・完了しているかどうかは getGuildQuestStatusSummary 側に任せてもよいが、
+    // 仕様変更はしない前提で、とりあえずギルドのクエスト配列からランダムに選んで受注
+    const q = list[Math.floor(Math.random() * list.length)];
+    if (!q || !q.id) return;
 
     try {
       acceptGuildQuest(q.id);
       if (typeof window.tetoIncCounter === "function") {
         window.tetoIncCounter("guildQuestsAccepted");
       }
-    } catch (e) {
-      // 受注条件満たしてないなどは無視
-    }
+    } catch (e) {}
   }
 
   function tetoMaybeClaimGuildRewards() {
     if (typeof claimGuildQuestReward !== "function") return;
-    if (!Array.isArray(window.GUILD_QUESTS)) return;
 
     const gs = tetoGetGuildStatus();
     const gid = gs.playerGuildId;
     if (!gid) return;
 
-    window.GUILD_QUESTS.forEach(q => {
+    if (!window.GUILD_QUESTS) return;
+    const list = window.GUILD_QUESTS[gid];
+    if (!Array.isArray(list) || !list.length) return;
+
+    // 仕様変更はせず、「そのギルドに属する全クエストについて報酬受取を試みる」
+    list.forEach(q => {
+      if (!q || !q.id) return;
       try {
-        claimGuildQuestReward(q.id);
+        // 正しいシグネチャ: (guildId, questDef, isSpecial=false)
+        claimGuildQuestReward(gid, q, false);
         if (typeof window.tetoIncCounter === "function") {
           window.tetoIncCounter("guildQuestsCleared");
         }
       } catch (e) {}
     });
 
+    // 戦闘ギルドスキルツリーの自動習得
     if (gs.combatGuildSkillPoints > 0 && Array.isArray(window.COMBAT_GUILD_TREE)) {
       const candidates = window.COMBAT_GUILD_TREE.filter(node => {
+        if (!node || !node.id) return false;
         if (window.combatGuildTreeUnlocked && window.combatGuildTreeUnlocked[node.id]) return false;
         if (typeof isCombatTreeNodeUnlockable === "function") {
           return isCombatTreeNodeUnlockable(node);
@@ -572,7 +711,7 @@
       });
       if (candidates.length && typeof learnCombatGuildNode === "function") {
         const n = candidates[Math.floor(Math.random() * candidates.length)];
-        if (n) {
+        if (n && n.id) {
           learnCombatGuildNode(n.id);
           if (typeof window.tetoIncCounter === "function") {
             window.tetoIncCounter("guildSkillLearned");
@@ -586,7 +725,6 @@
 
   function tetoMaybeUnlockCitizenship() {
     if (window.citizenshipUnlocked) return;
-    // 実ゲームの条件に依存するため、ここでは直接は触らない。
   }
 
   function tetoMaybeRentHousing() {
@@ -709,6 +847,9 @@
 
     const recentFail = window._tetoRecentBattleFailCount || 0;
 
+    const hasPotion =
+      inv.carryPotions && Object.keys(inv.carryPotions).length > 0;
+
     const needs = {
       needTraining: false,
       needEquip: false,
@@ -716,7 +857,9 @@
       needGather: false,
       needMoney: false,
       needHousingPay: false,
-      needGuild: false
+      needGuild: false,
+      needRetreatBattle: false,
+      needRetreatExplore: false
     };
 
     if (recentFail >= 2 || hpLow) {
@@ -744,6 +887,15 @@
       needs.needGuild = true;
     }
 
+    const hpRate = (bs.hp != null && bs.hpMax) ? (bs.hp / bs.hpMax) : 1;
+
+    if (hpRate < 0.25 && !hasPotion) {
+      needs.needRetreatBattle = true;
+      needs.needRetreatExplore = true;
+    } else if (hpRate < 0.15) {
+      needs.needRetreatExplore = true;
+    }
+
     return needs;
   }
 
@@ -756,14 +908,9 @@
       window.tetoStrategicPreTick("battleMain");
     }
 
-    const bs = tetoGetBattleStatus();
-
     tetoMaybeUseFoodDrink();
     tetoMaybePickCompanion();
     tetoMaybeRebirth();
-
-    // ★HP 25% 以下で探索を止めるガードは削除して、
-    //   止まらずに戦闘/探索を続けるようにする
 
     tetoDoOneBattleStep();
     if (Math.random() < 0.05) {
@@ -800,12 +947,10 @@
 
     const skip = (window._tetoRecentCraftSkipCount || 0);
     if (skip >= 3) {
-      // ★性格に依存せず、クラフト目的に沿った標準挙動:
-      // 素材集めをメインに、たまに市場で売買。
       if (Math.random() < 0.7) {
-        tetoDoOneGatherStep();   // 素材集め優先
+        tetoDoOneGatherStep();
       } else {
-        tetoMaybeUseMarket();    // 素材購入や売却
+        tetoMaybeUseMarket();
       }
     }
 
@@ -843,6 +988,11 @@
       tetoMaybeUseMarket();
       tetoMaybeRepairEquip();
     }
+
+    // ライフ行動時に、たまに農園を世話・収穫・種植えする
+    tetoMaybeCareFarm();
+    tetoMaybeHarvestFarm();
+    tetoMaybePlantFarmSeeds();
 
     if (Math.random() < 0.05) {
       tetoMaybeRebirth();
@@ -896,7 +1046,140 @@
     tetoMaybeUseFoodDrink();
     tetoMaybePickCompanion();
 
+    const bs = tetoGetBattleStatus();
     const needs = tetoBalancedDetectNeeds();
+
+    // 探索中
+    if (window.isExploring) {
+      if (bs.currentEnemy) {
+        if (needs.needRetreatBattle && typeof window.tryEscape === "function") {
+          window.tryEscape();
+          if (typeof window.tetoIncCounter === "function") {
+            window.tetoIncCounter("battleEscapes");
+          }
+          return;
+        }
+        tetoDoOneBattleStep();
+        return;
+      }
+
+      if (needs.needRetreatExplore) {
+        if (!window.isRetreating) {
+          window.isRetreating = true;
+          window.retreatTurnsLeft =
+            (typeof window.RETREAT_TURNS === "number") ? window.RETREAT_TURNS : 3;
+
+          if (typeof appendLog === "function") {
+            appendLog("[テト] 危険と判断し、街への撤退を開始した…");
+          }
+          if (typeof updateReturnTownButton === "function") {
+            updateReturnTownButton();
+          }
+        }
+      }
+
+      if (typeof doExploreEvent === "function") {
+        doExploreEvent();
+      } else if (typeof startRandomEncounter === "function") {
+        startRandomEncounter();
+      }
+      return;
+    }
+
+    // 街側
+
+    if (bs.currentEnemy) {
+      if (needs.needRetreatBattle && typeof window.tryEscape === "function") {
+        window.tryEscape();
+        if (typeof window.tetoIncCounter === "function") {
+          window.tetoIncCounter("battleEscapes");
+        }
+        return;
+      }
+      tetoDoOneBattleStep();
+      return;
+    }
+
+    // 敗北した直後は、持ち物を見て立て直し優先
+    const recentFail = window._tetoRecentBattleFailCount || 0;
+    const recState   = window._tetoRecoveryState || { lastFailCount: 0, mode: null, ticksSinceStart: 0 };
+
+    // 新しく敗北カウントが増えたタイミングでだけ、立て直しモードを開始（ログも1回だけ）
+    if (recentFail > recState.lastFailCount) {
+      const inv = tetoGetInventoryStatus();
+      const eq  = tetoGetEquipStatus();
+      const rs  = tetoGetResourceStatus();
+
+      const hasWeapon = !!eq.equippedWeaponId;
+      const hasArmor  = !!eq.equippedArmorId;
+      const hasPotion = inv.carryPotions && Object.keys(inv.carryPotions).length > 0;
+
+      const materialLikeCount =
+        (inv.carryTools ? Object.keys(inv.carryTools).length : 0) +
+        (inv.carryFoods ? Object.keys(inv.carryFoods).length : 0) +
+        (inv.carryDrinks ? Object.keys(inv.carryDrinks).length : 0);
+
+      const isBroke = !(rs.money > 50);
+
+      const almostNothing =
+        !hasWeapon && !hasArmor && !hasPotion &&
+        materialLikeCount === 0 && isBroke;
+
+      const hasSomethingToWorkWith =
+        hasWeapon || hasArmor || hasPotion || materialLikeCount > 0;
+
+      if (almostNothing) {
+        if (typeof appendLog === "function") {
+          appendLog("[テト] 死んだので、素材集めから立て直します。");
+        }
+        recState.mode = "gather";
+      } else if (hasSomethingToWorkWith) {
+        if (typeof appendLog === "function") {
+          appendLog("[テト] 死んだので、装備やクラフトで立て直します。");
+        }
+        recState.mode = "craft";
+      } else {
+        recState.mode = null;
+      }
+      recState.lastFailCount  = recentFail;
+      recState.ticksSinceStart = 0;
+      window._tetoRecoveryState = recState;
+    }
+
+    // 立て直しモード中は、一定ターンだけ優先的に gather/craft を行う
+    if (recState.mode === "gather" || recState.mode === "craft") {
+      recState.ticksSinceStart++;
+      window._tetoRecoveryState = recState;
+
+      if (recState.mode === "gather") {
+        tetoDoOneGatherStep();
+        if (Math.random() < 0.2) {
+          tetoMaybeAdjustGatherBases();
+        }
+      } else {
+        tetoDoOneCraftStep();
+        if (Math.random() < 0.2) {
+          tetoDoOneGatherStep();
+        }
+        if (Math.random() < 0.1) {
+          tetoMaybeRepairEquip();
+        }
+      }
+
+      const MAX_RECOVERY_TICKS = 30;
+      if (recState.ticksSinceStart >= MAX_RECOVERY_TICKS) {
+        recState.mode = null;
+        window._tetoRecoveryState = recState;
+      }
+      return;
+    }
+
+    // ここまで立て直しブロック
+
+    // 街での通常ループ前に、たまに農園を処理
+    tetoMaybeCareFarm();
+    tetoMaybeHarvestFarm();
+    tetoMaybePlantFarmSeeds();
 
     if (needs.needHousingPay) {
       tetoMaybePayHousingRent();
@@ -908,10 +1191,14 @@
       tetoMaybeClaimGuildRewards();
     }
 
-    const bs = tetoGetBattleStatus();
     if (needs.needTraining || needs.needEquip) {
       if (bs.hp != null && bs.hpMax != null && bs.hp < bs.hpMax * 0.3) {
         tetoDoOneCraftStep();
+        // クラフトが続けてスキップされている場合は採取にフォールバックして立て直しを進める
+        if ((window._tetoRecentCraftSkipCount || 0) >= 3) {
+          tetoDoOneGatherStep();
+          window._tetoRecentCraftSkipCount = 0;
+        }
       } else {
         tetoDoOneBattleStep();
         if (Math.random() < 0.2) {
@@ -929,10 +1216,10 @@
         tetoMaybeUseMarket();
       }
     } else {
-      const roll = Math.random();
-      if (roll < 0.35) {
+      const roll2 = Math.random();
+      if (roll2 < 0.35) {
         tetoDoOneBattleStep();
-      } else if (roll < 0.65) {
+      } else if (roll2 < 0.65) {
         tetoDoOneGatherStep();
       } else {
         tetoDoOneCraftStep();
@@ -958,7 +1245,6 @@
   // =========================
 
   if (typeof window !== "undefined") {
-    // スナップショット
     window.tetoGetBattleStatus = tetoGetBattleStatus;
     window.tetoGetGatherStatus = tetoGetGatherStatus;
     window.tetoGetCraftStatus = tetoGetCraftStatus;
@@ -969,7 +1255,6 @@
     window.tetoGetHousingStatus = tetoGetHousingStatus;
     window.tetoGetResourceStatus = tetoGetResourceStatus;
 
-    // モード別 tick
     window.tetoTickBattleMain = tetoTickBattleMain;
     window.tetoTickGatherMain = tetoTickGatherMain;
     window.tetoTickCraftMain = tetoTickCraftMain;

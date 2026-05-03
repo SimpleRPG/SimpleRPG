@@ -263,22 +263,17 @@ function refreshBattleItemSelect() {
       Object.keys(carryTools).forEach(id => {
         const cnt = carryTools[id] || 0;
         if (cnt <= 0) return;
+        
+        // ★修正: ITEM_META を優先して名前を取得
         let label = id;
-        if (id === "bomb") {
-          label = "爆弾";
-        } else if (id.startsWith("bomb_T1")) {
-          label = "爆弾T1";
-        } else if (id.startsWith("bomb_T2")) {
-          label = "爆弾T2";
-        } else if (id.startsWith("bomb_T3")) {
-          label = "爆弾T3";
-        } else if (id === "molotov_T1") {
-          label = "火炎瓶T1";
-        } else if (id === "paralyzeGas_T1") {
-          label = "麻痺ガス瓶T1";
-        } else if (id === "poisonNeedle_T1") {
-          label = "毒針T1";
+        if (typeof getItemName === "function") {
+          const name = getItemName(id);
+          if (name) label = name;
+        } else if (typeof getItemMeta === "function") {
+          const meta = getItemMeta(id);
+          if (meta && meta.name) label = meta.name;
         }
+        
         const opt = document.createElement("option");
         opt.value = id;
         opt.textContent = `${label}（${cnt}）`;
@@ -422,6 +417,19 @@ function usePotionOutsideBattle() {
     appendLog(`${p.name} を使用した（HP ${prevHp} → ${hp}、+${healedHp} / MP ${prevMp} → ${mp}、+${healedMp}）`);
   }
 
+  // ★追加: テト用アイテム使用ログ（フィールドポーション）
+  if (typeof window.tetoRecordItemUse === "function") {
+    try {
+      window.tetoRecordItemUse("potion", id, {
+        context: "field",
+        hpBefore: prevHp,
+        hpAfter: hp,
+        mpBefore: prevMp,
+        mpAfter: mp
+      });
+    } catch (e) {}
+  }
+
   notifyAlchUse("potion", p.id);
 
   refreshUseItemSelect();
@@ -493,6 +501,19 @@ function useBattleItem() {
       appendLog("澄んだ薬が体内を巡り、傷の治りが早くなった気がする…");
     }
 
+    // ★追加: テト用アイテム使用ログ（戦闘ポーション）
+    if (typeof window.tetoRecordItemUse === "function") {
+      try {
+        window.tetoRecordItemUse("potion", id, {
+          context: "battle",
+          hpBefore: prevHp,
+          hpAfter: hp,
+          mpBefore: prevMp,
+          mpAfter: mp
+        });
+      } catch (e) {}
+    }
+
     notifyAlchUse("potion", p.id);
 
   } else if (category === "tool") {
@@ -522,6 +543,9 @@ function useBattleItem() {
       delete carryTools[id];
     }
 
+    let beforeHp = enemyHp;
+    let afterHp = enemyHp;
+
     if (!currentEnemy) {
       appendLog("攻撃する敵がいない");
     } else {
@@ -536,9 +560,9 @@ function useBattleItem() {
         }
       }
 
-      const beforeHp = enemyHp;
-
+      beforeHp = enemyHp;
       enemyHp = Math.max(0, enemyHp - dmg);
+      afterHp = enemyHp;
 
       function rollStatusApply(baseRate) {
         let rate = baseRate;
@@ -548,8 +572,18 @@ function useBattleItem() {
         return Math.random() < rate;
       }
 
+      // ★修正: ITEM_META を使ってアイテム名を取得
+      let itemName = id;
+      if (typeof getItemName === "function") {
+        const name = getItemName(id);
+        if (name) itemName = name;
+      } else if (typeof getItemMeta === "function") {
+        const meta = getItemMeta(id);
+        if (meta && meta.name) itemName = meta.name;
+      }
+
       if (id === "molotov_T1") {
-        appendLog(`火炎瓶を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
+        appendLog(`${itemName}を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
         if (typeof addStatusToEnemy === "function") {
           if (rollStatusApply(0.7)) {
             addStatusToEnemy("burn");
@@ -558,7 +592,7 @@ function useBattleItem() {
           }
         }
       } else if (id === "poisonNeedle_T1") {
-        appendLog(`毒針を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
+        appendLog(`${itemName}を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
         if (typeof addStatusToEnemy === "function") {
           if (rollStatusApply(0.7)) {
             addStatusToEnemy("poison");
@@ -568,9 +602,9 @@ function useBattleItem() {
         }
       } else if (id === "paralyzeGas_T1") {
         if (beforeHp === enemyHp && dmg === 0) {
-          appendLog(`麻痺ガス瓶を投げつけた！ ${currentEnemy.name}をガスで包んだ！`);
+          appendLog(`${itemName}を投げつけた！ ${currentEnemy.name}をガスで包んだ！`);
         } else {
-          appendLog(`麻痺ガス瓶を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
+          appendLog(`${itemName}を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
         }
         if (typeof addStatusToEnemy === "function") {
           if (rollStatusApply(0.7)) {
@@ -580,10 +614,23 @@ function useBattleItem() {
           }
         }
       } else {
-        appendLog(`爆弾を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
+        appendLog(`${itemName}を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
       }
 
       notifyAlchUse("tool", id);
+
+      // ★追加: テト用アイテム使用ログ（戦闘道具）
+      if (typeof window.tetoRecordItemUse === "function") {
+        try {
+          window.tetoRecordItemUse("tool", id, {
+            context: "battle",
+            hpBefore: hp,
+            hpAfter: hp,   // プレイヤーHPは変化しないのでそのまま
+            mpBefore: mp,
+            mpAfter: mp
+          });
+        } catch (e) {}
+      }
 
       if (enemyHp <= 0) {
         enemyHp = 0;
@@ -699,12 +746,28 @@ function eatFoodInField() {
     return;
   }
 
+  const prevHp = hp;
+  const prevMp = mp;
+
   applyFoodEffect(recipe.effect, id);
 
   carryFoods[id] = have - 1;
   if (carryFoods[id] <= 0) delete carryFoods[id];
 
   appendLog(`${recipe.name} を食べた！`);
+
+  // ★追加: テト用アイテム使用ログ（フィールド料理）
+  if (typeof window.tetoRecordItemUse === "function") {
+    try {
+      window.tetoRecordItemUse("food", id, {
+        context: "field",
+        hpBefore: prevHp,
+        hpAfter: hp,
+        mpBefore: prevMp,
+        mpAfter: mp
+      });
+    } catch (e) {}
+  }
 
   notifyBuffFoodOrDrink(recipe.effect);
 
@@ -737,12 +800,28 @@ function drinkInField() {
     return;
   }
 
+  const prevHp = hp;
+  const prevMp = mp;
+
   applyDrinkEffect(recipe.effect, id);
 
   carryDrinks[id] = have - 1;
   if (carryDrinks[id] <= 0) delete carryDrinks[id];
 
   appendLog(`${recipe.name} を飲んだ！`);
+
+  // ★追加: テト用アイテム使用ログ（フィールド飲み物）
+  if (typeof window.tetoRecordItemUse === "function") {
+    try {
+      window.tetoRecordItemUse("drink", id, {
+        context: "field",
+        hpBefore: prevHp,
+        hpAfter: hp,
+        mpBefore: prevMp,
+        mpAfter: mp
+      });
+    } catch (e) {}
+  }
 
   notifyBuffFoodOrDrink(recipe.effect);
 
@@ -846,7 +925,7 @@ function logGatherBaseRequiredMats(matKey, currentLv, nextLv, needInter, needSta
     const haveStar = getStarShardCountForGather();
     lines.push(`- ${RARE_GATHER_ITEM_ID}: 必要 ${needStar} 個 / 所持 ${haveStar} 個`);
   }
-  appendLog(lines.join("\n"));
+  appendLog(lines.join("\\\\n"));
 }
 
 // =======================

@@ -173,12 +173,26 @@ function addItemToInventory(itemId, amount) {
   amount = Math.max(1, amount | 0);
 
   // 1. 料理（飲み物）
+  // ★修正: COOKING_DRINK_IDS チェックの前に ITEM_META 確認を追加
+  const meta = (typeof getItemMeta === "function") ? getItemMeta(itemId) : null;
+  
+  if (meta && meta.storageKind === "cookedDrink") {
+    window.cookedDrinks[itemId] = (window.cookedDrinks[itemId] || 0) + amount;
+    return;
+  }
+  
   if (COOKING_DRINK_IDS.includes(itemId)) {
     window.cookedDrinks[itemId] = (window.cookedDrinks[itemId] || 0) + amount;
     return;
   }
 
   // 2. 料理（食べ物）
+  // ★修正: COOKING_FOOD_IDS チェックの前に ITEM_META 確認を追加
+  if (meta && meta.storageKind === "cookedFood") {
+    window.cookedFoods[itemId] = (window.cookedFoods[itemId] || 0) + amount;
+    return;
+  }
+  
   if (COOKING_FOOD_IDS.includes(itemId)) {
     window.cookedFoods[itemId] = (window.cookedFoods[itemId] || 0) + amount;
     return;
@@ -950,6 +964,54 @@ if (typeof registerStorageImpl === "function") {
       const cur  = mats[id] || 0;
       const next = cur - amount;
       mats[id] = next > 0 ? next : 0;
+    }
+  });
+
+  // ★追加: 完成料理（食べ物）用ストレージ（storageKind: "cookedFood"）
+  registerStorageImpl("cookedFood", {
+    getCount(id) {
+      const foods = window.cookedFoods || {};
+      return foods[id] || 0;
+    },
+    add(id, amount) {
+      amount = amount | 0;
+      if (!amount) return;
+      if (!window.cookedFoods) window.cookedFoods = {};
+      const foods = window.cookedFoods;
+      foods[id] = (foods[id] || 0) + amount;
+    },
+    remove(id, amount) {
+      amount = amount | 0;
+      if (!amount) return;
+      if (!window.cookedFoods) return;
+      const foods = window.cookedFoods;
+      const cur   = foods[id] || 0;
+      const next  = cur - amount;
+      foods[id] = next > 0 ? next : 0;
+    }
+  });
+
+  // ★追加: 完成料理（飲み物）用ストレージ（storageKind: "cookedDrink"）
+  registerStorageImpl("cookedDrink", {
+    getCount(id) {
+      const drinks = window.cookedDrinks || {};
+      return drinks[id] || 0;
+    },
+    add(id, amount) {
+      amount = amount | 0;
+      if (!amount) return;
+      if (!window.cookedDrinks) window.cookedDrinks = {};
+      const drinks = window.cookedDrinks;
+      drinks[id] = (drinks[id] || 0) + amount;
+    },
+    remove(id, amount) {
+      amount = amount | 0;
+      if (!amount) return;
+      if (!window.cookedDrinks) return;
+      const drinks = window.cookedDrinks;
+      const cur    = drinks[id] || 0;
+      const next   = cur - amount;
+      drinks[id] = next > 0 ? next : 0;
     }
   });
 }

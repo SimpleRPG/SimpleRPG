@@ -7,153 +7,905 @@
 // 先頭あたりに
 window.cookingMats = window.cookingMats || {};
 
-// COOKING_RECIPES をグローバル(window)に置く。
-// 既にどこかで定義されていれば上書きしない。
-window.COOKING_RECIPES = window.COOKING_RECIPES || {
-  food: [
-    // ---- T1 ----
-    // T1: 2枠（メイン＋サブ1）に統一
-    {
-      id: 'food_meat_basic_T1',
-      name: '胡椒焼き獣肉',
-      tier: 'T1',
-      requires: [
-        { id: 'meat_soft',    amount: 1 }, // メイン：やわらかい肉
-        { id: 'spice_pepper', amount: 1 }  // サブ：胡椒
-      ],
-      effect: {
-        kind: 'food',
-        hpRegen: 5,
-        atkUp: 2,
-        duration: 60,
-        statusId: 'food_meat_atk_T1',
-        durationTurns: 30,
-        hungerRecover: 10,
-        thirstRecover: 0
+// ========================================
+// COOKING_RECIPES 定義（テンプレ＋T10拡張）
+// ========================================
+
+(function initCookingRecipes() {
+  // すでにどこかで定義済みなら何もしない（元仕様維持）
+  if (window.COOKING_RECIPES) return;
+
+  // --- ティア共通のステータススケール ---
+  function buildTierNumber(tierLabel) {
+    return Number(String(tierLabel).replace(/^T/, "")) || 1;
+  }
+
+  // 共通: 種類数をティアから求める（最大10種類）
+  function calcKindsFromTier(tierNumber) {
+    const kinds = 2 + 2 * (tierNumber - 1); // T1:2, T2:4, T3:6 ...
+    return Math.min(kinds, 10);
+  }
+
+  // 重複しないIDを先頭から n 個取るユーティリティ
+  function pickFirstNUnique(ids, n) {
+    const result = [];
+    const seen = new Set();
+    for (const id of ids) {
+      if (!seen.has(id)) {
+        seen.add(id);
+        result.push(id);
+        if (result.length >= n) break;
       }
-    },
+    }
+    return result;
+  }
+
+  // T1〜T3 は元の構成を優先して再現し、それ以降は候補から増やす方針。[web:196]
+
+  // ---- 食べ物テンプレ ----
+  const FOOD_TEMPLATES = [
+    // 基本肉料理: T1〜T10
     {
-      id: 'food_veg_stew_T1',
-      name: '具だくさん野菜スープ',
-      tier: 'T1',
-      requires: [
-        { id: 'veg_root_rough', amount: 1 }, // メイン：根菜
-        { id: 'grain_mochi',    amount: 1 }  // サブ：もちもち穀物
-      ],
-      effect: {
-        kind: 'food',
-        defUp: 2,
-        resistUp: 2,
-        duration: 60,
-        statusId: 'food_veg_def_T1',
-        durationTurns: 30,
-        hungerRecover: 7,
-        thirstRecover: 7
-      }
-    },
-    {
-      id: 'food_fish_soup_T1',
-      name: '岩塩魚のスープ',
-      tier: 'T1',
-      requires: [
-        { id: 'fish_river',      amount: 1 }, // メイン：川魚
-        { id: 'spice_salt_rock', amount: 1 }  // サブ：岩塩
-      ],
-      effect: {
-        kind: 'food',
-        intUp: 2,
-        mpRegen: 3,
-        duration: 60,
-        statusId: 'food_fish_int_T1',
-        durationTurns: 30,
-        hungerRecover: 8,
-        thirstRecover: 4
+      baseId: "food_meat_basic",
+      name: "胡椒焼き獣肉",
+      kind: "food",
+      tierStart: 1,
+      tierEnd: 10,
+      buildEffect(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        if (t === 1) {
+          return {
+            kind: "food",
+            hpRegen: 5,
+            atkUp: 2,
+            duration: 60,
+            statusId: "food_meat_atk_T1",
+            durationTurns: 30,
+            hungerRecover: 10,
+            thirstRecover: 0
+          };
+        }
+        if (t === 2) {
+          return {
+            kind: "food",
+            hpRegen: 10,
+            atkUp: 4,
+            duration: 90,
+            statusId: "food_meat_atk_T2",
+            durationTurns: 45,
+            hungerRecover: 15,
+            thirstRecover: 0
+          };
+        }
+        if (t === 3) {
+          return {
+            kind: "food",
+            hpRegen: 20,
+            atkUp: 6,
+            duration: 120,
+            statusId: "food_meat_atk_T3",
+            durationTurns: 60,
+            hungerRecover: 20,
+            thirstRecover: 0
+          };
+        }
+        // T4以降はT3基準で少しずつ伸ばす
+        const extra = t - 3;
+        return {
+          kind: "food",
+          hpRegen: 20 + 3 * extra,
+          atkUp: 6 + 1 * extra,
+          duration: 120 + 10 * extra,
+          statusId: `food_meat_atk_T${t}`,
+          durationTurns: 60 + 5 * extra,
+          hungerRecover: 20 + 2 * extra,
+          thirstRecover: 0
+        };
+      },
+      buildRequires(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        const kinds = calcKindsFromTier(t);
+
+        if (t === 1) {
+          // 元のT1: meat_soft + spice_pepper
+          const base = ["meat_soft", "spice_pepper"];
+          const picked = pickFirstNUnique(
+            [
+              ...base,
+              "meat_premium",
+              "veg_leaf_crisp",
+              "grain_mochi",
+              "grain_refined",
+              "grain_ancient",
+              "meat_magic",
+              "meat_fatty",
+              "spice_premium",
+              "spice_secret",
+              "veg_herb_aroma"
+            ],
+            kinds
+          );
+          return picked.map(id => ({ id, amount: 1 }));
+        }
+
+        if (t === 2) {
+          // 元のT2: meat_soft, meat_premium, veg_leaf_crisp, spice_pepper
+          const base = [
+            "meat_soft",
+            "meat_premium",
+            "veg_leaf_crisp",
+            "spice_pepper"
+          ];
+          const picked = pickFirstNUnique(
+            [
+              ...base,
+              "grain_mochi",
+              "grain_refined",
+              "grain_ancient",
+              "meat_magic",
+              "meat_fatty",
+              "spice_premium",
+              "spice_secret",
+              "veg_herb_aroma",
+              "veg_root_rough"
+            ],
+            kinds
+          );
+          return picked.map(id => ({ id, amount: 1 }));
+        }
+
+        if (t === 3) {
+          // 元のT3: meat_magic, meat_premium, veg_leaf_crisp, spice_pepper, grain_ancient, spice_secret
+          const base = [
+            "meat_magic",
+            "meat_premium",
+            "veg_leaf_crisp",
+            "spice_pepper",
+            "grain_ancient",
+            "spice_secret"
+          ];
+          const picked = pickFirstNUnique(
+            [
+              ...base,
+              "meat_soft",
+              "meat_fatty",
+              "grain_mochi",
+              "grain_refined",
+              "veg_root_rough",
+              "veg_herb_aroma",
+              "spice_premium"
+            ],
+            kinds
+          );
+          return picked.map(id => ({ id, amount: 1 }));
+        }
+
+        // T4以降: 肉系素材＋穀物＋野菜＋スパイスから増やす（最大10種類）
+        const pool = [
+          "meat_magic",
+          "meat_premium",
+          "meat_fatty",
+          "meat_soft",
+          "grain_ancient",
+          "grain_refined",
+          "grain_mochi",
+          "veg_leaf_crisp",
+          "veg_root_rough",
+          "veg_herb_aroma",
+          "spice_pepper",
+          "spice_premium",
+          "spice_secret"
+        ];
+        const picked = pickFirstNUnique(pool, kinds);
+        return picked.map(id => ({ id, amount: 1 }));
       }
     },
 
-    // ---- T2 ----
-    // T2: 4枠に統一（肉・魚・野菜それぞれ別の構成にできるだけバラし）
+    // 基本野菜スープ: T1〜T10
     {
-      id: 'food_meat_basic_T2',
-      name: '胡椒焼き獣肉',
-      tier: 'T2',
-      requires: [
-        { id: 'meat_soft',      amount: 1 }, // T1からの継続
-        { id: 'meat_premium',   amount: 1 }, // 高級肉
-        { id: 'veg_leaf_crisp', amount: 1 }, // 付け合わせ野菜
-        { id: 'spice_pepper',   amount: 1 }  // 胡椒
-      ],
-      effect: {
-        kind: 'food',
-        hpRegen: 10,
-        atkUp: 4,
-        duration: 90,
-        statusId: 'food_meat_atk_T2',
-        durationTurns: 45,
-        hungerRecover: 15,
-        thirstRecover: 0
-      }
-    },
-    {
-      id: 'food_veg_stew_T2',
-      name: '具だくさん野菜スープ',
-      tier: 'T2',
-      requires: [
-        { id: 'veg_root_rough',    amount: 1 }, // 根菜
-        { id: 'veg_mushroom_aroma',amount: 1 }, // キノコ
-        { id: 'veg_premium',       amount: 1 }, // 高級野菜
-        { id: 'grain_refined',     amount: 1 }  // 精製穀物
-      ],
-      effect: {
-        kind: 'food',
-        defUp: 4,
-        resistUp: 4,
-        duration: 90,
-        statusId: 'food_veg_def_T2',
-        durationTurns: 45,
-        hungerRecover: 10,
-        thirstRecover: 10
-      }
-    },
-    {
-      id: 'food_fish_soup_T2',
-      name: '岩塩魚のスープ',
-      tier: 'T2',
-      requires: [
-        { id: 'fish_river',      amount: 1 }, // 川魚
-        { id: 'fish_sea',        amount: 1 }, // 海魚
-        { id: 'spice_salt_rock', amount: 1 }, // 岩塩
-        { id: 'veg_leaf_crisp',  amount: 1 }  // 葉物
-      ],
-      effect: {
-        kind: 'food',
-        intUp: 4,
-        mpRegen: 5,
-        duration: 90,
-        statusId: 'food_fish_int_T2',
-        durationTurns: 45,
-        hungerRecover: 11,
-        thirstRecover: 7
+      baseId: "food_veg_stew",
+      name: "具だくさん野菜スープ",
+      kind: "food",
+      tierStart: 1,
+      tierEnd: 10,
+      buildEffect(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        if (t === 1) {
+          return {
+            kind: "food",
+            defUp: 2,
+            resistUp: 2,
+            duration: 60,
+            statusId: "food_veg_def_T1",
+            durationTurns: 30,
+            hungerRecover: 7,
+            thirstRecover: 7
+          };
+        }
+        if (t === 2) {
+          return {
+            kind: "food",
+            defUp: 4,
+            resistUp: 4,
+            duration: 90,
+            statusId: "food_veg_def_T2",
+            durationTurns: 45,
+            hungerRecover: 10,
+            thirstRecover: 10
+          };
+        }
+        if (t === 3) {
+          return {
+            kind: "food",
+            defUp: 6,
+            resistUp: 6,
+            duration: 120,
+            statusId: "food_veg_def_T3",
+            durationTurns: 60,
+            hungerRecover: 13,
+            thirstRecover: 13
+          };
+        }
+        const extra = t - 3;
+        return {
+          kind: "food",
+          defUp: 6 + 1 * extra,
+          resistUp: 6 + 1 * extra,
+          duration: 120 + 10 * extra,
+          statusId: `food_veg_def_T${t}`,
+          durationTurns: 60 + 5 * extra,
+          hungerRecover: 13 + 1 * extra,
+          thirstRecover: 13 + 1 * extra
+        };
+      },
+      buildRequires(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        const kinds = calcKindsFromTier(t);
+
+        if (t === 1) {
+          // 元のT1: veg_root_rough, grain_mochi
+          const base = ["veg_root_rough", "grain_mochi"];
+          const picked = pickFirstNUnique(
+            [
+              ...base,
+              "veg_leaf_crisp",
+              "veg_mushroom_aroma",
+              "veg_premium",
+              "grain_refined",
+              "grain_ancient",
+              "spice_premium",
+              "veg_mountain",
+              "veg_dried"
+            ],
+            kinds
+          );
+          return picked.map(id => ({ id, amount: 1 }));
+        }
+
+        if (t === 2) {
+          // 元のT2: veg_root_rough, veg_mushroom_aroma, veg_premium, grain_refined
+          const base = [
+            "veg_root_rough",
+            "veg_mushroom_aroma",
+            "veg_premium",
+            "grain_refined"
+          ];
+          const picked = pickFirstNUnique(
+            [
+              ...base,
+              "veg_leaf_crisp",
+              "grain_mochi",
+              "grain_ancient",
+              "spice_premium",
+              "veg_mountain",
+              "veg_dried"
+            ],
+            kinds
+          );
+          return picked.map(id => ({ id, amount: 1 }));
+        }
+
+        if (t === 3) {
+          // 元のT3: veg_root_rough, veg_leaf_crisp, veg_mushroom_aroma, veg_premium, grain_ancient, spice_premium
+          const base = [
+            "veg_root_rough",
+            "veg_leaf_crisp",
+            "veg_mushroom_aroma",
+            "veg_premium",
+            "grain_ancient",
+            "spice_premium"
+          ];
+          const picked = pickFirstNUnique(
+            [
+              ...base,
+              "grain_mochi",
+              "grain_refined",
+              "veg_mountain",
+              "veg_dried",
+              "spice_secret",
+              "spice_salt_rock"
+            ],
+            kinds
+          );
+          return picked.map(id => ({ id, amount: 1 }));
+        }
+
+        // T4以降: 野菜＋穀物＋スパイスの中から最大10種類
+        const pool = [
+          "veg_root_rough",
+          "veg_leaf_crisp",
+          "veg_mushroom_aroma",
+          "veg_premium",
+          "veg_mountain",
+          "veg_dried",
+          "grain_mochi",
+          "grain_refined",
+          "grain_ancient",
+          "spice_premium",
+          "spice_secret",
+          "spice_salt_rock"
+        ];
+        const picked = pickFirstNUnique(pool, kinds);
+        return picked.map(id => ({ id, amount: 1 }));
       }
     },
 
+    // 基本魚スープ: T1〜T10
+    {
+      baseId: "food_fish_soup",
+      name: "岩塩魚のスープ",
+      kind: "food",
+      tierStart: 1,
+      tierEnd: 10,
+      buildEffect(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        if (t === 1) {
+          return {
+            kind: "food",
+            intUp: 2,
+            mpRegen: 3,
+            duration: 60,
+            statusId: "food_fish_int_T1",
+            durationTurns: 30,
+            hungerRecover: 8,
+            thirstRecover: 4
+          };
+        }
+        if (t === 2) {
+          return {
+            kind: "food",
+            intUp: 4,
+            mpRegen: 5,
+            duration: 90,
+            statusId: "food_fish_int_T2",
+            durationTurns: 45,
+            hungerRecover: 11,
+            thirstRecover: 7
+          };
+        }
+        if (t === 3) {
+          return {
+            kind: "food",
+            intUp: 6,
+            mpRegen: 8,
+            duration: 120,
+            statusId: "food_fish_int_T3",
+            durationTurns: 60,
+            hungerRecover: 14,
+            thirstRecover: 10
+          };
+        }
+        const extra = t - 3;
+        return {
+          kind: "food",
+          intUp: 6 + 1 * extra,
+          mpRegen: 8 + 1 * extra,
+          duration: 120 + 10 * extra,
+          statusId: `food_fish_int_T${t}`,
+          durationTurns: 60 + 5 * extra,
+          hungerRecover: 14 + 1 * extra,
+          thirstRecover: 10 + 1 * extra
+        };
+      },
+      buildRequires(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        const kinds = calcKindsFromTier(t);
+
+        if (t === 1) {
+          // 元のT1: fish_river, spice_salt_rock
+          const base = ["fish_river", "spice_salt_rock"];
+          const picked = pickFirstNUnique(
+            [
+              ...base,
+              "fish_sea",
+              "veg_leaf_crisp",
+              "veg_mountain",
+              "grain_ancient",
+              "grain_refined",
+              "spice_premium",
+              "fish_big",
+              "fish_deep"
+            ],
+            kinds
+          );
+          return picked.map(id => ({ id, amount: 1 }));
+        }
+
+        if (t === 2) {
+          // 元のT2: fish_river, fish_sea, spice_salt_rock, veg_leaf_crisp
+          const base = [
+            "fish_river",
+            "fish_sea",
+            "spice_salt_rock",
+            "veg_leaf_crisp"
+          ];
+          const picked = pickFirstNUnique(
+            [
+              ...base,
+              "veg_mountain",
+              "grain_refined",
+              "grain_ancient",
+              "spice_premium",
+              "fish_big",
+              "fish_deep"
+            ],
+            kinds
+          );
+          return picked.map(id => ({ id, amount: 1 }));
+        }
+
+        if (t === 3) {
+          // 元のT3: fish_sea, fish_deep, spice_salt_rock, veg_mountain, grain_ancient, spice_secret
+          const base = [
+            "fish_sea",
+            "fish_deep",
+            "spice_salt_rock",
+            "veg_mountain",
+            "grain_ancient",
+            "spice_secret"
+          ];
+          const picked = pickFirstNUnique(
+            [
+              ...base,
+              "fish_river",
+              "fish_big",
+              "spice_premium",
+              "veg_leaf_crisp",
+              "grain_refined"
+            ],
+            kinds
+          );
+          return picked.map(id => ({ id, amount: 1 }));
+        }
+
+        // T4以降: 魚＋野菜＋穀物＋スパイス
+        const pool = [
+          "fish_river",
+          "fish_sea",
+          "fish_big",
+          "fish_deep",
+          "spice_salt_rock",
+          "spice_premium",
+          "spice_secret",
+          "veg_mountain",
+          "veg_leaf_crisp",
+          "veg_root_rough",
+          "grain_ancient",
+          "grain_refined"
+        ];
+        const picked = pickFirstNUnique(pool, kinds);
+        return picked.map(id => ({ id, amount: 1 }));
+      }
+    },
+
+    // ★伝説魚料理: T3〜T10
+    {
+      baseId: "food_fish_legend",
+      name: "伝説魚の豪華フルコース",
+      kind: "food",
+      tierStart: 3,
+      tierEnd: 10,
+      buildEffect(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        if (t === 3) {
+          return {
+            kind: "food",
+            atkUp: 8,
+            defUp: 8,
+            intUp: 8,
+            mpRegen: 10,
+            duration: 120,
+            statusId: "food_fish_legend_T3",
+            durationTurns: 60,
+            hungerRecover: 25,
+            thirstRecover: 10
+          };
+        }
+        const extra = t - 3;
+        return {
+          kind: "food",
+          atkUp: 8 + 1 * extra,
+          defUp: 8 + 1 * extra,
+          intUp: 8 + 1 * extra,
+          mpRegen: 10 + 2 * extra,
+          duration: 120 + 10 * extra,
+          statusId: `food_fish_legend_T${t}`,
+          durationTurns: 60 + 5 * extra,
+          hungerRecover: 25 + 2 * extra,
+          thirstRecover: 10 + 1 * extra
+        };
+      },
+      buildRequires(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        const kinds = calcKindsFromTier(t);
+
+        // 元のT3構成をベース
+        const base = [
+          "fish_legend",
+          "fish_sea",
+          "spice_secret",
+          "veg_mountain",
+          "grain_ancient"
+        ];
+
+        const pool = [
+          ...base,
+          "fish_deep",
+          "fish_big",
+          "spice_premium",
+          "veg_leaf_crisp",
+          "grain_refined"
+        ];
+        const picked = pickFirstNUnique(pool, kinds);
+        return picked.map(id => ({ id, amount: 1 }));
+      }
+    }
+  ];
+
+  // ---- ドリンクテンプレ ----
+  const DRINK_TEMPLATES = [
+    // ハーブティー: T1〜T10
+    {
+      baseId: "drink_herb_tea",
+      name: "ハーブティー",
+      kind: "drink",
+      tierStart: 1,
+      tierEnd: 10,
+      buildEffect(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        if (t === 1) {
+          return {
+            kind: "drink",
+            mpRegen: 5,
+            spRegen: 5,
+            duration: 60,
+            statusId: "drink_mp_regen_T1",
+            durationTurns: 30,
+            hungerRecover: 0,
+            thirstRecover: 10
+          };
+        }
+        if (t === 2) {
+          return {
+            kind: "drink",
+            mpRegen: 10,
+            spRegen: 10,
+            duration: 90,
+            statusId: "drink_mp_regen_T2",
+            durationTurns: 45,
+            hungerRecover: 0,
+            thirstRecover: 15
+          };
+        }
+        if (t === 3) {
+          return {
+            kind: "drink",
+            mpRegen: 20,
+            spRegen: 20,
+            duration: 120,
+            statusId: "drink_mp_regen_T3",
+            durationTurns: 60,
+            hungerRecover: 0,
+            thirstRecover: 20
+          };
+        }
+        const extra = t - 3;
+        return {
+          kind: "drink",
+          mpRegen: 20 + 2 * extra,
+          spRegen: 20 + 2 * extra,
+          duration: 120 + 10 * extra,
+          statusId: `drink_mp_regen_T${t}`,
+          durationTurns: 60 + 5 * extra,
+          hungerRecover: 0,
+          thirstRecover: 20 + 2 * extra
+        };
+      },
+      buildRequires(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        const kinds = calcKindsFromTier(t);
+
+        if (t === 1) {
+          // 元のT1: veg_herb_aroma ×2（種類としては1種類）
+          const base = ["veg_herb_aroma"];
+          const picked = pickFirstNUnique(
+            [
+              ...base,
+              "veg_mountain",
+              "veg_leaf_crisp",
+              "veg_root_rough",
+              "grain_coarse",
+              "grain_refined",
+              "grain_ancient",
+              "spice_premium",
+              "spice_secret"
+            ],
+            kinds
+          );
+          return picked.map(id => ({ id, amount: 1 }));
+        }
+
+        if (t === 2) {
+          // 元のT2: veg_herb_aroma, spice_premium, grain_refined
+          const base = [
+            "veg_herb_aroma",
+            "spice_premium",
+            "grain_refined"
+          ];
+          const picked = pickFirstNUnique(
+            [
+              ...base,
+              "veg_mountain",
+              "veg_leaf_crisp",
+              "veg_root_rough",
+              "grain_coarse",
+              "grain_ancient",
+              "spice_secret"
+            ],
+            kinds
+          );
+          return picked.map(id => ({ id, amount: 1 }));
+        }
+
+        if (t === 3) {
+          // 元のT3: veg_herb_aroma x2, veg_mountain, grain_ancient, spice_secret, veg_leaf_crisp, veg_root_rough
+          const base = [
+            "veg_herb_aroma",
+            "veg_mountain",
+            "grain_ancient",
+            "spice_secret",
+            "veg_leaf_crisp",
+            "veg_root_rough"
+          ];
+          const picked = pickFirstNUnique(
+            [
+              ...base,
+              "grain_refined",
+              "grain_coarse",
+              "veg_mushroom_aroma",
+              "spice_premium"
+            ],
+            kinds
+          );
+          return picked.map(id => ({ id, amount: 1 }));
+        }
+
+        // T4以降: ハーブ・野菜・穀物・スパイス
+        const pool = [
+          "veg_herb_aroma",
+          "veg_mountain",
+          "veg_leaf_crisp",
+          "veg_root_rough",
+          "veg_mushroom_aroma",
+          "grain_coarse",
+          "grain_refined",
+          "grain_ancient",
+          "spice_premium",
+          "spice_secret"
+        ];
+        const picked = pickFirstNUnique(pool, kinds);
+        return picked.map(id => ({ id, amount: 1 }));
+      }
+    },
+
+    // エナジードリンク: T1〜T10
+    {
+      baseId: "drink_energy",
+      name: "活力ジュース",
+      kind: "drink",
+      tierStart: 1,
+      tierEnd: 10,
+      buildEffect(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        if (t === 1) {
+          return {
+            kind: "drink",
+            spMaxUp: 5,
+            moveSpeedUp: 5,
+            duration: 60,
+            statusId: "drink_sp_buff_T1",
+            durationTurns: 30,
+            hungerRecover: 0,
+            thirstRecover: 10
+          };
+        }
+        if (t === 2) {
+          return {
+            kind: "drink",
+            spMaxUp: 10,
+            moveSpeedUp: 10,
+            duration: 90,
+            statusId: "drink_sp_buff_T2",
+            durationTurns: 45,
+            hungerRecover: 0,
+            thirstRecover: 15
+          };
+        }
+        if (t === 3) {
+          return {
+            kind: "drink",
+            spMaxUp: 15,
+            moveSpeedUp: 15,
+            duration: 120,
+            statusId: "drink_sp_buff_T3",
+            durationTurns: 60,
+            hungerRecover: 0,
+            thirstRecover: 20
+          };
+        }
+        const extra = t - 3;
+        return {
+          kind: "drink",
+          spMaxUp: 15 + 1 * extra,
+          moveSpeedUp: 15 + 1 * extra,
+          duration: 120 + 10 * extra,
+          statusId: `drink_sp_buff_T${t}`,
+          durationTurns: 60 + 5 * extra,
+          hungerRecover: 0,
+          thirstRecover: 20 + 2 * extra
+        };
+      },
+      buildRequires(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        const kinds = calcKindsFromTier(t);
+
+        if (t === 1) {
+          // 元のT1: veg_leaf_crisp, grain_coarse
+          const base = ["veg_leaf_crisp", "grain_coarse"];
+          const picked = pickFirstNUnique(
+            [
+              ...base,
+              "veg_root_rough",
+              "grain_refined",
+              "spice_pepper",
+              "veg_herb_aroma",
+              "veg_mountain",
+              "grain_ancient",
+              "spice_premium"
+            ],
+            kinds
+          );
+          return picked.map(id => ({ id, amount: 1 }));
+        }
+
+        if (t === 2) {
+          // 元のT2: veg_leaf_crisp, veg_root_rough, grain_refined, spice_pepper
+          const base = [
+            "veg_leaf_crisp",
+            "veg_root_rough",
+            "grain_refined",
+            "spice_pepper"
+          ];
+          const picked = pickFirstNUnique(
+            [
+              ...base,
+              "grain_coarse",
+              "grain_ancient",
+              "veg_herb_aroma",
+              "veg_mountain",
+              "spice_premium"
+            ],
+            kinds
+          );
+          return picked.map(id => ({ id, amount: 1 }));
+        }
+
+        if (t === 3) {
+          // 元のT3: veg_premium, veg_leaf_crisp, veg_root_rough, grain_ancient, spice_premium, veg_mushroom_aroma
+          const base = [
+            "veg_premium",
+            "veg_leaf_crisp",
+            "veg_root_rough",
+            "grain_ancient",
+            "spice_premium",
+            "veg_mushroom_aroma"
+          ];
+          const picked = pickFirstNUnique(
+            [
+              ...base,
+              "grain_refined",
+              "grain_coarse",
+              "veg_herb_aroma",
+              "veg_mountain",
+              "spice_secret"
+            ],
+            kinds
+          );
+          return picked.map(id => ({ id, amount: 1 }));
+        }
+
+        // T4以降: 野菜・穀物・スパイス
+        const pool = [
+          "veg_premium",
+          "veg_leaf_crisp",
+          "veg_root_rough",
+          "veg_mushroom_aroma",
+          "veg_herb_aroma",
+          "veg_mountain",
+          "grain_ancient",
+          "grain_refined",
+          "grain_coarse",
+          "spice_premium",
+          "spice_secret",
+          "spice_pepper"
+        ];
+        const picked = pickFirstNUnique(pool, kinds);
+        return picked.map(id => ({ id, amount: 1 }));
+      }
+    }
+  ];
+
+  const food = [];
+  const drink = [];
+
+  // テンプレから自動生成
+  FOOD_TEMPLATES.forEach(tpl => {
+    for (let t = tpl.tierStart; t <= tpl.tierEnd; t++) {
+      const tierLabel = `T${t}`;
+      const id = `T${t}_${tpl.baseId}`;
+      food.push({
+        id,
+        name: tpl.name,
+        tier: tierLabel,
+        requires: tpl.buildRequires(tierLabel),
+        effect: tpl.buildEffect(tierLabel)
+      });
+    }
+  });
+
+  DRINK_TEMPLATES.forEach(tpl => {
+    for (let t = tpl.tierStart; t <= tpl.tierEnd; t++) {
+      const tierLabel = `T${t}`;
+      const id = `T${t}_${tpl.baseId}`;
+      drink.push({
+        id,
+        name: tpl.name,
+        tier: tierLabel,
+        requires: tpl.buildRequires(tierLabel),
+        effect: tpl.buildEffect(tierLabel)
+      });
+    }
+  });
+
+  // 既存の「別メニュー扱い」T2/T3料理は仕様そのまま＋IDそのまま維持
+  food.push(
     // 既存のT2肉料理（別メニュー扱い）
     {
-      id: 'food_meat_t2',
-      name: 'ジューシー獣肉ステーキ',
-      tier: 'T2',
+      id: "food_meat_t2",
+      name: "ジューシー獣肉ステーキ",
+      tier: "T2",
       requires: [
-        { id: 'meat_premium',   amount: 1 }, // 高級肉
-        { id: 'meat_fatty',     amount: 1 }, // 脂身肉
-        { id: 'veg_root_rough', amount: 1 }, // 付け合わせ根菜
-        { id: 'spice_premium',  amount: 1 }  // 高級スパイス
+        { id: "meat_premium", amount: 1 },
+        { id: "meat_fatty", amount: 1 },
+        { id: "veg_root_rough", amount: 1 },
+        { id: "spice_premium", amount: 1 }
       ],
       effect: {
-        kind: 'food',
+        kind: "food",
         hpRegen: 10,
         atkUp: 5,
         duration: 90,
-        statusId: 'food_meat_atk_steak_T2',
+        statusId: "food_meat_atk_steak_T2",
         durationTurns: 45,
         hungerRecover: 16,
         thirstRecover: 0
@@ -161,354 +913,129 @@ window.COOKING_RECIPES = window.COOKING_RECIPES || {
     },
     // 既存のT2野菜料理（別メニュー扱い）
     {
-      id: 'food_veg_t2',
-      name: '濃厚ベジシチュー',
-      tier: 'T2',
+      id: "food_veg_t2",
+      name: "濃厚ベジシチュー",
+      tier: "T2",
       requires: [
-        { id: 'veg_leaf_crisp',    amount: 1 }, // 葉物
-        { id: 'veg_mushroom_aroma',amount: 1 }, // キノコ
-        { id: 'veg_premium',       amount: 1 }, // 高級野菜
-        { id: 'grain_refined',     amount: 1 }  // 精製穀物
+        { id: "veg_leaf_crisp", amount: 1 },
+        { id: "veg_mushroom_aroma", amount: 1 },
+        { id: "veg_premium", amount: 1 },
+        { id: "grain_refined", amount: 1 }
       ],
       effect: {
-        kind: 'food',
+        kind: "food",
         defUp: 5,
         resistUp: 5,
         duration: 90,
-        statusId: 'food_veg_def_stew_T2',
+        statusId: "food_veg_def_stew_T2",
         durationTurns: 45,
         hungerRecover: 9,
         thirstRecover: 9
       }
     },
-
-    // ---- T3 ----
-    // T3: 6枠に統一。各メニューでできるだけ違う高級素材・スパイスを使わせる
+    // T3ステーキ
     {
-      id: 'food_meat_basic_T3',
-      name: '胡椒焼き獣肉',
-      tier: 'T3',
+      id: "food_meat_t3_steak",
+      name: "特選獣肉ステーキ",
+      tier: "T3",
       requires: [
-        { id: 'meat_magic',      amount: 1 }, // 不思議な肉
-        { id: 'meat_premium',    amount: 1 }, // 高級肉
-        { id: 'veg_leaf_crisp',  amount: 1 }, // 葉物
-        { id: 'spice_pepper',    amount: 1 }, // 胡椒
-        { id: 'grain_ancient',   amount: 1 }, // 古代穀物
-        { id: 'spice_secret',    amount: 1 }  // 秘伝スパイス
+        { id: "meat_magic", amount: 1 },
+        { id: "meat_premium", amount: 1 },
+        { id: "meat_fatty", amount: 1 },
+        { id: "veg_root_rough", amount: 1 },
+        { id: "veg_herb_aroma", amount: 1 },
+        { id: "spice_secret", amount: 1 }
       ],
       effect: {
-        kind: 'food',
-        hpRegen: 20,
-        atkUp: 6,
-        duration: 120,
-        statusId: 'food_meat_atk_T3',
-        durationTurns: 60,
-        hungerRecover: 20,
-        thirstRecover: 0
-      }
-    },
-    {
-      id: 'food_veg_stew_T3',
-      name: '具だくさん野菜スープ',
-      tier: 'T3',
-      requires: [
-        { id: 'veg_root_rough',    amount: 1 }, // 根菜
-        { id: 'veg_leaf_crisp',    amount: 1 }, // 葉物
-        { id: 'veg_mushroom_aroma',amount: 1 }, // キノコ
-        { id: 'veg_premium',       amount: 1 }, // 高級野菜
-        { id: 'grain_ancient',     amount: 1 }, // 古代穀物
-        { id: 'spice_premium',     amount: 1 }  // 高級スパイス
-      ],
-      effect: {
-        kind: 'food',
-        defUp: 6,
-        resistUp: 6,
-        duration: 120,
-        statusId: 'food_veg_def_T3',
-        durationTurns: 60,
-        hungerRecover: 13,
-        thirstRecover: 13
-      }
-    },
-    {
-      id: 'food_fish_soup_T3',
-      name: '岩塩魚の香味スープ',
-      tier: 'T3',
-      requires: [
-        { id: 'fish_sea',        amount: 1 }, // 海魚
-        { id: 'fish_deep',       amount: 1 }, // 深海魚
-        { id: 'spice_salt_rock', amount: 1 }, // 岩塩
-        { id: 'veg_mountain',    amount: 1 }, // 山菜
-        { id: 'grain_ancient',   amount: 1 }, // 古代穀物
-        { id: 'spice_secret',    amount: 1 }  // 秘伝スパイス
-      ],
-      effect: {
-        kind: 'food',
-        intUp: 6,
-        mpRegen: 8,
-        duration: 120,
-        statusId: 'food_fish_int_T3',
-        durationTurns: 60,
-        hungerRecover: 14,
-        thirstRecover: 10
-      }
-    },
-    // ★伝説魚T3料理（追加）
-    {
-      id: 'food_fish_legend_T3',
-      name: '伝説魚の豪華フルコース',
-      tier: 'T3',
-      requires: [
-        { id: 'fish_legend',   amount: 1 }, // 新レア魚
-        { id: 'fish_sea',      amount: 1 }, // 既存海魚
-        { id: 'spice_secret',  amount: 1 },
-        { id: 'veg_mountain',  amount: 1 },
-        { id: 'grain_ancient', amount: 1 }
-      ],
-      effect: {
-        kind: 'food',
-        atkUp: 8,
-        defUp: 8,
-        intUp: 8,
-        mpRegen: 10,
-        duration: 120,
-        statusId: 'food_fish_legend_T3',
-        durationTurns: 60,
-        hungerRecover: 25,
-        thirstRecover: 10
-      }
-    },
-
-    {
-      id: 'food_meat_t3_steak',
-      name: '特選獣肉ステーキ',
-      tier: 'T3',
-      requires: [
-        { id: 'meat_magic',      amount: 1 }, // 不思議な肉
-        { id: 'meat_premium',    amount: 1 }, // 高級肉
-        { id: 'meat_fatty',      amount: 1 }, // 脂身肉
-        { id: 'veg_root_rough',  amount: 1 }, // 付け合わせ根菜
-        { id: 'veg_herb_aroma',  amount: 1 }, // 香草バター的なイメージ
-        { id: 'spice_secret',    amount: 1 }  // 秘伝ソース
-      ],
-      effect: {
-        kind: 'food',
+        kind: "food",
         hpRegen: 25,
         atkUp: 8,
         duration: 120,
-        statusId: 'food_meat_atk_steak_T3',
+        statusId: "food_meat_atk_steak_T3",
         durationTurns: 60,
         hungerRecover: 22,
         thirstRecover: 0
       }
     },
+    // T3ベジシチュー
     {
-      id: 'food_veg_t3_stew',
-      name: '至高のベジシチュー',
-      tier: 'T3',
+      id: "food_veg_t3_stew",
+      name: "至高のベジシチュー",
+      tier: "T3",
       requires: [
-        { id: 'veg_mountain',     amount: 1 }, // 山菜
-        { id: 'veg_premium',      amount: 1 }, // 高級野菜
-        { id: 'veg_mushroom_aroma',amount: 1 }, // キノコ
-        { id: 'grain_ancient',    amount: 1 }, // 古代穀物
-        { id: 'spice_premium',    amount: 1 }, // 高級スパイス
-        { id: 'veg_leaf_crisp',   amount: 1 }  // 追加の葉物
+        { id: "veg_mountain", amount: 1 },
+        { id: "veg_premium", amount: 1 },
+        { id: "veg_mushroom_aroma", amount: 1 },
+        { id: "grain_ancient", amount: 1 },
+        { id: "spice_premium", amount: 1 },
+        { id: "veg_leaf_crisp", amount: 1 }
       ],
       effect: {
-        kind: 'food',
+        kind: "food",
         defUp: 8,
         resistUp: 8,
         duration: 120,
-        statusId: 'food_veg_def_stew_T3',
+        statusId: "food_veg_def_stew_T3",
         durationTurns: 60,
         hungerRecover: 12,
         thirstRecover: 12
       }
     },
-
+    // T3ロースト肉
     {
-      id: 'food_meat_t3',
-      name: '王侯のロースト肉',
-      tier: 'T3',
+      id: "food_meat_t3",
+      name: "王侯のロースト肉",
+      tier: "T3",
       requires: [
-        { id: 'meat_magic',      amount: 1 }, // 不思議な肉
-        { id: 'meat_premium',    amount: 1 }, // 高級肉
-        { id: 'veg_herb_aroma',  amount: 1 }, // 香草
-        { id: 'veg_mountain',    amount: 1 }, // 山菜
-        { id: 'grain_ancient',   amount: 1 }, // 古代穀物
-        { id: 'spice_secret',    amount: 1 }  // 秘伝スパイス
+        { id: "meat_magic", amount: 1 },
+        { id: "meat_premium", amount: 1 },
+        { id: "veg_herb_aroma", amount: 1 },
+        { id: "veg_mountain", amount: 1 },
+        { id: "grain_ancient", amount: 1 },
+        { id: "spice_secret", amount: 1 }
       ],
       effect: {
-        kind: 'food',
+        kind: "food",
         hpRegen: 20,
         atkUp: 8,
         duration: 120,
-        statusId: 'food_meat_atk_roast_T3',
+        statusId: "food_meat_atk_roast_T3",
         durationTurns: 60,
         hungerRecover: 21,
         thirstRecover: 0
       }
     },
+    // T3ポタージュ
     {
-      id: 'food_veg_t3',
-      name: '精霊の野菜ポタージュ',
-      tier: 'T3',
+      id: "food_veg_t3",
+      name: "精霊の野菜ポタージュ",
+      tier: "T3",
       requires: [
-        { id: 'veg_mountain',     amount: 1 }, // 山菜
-        { id: 'veg_premium',      amount: 1 }, // 高級野菜
-        { id: 'veg_leaf_crisp',   amount: 1 }, // 葉物
-        { id: 'grain_ancient',    amount: 1 }, // 古代穀物
-        { id: 'spice_premium',    amount: 1 }, // 高級スパイス
-        { id: 'veg_mushroom_aroma',amount: 1 } // キノコ
+        { id: "veg_mountain", amount: 1 },
+        { id: "veg_premium", amount: 1 },
+        { id: "veg_leaf_crisp", amount: 1 },
+        { id: "grain_ancient", amount: 1 },
+        { id: "spice_premium", amount: 1 },
+        { id: "veg_mushroom_aroma", amount: 1 }
       ],
       effect: {
-        kind: 'food',
+        kind: "food",
         defUp: 8,
         resistUp: 8,
         duration: 120,
-        statusId: 'food_veg_def_potage_T3',
+        statusId: "food_veg_def_potage_T3",
         durationTurns: 60,
         hungerRecover: 11,
         thirstRecover: 11
       }
     }
-  ],
+  );
 
-  drink: [
-    // ---- T1 ----
-    // T1ドリンクも2枠に揃える
-    {
-      id: 'drink_herb_tea',
-      name: 'ハーブティー',
-      tier: 'T1',
-      requires: [
-        { id: 'veg_herb_aroma', amount: 2 } // 香草×2（岩塩なし）
-      ],
-      effect: {
-        kind: 'drink',
-        mpRegen: 5,
-        spRegen: 5,
-        duration: 60,
-        statusId: 'drink_mp_regen_T1',
-        durationTurns: 30,
-        hungerRecover: 0,
-        thirstRecover: 10
-      }
-    },
-    {
-      id: 'drink_energy',
-      name: '活力ジュース',
-      tier: 'T1',
-      requires: [
-        { id: 'veg_leaf_crisp', amount: 1 }, // 葉物
-        { id: 'grain_coarse',   amount: 1 }  // 粗挽き穀物
-      ],
-      effect: {
-        kind: 'drink',
-        spMaxUp: 5,
-        moveSpeedUp: 5,
-        duration: 60,
-        statusId: 'drink_sp_buff_T1',
-        durationTurns: 30,
-        hungerRecover: 0,
-        thirstRecover: 10
-      }
-    },
-
-    // ---- T2 ----
-    // T2ドリンクは4枠
-    {
-      id: 'drink_herb_tea_t2',
-      name: '濃縮ハーブティー',
-      tier: 'T2',
-      requires: [
-        { id: 'veg_herb_aroma', amount: 2 }, // 香草多め
-        { id: 'spice_premium',  amount: 1 }, // 高級スパイス
-        { id: 'grain_refined',  amount: 1 }  // 精製穀物（とろみ付け）
-      ],
-      effect: {
-        kind: 'drink',
-        mpRegen: 10,
-        spRegen: 10,
-        duration: 90,
-        statusId: 'drink_mp_regen_T2',
-        durationTurns: 45,
-        hungerRecover: 0,
-        thirstRecover: 15
-      }
-    },
-    {
-      id: 'drink_energy_t2',
-      name: '活力ジュースDX',
-      tier: 'T2',
-      requires: [
-        { id: 'veg_leaf_crisp', amount: 1 }, // 葉物
-        { id: 'veg_root_rough', amount: 1 }, // 根菜
-        { id: 'grain_refined',  amount: 1 }, // 精製穀物
-        { id: 'spice_pepper',   amount: 1 }  // 胡椒
-      ],
-      effect: {
-        kind: 'drink',
-        spMaxUp: 10,
-        moveSpeedUp: 10,
-        duration: 90,
-        statusId: 'drink_sp_buff_T2',
-        durationTurns: 45,
-        hungerRecover: 0,
-        thirstRecover: 15
-      }
-    },
-
-    // ---- T3 ----
-    // T3ドリンクは6枠
-    {
-      id: 'drink_herb_tea_t3',
-      name: '祝福のハーブティー',
-      tier: 'T3',
-      requires: [
-        { id: 'veg_herb_aroma', amount: 2 }, // 香草
-        { id: 'veg_mountain',   amount: 1 }, // 山の薬草
-        { id: 'grain_ancient',  amount: 1 }, // 古代穀物
-        { id: 'spice_secret',   amount: 1 }, // 秘伝スパイス
-        { id: 'veg_leaf_crisp', amount: 1 }, // 葉物
-        { id: 'veg_root_rough', amount: 1 }  // 根菜
-      ],
-      effect: {
-        kind: 'drink',
-        mpRegen: 20,
-        spRegen: 20,
-        duration: 120,
-        statusId: 'drink_mp_regen_T3',
-        durationTurns: 60,
-        hungerRecover: 0,
-        thirstRecover: 20
-      }
-    },
-    {
-      id: 'drink_energy_t3',
-      name: '超活力ジュース',
-      tier: 'T3',
-      requires: [
-        { id: 'veg_premium',       amount: 1 }, // 高級野菜
-        { id: 'veg_leaf_crisp',    amount: 1 }, // 葉物
-        { id: 'veg_root_rough',    amount: 1 }, // 根菜
-        { id: 'grain_ancient',     amount: 1 }, // 古代穀物
-        { id: 'spice_premium',     amount: 1 }, // 高級スパイス
-        { id: 'veg_mushroom_aroma',amount: 1 }  // キノコ
-      ],
-      effect: {
-        kind: 'drink',
-        spMaxUp: 15,
-        moveSpeedUp: 15,
-        duration: 120,
-        statusId: 'drink_sp_buff_T3',
-        durationTurns: 60,
-        hungerRecover: 0,
-        thirstRecover: 20
-      }
-    }
-  ]
-};
+  window.COOKING_RECIPES = {
+    food,
+    drink
+  };
+})();
 
 // ========================================
 // ITEM_META への登録（完成料理アイテム＋料理素材）
@@ -527,12 +1054,15 @@ window.COOKING_RECIPES = window.COOKING_RECIPES || {
       name: r.name,
       category: "food",
       craftCategory: "food",
-      storageKind: "inventory",
+      storageKind: "cookedFood", // "inventory" → "cookedFood"
       storageTab: "cooking",
       tier: r.tier || null,
       tags: ["cooking", "food"],
 
-      // 固定値: 料理効果もメタにコピーしておく
+      // COOKING_RECIPES の effect をそのまま保存
+      effect: eff,
+
+      // 互換用の固定値コピー
       foodEffectKind: eff.kind || "food",
       foodHpRegen: eff.hpRegen || 0,
       foodMpRegen: eff.mpRegen || 0,
@@ -557,12 +1087,15 @@ window.COOKING_RECIPES = window.COOKING_RECIPES || {
       name: r.name,
       category: "drink",
       craftCategory: "drink",
-      storageKind: "inventory",
+      storageKind: "cookedDrink", // "inventory" → "cookedDrink"
       storageTab: "cooking",
       tier: r.tier || null,
       tags: ["cooking", "drink"],
 
-      // 固定値: ドリンク効果もメタにコピー
+      // effect をそのまま保存
+      effect: eff,
+
+      // 互換用の固定値コピー
       drinkEffectKind: eff.kind || "drink",
       drinkHpRegen: eff.hpRegen || 0,
       drinkMpRegen: eff.mpRegen || 0,
@@ -641,7 +1174,7 @@ window.COOKING_RECIPES = window.COOKING_RECIPES || {
       fishValue: 10,
       tags: ["cooking", "material", "fish", "legendFish"]
     },
-
+    // 農園素材
     // 畑向け: field
     veg_root_rough: { id: "veg_root_rough", name: "ゴロゴロ根菜",   farmGrowable: true, farmCategory: "field" },
     veg_leaf_crisp: { id: "veg_leaf_crisp", name: "シャキシャキ葉菜", farmGrowable: true, farmCategory: "field" },

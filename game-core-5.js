@@ -411,6 +411,15 @@ function doExploreRandomEvent(area) {
       hp = 0;
       appendLog("あなたは罠で倒れてしまった…");
 
+      // ★テト用フック: 罠死
+      if (window.isTetoControlling && typeof window.tetoOnPlayerDeath === "function") {
+        try {
+          window.tetoOnPlayerDeath("trap");
+        } catch (e) {
+          if (window.console && console.error) console.error(e);
+        }
+      }
+
       window.isRetreating     = false;
       window.retreatTurnsLeft = 0;
 

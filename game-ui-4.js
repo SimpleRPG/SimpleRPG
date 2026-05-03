@@ -623,11 +623,12 @@ function updateCraftMatDetailText() {
   area.appendChild(basicBox);
 
   // 下段: 中間素材
+  // ★ WH-03 fix: window と素の定数の混在をやめ、window.INTERMEDIATE_MATERIALS のみに統一
   if (typeof window.intermediateMats !== "undefined" &&
-      Array.isArray(window.INTERMEDIATE_MATERIALS || INTERMEDIATE_MATERIALS)) {
+      Array.isArray(window.INTERMEDIATE_MATERIALS)) {
 
     const mats = window.intermediateMats || {};
-    const src  = window.INTERMEDIATE_MATERIALS || INTERMEDIATE_MATERIALS;
+    const src  = window.INTERMEDIATE_MATERIALS;
 
     const title = document.createElement("div");
     title.textContent = "中間素材";
@@ -765,16 +766,19 @@ function renderWarehouseGatherMaterials() {
 function renderWarehouseIntermediateMaterials() {
   const box = document.getElementById("intermediateMaterialsList");
   if (!box) return;
-  if (typeof window.intermediateMats === "undefined" ||
-      !Array.isArray(window.INTERMEDIATE_MATERIALS || window.INTERMEDIATE_MATERIALS)) {
+
+  // ★ WH-03 fix:
+  // 在庫がない or マスタ配列が無い場合のみ「ありません」を出し、
+  // 判定・src とも window.INTERMEDIATE_MATERIALS に統一する。
+  if (!window.intermediateMats || !Array.isArray(window.INTERMEDIATE_MATERIALS)) {
     box.textContent = "中間素材はまだありません。";
     return;
   }
 
   box.innerHTML = "";
 
-  const mats = window.intermediateMats || {};
-  const src  = window.INTERMEDIATE_MATERIALS || INTERMEDIATE_MATERIALS;
+  const mats = window.intermediateMats;
+  const src  = window.INTERMEDIATE_MATERIALS;
 
   // 種類ごとに T1/T2/T3 をまとめたいので、id 接頭辞でグルーピング
   // 例: woodPlank_T1/T2/T3 → key = woodPlank

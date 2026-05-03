@@ -10,6 +10,11 @@
 // - 高レベルタスク決定（push_battle / prepare_buffs / improve_gear / farm_gold / mixed）
 // - タスク→セッションプラン変換
 // - 自動セッションランナー runTestChanAuto(totalMinutes)
+//
+// ★新規追加（テトAI専用ログ記録）:
+// - 死亡記録: tetoRecordDeath(cause, context)
+// - アイテム使用記録: tetoRecordItemUse(itemType, itemId, context)
+// - セッションサマリーに死亡・アイテム使用統計を追加
 
 (function () {
   "use strict";
@@ -79,7 +84,20 @@
         foodUsed: 0,
         drinkUsed: 0,
         itemUsedBattle: 0,
-        rebirths: 0
+        rebirths: 0,
+        // ★新規追加: 死亡カウンター
+        deaths: 0,
+        deathsByBattle: 0,
+        deathsByTrap: 0,
+        deathsByHunger: 0,
+        deathsByThirst: 0,
+        deathsByPoison: 0,
+        deathsByOther: 0,
+        // ★新規追加: アイテム使用カウンター
+        potionsUsed: 0,
+        foodsEaten: 0,
+        drinksConsumed: 0,
+        toolsUsed: 0
       }
     };
 
@@ -108,14 +126,32 @@
     const s = _tetoSession;
     const now = Date.now();
     const durMs = (s.endedAt || now) - s.startedAt;
-    const minutes = Math.round(durMs / 1000 / 6) / 10; // 小数1桁分
+    // ✅ 修正②: 正しい分換算（÷60、小数1桁）
+    const minutes = Math.round(durMs / 1000 / 60 * 10) / 10;
 
     const summary = {
       mode: s.mode,
       minutesPlanned: s.minutes,
       minutesActual: minutes,
       style: s.style || null,
-      counters: s.counters
+      counters: s.counters,
+      // ★新規追加: 死亡サマリー
+      deaths: {
+        total: s.counters.deaths || 0,
+        byBattle: s.counters.deathsByBattle || 0,
+        byTrap: s.counters.deathsByTrap || 0,
+        byHunger: s.counters.deathsByHunger || 0,
+        byThirst: s.counters.deathsByThirst || 0,
+        byPoison: s.counters.deathsByPoison || 0,
+        byOther: s.counters.deathsByOther || 0
+      },
+      // ★新規追加: アイテム使用サマリー
+      itemUse: {
+        potions: s.counters.potionsUsed || 0,
+        foods: s.counters.foodsEaten || 0,
+        drinks: s.counters.drinksConsumed || 0,
+        tools: s.counters.toolsUsed || 0
+      }
     };
 
     if (typeof appendLog === "function") {
@@ -128,6 +164,23 @@
         `クラフト=${s.counters.crafts}, ギルド依頼受注=${s.counters.guildQuestsAccepted}, ` +
         `クリア=${s.counters.guildQuestsCleared}, 拠点レンタル=${s.counters.housingRents}`
       );
+
+      // ★新規追加: 死亡統計をログ出力
+      if (summary.deaths.total > 0) {
+        appendLog(
+          `[テト] 死亡: 総計=${summary.deaths.total}, ` +
+          `戦闘=${summary.deaths.byBattle}, 罠=${summary.deaths.byTrap}, ` +
+          `餓死=${summary.deaths.byHunger}, 渇死=${summary.deaths.byThirst}`
+        );
+      }
+
+      // ★新規追加: アイテム使用統計をログ出力
+      if (summary.itemUse.potions + summary.itemUse.foods + summary.itemUse.drinks + summary.itemUse.tools > 0) {
+        appendLog(
+          `[テト] アイテム使用: ポーション=${summary.itemUse.potions}, ` +
+          `料理=${summary.itemUse.foods}, 飲み物=${summary.itemUse.drinks}, 道具=${summary.itemUse.tools}`
+        );
+      }
     }
 
     if (typeof window.summarizeTestSession === "function") {
@@ -139,6 +192,81 @@
     }
 
     return summary;
+  }
+
+  // =========================
+  // ★新規追加: 死亡記録
+  // =========================
+  function tetoRecordDeath(cause, context) {
+    if (!_tetoSession) return;
+
+    tetoIncCounter("deaths");
+
+    if (cause === "battle") {
+      tetoIncCounter("deathsByBattle");
+    } else if (cause === "trap") {
+      tetoIncCounter("deathsByTrap");
+    } else if (cause === "hunger") {
+      tetoIncCounter("deathsByHunger");
+    } else if (cause === "thirst") {
+      tetoIncCounter("deathsByThirst");
+    } else if (cause === "poison") {
+      tetoIncCounter("deathsByPoison");
+    } else {
+      tetoIncCounter("deathsByOther");
+    }
+
+    // debug-stats-core.js の debugRecordDeath も呼ぶ
+    if (typeof window.debugRecordDeath === "function") {
+      try {
+        window.debugRecordDeath({
+          cause: cause,
+          enemyId: context && context.enemyId,
+          area: context && context.area,
+          hp: context && context.hp,
+          hunger: context && context.hunger,
+          thirst: context && context.thirst,
+          moneyLost: context && context.moneyLost,
+          equipBroken: context && context.equipBroken
+        });
+      } catch (e) {
+        console.log("debugRecordDeath error", e);
+      }
+    }
+  }
+
+  // =========================
+  // ★新規追加: アイテム使用記録
+  // =========================
+  function tetoRecordItemUse(itemType, itemId, context) {
+    if (!_tetoSession) return;
+
+    if (itemType === "potion") {
+      tetoIncCounter("potionsUsed");
+    } else if (itemType === "food") {
+      tetoIncCounter("foodsEaten");
+    } else if (itemType === "drink") {
+      tetoIncCounter("drinksConsumed");
+    } else if (itemType === "tool") {
+      tetoIncCounter("toolsUsed");
+    }
+
+    // debug-stats-core.js の debugRecordItemUse も呼ぶ
+    if (typeof window.debugRecordItemUse === "function") {
+      try {
+        window.debugRecordItemUse({
+          itemType: itemType,
+          itemId: itemId,
+          context: context && context.context || "field",
+          hpBefore: context && context.hpBefore || 0,
+          hpAfter: context && context.hpAfter || 0,
+          mpBefore: context && context.mpBefore || 0,
+          mpAfter: context && context.mpAfter || 0
+        });
+      } catch (e) {
+        console.log("debugRecordItemUse error", e);
+      }
+    }
   }
 
   // =========================
@@ -323,6 +451,12 @@
       clearInterval(_tetoTimerId);
       _tetoTimerId = null;
     }
+
+    // ★テト操作フラグを OFF にする
+    if (typeof window !== "undefined") {
+      window.isTetoControlling = false;
+    }
+
     tetoEndSession();
 
     const statusEl = document.getElementById("testChanStatusText");
@@ -336,6 +470,11 @@
       stopTestChan();
     }
     _tetoRunning = true;
+
+    // ★テト操作フラグを ON にする
+    if (typeof window !== "undefined") {
+      window.isTetoControlling = true;
+    }
 
     tetoBeginSession(mode, minutes);
 
@@ -373,6 +512,11 @@
           window.tetoTickBalancedMain();
         } else if (typeof window.tetoTickMixed === "function") {
           window.tetoTickMixed();
+        }
+
+        // ✅ 修正①: 各tickの後にポストtickを呼ぶ（teto-ai2.js の全機能が有効化される）
+        if (typeof window.tetoAdvancedPostTick === "function") {
+          window.tetoAdvancedPostTick(mode);
         }
       } catch (e) {
         // ★エラー内容を少しだけ詳しく出す（仕様はそのまま・メッセージ強化だけ）
@@ -695,6 +839,10 @@
   // デバッグ用
   window.tetoIncCounter = tetoIncCounter;
   window.tetoBalancedOnBattleResult = tetoBalancedOnBattleResult;
+
+  // ★新規追加: 死亡・アイテム使用記録
+  window.tetoRecordDeath = tetoRecordDeath;
+  window.tetoRecordItemUse = tetoRecordItemUse;
 
   // 追加公開: 診断・タスク決定・自動ランナー
   window.tetoDiagnoseProblems = tetoDiagnoseProblems;

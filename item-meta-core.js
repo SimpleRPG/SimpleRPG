@@ -1,6 +1,6 @@
 // item-meta-core.js
 // ========================================
-// アイテム共通メタ定義・レジストリ・ヘルパー
+// アイテム共通管理メタ定義・レジストリ・ヘルパー
 // ========================================
 
 (function initItemMetaCore(global) {
@@ -110,9 +110,15 @@
 
   function normalizeTier(tier, id) {
     if (tier === null || tier === undefined) {
-      // ID 末尾から推定: _T1/_T2/_T3 or T1/T2/T3
+      // ID 先頭から推定: T1_wood / T2_potion / T3_mixHerb など
       if (id) {
-        let m = id.match(/_T([0-9]+)$/);
+        let m = id.match(/^T([0-9]+)_/);
+        if (m) {
+          const n = parseInt(m[1], 10);
+          if (!isNaN(n)) return n;
+        }
+        // 後方互換: 末尾 _T1/_T2/_T3 or T1/T2/T3 も一応見る
+        m = id.match(/_T([0-9]+)$/);
         if (!m) m = id.match(/T([0-9]+)$/);
         if (m) {
           const n = parseInt(m[1], 10);

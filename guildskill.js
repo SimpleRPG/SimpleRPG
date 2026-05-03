@@ -443,3 +443,13 @@ function createSkillButton(node) {
 
   return btn;
 }
+
+// =======================
+// ★追加: テト用に COMBAT_GUILD_TREE をグローバル公開
+// =======================
+//
+// 仕様は変えず、ローカル定義の配列をそのまま window にエクスポートするだけ。
+// これにより、teto-ai4.js から window.COMBAT_GUILD_TREE を参照できる。
+if (typeof window !== "undefined" && typeof window.COMBAT_GUILD_TREE === "undefined") {
+  window.COMBAT_GUILD_TREE = COMBAT_GUILD_TREE;
+}

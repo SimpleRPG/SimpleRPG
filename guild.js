@@ -737,3 +737,16 @@ if (typeof window.getGuildNameById === "undefined") {
     return g.name || null;
   };
 }
+
+// =======================
+// ★追加: テト用に GUILDS / GUILD_ORDER をグローバル公開
+// =======================
+
+// 仕様は変えず、既存のローカル定義をそのまま window にエクスポートするだけ。
+// これにより、teto-ai4.js から window.GUILDS / window.GUILD_ORDER を参照できる。
+if (typeof window.GUILDS === "undefined") {
+  window.GUILDS = GUILDS;
+}
+if (typeof window.GUILD_ORDER === "undefined") {
+  window.GUILD_ORDER = GUILD_ORDER;
+}

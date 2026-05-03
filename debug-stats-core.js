@@ -91,6 +91,9 @@
   //   economyLogs:[ { t, sessionId, isAI, moneyBefore, moneyAfter, reason, delta } ],
   //   scenarioLogs:[ { t, sessionId, isAI, type, detail } ],
   //   enhanceLogs:[ { ... } ],
+  //   deathLogs:  [ { t, sessionId, isAI, cause, enemyId, area, level, hp, hunger, thirst, moneyLost, equipBroken, context } ],
+  //   levelUpLogs:[ { t, sessionId, isAI, level, statsGained, hpMaxBase } ],
+  //   itemUseLogs:[ { t, sessionId, isAI, itemType, itemId, context, hpBefore, hpAfter, mpBefore, mpAfter } ],
   //   sessions:    [ { id, mode, minutes, style, startTime, endTime, summary } ]
   // }
 
@@ -298,6 +301,115 @@
       roll: p.roll || 0
     });
     saveDebugStats();
+  }
+
+  // =======================
+  // ★新規追加: 死亡ログ記録（テトAI時のみ）
+  // =======================
+  function debugRecordDeath(payload) {
+    // ★プレイヤー操作時は記録しない（テトAI実験データのみ記録）
+    if (typeof window !== "undefined" && !window.isTetoControlling) return;
+
+    DEBUG_STATS.deathLogs = DEBUG_STATS.deathLogs || [];
+    DEBUG_STATS.deathLogs.push({
+      t: Date.now(),
+      sessionId: getCurrentSessionId(),
+      isAI: true, // テトAI時のみなので常にtrue
+      cause: payload.cause || "unknown",  // "battle", "trap", "hunger", "thirst", "poison"
+      enemyId: payload.enemyId || null,
+      area: payload.area || null,
+      level: safeGetLevel(),
+      hp: typeof payload.hp === "number" ? payload.hp : 0,
+      hunger: payload.hunger != null ? payload.hunger : safeGetHunger(),
+      thirst: payload.thirst != null ? payload.thirst : safeGetThirst(),
+      moneyLost: payload.moneyLost || 0,
+      equipBroken: payload.equipBroken || false,
+      context: payload.context || null
+    });
+    saveDebugStats();
+  }
+
+  // 死亡統計の集計
+  function debugGetDeathStats() {
+    const logs = DEBUG_STATS.deathLogs || [];
+    const byCause = {};
+
+    logs.forEach(l => {
+      const cause = l.cause || "unknown";
+      const t = byCause[cause] || { count: 0, totalMoneyLost: 0, equipBrokenCount: 0 };
+      t.count += 1;
+      t.totalMoneyLost += l.moneyLost || 0;
+      if (l.equipBroken) t.equipBrokenCount += 1;
+      byCause[cause] = t;
+    });
+
+    return {
+      totalDeaths: logs.length,
+      byCause: byCause
+    };
+  }
+
+  // =======================
+  // ★新規追加: レベルアップログ記録（テトAI時のみ）
+  // =======================
+  function debugRecordLevelUp(payload) {
+    // ★プレイヤー操作時は記録しない（テトAI実験データのみ記録）
+    if (typeof window !== "undefined" && !window.isTetoControlling) return;
+
+    DEBUG_STATS.levelUpLogs = DEBUG_STATS.levelUpLogs || [];
+    DEBUG_STATS.levelUpLogs.push({
+      t: Date.now(),
+      sessionId: getCurrentSessionId(),
+      isAI: true,
+      level: payload.level || 0,
+      statsGained: payload.statsGained || {},
+      hpMaxBase: payload.hpMaxBase || 0
+    });
+    saveDebugStats();
+  }
+
+  // =======================
+  // ★新規追加: アイテム使用ログ記録（テトAI時のみ）
+  // =======================
+  function debugRecordItemUse(payload) {
+    // ★プレイヤー操作時は記録しない（テトAI実験データのみ記録）
+    if (typeof window !== "undefined" && !window.isTetoControlling) return;
+
+    DEBUG_STATS.itemUseLogs = DEBUG_STATS.itemUseLogs || [];
+    DEBUG_STATS.itemUseLogs.push({
+      t: Date.now(),
+      sessionId: getCurrentSessionId(),
+      isAI: true,
+      itemType: payload.itemType || "unknown",  // "potion", "food", "drink", "tool"
+      itemId: payload.itemId || null,
+      context: payload.context || "field",      // "field", "battle", "warehouse"
+      hpBefore: payload.hpBefore || 0,
+      hpAfter: payload.hpAfter || 0,
+      mpBefore: payload.mpBefore || 0,
+      mpAfter: payload.mpAfter || 0
+    });
+    saveDebugStats();
+  }
+
+  // アイテム使用統計の集計
+  function debugGetItemUseStats() {
+    const logs = DEBUG_STATS.itemUseLogs || [];
+    const byType = {};
+
+    logs.forEach(l => {
+      const type = l.itemType || "unknown";
+      const t = byType[type] || { count: 0, fieldUse: 0, battleUse: 0, warehouseUse: 0 };
+      t.count += 1;
+      if (l.context === "field") t.fieldUse += 1;
+      if (l.context === "battle") t.battleUse += 1;
+      if (l.context === "warehouse") t.warehouseUse += 1;
+      byType[type] = t;
+    });
+
+    return {
+      totalUses: logs.length,
+      byType: byType
+    };
   }
 
   // =======================
@@ -672,6 +784,13 @@
     window.debugRecordEconomy = debugRecordEconomy;
     window.debugRecordEnhance = debugRecordEnhance;
     window.recordScenarioEvent = recordScenarioEvent;
+
+    // ★新規追加: 死亡・レベルアップ・アイテム使用ログ記録
+    window.debugRecordDeath = debugRecordDeath;
+    window.debugGetDeathStats = debugGetDeathStats;
+    window.debugRecordLevelUp = debugRecordLevelUp;
+    window.debugRecordItemUse = debugRecordItemUse;
+    window.debugGetItemUseStats = debugGetItemUseStats;
 
     window.debugGetGatherStats = debugGetGatherStats;
     window.debugGetCraftStats = debugGetCraftStats;

@@ -8,7 +8,14 @@
 const MATERIAL_TIER_VALUES = {
   t1: 3,
   t2: 5,
-  t3: 10
+  t3: 10,
+  t4: 15,
+  t5: 25,
+  t6: 40,
+  t7: 60,
+  t8: 90,
+  t9: 130,
+  t10: 180
 };
 window.MATERIAL_TIER_VALUES = MATERIAL_TIER_VALUES;
 
@@ -19,51 +26,88 @@ window.MATERIAL_TIER_VALUES = MATERIAL_TIER_VALUES;
 const CRAFT_SKILL_MAX_LV = 100;
 
 const CRAFT_SKILLS_INIT = {
-  weapon:   { lv: 0, exp: 0, expToNext: 10 },
-  armor:    { lv: 0, exp: 0, expToNext: 10 },
-  potion:   { lv: 0, exp: 0, expToNext: 10 },
-  tool:     { lv: 0, exp: 0, expToNext: 10 },
-  cooking:  { lv: 0, exp: 0, expToNext: 10 },
-  material: { lv: 0, exp: 0, expToNext: 10 }
+  weapon:    { lv: 0, exp: 0, expToNext: 10 },
+  armor:     { lv: 0, exp: 0, expToNext: 10 },
+  potion:    { lv: 0, exp: 0, expToNext: 10 },
+  tool:      { lv: 0, exp: 0, expToNext: 10 },
+  cooking:   { lv: 0, exp: 0, expToNext: 10 },
+  material:  { lv: 0, exp: 0, expToNext: 10 },
+  furniture: { lv: 0, exp: 0, expToNext: 10 }
 };
 
 // =======================
-// 中間素材定義
+// 中間素材定義（Tier先頭ID形式）
 // =======================
-//
-// T2以降は「前のTierの中間素材を＋1個」要求する。
-//
-// from は「カテゴリ＋ティア」指定だが、クラフト一元化のため
-// ITEM_META.craft.cost には itemId ベースで展開して持たせる。
 
 const INTERMEDIATE_MATERIALS = [
-  { id: "woodPlank_T1",    name: "T1板材",          from: { wood:  { t1: 3 } } },
-  { id: "woodPlank_T2",    name: "T2板材",          from: { wood:  { t2: 3 }, woodPlank_T1: 1 } },
-  { id: "woodPlank_T3",    name: "T3板材",          from: { wood:  { t3: 3 }, woodPlank_T2: 1 } },
+  { id: "T1_woodPlank",    name: "T1板材",          from: { wood:  { t1: 3 } } },
+  { id: "T2_woodPlank",    name: "T2板材",          from: { wood:  { t2: 3 }, "T1_woodPlank": 1 } },
+  { id: "T3_woodPlank",    name: "T3板材",          from: { wood:  { t3: 3 }, "T2_woodPlank": 1 } },
+  { id: "T4_woodPlank",    name: "T4板材",          from: { wood:  { t4: 3 }, "T3_woodPlank": 1 } },
+  { id: "T5_woodPlank",    name: "T5板材",          from: { wood:  { t5: 3 }, "T4_woodPlank": 1 } },
+  { id: "T6_woodPlank",    name: "T6板材",          from: { wood:  { t6: 3 }, "T5_woodPlank": 1 } },
+  { id: "T7_woodPlank",    name: "T7板材",          from: { wood:  { t7: 3 }, "T6_woodPlank": 1 } },
+  { id: "T8_woodPlank",    name: "T8板材",          from: { wood:  { t8: 3 }, "T7_woodPlank": 1 } },
+  { id: "T9_woodPlank",    name: "T9板材",          from: { wood:  { t9: 3 }, "T8_woodPlank": 1 } },
+  { id: "T10_woodPlank",   name: "T10板材",         from: { wood:  { t10: 3 }, "T9_woodPlank": 1 } },
 
-  { id: "ironIngot_T1",    name: "T1鉄インゴット",  from: { ore:   { t1: 4 } } },
-  { id: "ironIngot_T2",    name: "T2鉄インゴット",  from: { ore:   { t2: 4 }, ironIngot_T1: 1 } },
-  { id: "ironIngot_T3",    name: "T3鉄インゴット",  from: { ore:   { t3: 4 }, ironIngot_T2: 1 } },
+  { id: "T1_ironIngot",    name: "T1鉄インゴット",  from: { ore:   { t1: 4 } } },
+  { id: "T2_ironIngot",    name: "T2鉄インゴット",  from: { ore:   { t2: 4 }, "T1_ironIngot": 1 } },
+  { id: "T3_ironIngot",    name: "T3鉄インゴット",  from: { ore:   { t3: 4 }, "T2_ironIngot": 1 } },
+  { id: "T4_ironIngot",    name: "T4鉄インゴット",  from: { ore:   { t4: 4 }, "T3_ironIngot": 1 } },
+  { id: "T5_ironIngot",    name: "T5鉄インゴット",  from: { ore:   { t5: 4 }, "T4_ironIngot": 1 } },
+  { id: "T6_ironIngot",    name: "T6鉄インゴット",  from: { ore:   { t6: 4 }, "T5_ironIngot": 1 } },
+  { id: "T7_ironIngot",    name: "T7鉄インゴット",  from: { ore:   { t7: 4 }, "T6_ironIngot": 1 } },
+  { id: "T8_ironIngot",    name: "T8鉄インゴット",  from: { ore:   { t8: 4 }, "T7_ironIngot": 1 } },
+  { id: "T9_ironIngot",    name: "T9鉄インゴット",  from: { ore:   { t9: 4 }, "T8_ironIngot": 1 } },
+  { id: "T10_ironIngot",   name: "T10鉄インゴット", from: { ore:   { t10: 4 }, "T9_ironIngot": 1 } },
 
-  { id: "clothBolt_T1",    name: "T1布束",          from: { cloth: { t1: 3 } } },
-  { id: "clothBolt_T2",    name: "T2布束",          from: { cloth: { t2: 3 }, clothBolt_T1: 1 } },
-  { id: "clothBolt_T3",    name: "T3布束",          from: { cloth: { t3: 3 }, clothBolt_T2: 1 } },
+  { id: "T1_clothBolt",    name: "T1布束",          from: { cloth: { t1: 3 } } },
+  { id: "T2_clothBolt",    name: "T2布束",          from: { cloth: { t2: 3 }, "T1_clothBolt": 1 } },
+  { id: "T3_clothBolt",    name: "T3布束",          from: { cloth: { t3: 3 }, "T2_clothBolt": 1 } },
+  { id: "T4_clothBolt",    name: "T4布束",          from: { cloth: { t4: 3 }, "T3_clothBolt": 1 } },
+  { id: "T5_clothBolt",    name: "T5布束",          from: { cloth: { t5: 3 }, "T4_clothBolt": 1 } },
+  { id: "T6_clothBolt",    name: "T6布束",          from: { cloth: { t6: 3 }, "T5_clothBolt": 1 } },
+  { id: "T7_clothBolt",    name: "T7布束",          from: { cloth: { t7: 3 }, "T6_clothBolt": 1 } },
+  { id: "T8_clothBolt",    name: "T8布束",          from: { cloth: { t8: 3 }, "T7_clothBolt": 1 } },
+  { id: "T9_clothBolt",    name: "T9布束",          from: { cloth: { t9: 3 }, "T8_clothBolt": 1 } },
+  { id: "T10_clothBolt",   name: "T10布束",         from: { cloth: { t10: 3 }, "T9_clothBolt": 1 } },
 
-  { id: "toughLeather_T1", name: "T1強化皮",        from: { leather: { t1: 3 } } },
-  { id: "toughLeather_T2", name: "T2強化皮",        from: { leather: { t2: 3 }, toughLeather_T1: 1 } },
-  { id: "toughLeather_T3", name: "T3強化皮",        from: { leather: { t3: 3 }, toughLeather_T2: 1 } },
+  { id: "T1_toughLeather", name: "T1強化皮",        from: { leather: { t1: 3 } } },
+  { id: "T2_toughLeather", name: "T2強化皮",        from: { leather: { t2: 3 }, "T1_toughLeather": 1 } },
+  { id: "T3_toughLeather", name: "T3強化皮",        from: { leather: { t3: 3 }, "T2_toughLeather": 1 } },
+  { id: "T4_toughLeather", name: "T4強化皮",        from: { leather: { t4: 3 }, "T3_toughLeather": 1 } },
+  { id: "T5_toughLeather", name: "T5強化皮",        from: { leather: { t5: 3 }, "T4_toughLeather": 1 } },
+  { id: "T6_toughLeather", name: "T6強化皮",        from: { leather: { t6: 3 }, "T5_toughLeather": 1 } },
+  { id: "T7_toughLeather", name: "T7強化皮",        from: { leather: { t7: 3 }, "T6_toughLeather": 1 } },
+  { id: "T8_toughLeather", name: "T8強化皮",        from: { leather: { t8: 3 }, "T7_toughLeather": 1 } },
+  { id: "T9_toughLeather", name: "T9強化皮",        from: { leather: { t9: 3 }, "T8_toughLeather": 1 } },
+  { id: "T10_toughLeather",name: "T10強化皮",       from: { leather: { t10: 3 }, "T9_toughLeather": 1 } },
 
-  { id: "mixHerb_T1",      name: "T1調合用薬草",    from: { herb:  { t1: 3 } } },
-  { id: "mixHerb_T2",      name: "T2調合用薬草",    from: { herb:  { t2: 3 }, mixHerb_T1: 1 } },
-  { id: "mixHerb_T3",      name: "T3調合用薬草",    from: { herb:  { t3: 3 }, mixHerb_T2: 1 } },
+  { id: "T1_mixHerb",      name: "T1調合用薬草",    from: { herb:  { t1: 3 } } },
+  { id: "T2_mixHerb",      name: "T2調合用薬草",    from: { herb:  { t2: 3 }, "T1_mixHerb": 1 } },
+  { id: "T3_mixHerb",      name: "T3調合用薬草",    from: { herb:  { t3: 3 }, "T2_mixHerb": 1 } },
+  { id: "T4_mixHerb",      name: "T4調合用薬草",    from: { herb:  { t4: 3 }, "T3_mixHerb": 1 } },
+  { id: "T5_mixHerb",      name: "T5調合用薬草",    from: { herb:  { t5: 3 }, "T4_mixHerb": 1 } },
+  { id: "T6_mixHerb",      name: "T6調合用薬草",    from: { herb:  { t6: 3 }, "T5_mixHerb": 1 } },
+  { id: "T7_mixHerb",      name: "T7調合用薬草",    from: { herb:  { t7: 3 }, "T6_mixHerb": 1 } },
+  { id: "T8_mixHerb",      name: "T8調合用薬草",    from: { herb:  { t8: 3 }, "T7_mixHerb": 1 } },
+  { id: "T9_mixHerb",      name: "T9調合用薬草",    from: { herb:  { t9: 3 }, "T8_mixHerb": 1 } },
+  { id: "T10_mixHerb",     name: "T10調合用薬草",   from: { herb:  { t10: 3 }, "T9_mixHerb": 1 } },
 
-  { id: "distilledWater_T1", name: "T1蒸留水",      from: { water: { t1: 3 } } },
-  { id: "distilledWater_T2", name: "T2蒸留水",      from: { water: { t2: 3 }, distilledWater_T1: 1 } },
-  { id: "distilledWater_T3", name: "T3蒸留水",      from: { water: { t3: 3 }, distilledWater_T2: 1 } }
+  { id: "T1_distilledWater", name: "T1蒸留水",      from: { water: { t1: 3 } } },
+  { id: "T2_distilledWater", name: "T2蒸留水",      from: { water: { t2: 3 }, "T1_distilledWater": 1 } },
+  { id: "T3_distilledWater", name: "T3蒸留水",      from: { water: { t3: 3 }, "T2_distilledWater": 1 } },
+  { id: "T4_distilledWater", name: "T4蒸留水",      from: { water: { t4: 3 }, "T3_distilledWater": 1 } },
+  { id: "T5_distilledWater", name: "T5蒸留水",      from: { water: { t5: 3 }, "T4_distilledWater": 1 } },
+  { id: "T6_distilledWater", name: "T6蒸留水",      from: { water: { t6: 3 }, "T5_distilledWater": 1 } },
+  { id: "T7_distilledWater", name: "T7蒸留水",      from: { water: { t7: 3 }, "T6_distilledWater": 1 } },
+  { id: "T8_distilledWater", name: "T8蒸留水",      from: { water: { t8: 3 }, "T7_distilledWater": 1 } },
+  { id: "T9_distilledWater", name: "T9蒸留水",      from: { water: { t9: 3 }, "T8_distilledWater": 1 } },
+  { id: "T10_distilledWater",name: "T10蒸留水",     from: { water: { t10: 3 }, "T9_distilledWater": 1 } }
 ];
 
-// カテゴリ＋ティア表現を itemId にマップするヘルパー。
-// 例: { wood: { t1: 3 } } → { "wood_T1": 3 } など、実際のID仕様に合わせて調整する。
+// カテゴリ＋ティア表現を itemId にマップするヘルパー（Tier先頭対応）
 function expandIntermediateFromToCost(from) {
   const cost = {};
   Object.keys(from || {}).forEach(cat => {
@@ -72,14 +116,10 @@ function expandIntermediateFromToCost(from) {
       const amount = tierMap[tierKey] || 0;
       if (!amount) return;
 
-      // tierKey: "t1" / "t2" / ...
       const tierNum = parseInt(tierKey.replace("t", ""), 10);
       if (!tierNum) return;
 
-      // ここは実際の素材ID規約に合わせて変更する箇所。
-      // 仮仕様: wood.t1 → "wood_T1", ore.t2 → "ore_T2" など。
-      const itemId = `${cat}_T${tierNum}`;
-
+      const itemId = `T${tierNum}_${cat}`;
       cost[itemId] = (cost[itemId] || 0) + amount;
     });
   });
@@ -112,307 +152,310 @@ const POTION_TYPE_BOTH   = "both";
 const POTION_TYPE_DAMAGE = "damage";
 
 // =======================
-// ポーションマスタ
+// ポーションテンプレ＋生成
 // =======================
 
-const POTIONS_INIT = [
-  // HP 回復
+const POTION_MAX_TIER = 10;
+
+const POTION_TEMPLATES = [
   {
-    id: "potionT1",
-    name: "ポーションT1",
+    baseId: "potion",
+    baseName: "ポーション",
     type: POTION_TYPE_HP,
-    power: 0.30,
-    flat: 5,
-    cost: { mixHerb_T1: 1, distilledWater_T1: 1 },
-    rate: 0.8
+    basePower: 0.30,
+    maxPower: 1.50,
+    baseFlat: 5,
+    maxFlat: 50,
+    costKey: "hp",
+    rateKey: "hp"
   },
   {
-    id: "potionT2",
-    name: "ポーションT2",
-    type: POTION_TYPE_HP,
-    power: 0.55,
-    flat: 10,
-    cost: { mixHerb_T2: 1, distilledWater_T2: 1 },
-    rate: 0.7
-  },
-  {
-    id: "potionT3",
-    name: "ポーションT3",
-    type: POTION_TYPE_HP,
-    power: 0.80,
-    flat: 15,
-    cost: { mixHerb_T3: 1, distilledWater_T3: 1 },
-    rate: 0.6
-  },
-
-  // MP 回復
-  {
-    id: "manaT1",
-    name: "マナポーションT1",
+    baseId: "mana",
+    baseName: "マナポーション",
     type: POTION_TYPE_MP,
-    power: 0.30,
-    flat: 5,
-    cost: { mixHerb_T1: 1, distilledWater_T1: 2 },
-    rate: 0.8
+    basePower: 0.30,
+    maxPower: 1.50,
+    baseFlat: 5,
+    maxFlat: 50,
+    costKey: "mp",
+    rateKey: "mp"
   },
   {
-    id: "manaT2",
-    name: "マナポーションT2",
-    type: POTION_TYPE_MP,
-    power: 0.55,
-    flat: 10,
-    cost: { mixHerb_T2: 1, distilledWater_T2: 2 },
-    rate: 0.7
-  },
-  {
-    id: "manaT3",
-    name: "マナポーションT3",
-    type: POTION_TYPE_MP,
-    power: 0.80,
-    flat: 15,
-    cost: { mixHerb_T3: 1, distilledWater_T3: 2 },
-    rate: 0.6
-  },
-
-  // 両方全回復（ハイグレード）
-  {
-    id: "elixirT3",
-    name: "エリクサー",
+    baseId: "elixir",
+    baseName: "エリクサー",
     type: POTION_TYPE_BOTH,
-    power: 1.00,
-    flat: 0,
-    cost: { mixHerb_T3: 2, distilledWater_T3: 2, ironIngot_T3: 1 },
-    rate: 0.5
-  },
-
-  // 攻撃強化ポーション
-  {
-    id: "buffAtk_T1",
-    name: "攻撃強化ポーションT1",
-    type: POTION_TYPE_BOTH,
-    power: 0,
-    flat: 0,
-    cost: { mixHerb_T1: 1, ironIngot_T1: 1 },
-    rate: 0.8
+    basePower: 1.0,
+    maxPower: 1.0,
+    baseFlat: 0,
+    maxFlat: 0,
+    fixedTier: 3,
+    costKey: "elixir",
+    rateKey: "elixir"
   },
   {
-    id: "buffAtk_T2",
-    name: "攻撃強化ポーションT2",
+    baseId: "buffAtk",
+    baseName: "攻撃強化ポーション",
     type: POTION_TYPE_BOTH,
-    power: 0,
-    flat: 0,
-    cost: { mixHerb_T2: 2, ironIngot_T2: 1 },
-    rate: 0.7
+    basePower: 0,
+    maxPower: 0,
+    baseFlat: 0,
+    maxFlat: 0,
+    costKey: "buffAtk",
+    rateKey: "buff"
   },
   {
-    id: "buffAtk_T3",
-    name: "攻撃強化ポーションT3",
+    baseId: "buffDef",
+    baseName: "守護ポーション",
     type: POTION_TYPE_BOTH,
-    power: 0,
-    flat: 0,
-    cost: { mixHerb_T3: 3, ironIngot_T3: 2 },
-    rate: 0.6
-  },
-
-  // 守護ポーション
-  {
-    id: "buffDef_T1",
-    name: "守護ポーションT1",
-    type: POTION_TYPE_BOTH,
-    power: 0,
-    flat: 0,
-    cost: { toughLeather_T1: 1, distilledWater_T1: 1 },
-    rate: 0.8
+    basePower: 0,
+    maxPower: 0,
+    baseFlat: 0,
+    maxFlat: 0,
+    costKey: "buffDef",
+    rateKey: "buff"
   },
   {
-    id: "buffDef_T2",
-    name: "守護ポーションT2",
+    baseId: "cleanse",
+    baseName: "コンディションポーション",
     type: POTION_TYPE_BOTH,
-    power: 0,
-    flat: 0,
-    cost: { toughLeather_T2: 2, distilledWater_T2: 1 },
-    rate: 0.7
-  },
-  {
-    id: "buffDef_T3",
-    name: "守護ポーションT3",
-    type: POTION_TYPE_BOTH,
-    power: 0,
-    flat: 0,
-    cost: { toughLeather_T3: 3, distilledWater_T3: 2 },
-    rate: 0.6
-  },
-
-  // コンディションポーション
-  {
-    id: "cleanse_T1",
-    name: "コンディションポーションT1",
-    type: POTION_TYPE_BOTH,
-    power: 0,
-    flat: 0,
-    cost: { mixHerb_T1: 2, distilledWater_T1: 1 },
-    rate: 0.8
-  },
-  {
-    id: "cleanse_T2",
-    name: "コンディションポーションT2",
-    type: POTION_TYPE_BOTH,
-    power: 0,
-    flat: 0,
-    cost: { mixHerb_T2: 3, distilledWater_T2: 2 },
-    rate: 0.7
-  },
-  {
-    id: "cleanse_T3",
-    name: "コンディションポーションT3",
-    type: POTION_TYPE_BOTH,
-    power: 0,
-    flat: 0,
-    cost: { mixHerb_T3: 4, distilledWater_T3: 2 },
-    rate: 0.6
+    basePower: 0,
+    maxPower: 0,
+    baseFlat: 0,
+    maxFlat: 0,
+    costKey: "cleanse",
+    rateKey: "buff"
   }
 ];
 
+function lerpByTier(tier, base, max, maxTier) {
+  if (max === base) return base;
+  const t = (tier - 1) / (maxTier - 1);
+  return base + (max - base) * t;
+}
+
+function getPotionBaseRate(kind, tier) {
+  const tableHPMP = {
+    1: 0.8, 2: 0.7, 3: 0.6, 4: 0.55, 5: 0.5,
+    6: 0.45, 7: 0.4, 8: 0.35, 9: 0.3, 10: 0.25
+  };
+  const tableBuff = tableHPMP;
+
+  if (kind === "hp" || kind === "mp") {
+    return tableHPMP[tier] || 0.25;
+  }
+  if (kind === "elixir") {
+    return 0.5;
+  }
+  if (kind === "buff") {
+    return tableBuff[tier] || 0.25;
+  }
+  return 0.5;
+}
+
+function buildPotionCost(costKey, tier) {
+  switch (costKey) {
+    case "hp":
+      return {
+        [`T${tier}_mixHerb`]:
+          tier <= 4 ? 1 : tier <= 6 ? 2 : tier <= 8 ? 3 : tier <= 9 ? 4 : 5,
+        [`T${tier}_distilledWater`]:
+          tier <= 3 ? 1 : tier === 4 ? 2 : tier <= 6 ? 3 : tier === 7 ? 3 : tier === 8 ? 4 : tier === 9 ? 4 : 5
+      };
+    case "mp":
+      return {
+        [`T${tier}_mixHerb`]:
+          tier <= 4 ? 1 : tier <= 6 ? 2 : tier <= 8 ? 3 : tier <= 9 ? 4 : 5,
+        [`T${tier}_distilledWater`]:
+          tier <= 3 ? 2 : tier === 4 ? 3 : tier <= 6 ? 4 : tier <= 9 ? 5 : 6
+      };
+    case "elixir":
+      return { T3_mixHerb: 2, T3_distilledWater: 2, T3_ironIngot: 1 };
+    case "buffAtk":
+      return {
+        [`T${tier}_mixHerb`]: tier,
+        [`T${tier}_ironIngot`]:
+          tier <= 2 ? 1 : tier <= 5 ? 1 : tier <= 7 ? 2 : tier <= 8 ? 2 : tier <= 9 ? 4 : 5
+      };
+    case "buffDef":
+      return {
+        [`T${tier}_toughLeather`]: tier,
+        [`T${tier}_distilledWater`]:
+          tier <= 2 ? 1 : tier <= 4 ? 1 : tier <= 6 ? 2 : tier <= 8 ? 3 : tier <= 9 ? 4 : 5
+      };
+    case "cleanse":
+      return {
+        [`T${tier}_mixHerb`]:
+          tier === 1 ? 2 : tier === 2 ? 3 : tier === 3 ? 4 : tier === 4 ? 5 : tier === 5 ? 6 :
+          tier === 6 ? 7 : tier === 7 ? 8 : tier === 8 ? 9 : tier === 9 ? 10 : 12,
+        [`T${tier}_distilledWater`]:
+          tier === 1 ? 1 : tier === 2 ? 2 : tier === 3 ? 2 : tier === 4 ? 3 : tier === 5 ? 3 :
+          tier === 6 ? 4 : tier === 7 ? 4 : tier === 8 ? 5 : tier === 9 ? 5 : 6
+      };
+    default:
+      return {};
+  }
+}
+
+function generatePotionTiers(tpl) {
+  const list = [];
+  if (tpl.fixedTier) {
+    const tier = tpl.fixedTier;
+    list.push({
+      id: `T${tier}_${tpl.baseId}`,
+      name: `T${tier}${tpl.baseName}`,
+      type: tpl.type,
+      power: tpl.basePower,
+      flat: tpl.baseFlat,
+      cost: buildPotionCost(tpl.costKey, tier),
+      rate: getPotionBaseRate(tpl.rateKey, tier)
+    });
+    return list;
+  }
+
+  for (let tier = 1; tier <= POTION_MAX_TIER; tier++) {
+    list.push({
+      id: `T${tier}_${tpl.baseId}`,
+      name: `T${tier}${tpl.baseName}`,
+      type: tpl.type,
+      power: lerpByTier(tier, tpl.basePower, tpl.maxPower, POTION_MAX_TIER),
+      flat: lerpByTier(tier, tpl.baseFlat, tpl.maxFlat, POTION_MAX_TIER),
+      cost: buildPotionCost(tpl.costKey, tier),
+      rate: getPotionBaseRate(tpl.rateKey, tier)
+    });
+  }
+  return list;
+}
+
+const POTIONS_INIT = POTION_TEMPLATES.flatMap(generatePotionTiers);
+
 // =======================
-// 道具マスタ（投げ物・爆弾など）
+// 道具テンプレ＋生成
 // =======================
 
-const TOOLS_INIT = [
-  {
-    id: "molotov_T1",
-    name: "火炎瓶T1",
-    type: "damage",
-    power: 10,
-    flat: 0,
-    cost: { mixHerb_T1: 1, distilledWater_T1: 1, ironIngot_T1: 1 },
-    rate: 0.7
-  },
+const TOOL_MAX_TIER = 10;
 
+const TOOL_TEMPLATES = [
   {
-    id: "bomb_T1",
-    name: "爆弾T1",
+    baseId: "molotov",
+    baseName: "火炎瓶",
     type: "damage",
-    power: 7,
-    flat: 0,
-    cost: { ironIngot_T1: 1, mixHerb_T1: 1 },
-    rate: 0.7
+    basePower: 10,
+    powerPerTier: 4,
+    costKey: "molotov"
   },
   {
-    id: "bomb_T2",
-    name: "爆弾T2",
+    baseId: "bomb",
+    baseName: "爆弾",
     type: "damage",
-    power: 10,
-    flat: 0,
-    cost: { ironIngot_T2: 1, mixHerb_T2: 2 },
-    rate: 0.65
+    basePower: 7,
+    powerPerTier: 3,
+    costKey: "bomb"
   },
   {
-    id: "bomb_T3",
-    name: "爆弾T3",
+    baseId: "bomb_fire",
+    baseName: "火炎瓶",
     type: "damage",
-    power: 13,
-    flat: 0,
-    cost: { ironIngot_T3: 2, mixHerb_T3: 2 },
-    rate: 0.6
-  },
-
-  {
-    id: "bomb_fire_T1",
-    name: "火炎瓶T1",
-    type: "damage",
-    power: 10,
-    flat: 0,
-    cost: { ironIngot_T1: 1, mixHerb_T1: 2 },
-    rate: 0.7
+    basePower: 10,
+    powerPerTier: 4,
+    costKey: "bomb_fire"
   },
   {
-    id: "bomb_fire_T2",
-    name: "火炎瓶T2",
-    type: "damage",
-    power: 14,
-    flat: 0,
-    cost: { ironIngot_T2: 1, mixHerb_T2: 3 },
-    rate: 0.65
-  },
-  {
-    id: "bomb_fire_T3",
-    name: "火炎瓶T3",
-    type: "damage",
-    power: 18,
-    flat: 0,
-    cost: { ironIngot_T3: 2, mixHerb_T3: 3 },
-    rate: 0.6
-  },
-
-  {
-    id: "poisonNeedle_T1",
-    name: "毒針T1",
+    baseId: "poisonNeedle",
+    baseName: "毒針",
     type: "damageStatus",
-    power: 4,
-    flat: 0,
-    cost: { mixHerb_T1: 2 },
-    rate: 0.75
+    basePower: 4,
+    powerPerTier: 3,
+    costKey: "poisonNeedle"
   },
   {
-    id: "poisonNeedle_T2",
-    name: "毒針T2",
-    type: "damageStatus",
-    power: 7,
-    flat: 0,
-    cost: { mixHerb_T2: 3 },
-    rate: 0.7
-  },
-  {
-    id: "poisonNeedle_T3",
-    name: "毒針T3",
-    type: "damageStatus",
-    power: 10,
-    flat: 0,
-    cost: { mixHerb_T3: 4 },
-    rate: 0.65
-  },
-
-  {
-    id: "paralyzeGas_T1",
-    name: "麻痺ガス瓶T1",
+    baseId: "paralyzeGas",
+    baseName: "麻痺ガス瓶",
     type: "status",
-    power: 0,
-    flat: 0,
-    cost: { mixHerb_T1: 1, distilledWater_T1: 1 },
-    rate: 0.7
-  },
-  {
-    id: "paralyzeGas_T2",
-    name: "麻痺ガス瓶T2",
-    type: "status",
-    power: 0,
-    flat: 0,
-    cost: { mixHerb_T2: 2, distilledWater_T2: 1 },
-    rate: 0.65
-  },
-  {
-    id: "paralyzeGas_T3",
-    name: "麻痺ガス瓶T3",
-    type: "status",
-    power: 0,
-    flat: 0,
-    cost: { mixHerb_T3: 3, distilledWater_T3: 2 },
-    rate: 0.6
-  },
-
-  // 単発版（下位互換だが既存データ互換用）
-  {
-    id: "bomb",
-    name: "爆弾",
-    type: "damage",
-    power: 7,
-    flat: 0,
-    cost: { ironIngot_T1: 2, mixHerb_T1: 1 },
-    rate: 0.7
+    basePower: 0,
+    powerPerTier: 0,
+    costKey: "paralyzeGas"
   }
 ];
 
-// ツールマスタをグローバル公開
+function getToolBaseRate(tier) {
+  const table = {
+    1: 0.7, 2: 0.65, 3: 0.6, 4: 0.55, 5: 0.5,
+    6: 0.45, 7: 0.4, 8: 0.35, 9: 0.3, 10: 0.25
+  };
+  return table[tier] || 0.25;
+}
+
+function buildToolCost(costKey, tier) {
+  switch (costKey) {
+    case "molotov":
+      return {
+        [`T${tier}_mixHerb`]: tier,
+        [`T${tier}_distilledWater`]:
+          tier <= 3 ? 1 : tier <= 5 ? 2 : tier <= 7 ? 3 : tier <= 9 ? 4 : 5,
+        [`T${tier}_ironIngot`]:
+          tier <= 3 ? 1 : tier <= 5 ? 2 : tier <= 7 ? 2 : tier <= 8 ? 3 : 4
+      };
+    case "bomb":
+      return {
+        [`T${tier}_ironIngot`]:
+          tier <= 2 ? 1 : tier <= 4 ? 2 : tier <= 6 ? 3 : tier <= 8 ? 3 : tier <= 9 ? 5 : 6,
+        [`T${tier}_mixHerb`]:
+          tier <= 1 ? 1 : tier <= 3 ? 2 : tier <= 5 ? 3 : tier <= 7 ? 4 : tier <= 8 ? 5 : 6
+      };
+    case "bomb_fire":
+      return {
+        [`T${tier}_ironIngot`]:
+          tier <= 2 ? 1 : tier <= 4 ? 2 : tier <= 6 ? 3 : tier <= 8 ? 4 : tier <= 9 ? 5 : 6,
+        [`T${tier}_mixHerb`]:
+          tier === 1 ? 2 : tier === 2 ? 3 : tier === 3 ? 3 : tier === 4 ? 4 : tier === 5 ? 4 :
+          tier === 6 ? 5 : tier === 7 ? 5 : tier === 8 ? 6 : tier === 9 ? 6 : 7
+      };
+    case "poisonNeedle":
+      return {
+        [`T${tier}_mixHerb`]:
+          tier === 1 ? 2 : tier === 2 ? 3 : tier === 3 ? 4 : tier === 4 ? 5 : tier === 5 ? 6 :
+          tier === 6 ? 7 : tier === 7 ? 8 : tier === 8 ? 9 : tier === 9 ? 10 : 12
+      };
+    case "paralyzeGas":
+      return {
+        [`T${tier}_mixHerb`]: tier,
+        [`T${tier}_distilledWater`]:
+          tier === 1 ? 1 : tier === 2 ? 1 : tier === 3 ? 2 : tier === 4 ? 2 : tier === 5 ? 2 :
+          tier === 6 ? 3 : tier === 7 ? 3 : tier === 8 ? 4 : tier === 9 ? 4 : 5
+      };
+    default:
+      return {};
+  }
+}
+
+function generateToolTiers(tpl) {
+  const list = [];
+  for (let tier = 1; tier <= TOOL_MAX_TIER; tier++) {
+    list.push({
+      id: `T${tier}_${tpl.baseId}`,
+      name: `T${tier}${tpl.baseName}`,
+      type: tpl.type,
+      power: tpl.basePower + tpl.powerPerTier * (tier - 1),
+      flat: 0,
+      cost: buildToolCost(tpl.costKey, tier),
+      rate: getToolBaseRate(tier)
+    });
+  }
+  return list;
+}
+
+const TOOLS_INIT = TOOL_TEMPLATES.flatMap(generateToolTiers);
+
+TOOLS_INIT.push({
+  id: "T1_bomb",
+  name: "T1爆弾",
+  type: "damage",
+  power: 7,
+  flat: 0,
+  cost: { T1_ironIngot: 2, T1_mixHerb: 1 },
+  rate: 0.7
+});
+
 window.tools = TOOLS_INIT;
 
 // =======================
@@ -454,11 +497,11 @@ function rollQualityBySkillLv(skillLv) {
 
   const r = Math.random();
   if (r < exRate) {
-    return 2; // 傑作
+    return 2;
   } else if (r < exRate + goodRate) {
-    return 1; // 良品
+    return 1;
   }
-  return 0;   // 通常
+  return 0;
 }
 
 // ========================================
@@ -470,15 +513,15 @@ function rollQualityBySkillLv(skillLv) {
 
   const defs = {};
 
-  // 中間素材（クラフトも ITEM_META.craft に一元化）
   INTERMEDIATE_MATERIALS.forEach(m => {
-    const tierMatch = m.id.match(/_T(\d)/) || m.id.match(/T(\d)$/);
+    const tierMatch = m.id.match(/^T(\d+)_/);
     const tierNum = tierMatch ? parseInt(tierMatch[1], 10) : null;
 
     defs[m.id] = {
       id: m.id,
       name: m.name,
       category: "material",
+      tier: tierNum,
       storageKind: "intermediate",
       storageTab: "materials",
       tags: ["craft", "intermediate"],
@@ -487,14 +530,13 @@ function rollQualityBySkillLv(skillLv) {
         category: "material",
         tier: tierNum,
         kind: "intermediate",
-        baseRate: 1.0,                           // 中間素材クラフトの基礎成功率（必要なら調整）
-        cost: expandIntermediateFromToCost(m.from || {}), // itemId ベースに展開したコスト
-        fromRaw: m.from || null                  // 旧仕様のままの構造もログ等で使えるように保持
+        baseRate: 1.0,
+        cost: expandIntermediateFromToCost(m.from || {}),
+        fromRaw: m.from || null
       }
     };
   });
 
-  // レア強化素材
   defs[RARE_ENHANCE_MATERIAL_ID] = {
     id: RARE_ENHANCE_MATERIAL_ID,
     name: RARE_ENHANCE_MATERIAL_NAME,
@@ -502,12 +544,10 @@ function rollQualityBySkillLv(skillLv) {
     storageKind: "materials",
     storageTab: "materials",
     tags: ["craft", "enhanceMaterial"]
-    // レア強化素材自体はクラフト不可なので craft は付けない
   };
 
-  // ポーション（固定の効果値も ITEM_META に寄せる）
   POTIONS_INIT.forEach(p => {
-    const m = p.id.match(/T(\d)$/);
+    const m = p.id.match(/^T(\d+)_/);
     const tierNum = m ? parseInt(m[1], 10) : null;
 
     defs[p.id] = {
@@ -517,12 +557,10 @@ function rollQualityBySkillLv(skillLv) {
       tier: tierNum,
       tags: ["craft", "potion"],
 
-      // 固定値: 効果情報
       potionType: p.type,
       potionPower: p.power,
       potionFlat: p.flat,
 
-      // レシピ情報を ITEM_META.craft に一元化
       craft: {
         enabled: true,
         category: "potion",
@@ -534,9 +572,8 @@ function rollQualityBySkillLv(skillLv) {
     };
   });
 
-  // 道具（固定の効果値も ITEM_META に寄せる）
   TOOLS_INIT.forEach(t => {
-    const m = t.id.match(/T(\d)$/);
+    const m = t.id.match(/^T(\d+)_/);
     const tierNum = m ? parseInt(m[1], 10) : null;
 
     defs[t.id] = {
@@ -546,7 +583,6 @@ function rollQualityBySkillLv(skillLv) {
       tier: tierNum,
       tags: ["craft", "tool"],
 
-      // 固定値: 効果情報
       toolType: t.type,
       toolPower: t.power,
       toolFlat: t.flat,

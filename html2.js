@@ -195,8 +195,6 @@
                   <button class="skill-filter-btn" data-filter="gather">採取</button>
                   <button class="skill-filter-btn" data-filter="craft">クラフト</button>
                   <button class="skill-filter-btn" data-filter="econ">経済・拠点</button>
-                `
-  + `
                 </div>
               </div>
 
@@ -575,3 +573,81 @@
     document.body.appendChild(companionModal);
   }
 })();
+
+// ★★★ 以下、テトちゃんUI用のグローバル関数を追加（既存仕様に影響なし） ★★★
+
+// UI から通常モード or バランス(=自動最適化)を起動
+function startTestChanFromUI() {
+  const modeSelect = document.getElementById("testChanModeSelect");
+  const minutesInput = document.getElementById("testChanMinutes");
+  
+  if (!modeSelect || !minutesInput) {
+    console.error("テトちゃんUI要素が見つかりません");
+    return;
+  }
+  
+  const mode = modeSelect.value;
+  const minutes = parseInt(minutesInput.value, 10) || 10;
+
+  if (minutes <= 0) {
+    if (typeof appendLog === "function") {
+      appendLog("[テトAI] 時間(分)を正しく入力してください。");
+    } else {
+      console.error("テトちゃん: minutes が不正です:", minutes);
+    }
+    return;
+  }
+  
+  // バランス(評価重視)だけは自動最適化ランナーをそのまま使う
+  if (mode === "balancedMain") {
+    if (typeof window.runTestChanAuto === "function") {
+      if (typeof appendLog === "function") {
+        appendLog(`[テトAI] バランス(自動最適化)モードで約${minutes}分テストを開始します。`);
+      }
+      window.runTestChanAuto(minutes);
+    } else {
+      console.error("runTestChanAuto が見つかりません");
+      if (typeof appendLog === "function") {
+        appendLog("[エラー] runTestChanAuto が定義されていません。teto-ai.js が読み込まれているか確認してください。");
+      }
+    }
+    return;
+  }
+  
+  // それ以外のモードは従来どおり runTestChan を使用
+  if (typeof window.runTestChan === "function") {
+    if (typeof appendLog === "function") {
+      appendLog(`[テトAI] モード=${mode}, 約${minutes}分のテストを開始します。`);
+    }
+    window.runTestChan(mode, minutes);
+  } else {
+    console.error("runTestChan が見つかりません");
+    if (typeof appendLog === "function") {
+      appendLog("[エラー] runTestChan が定義されていません。teto-ai.js が読み込まれているか確認してください。");
+    }
+  }
+}
+
+// UI から自動最適化を起動（既存の専用UIがある場合用）
+function startTestChanAutoFromUI() {
+  const minutesInput = document.getElementById("testChanAutoMinutes");
+  
+  if (!minutesInput) {
+    console.error("自動最適化UI要素が見つかりません");
+    return;
+  }
+  
+  const totalMinutes = parseInt(minutesInput.value, 10) || 30;
+  
+  if (typeof window.runTestChanAuto === "function") {
+    if (typeof appendLog === "function") {
+      appendLog(`[テトAI] 自動最適化テストを約${totalMinutes}分で開始します。`);
+    }
+    window.runTestChanAuto(totalMinutes);
+  } else {
+    console.error("runTestChanAuto が見つかりません");
+    if (typeof appendLog === "function") {
+      appendLog("[エラー] runTestChanAuto が定義されていません。teto-ai.js が読み込まれているか確認してください。");
+    }
+  }
+}

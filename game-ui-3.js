@@ -120,7 +120,7 @@ function renderGatherBaseStatusInto(container) {
   }
 }
 
-// ★採取素材: T1/T2/T3 × 基本素材テーブル（在庫表示用）
+// ★採取素材: T1〜Tn × 基本素材テーブル（在庫表示用）
 function renderBasicMaterialTableInto(container) {
   if (!container || typeof window.materials === "undefined") return;
 
@@ -146,10 +146,16 @@ function renderBasicMaterialTableInto(container) {
   table.appendChild(thead);
 
   const tbody = document.createElement("tbody");
-  ["t1", "t2", "t3"].forEach((tierKey, idx) => {
+
+  // MATERIAL_MAX_T が定義されていなければ 3 にフォールバック
+  const maxTier = (typeof window.MATERIAL_MAX_T === "number" && window.MATERIAL_MAX_T > 0)
+    ? window.MATERIAL_MAX_T
+    : 3;
+
+  for (let tierNum = 1; tierNum <= maxTier; tierNum++) {
     const tr = document.createElement("tr");
     const tierTh = document.createElement("th");
-    tierTh.textContent = `T${idx + 1}`;
+    tierTh.textContent = `T${tierNum}`;
     tr.appendChild(tierTh);
 
     keys.forEach(key => {
@@ -158,18 +164,11 @@ function renderBasicMaterialTableInto(container) {
 
       // materials-core.js のAPIを優先
       if (typeof getMatTierCount === "function") {
-        const tierNum =
-          (tierKey === "t1") ? 1 :
-          (tierKey === "t2") ? 2 :
-          (tierKey === "t3") ? 3 : 1;
         val = getMatTierCount(key, tierNum);
       } else {
         // フォールバック：配列 index から読む（initMaterials 後の構造）
         const matArr = window.materials[key] || [];
-        const idxArr =
-          (tierKey === "t1") ? 0 :
-          (tierKey === "t2") ? 1 :
-          (tierKey === "t3") ? 2 : 0;
+        const idxArr = tierNum - 1;
         val = matArr[idxArr] || 0;
       }
 
@@ -178,7 +177,8 @@ function renderBasicMaterialTableInto(container) {
     });
 
     tbody.appendChild(tr);
-  });
+  }
+
   table.appendChild(tbody);
 
   container.appendChild(table);

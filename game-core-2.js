@@ -65,6 +65,9 @@ function addExp(amount) {
   // ★ レベルアップ中に増えたステータスを集計する
   let totalUp = { STR: 0, VIT: 0, INT: 0, DEX: 0, LUK: 0 };
 
+  // ★ レベルアップ前のベース最大HPを保持（ログ用）
+  const hpMaxBaseBefore = hpMaxBase;
+
   // ★ レベルが上限に達するまでレベルアップ
   while (exp >= expToNext && level < MAX_LEVEL) {
     exp -= expToNext;
@@ -92,6 +95,7 @@ function addExp(amount) {
 
   // ★ Lv100 到達後にさらにEXPがある場合は、そのまま保持するが、
   //    これ以上は while の条件でレベルアップしない（仕様として打ち止め）。
+
   if (leveled) {
     appendLog(`レベルアップ！ Lv${level}になった（成長タイプ: ${getGrowthTypeName()}）`);
 
@@ -113,6 +117,27 @@ function addExp(amount) {
       hp = hpMax;
       mp = mpMax;
       sp = spMax;
+    }
+
+    // ★追加: レベルアップの統計ログ（テトAI・デバッグ用）
+    // 仕様は変えず、「ログを1行追加するだけ」
+    if (typeof window.debugRecordLevelUp === "function") {
+      try {
+        window.debugRecordLevelUp({
+          level: level,
+          statsGained: {
+            STR: totalUp.STR,
+            VIT: totalUp.VIT,
+            INT: totalUp.INT,
+            DEX: totalUp.DEX,
+            LUK: totalUp.LUK
+          },
+          hpMaxBaseBefore: hpMaxBaseBefore,
+          hpMaxBaseAfter: hpMaxBase
+        });
+      } catch (e) {
+        console.log("debugRecordLevelUp error", e);
+      }
     }
   }
   updateDisplay();

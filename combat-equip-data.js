@@ -15,392 +15,266 @@ const ENHANCE_RARE_ITEM_ID   = "starShard";
 const ENHANCE_RARE_ITEM_NAME = "星屑の結晶";
 
 const BASE_DURABILITY = 3;
+const MAX_TIER = 10;
 
 // =======================
-// 戦闘用武器マスタ（T1〜T3）
+// テンプレート定義（戦闘用武器）
 // =======================
 
-const WEAPONS_INIT = [
+const WEAPON_TEMPLATES = [
   // 短剣
   {
-    id: "dagger_T1",
-    name: "ダガーT1",
-    atk: 2,
-    scaleStr: 0.05,
-    scaleInt: 0.00,
-    cost: { woodPlank_T1: 1, ironIngot_T1: 1 },
-    rate: 0.8,
-    enhance: 0,
+    baseId: "dagger",
+    baseName: "ダガー",
+    baseAtk: 2,
+    atkPerTier: 2,
+    baseScaleStr: 0.05,
+    scaleStrPerTier: 0.03,
+    baseScaleInt: 0.00,
+    scaleIntPerTier: 0,
+    baseRate: 0.80,
+    ratePerTier: -0.05,
     enhanceStep: 1,
-    durability: BASE_DURABILITY
-  },
-  {
-    id: "dagger_T2",
-    name: "ダガーT2",
-    atk: 4,
-    scaleStr: 0.08,
-    scaleInt: 0.00,
-    cost: { woodPlank_T2: 1, ironIngot_T2: 1 },
-    rate: 0.7,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: BASE_DURABILITY
-  },
-  {
-    id: "dagger_T3",
-    name: "ダガーT3",
-    atk: 6,
-    scaleStr: 0.10,
-    scaleInt: 0.00,
-    cost: { woodPlank_T3: 1, ironIngot_T3: 1 },
-    rate: 0.6,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: BASE_DURABILITY
+    costPattern: tier => ({
+      [`T${tier}_woodPlank`]: 1,
+      [`T${tier}_ironIngot`]: 1
+    })
   },
 
   // ショートソード
   {
-    id: "short_T1",
-    name: "ショートソードT1",
-    atk: 3,
-    scaleStr: 0.10,
-    scaleInt: 0.00,
-    cost: { woodPlank_T1: 1, ironIngot_T1: 2 },
-    rate: 0.75,
-    enhance: 0,
+    baseId: "short",
+    baseName: "ショートソード",
+    baseAtk: 3,
+    atkPerTier: 3,
+    baseScaleStr: 0.10,
+    scaleStrPerTier: 0.03,
+    baseScaleInt: 0.00,
+    scaleIntPerTier: 0,
+    baseRate: 0.75,
+    ratePerTier: -0.05,
     enhanceStep: 2,
-    durability: BASE_DURABILITY
-  },
-  {
-    id: "short_T2",
-    name: "ショートソードT2",
-    atk: 6,
-    scaleStr: 0.13,
-    scaleInt: 0.00,
-    cost: { woodPlank_T2: 1, ironIngot_T2: 2 },
-    rate: 0.7,
-    enhance: 0,
-    enhanceStep: 2,
-    durability: BASE_DURABILITY
-  },
-  {
-    id: "short_T3",
-    name: "ショートソードT3",
-    atk: 9,
-    scaleStr: 0.16,
-    scaleInt: 0.00,
-    cost: { woodPlank_T3: 1, ironIngot_T3: 2 },
-    rate: 0.65,
-    enhance: 0,
-    enhanceStep: 2,
-    durability: BASE_DURABILITY
+    costPattern: tier => ({
+      [`T${tier}_woodPlank`]: 1,
+      [`T${tier}_ironIngot`]: 2
+    })
   },
 
   // ロングソード
   {
-    id: "long_T1",
-    name: "ロングソードT1",
-    atk: 5,
-    scaleStr: 0.18,
-    scaleInt: 0.00,
-    cost: { woodPlank_T1: 2, ironIngot_T1: 2 },
-    rate: 0.7,
-    enhance: 0,
+    baseId: "long",
+    baseName: "ロングソード",
+    baseAtk: 5,
+    atkPerTier: 4,
+    baseScaleStr: 0.18,
+    scaleStrPerTier: 0.04,
+    baseScaleInt: 0.00,
+    scaleIntPerTier: 0,
+    baseRate: 0.70,
+    ratePerTier: -0.05,
     enhanceStep: 2,
-    durability: BASE_DURABILITY
-  },
-  {
-    id: "long_T2",
-    name: "ロングソードT2",
-    atk: 9,
-    scaleStr: 0.22,
-    scaleInt: 0.00,
-    cost: { woodPlank_T2: 2, ironIngot_T2: 2 },
-    rate: 0.65,
-    enhance: 0,
-    enhanceStep: 2,
-    durability: BASE_DURABILITY
-  },
-  {
-    id: "long_T3",
-    name: "ロングソードT3",
-    atk: 13,
-    scaleStr: 0.26,
-    scaleInt: 0.00,
-    cost: { woodPlank_T3: 2, ironIngot_T3: 2 },
-    rate: 0.6,
-    enhance: 0,
-    enhanceStep: 2,
-    durability: BASE_DURABILITY
+    costPattern: tier => ({
+      [`T${tier}_woodPlank`]: 2,
+      [`T${tier}_ironIngot`]: 2
+    })
   },
 
   // グレートソード
   {
-    id: "great_T1",
-    name: "グレートソードT1",
-    atk: 8,
-    scaleStr: 0.20,
-    scaleInt: 0.00,
-    cost: { woodPlank_T1: 2, ironIngot_T1: 3 },
-    rate: 0.65,
-    enhance: 0,
+    baseId: "great",
+    baseName: "グレートソード",
+    baseAtk: 8,
+    atkPerTier: 5,
+    baseScaleStr: 0.20,
+    scaleStrPerTier: 0.04,
+    baseScaleInt: 0.00,
+    scaleIntPerTier: 0,
+    baseRate: 0.65,
+    ratePerTier: -0.05,
     enhanceStep: 3,
-    durability: BASE_DURABILITY
-  },
-  {
-    id: "great_T2",
-    name: "グレートソードT2",
-    atk: 13,
-    scaleStr: 0.24,
-    scaleInt: 0.00,
-    cost: { woodPlank_T2: 2, ironIngot_T2: 3 },
-    rate: 0.6,
-    enhance: 0,
-    enhanceStep: 3,
-    durability: BASE_DURABILITY
-  },
-  {
-    id: "great_T3",
-    name: "グレートソードT3",
-    atk: 18,
-    scaleStr: 0.28,
-    scaleInt: 0.00,
-    cost: { woodPlank_T3: 2, ironIngot_T3: 3 },
-    rate: 0.55,
-    enhance: 0,
-    enhanceStep: 3,
-    durability: BASE_DURABILITY
+    costPattern: tier => ({
+      [`T${tier}_woodPlank`]: 2,
+      [`T${tier}_ironIngot`]: 3
+    })
   },
 
   // 魔法の杖
   {
-    id: "magicStaff_T1",
-    name: "魔法の杖T1",
-    atk: 2,
-    scaleStr: 0.00,
-    scaleInt: 0.20,
-    cost: { woodPlank_T1: 1, herb: 2 },
-    rate: 0.7,
-    enhance: 0,
+    baseId: "magicStaff",
+    baseName: "魔法の杖",
+    baseAtk: 2,
+    atkPerTier: 2,
+    baseScaleStr: 0.00,
+    scaleStrPerTier: 0.00,
+    baseScaleInt: 0.20,
+    scaleIntPerTier: 0.08,
+    baseRate: 0.70,
+    ratePerTier: -0.05,
     enhanceStep: 1,
-    durability: BASE_DURABILITY
-  },
-  {
-    id: "magicStaff_T2",
-    name: "魔法の杖T2",
-    atk: 4,
-    scaleStr: 0.00,
-    scaleInt: 0.28,
-    cost: { woodPlank_T2: 1, herb: 3 },
-    rate: 0.65,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: BASE_DURABILITY
-  },
-  {
-    id: "magicStaff_T3",
-    name: "魔法の杖T3",
-    atk: 6,
-    scaleStr: 0.00,
-    scaleInt: 0.36,
-    cost: { woodPlank_T3: 1, herb: 4 },
-    rate: 0.6,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: BASE_DURABILITY
+    costPattern: tier => ({
+      [`T${tier}_woodPlank`]: 1,
+      [`T${tier}_herb`]: tier + 1 // T1:2, T2:3, ... T10:11
+    })
   },
 
   // ルーンソード
   {
-    id: "runeSword_T1",
-    name: "ルーンソードT1",
-    atk: 4,
-    scaleStr: 0.10,
-    scaleInt: 0.15,
-    cost: { woodPlank_T1: 1, ironIngot_T1: 2, herb: 1 },
-    rate: 0.65,
-    enhance: 0,
+    baseId: "runeSword",
+    baseName: "ルーンソード",
+    baseAtk: 4,
+    atkPerTier: 3, // 4,7,11,15,19,23,27,31,35,39
+    baseScaleStr: 0.10,
+    scaleStrPerTier: 0.03,
+    baseScaleInt: 0.15,
+    scaleIntPerTier: 0.05,
+    baseRate: 0.65,
+    ratePerTier: -0.05,
     enhanceStep: 2,
-    durability: BASE_DURABILITY
-  },
-  {
-    id: "runeSword_T2",
-    name: "ルーンソードT2",
-    atk: 7,
-    scaleStr: 0.13,
-    scaleInt: 0.20,
-    cost: { woodPlank_T2: 1, ironIngot_T2: 2, herb: 2 },
-    rate: 0.6,
-    enhance: 0,
-    enhanceStep: 2,
-    durability: BASE_DURABILITY
-  },
-  {
-    id: "runeSword_T3",
-    name: "ルーンソードT3",
-    atk: 11,
-    scaleStr: 0.16,
-    scaleInt: 0.25,
-    cost: { woodPlank_T3: 1, ironIngot_T3: 2, herb: 3 },
-    rate: 0.55,
-    enhance: 0,
-    enhanceStep: 2,
-    durability: BASE_DURABILITY
+    costPattern: tier => ({
+      [`T${tier}_woodPlank`]: 1,
+      [`T${tier}_ironIngot`]: 2,
+      [`T${tier}_herb`]: tier // T1:1, T2:2, ... T10:10
+    })
   },
 
   // グレートシールド（盾）
   {
-    id: "greatShield_T1",
-    name: "大盾T1",
-    atk: 0,
-    scaleStr: 0.00,
-    scaleInt: 0.00,
-    cost: { woodPlank_T1: 2, ironIngot_T1: 1, toughLeather_T1: 1 },
-    rate: 0.7,
-    enhance: 0,
+    baseId: "greatShield",
+    baseName: "大盾",
+    baseAtk: 0,
+    atkPerTier: 0,
+    baseScaleStr: 0.00,
+    scaleStrPerTier: 0.00,
+    baseScaleInt: 0.00,
+    scaleIntPerTier: 0.00,
+    baseRate: 0.70,
+    ratePerTier: -0.05,
     enhanceStep: 1,
-    durability: BASE_DURABILITY
-  },
-  {
-    id: "greatShield_T2",
-    name: "大盾T2",
-    atk: 0,
-    scaleStr: 0.00,
-    scaleInt: 0.00,
-    cost: { woodPlank_T2: 2, ironIngot_T2: 1, toughLeather_T2: 1 },
-    rate: 0.65,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: BASE_DURABILITY
-  },
-  {
-    id: "greatShield_T3",
-    name: "大盾T3",
-    atk: 0,
-    scaleStr: 0.00,
-    scaleInt: 0.00,
-    cost: { woodPlank_T3: 2, ironIngot_T3: 1, toughLeather_T3: 1 },
-    rate: 0.6,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: BASE_DURABILITY
+    costPattern: tier => ({
+      [`T${tier}_woodPlank`]: 2,
+      [`T${tier}_ironIngot`]: 1,
+      [`T${tier}_toughLeather`]: 1
+    })
   }
 ];
 
 // =======================
-// 戦闘用防具マスタ（T1〜T3）
+// テンプレート定義（戦闘用防具）
 // =======================
 
-const ARMORS_INIT = [
+const ARMOR_TEMPLATES = [
   // レザーベスト（軽装）
   {
-    id: "leatherVest_T1",
-    name: "レザーベストT1",
-    def: 2,
-    scaleVit: 0.01,
-    bonusDex: 1,
-    cost: { clothBolt_T1: 1, toughLeather_T1: 1 },
-    rate: 0.8,
-    enhance: 0,
+    baseId: "leatherVest",
+    baseName: "レザーベスト",
+    baseDef: 2,
+    defPerTier: 2,
+    baseScaleVit: 0.01,
+    scaleVitPerTier: 0.01,
+    baseBonusDex: 1,
+    bonusDexPerTier: 1,
+    baseRate: 0.80,
+    ratePerTier: -0.05,
     enhanceStep: 1,
-    durability: BASE_DURABILITY
-  },
-  {
-    id: "leatherVest_T2",
-    name: "レザーベストT2",
-    def: 4,
-    scaleVit: 0.02,
-    bonusDex: 2,
-    cost: { clothBolt_T2: 1, toughLeather_T2: 1 },
-    rate: 0.75,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: BASE_DURABILITY
-  },
-  {
-    id: "leatherVest_T3",
-    name: "レザーベストT3",
-    def: 6,
-    scaleVit: 0.03,
-    bonusDex: 3,
-    cost: { clothBolt_T3: 1, toughLeather_T3: 1 },
-    rate: 0.7,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: BASE_DURABILITY
+    costPattern: tier => ({
+      [`T${tier}_clothBolt`]: 1,
+      [`T${tier}_toughLeather`]: 1
+    })
   },
 
   // チェインメイル（バランス）
   {
-    id: "chainmail_T1",
-    name: "チェインメイルT1",
-    def: 4,
-    scaleVit: 0.06,
-    cost: { ironIngot_T1: 2, toughLeather_T1: 1 },
-    rate: 0.75,
-    enhance: 0,
+    baseId: "chainmail",
+    baseName: "チェインメイル",
+    baseDef: 4,
+    defPerTier: 3,
+    baseScaleVit: 0.06,
+    scaleVitPerTier: 0.03,
+    baseBonusDex: 0,
+    bonusDexPerTier: 0,
+    baseRate: 0.75,
+    ratePerTier: -0.05,
     enhanceStep: 1,
-    durability: BASE_DURABILITY
-  },
-  {
-    id: "chainmail_T2",
-    name: "チェインメイルT2",
-    def: 7,
-    scaleVit: 0.09,
-    cost: { ironIngot_T2: 2, toughLeather_T2: 1 },
-    rate: 0.7,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: BASE_DURABILITY
-  },
-  {
-    id: "chainmail_T3",
-    name: "チェインメイルT3",
-    def: 10,
-    scaleVit: 0.12,
-    cost: { ironIngot_T3: 2, toughLeather_T3: 1 },
-    rate: 0.65,
-    enhance: 0,
-    enhanceStep: 1,
-    durability: BASE_DURABILITY
+    costPattern: tier => ({
+      [`T${tier}_ironIngot`]: 2,
+      [`T${tier}_toughLeather`]: 1
+    })
   },
 
   // アイアンアーマー（重装）
   {
-    id: "ironArmor_T1",
-    name: "アイアンアーマーT1",
-    def: 7,
-    scaleVit: 0.12,
-    cost: { ironIngot_T1: 3, clothBolt_T1: 1, toughLeather_T1: 1 },
-    rate: 0.7,
-    enhance: 0,
+    baseId: "ironArmor",
+    baseName: "アイアンアーマー",
+    baseDef: 7,
+    defPerTier: 4,
+    baseScaleVit: 0.12,
+    scaleVitPerTier: 0.04,
+    baseBonusDex: 0,
+    bonusDexPerTier: 0,
+    baseRate: 0.70,
+    ratePerTier: -0.05,
     enhanceStep: 2,
-    durability: BASE_DURABILITY
-  },
-  {
-    id: "ironArmor_T2",
-    name: "アイアンアーマーT2",
-    def: 11,
-    scaleVit: 0.16,
-    cost: { ironIngot_T2: 3, clothBolt_T2: 1, toughLeather_T2: 1 },
-    rate: 0.65,
-    enhance: 0,
-    enhanceStep: 2,
-    durability: BASE_DURABILITY
-  },
-  {
-    id: "ironArmor_T3",
-    name: "アイアンアーマーT3",
-    def: 15,
-    scaleVit: 0.20,
-    cost: { ironIngot_T3: 3, clothBolt_T3: 1, toughLeather_T3: 1 },
-    rate: 0.6,
-    enhance: 0,
-    enhanceStep: 2,
-    durability: BASE_DURABILITY
+    costPattern: tier => ({
+      [`T${tier}_ironIngot`]: 3,
+      [`T${tier}_clothBolt`]: 1,
+      [`T${tier}_toughLeather`]: 1
+    })
   }
 ];
+
+// =======================
+// テンプレートから T1〜T10 を生成
+// =======================
+
+function generateWeaponTiers(tpl) {
+  const list = [];
+  for (let tier = 1; tier <= MAX_TIER; tier++) {
+    list.push({
+      id: `T${tier}_${tpl.baseId}`,
+      name: `T${tier}${tpl.baseName}`,
+      atk: tpl.baseAtk + tpl.atkPerTier * (tier - 1),
+      scaleStr: +(tpl.baseScaleStr + tpl.scaleStrPerTier * (tier - 1)).toFixed(2),
+      scaleInt: +(tpl.baseScaleInt + tpl.scaleIntPerTier * (tier - 1)).toFixed(2),
+      cost: tpl.costPattern(tier),
+      rate: tpl.baseRate + tpl.ratePerTier * (tier - 1),
+      enhance: 0,
+      enhanceStep: tpl.enhanceStep,
+      durability: BASE_DURABILITY
+    });
+  }
+  return list;
+}
+
+function generateArmorTiers(tpl) {
+  const list = [];
+  for (let tier = 1; tier <= MAX_TIER; tier++) {
+    list.push({
+      id: `T${tier}_${tpl.baseId}`,
+      name: `T${tier}${tpl.baseName}`,
+      def: tpl.baseDef + tpl.defPerTier * (tier - 1),
+      scaleVit: +(tpl.baseScaleVit + tpl.scaleVitPerTier * (tier - 1)).toFixed(2),
+      bonusDex: tpl.baseBonusDex + tpl.bonusDexPerTier * (tier - 1),
+      cost: tpl.costPattern(tier),
+      rate: tpl.baseRate + tpl.ratePerTier * (tier - 1),
+      enhance: 0,
+      enhanceStep: tpl.enhanceStep,
+      durability: BASE_DURABILITY
+    });
+  }
+  return list;
+}
+
+// =======================
+// 戦闘用武器マスタ（T1〜T10）
+// =======================
+
+const WEAPONS_INIT = WEAPON_TEMPLATES.flatMap(generateWeaponTiers);
+
+// =======================
+// 戦闘用防具マスタ（T1〜T10）
+// =======================
+
+const ARMORS_INIT = ARMOR_TEMPLATES.flatMap(generateArmorTiers);
 
 // =======================
 // インスタンス配列の初期化（戦闘装備分）
@@ -452,7 +326,7 @@ if (typeof registerItemDefs === "function") {
     const defs = {};
 
     WEAPONS_INIT.forEach(w => {
-      const m = w.id.match(/_T(\d)/) || w.id.match(/T(\d)$/);
+      const m = w.id.match(/^T(\d+)_/);
       const tierNum = m ? parseInt(m[1], 10) : null;
 
       defs[w.id] = {
@@ -461,7 +335,7 @@ if (typeof registerItemDefs === "function") {
         category: "weapon",
         tier: tierNum,
 
-        // ★ 追加: 戦闘用の固定値もメタへ寄せる
+        // 戦闘用の固定値
         atk: w.atk,
         scaleStr: w.scaleStr,
         scaleInt: w.scaleInt,
@@ -487,7 +361,7 @@ if (typeof registerItemDefs === "function") {
     const defs = {};
 
     ARMORS_INIT.forEach(a => {
-      const m = a.id.match(/_T(\d)/) || a.id.match(/T(\d)$/);
+      const m = a.id.match(/^T(\d+)_/);
       const tierNum = m ? parseInt(m[1], 10) : null;
 
       defs[a.id] = {

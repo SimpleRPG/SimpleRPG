@@ -197,7 +197,8 @@ function execRepairSelected() {
   }
 
   const cost = calcRepairCost(data.curDur, data.maxDur);
-  if ((window.money || 0) < cost) {
+  // ★ window.money を使わず、game-core-1.js の money を直接参照
+  if ((money || 0) < cost) {
     appendLog("お金が足りない…");
     return;
   }
@@ -227,7 +228,8 @@ function execRepairSelected() {
     return;
   }
 
-  window.money = (window.money || 0) - cost;
+  // ★ 支払いも money を直接操作
+  money = (money || 0) - cost;
   appendLog(`${data.name} を修理した。（${cost}G支払った）`);
 
   // ステータス・装備セレクトなどを再計算
