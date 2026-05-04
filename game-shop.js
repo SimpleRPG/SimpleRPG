@@ -6,6 +6,9 @@
 //   potions, potionCounts,
 //   cookedFoods, cookedDrinks,
 //   toolCounts, materials, cookingMats,
+//   intermediateMats, INTERMEDIATE_MATERIALS,
+//   weaponInstances, armorInstances, weaponCounts, armorCounts,
+//   WEAPONS_INIT, ARMORS_INIT, MAX_DURABILITY,
 //   restoreHungerThirst(addHunger, addThirst),
 //   updateDisplay(), appendLog()
 // が定義済み。
@@ -31,7 +34,10 @@ const shopData = {
 };
 
 let shopCurrentCategory = "item";   // "item" / "service" / "sell"
-let shopSelectedItem    = null;
+let shopSelectedItem    = null;     // 購入時: shopDataの要素 / 売却時: buildSellableList の要素
+
+// 数量UIと合計金額計算用
+let shopCurrentUnitPrice = 0;
 
 // =======================
 // 所持金表示
@@ -67,8 +73,14 @@ function getSellPriceFromValue(value) {
   return price;
 }
 
-// ポーションマスタから価値を取る前提（なければ price を流用）
+// ★修正: market-core1.js の getTheoreticalCost を利用
+// ポーションの売値（原価の半額）
 function getPotionSellPrice(potionId) {
+  if (typeof getTheoreticalCost === "function") {
+    const cost = getTheoreticalCost("potion", potionId);
+    if (cost > 0) return getSellPriceFromValue(cost);
+  }
+  // フォールバック: potions 配列から価格取得
   const p = Array.isArray(potions) ? potions.find(x => x.id === potionId) : null;
   if (!p) return 0;
   const base = (typeof p.value === "number") ? p.value
@@ -79,33 +91,43 @@ function getPotionSellPrice(potionId) {
 
 // 料理（食べ物）の売値
 function getCookedFoodSellPrice(foodId) {
-  if (typeof COOKING_RECIPES === "undefined" || !COOKING_RECIPES || !Array.isArray(COOKING_RECIPES.food)) {
-    return 0;
+  // COOKING_RECIPES から探す
+  if (typeof COOKING_RECIPES !== "undefined" && COOKING_RECIPES && Array.isArray(COOKING_RECIPES.food)) {
+    const r = COOKING_RECIPES.food.find(f => f.id === foodId);
+    if (r) {
+      const base = (typeof r.value === "number") ? r.value
+                  : (typeof r.price === "number") ? r.price
+                  : 0;
+      if (base > 0) return getSellPriceFromValue(base);
+    }
   }
-  const r = COOKING_RECIPES.food.find(f => f.id === foodId);
-  if (!r) return 0;
-  const base = (typeof r.value === "number") ? r.value
-              : (typeof r.price === "number") ? r.price
-              : 0;
-  return getSellPriceFromValue(base);
+  // フォールバック: 料理素材基準価格の2倍程度
+  return getSellPriceFromValue(COOKING_INGREDIENT_BASE_VALUE * 2);
 }
 
 // 料理（飲み物）の売値
 function getCookedDrinkSellPrice(drinkId) {
-  if (typeof COOKING_RECIPES === "undefined" || !COOKING_RECIPES || !Array.isArray(COOKING_RECIPES.drink)) {
-    return 0;
+  if (typeof COOKING_RECIPES !== "undefined" && COOKING_RECIPES && Array.isArray(COOKING_RECIPES.drink)) {
+    const r = COOKING_RECIPES.drink.find(d => d.id === drinkId);
+    if (r) {
+      const base = (typeof r.value === "number") ? r.value
+                  : (typeof r.price === "number") ? r.price
+                  : 0;
+      if (base > 0) return getSellPriceFromValue(base);
+    }
   }
-  const r = COOKING_RECIPES.drink.find(d => d.id === drinkId);
-  if (!r) return 0;
-  const base = (typeof r.value === "number") ? r.value
-              : (typeof r.price === "number") ? r.price
-              : 0;
-  return getSellPriceFromValue(base);
+  return getSellPriceFromValue(COOKING_INGREDIENT_BASE_VALUE * 2);
 }
 
-// 道具（爆弾など）の売値（簡易：idごとに固定）
+// ★修正: 道具の売値（molotov 追加 + getTheoreticalCost 利用）
 function getToolSellPrice(toolId) {
-  // 必要なら道具マスタを参照する形に拡張
+  // まず getTheoreticalCost から取得を試みる
+  if (typeof getTheoreticalCost === "function") {
+    const cost = getTheoreticalCost("tool", toolId);
+    if (cost > 0) return getSellPriceFromValue(cost);
+  }
+
+  // フォールバック: IDハードコード
   let base = 0;
   if (toolId === "bomb_T1") base = 100;
   else if (toolId === "bomb_T2") base = 300;
@@ -113,6 +135,9 @@ function getToolSellPrice(toolId) {
   else if (toolId === "bomb_fire_T1") base = 120;
   else if (toolId === "bomb_fire_T2") base = 360;
   else if (toolId === "bomb_fire_T3") base = 1080;
+  else if (toolId === "molotov_T1") base = 110;
+  else if (toolId === "molotov_T2") base = 330;
+  else if (toolId === "molotov_T3") base = 990;
   else if (toolId === "poisonNeedle_T1") base = 80;
   else if (toolId === "poisonNeedle_T2") base = 240;
   else if (toolId === "poisonNeedle_T3") base = 720;
@@ -122,13 +147,43 @@ function getToolSellPrice(toolId) {
   return getSellPriceFromValue(base);
 }
 
-// 通常素材（materials: { wood:{t1,t2,t3}, ... }）の売値
-// T1/T2/T3 の価値は market-core の MATERIAL_TIER_VALUES に合わせて 3/5/10G 相当（売値はその半額）とする。
+// 通常素材の売値（materials-core.js の配列形式・オブジェクト形式両対応、T10まで対応）
+// 価値はティアに応じて段階的に上昇（MATERIAL_TIER_VALUES を利用）
 function getMaterialSellPrice(baseKey, tier) {
   let base = 0;
-  if (tier === "t1") base = 3;
-  else if (tier === "t2") base = 5;
-  else if (tier === "t3") base = 10;
+  
+  // tierは数値または"t1"/"t2"形式の文字列
+  let tierNum = 0;
+  if (typeof tier === "string") {
+    const match = tier.match(/^t(\d+)$/);
+    if (match) tierNum = parseInt(match[1], 10);
+    else tierNum = parseInt(tier, 10) || 0;
+  } else if (typeof tier === "number") {
+    tierNum = tier;
+  }
+
+  // MATERIAL_TIER_VALUES から取得
+  if (typeof window.MATERIAL_TIER_VALUES === "object" && window.MATERIAL_TIER_VALUES !== null) {
+    const tierKey = `t${tierNum}`;
+    if (typeof window.MATERIAL_TIER_VALUES[tierKey] === "number") {
+      base = window.MATERIAL_TIER_VALUES[tierKey];
+    }
+  }
+
+  // フォールバック: 固定価格
+  if (base === 0) {
+    if (tierNum === 1) base = 3;
+    else if (tierNum === 2) base = 5;
+    else if (tierNum === 3) base = 10;
+    else if (tierNum === 4) base = 20;
+    else if (tierNum === 5) base = 40;
+    else if (tierNum === 6) base = 80;
+    else if (tierNum === 7) base = 160;
+    else if (tierNum === 8) base = 320;
+    else if (tierNum === 9) base = 640;
+    else if (tierNum === 10) base = 1280;
+  }
+
   return getSellPriceFromValue(base);
 }
 
@@ -147,6 +202,115 @@ function getCookingMatName(matId) {
     if (COOKING_MAT_NAMES[matId]) return COOKING_MAT_NAMES[matId];
   }
   return matId;
+}
+
+// ★修正: 中間素材の売値（getTheoreticalCost 利用）
+function getIntermediateMatSellPrice(id) {
+  // まず getTheoreticalCost から取得
+  if (typeof getTheoreticalCost === "function") {
+    const cost = getTheoreticalCost("material", id);
+    if (cost > 0) return getSellPriceFromValue(cost);
+  }
+
+  // フォールバック: INTERMEDIATE_MATERIALS から value/price を探す
+  if (!Array.isArray(INTERMEDIATE_MATERIALS)) return 0;
+  const m = INTERMEDIATE_MATERIALS.find(x => x.id === id);
+  if (!m) return 0;
+  const base = (typeof m.value === "number") ? m.value
+              : (typeof m.price === "number") ? m.price
+              : 0;
+  return getSellPriceFromValue(base);
+}
+
+// ★修正: 武器の売値（変数名を WEAPONS_INIT または weapons に修正 + getTheoreticalCost 利用）
+function getWeaponSellPrice(id) {
+  // まず getTheoreticalCost から取得
+  if (typeof getTheoreticalCost === "function") {
+    const cost = getTheoreticalCost("weapon", id);
+    if (cost > 0) return getSellPriceFromValue(cost);
+  }
+
+  // フォールバック: weapons または WEAPONS_INIT から取得
+  const weaponArray = Array.isArray(window.weapons) ? window.weapons 
+                    : Array.isArray(window.WEAPONS_INIT) ? window.WEAPONS_INIT 
+                    : null;
+  
+  if (!weaponArray) return 0;
+  const w = weaponArray.find(x => x.id === id);
+  if (!w) return 0;
+  const base = (typeof w.value === "number") ? w.value
+              : (typeof w.price === "number") ? w.price
+              : 0;
+  return getSellPriceFromValue(base);
+}
+
+// ★修正: 防具の売値（変数名を ARMORS_INIT または armors に修正 + getTheoreticalCost 利用）
+function getArmorSellPrice(id) {
+  // まず getTheoreticalCost から取得
+  if (typeof getTheoreticalCost === "function") {
+    const cost = getTheoreticalCost("armor", id);
+    if (cost > 0) return getSellPriceFromValue(cost);
+  }
+
+  // フォールバック: armors または ARMORS_INIT から取得
+  const armorArray = Array.isArray(window.armors) ? window.armors 
+                   : Array.isArray(window.ARMORS_INIT) ? window.ARMORS_INIT 
+                   : null;
+  
+  if (!armorArray) return 0;
+  const a = armorArray.find(x => x.id === id);
+  if (!a) return 0;
+  const base = (typeof a.value === "number") ? a.value
+              : (typeof a.price === "number") ? a.price
+              : 0;
+  return getSellPriceFromValue(base);
+}
+
+// 装備名＋品質・強化のラベル
+function getWeaponInstanceLabel(inst) {
+  if (!inst) return "";
+  const baseId = inst.id;
+  let baseName = baseId;
+  
+  const weaponArray = Array.isArray(window.weapons) ? window.weapons 
+                    : Array.isArray(window.WEAPONS_INIT) ? window.WEAPONS_INIT 
+                    : null;
+  
+  if (weaponArray) {
+    const w = weaponArray.find(x => x.id === baseId);
+    if (w && w.name) baseName = w.name;
+  }
+  
+  const qName = (typeof QUALITY_NAMES !== "undefined" && QUALITY_NAMES[inst.quality]) ? QUALITY_NAMES[inst.quality] : "";
+  const enh = inst.enhance || 0;
+  const enhStr = enh > 0 ? `+${enh}` : "";
+  const durStr = (typeof inst.durability === "number" && typeof MAX_DURABILITY === "number")
+    ? ` (耐久 ${inst.durability}/${MAX_DURABILITY})`
+    : "";
+  return `${qName}${baseName}${enhStr}${durStr}`;
+}
+
+function getArmorInstanceLabel(inst) {
+  if (!inst) return "";
+  const baseId = inst.id;
+  let baseName = baseId;
+  
+  const armorArray = Array.isArray(window.armors) ? window.armors 
+                   : Array.isArray(window.ARMORS_INIT) ? window.ARMORS_INIT 
+                   : null;
+  
+  if (armorArray) {
+    const a = armorArray.find(x => x.id === baseId);
+    if (a && a.name) baseName = a.name;
+  }
+  
+  const qName = (typeof QUALITY_NAMES !== "undefined" && QUALITY_NAMES[inst.quality]) ? QUALITY_NAMES[inst.quality] : "";
+  const enh = inst.enhance || 0;
+  const enhStr = enh > 0 ? `+${enh}` : "";
+  const durStr = (typeof inst.durability === "number" && typeof MAX_DURABILITY === "number")
+    ? ` (耐久 ${inst.durability}/${MAX_DURABILITY})`
+    : "";
+  return `${qName}${baseName}${enhStr}${durStr}`;
 }
 
 // =======================
@@ -178,12 +342,13 @@ function getEffectiveShopPrice(basePrice) {
 // =======================
 //
 // 「倉庫にあるもの全部」を sell リストとしてまとめる。
+// 装備はインスタンスごと（weaponInstances / armorInstances）に列挙する。
 
 function buildSellableList() {
   const list = [];
 
   // ポーション（倉庫: potionCounts）
-  if (typeof potionCounts === "object" && Array.isArray(potions)) {
+  if (typeof potionCounts === "object" && potionCounts !== null && Array.isArray(potions)) {
     Object.keys(potionCounts).forEach(id => {
       const cnt = potionCounts[id] || 0;
       if (cnt <= 0) return;
@@ -202,7 +367,7 @@ function buildSellableList() {
   }
 
   // 料理（食べ物）
-  if (typeof cookedFoods === "object") {
+  if (typeof cookedFoods === "object" && cookedFoods !== null) {
     Object.keys(cookedFoods).forEach(id => {
       const cnt = cookedFoods[id] || 0;
       if (cnt <= 0) return;
@@ -224,7 +389,7 @@ function buildSellableList() {
   }
 
   // 料理（飲み物）
-  if (typeof cookedDrinks === "object") {
+  if (typeof cookedDrinks === "object" && cookedDrinks !== null) {
     Object.keys(cookedDrinks).forEach(id => {
       const cnt = cookedDrinks[id] || 0;
       if (cnt <= 0) return;
@@ -245,24 +410,15 @@ function buildSellableList() {
     });
   }
 
-  // 道具
-  if (typeof toolCounts === "object") {
+  // ★修正: 道具（ラベルは ITEM_META に完全委譲）
+  if (typeof toolCounts === "object" && toolCounts !== null) {
     Object.keys(toolCounts).forEach(id => {
       const cnt = toolCounts[id] || 0;
       if (cnt <= 0) return;
-      let label = id;
-      if (id === "bomb_T1") label = "爆弾T1";
-      else if (id === "bomb_T2") label = "爆弾T2";
-      else if (id === "bomb_T3") label = "爆弾T3";
-      else if (id === "bomb_fire_T1") label = "火炎瓶T1";
-      else if (id === "bomb_fire_T2") label = "火炎瓶T2";
-      else if (id === "bomb_fire_T3") label = "火炎瓶T3";
-      else if (id === "poisonNeedle_T1") label = "毒針T1";
-      else if (id === "poisonNeedle_T2") label = "毒針T2";
-      else if (id === "poisonNeedle_T3") label = "毒針T3";
-      else if (id === "paralyzeGas_T1") label = "麻痺ガス瓶T1";
-      else if (id === "paralyzeGas_T2") label = "麻痺ガス瓶T2";
-      else if (id === "paralyzeGas_T3") label = "麻痺ガス瓶T3";
+
+      // 名前は必ず ITEM_META から取る（フォールバックなし）
+      const label = (typeof getItemName === "function") ? getItemName(id) : id;
+
       const price = getToolSellPrice(id);
       if (price <= 0) return;
       list.push({
@@ -275,8 +431,8 @@ function buildSellableList() {
     });
   }
 
-  // 通常素材（materials）
-  if (typeof materials === "object") {
+  // ★通常素材（materials）- 配列形式・オブジェクト形式両対応、T10まで対応
+  if (typeof materials === "object" && materials !== null) {
     const matNames = {
       wood: "木材",
       ore: "鉱石",
@@ -288,28 +444,54 @@ function buildSellableList() {
     Object.keys(materials).forEach(baseKey => {
       const info = materials[baseKey];
       if (!info) return;
+      
       const baseName = matNames[baseKey] || baseKey;
-      ["t1","t2","t3"].forEach(tier => {
-        const cnt = info[tier] || 0;
-        if (cnt <= 0) return;
-        const price = getMaterialSellPrice(baseKey, tier);
-        if (price <= 0) return;
-        const tierLabel = (tier === "t1") ? "T1" : (tier === "t2") ? "T2" : "T3";
-        list.push({
-          kind: "material",
-          id: baseKey + "_" + tier,
-          baseKey,
-          tier,
-          name: `${tierLabel}${baseName}`,
-          count: cnt,
-          price
+      
+      // ★配列形式チェック: [T1個数, T2個数, T3個数, ..., T10個数]
+      if (Array.isArray(info)) {
+        // 配列形式（materials-core.js の新仕様）- T10まで対応
+        info.forEach((cnt, index) => {
+          if (!cnt || cnt <= 0) return;
+          const tier = index + 1; // index 0 = T1, 1 = T2, ..., 9 = T10
+          if (tier > 10) return; // T10までのみ対応
+          const price = getMaterialSellPrice(baseKey, tier);
+          if (price <= 0) return;
+          list.push({
+            kind: "material",
+            id: `${baseKey}_t${tier}`,
+            baseKey,
+            tier: `t${tier}`,
+            tierIndex: index, // 配列インデックス
+            name: `T${tier}${baseName}`,
+            count: cnt,
+            price
+          });
         });
-      });
+      } else if (typeof info === "object") {
+        // ★オブジェクト形式（既存仕様）: { t1, t2, t3, ..., t10 }
+        // T10まで対応
+        for (let i = 1; i <= 10; i++) {
+          const tier = `t${i}`;
+          const cnt = info[tier] || 0;
+          if (cnt <= 0) continue;
+          const price = getMaterialSellPrice(baseKey, tier);
+          if (price <= 0) continue;
+          list.push({
+            kind: "material",
+            id: baseKey + "_" + tier,
+            baseKey,
+            tier,
+            name: `T${i}${baseName}`,
+            count: cnt,
+            price
+          });
+        }
+      }
     });
   }
 
-  // ★追加: 料理素材（cookingMats）
-  if (typeof cookingMats === "object") {
+  // 料理素材（cookingMats）
+  if (typeof cookingMats === "object" && cookingMats !== null) {
     Object.keys(cookingMats).forEach(id => {
       const cnt = cookingMats[id] || 0;
       if (cnt <= 0) return;
@@ -326,86 +508,267 @@ function buildSellableList() {
     });
   }
 
+  // 中間素材（intermediateMats）
+  if (typeof intermediateMats === "object" && intermediateMats !== null) {
+    Object.keys(intermediateMats).forEach(id => {
+      const cnt = intermediateMats[id] || 0;
+      if (cnt <= 0) return;
+      let name = id;
+      if (Array.isArray(INTERMEDIATE_MATERIALS)) {
+        const m = INTERMEDIATE_MATERIALS.find(x => x.id === id);
+        if (m && m.name) name = m.name;
+      }
+      const price = getIntermediateMatSellPrice(id);
+      if (price <= 0) return;
+      list.push({
+        kind: "intermediateMat",
+        id,
+        name,
+        count: cnt,
+        price
+      });
+    });
+  }
+
+  // 武器インスタンス（weaponInstances）
+  if (Array.isArray(weaponInstances)) {
+    weaponInstances.forEach((inst, index) => {
+      if (!inst || inst.location !== "warehouse") return;
+      const id = inst.id;
+      const name = getWeaponInstanceLabel(inst);
+      const price = getWeaponSellPrice(id);
+      if (price <= 0) return;
+      list.push({
+        kind: "weapon",
+        id,
+        name,
+        count: 1,
+        price,
+        instanceIndex: index
+      });
+    });
+  }
+
+  // 防具インスタンス（armorInstances）
+  if (Array.isArray(armorInstances)) {
+    armorInstances.forEach((inst, index) => {
+      if (!inst || inst.location !== "warehouse") return;
+      const id = inst.id;
+      const name = getArmorInstanceLabel(inst);
+      const price = getArmorSellPrice(id);
+      if (price <= 0) return;
+      list.push({
+        kind: "armor",
+        id,
+        name,
+        count: 1,
+        price,
+        instanceIndex: index
+      });
+    });
+  }
+
   return list;
 }
 
-// 実際に1個売る
-function sellOneItem(entry) {
-  if (!entry) return;
+// =======================
+// 数量UIヘルパー（購入・売却共通）
+// =======================
 
-  // ★経済ログ用：売却前所持金
-  const moneyBefore = (typeof money === "number") ? money : null;
+function updateShopTotal() {
+  const qtyInput = document.getElementById("shopQty");
+  const totalEl  = document.getElementById("shopTotal");
+  if (!qtyInput || !totalEl) return;
 
-  let success = false;
+  const qty = parseInt(qtyInput.value || "1", 10);
+  const safeQty = Number.isFinite(qty) && qty > 0 ? qty : 1;
+  totalEl.textContent = shopCurrentUnitPrice * safeQty;
+}
 
-  switch (entry.kind) {
-    case "potion":
-      if (typeof potionCounts === "object") {
-        const have = potionCounts[entry.id] || 0;
-        if (have > 0) {
-          potionCounts[entry.id] = have - 1;
-          success = true;
-        }
-      }
-      break;
-    case "food":
-      if (typeof cookedFoods === "object") {
-        const have = cookedFoods[entry.id] || 0;
-        if (have > 0) {
-          cookedFoods[entry.id] = have - 1;
-          success = true;
-        }
-      }
-      break;
-    case "drink":
-      if (typeof cookedDrinks === "object") {
-        const have = cookedDrinks[entry.id] || 0;
-        if (have > 0) {
-          cookedDrinks[entry.id] = have - 1;
-          success = true;
-        }
-      }
-      break;
-    case "tool":
-      if (typeof toolCounts === "object") {
-        const have = toolCounts[entry.id] || 0;
-        if (have > 0) {
-          toolCounts[entry.id] = have - 1;
-          success = true;
-        }
-      }
-      break;
-    case "material":
-      if (typeof materials === "object") {
-        const info = materials[entry.baseKey];
-        if (info && info[entry.tier] > 0) {
-          info[entry.tier] -= 1;
-          success = true;
-        }
-      }
-      break;
-    case "cookingMat":
-      if (typeof cookingMats === "object") {
-        const have = cookingMats[entry.id] || 0;
-        if (have > 0) {
-          cookingMats[entry.id] = have - 1;
-          success = true;
-        }
-      }
-      break;
-    default:
-      break;
+function initShopQtyControls() {
+  const qtyInput = document.getElementById("shopQty");
+  if (!qtyInput) return;
+
+  document.querySelectorAll(".qty-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const delta = parseInt(btn.dataset.delta, 10) || 0;
+      let v = parseInt(qtyInput.value || "1", 10);
+      if (!Number.isFinite(v)) v = 1;
+      v += delta;
+      if (v < 1) v = 1;
+      qtyInput.value = v;
+      updateShopTotal();
+    });
+  });
+
+  qtyInput.addEventListener("input", () => {
+    let v = parseInt(qtyInput.value || "1", 10);
+    if (!Number.isFinite(v) || v < 1) v = 1;
+    qtyInput.value = v;
+    updateShopTotal();
+  });
+
+  // 初期表示
+  updateShopTotal();
+}
+
+function getShopQty() {
+  const qtyInput = document.getElementById("shopQty");
+  if (!qtyInput) return 1;
+  const v = parseInt(qtyInput.value || "1", 10);
+  return (Number.isFinite(v) && v > 0) ? v : 1;
+}
+
+// =======================
+// 複数売却処理
+// =======================
+
+function sellMultipleItems(entry, amount) {
+  if (!entry || amount <= 0) return;
+
+  // 売却可能最大数を決める
+  let maxSell = entry.count || 0;
+  if (entry.kind === "weapon" || entry.kind === "armor") {
+    // 装備はインスタンス1個単位なので常に1
+    maxSell = 1;
   }
-
-  if (!success) {
+  const sellAmount = Math.min(amount, maxSell);
+  if (sellAmount <= 0) {
     appendLog("そのアイテムはもう売れません。");
     return;
   }
 
-  money += entry.price;
-  appendLog(`「${entry.name}」を ${entry.price}G で売った。`);
+  const moneyBefore = (typeof money === "number") ? money : null;
+  let successAmount = 0;
 
-  // ★経済ログ: ショップ売却
+  const applyOnce = () => {
+    switch (entry.kind) {
+      case "potion":
+        if (typeof potionCounts === "object") {
+          const have = potionCounts[entry.id] || 0;
+          if (have > 0) {
+            potionCounts[entry.id] = have - 1;
+            successAmount++;
+            return true;
+          }
+        }
+        return false;
+      case "food":
+        if (typeof cookedFoods === "object") {
+          const have = cookedFoods[entry.id] || 0;
+          if (have > 0) {
+            cookedFoods[entry.id] = have - 1;
+            successAmount++;
+            return true;
+          }
+        }
+        return false;
+      case "drink":
+        if (typeof cookedDrinks === "object") {
+          const have = cookedDrinks[entry.id] || 0;
+          if (have > 0) {
+            cookedDrinks[entry.id] = have - 1;
+            successAmount++;
+            return true;
+          }
+        }
+        return false;
+      case "tool":
+        if (typeof toolCounts === "object") {
+          const have = toolCounts[entry.id] || 0;
+          if (have > 0) {
+            toolCounts[entry.id] = have - 1;
+            successAmount++;
+            return true;
+          }
+        }
+        return false;
+      case "material":
+        if (typeof materials === "object") {
+          const info = materials[entry.baseKey];
+          if (Array.isArray(info) && typeof entry.tierIndex === "number") {
+            if (info[entry.tierIndex] > 0) {
+              info[entry.tierIndex] -= 1;
+              successAmount++;
+              return true;
+            }
+          } else if (info && typeof info === "object" && entry.tier) {
+            if (info[entry.tier] > 0) {
+              info[entry.tier] -= 1;
+              successAmount++;
+              return true;
+            }
+          }
+        }
+        return false;
+      case "cookingMat":
+        if (typeof cookingMats === "object") {
+          const have = cookingMats[entry.id] || 0;
+          if (have > 0) {
+            cookingMats[entry.id] = have - 1;
+            successAmount++;
+            return true;
+          }
+        }
+        return false;
+      case "intermediateMat":
+        if (typeof intermediateMats === "object") {
+          const have = intermediateMats[entry.id] || 0;
+          if (have > 0) {
+            intermediateMats[entry.id] = have - 1;
+            successAmount++;
+            return true;
+          }
+        }
+        return false;
+      case "weapon":
+        if (Array.isArray(weaponInstances)) {
+          const idx = entry.instanceIndex;
+          const inst = weaponInstances[idx];
+          if (inst && inst.location === "warehouse") {
+            const id = inst.id;
+            weaponInstances.splice(idx, 1);
+            if (typeof weaponCounts === "object" && id) {
+              weaponCounts[id] = Math.max(0, (weaponCounts[id] || 0) - 1);
+            }
+            successAmount++;
+            return true;
+          }
+        }
+        return false;
+      case "armor":
+        if (Array.isArray(armorInstances)) {
+          const idx = entry.instanceIndex;
+          const inst = armorInstances[idx];
+          if (inst && inst.location === "warehouse") {
+            const id = inst.id;
+            armorInstances.splice(idx, 1);
+            if (typeof armorCounts === "object" && id) {
+              armorCounts[id] = Math.max(0, (armorCounts[id] || 0) - 1);
+            }
+            successAmount++;
+            return true;
+          }
+        }
+        return false;
+      default:
+        return false;
+    }
+  };
+
+  for (let i = 0; i < sellAmount; i++) {
+    if (!applyOnce()) break;
+  }
+
+  if (successAmount <= 0) {
+    appendLog("そのアイテムはもう売れません。");
+    return;
+  }
+
+  const totalPrice = entry.price * successAmount;
+  money += totalPrice;
+  appendLog(`「${entry.name}」を ${successAmount}個、合計 ${totalPrice}G で売った。`);
+
   if (typeof debugRecordEconomy === "function" && moneyBefore != null && typeof money === "number") {
     try {
       debugRecordEconomy(moneyBefore, money, "shopSell");
@@ -417,8 +780,27 @@ function sellOneItem(entry) {
     updateDisplay();
   }
 
-  // 売却リストを再描画
   renderShopList();
+
+  // ★錬金ギルド：ポーション/道具を売却した分をカウント
+  if (typeof onAlchConsumableUsedOrSoldForGuild === "function" && successAmount > 0) {
+    if (entry.kind === "potion" || entry.kind === "tool") {
+      onAlchConsumableUsedOrSoldForGuild({
+        itemId: entry.id,
+        meta: null,
+        amount: successAmount
+      });
+    }
+  }
+
+  // ★料理ギルド：料理/飲み物を売却した分をカウント
+  if (typeof notifyCookingUseOrSell === "function" && successAmount > 0) {
+    if (entry.kind === "food") {
+      notifyCookingUseOrSell("sell", entry.id, successAmount);
+    } else if (entry.kind === "drink") {
+      notifyCookingUseOrSell("sell", entry.id, successAmount);
+    }
+  }
 }
 
 // =======================
@@ -430,63 +812,151 @@ function renderShopList() {
   if (!list) return;
   list.innerHTML = "";
 
+  const detailPanel = document.getElementById("shopItemDetail");
+  const buyBtn      = document.getElementById("shopBuyButton");
+
   // 売却モード
   if (shopCurrentCategory === "sell") {
+    if (detailPanel) {
+      detailPanel.style.display = "";
+    }
+    if (buyBtn) {
+      buyBtn.textContent = "売却する";
+    }
+
     const sellList = buildSellableList();
     if (!sellList.length) {
       const msg = document.createElement("div");
+      msg.className = "shop-empty-message";
       msg.textContent = "売却できるアイテムがありません。";
       list.appendChild(msg);
+      shopSelectedItem = null;
+      selectShopItem(null);
       return;
     }
 
     sellList.forEach(entry => {
-      const btn = document.createElement("button");
-      btn.textContent = `${entry.name} ×${entry.count}（${entry.price}Gで売却）`;
-      btn.style.display = "block";
-      btn.style.margin = "4px 0";
-      btn.addEventListener("click", () => {
-        sellOneItem(entry);
+      const row = document.createElement("div");
+      row.className = "shop-item-row";
+
+      const main = document.createElement("div");
+      main.className = "shop-item-main";
+
+      const nameEl = document.createElement("div");
+      nameEl.className = "shop-item-name";
+      nameEl.textContent = entry.name;
+
+      const metaEl = document.createElement("div");
+      metaEl.className = "shop-item-meta";
+      metaEl.textContent = `所持: ${entry.count}`;
+
+      main.appendChild(nameEl);
+      main.appendChild(metaEl);
+
+      const priceEl = document.createElement("div");
+      priceEl.className = "shop-item-price";
+      priceEl.textContent = `${entry.price}G`;
+
+      row.appendChild(main);
+      row.appendChild(priceEl);
+
+      row.addEventListener("click", () => {
+        document.querySelectorAll(".shop-item-row").forEach(el => el.classList.remove("selected"));
+        row.classList.add("selected");
+        selectShopItem(entry);
       });
-      list.appendChild(btn);
+
+      list.appendChild(row);
     });
 
-    // 売却モードでは詳細パネルは使わない
     selectShopItem(null);
     return;
   }
 
-  // 通常の購入リスト
+  // 通常の購入モード
+  if (detailPanel) {
+    detailPanel.style.display = "";
+  }
+  if (buyBtn) {
+    buyBtn.textContent = "購入する";
+  }
+
   const items = shopData[shopCurrentCategory] || [];
+  if (!items.length) {
+    const msg = document.createElement("div");
+    msg.className = "shop-empty-message";
+    msg.textContent = "商品がありません。";
+    list.appendChild(msg);
+    selectShopItem(null);
+    return;
+  }
+
   items.forEach(item => {
-    const btn = document.createElement("button");
-    btn.textContent = `${item.name} (${item.price}G)`;
-    btn.style.display = "block";
-    btn.style.margin = "4px 0";
-    btn.addEventListener("click", () => selectShopItem(item));
-    list.appendChild(btn);
+    const row = document.createElement("div");
+    row.className = "shop-item-row";
+
+    const main = document.createElement("div");
+    main.className = "shop-item-main";
+
+    const nameEl = document.createElement("div");
+    nameEl.className = "shop-item-name";
+    nameEl.textContent = item.name;
+
+    const metaEl = document.createElement("div");
+    metaEl.className = "shop-item-meta";
+    metaEl.textContent = (shopCurrentCategory === "service") ? "サービス" : "消耗品";
+
+    main.appendChild(nameEl);
+    main.appendChild(metaEl);
+
+    const priceEl = document.createElement("div");
+    priceEl.className = "shop-item-price";
+    priceEl.textContent = `${getEffectiveShopPrice(item.price)}G`;
+
+    row.appendChild(main);
+    row.appendChild(priceEl);
+
+    row.addEventListener("click", () => {
+      document.querySelectorAll(".shop-item-row").forEach(el => el.classList.remove("selected"));
+      row.classList.add("selected");
+      selectShopItem(item);
+    });
+
+    list.appendChild(row);
   });
 
   selectShopItem(null);
 }
 
 // =======================
-// 商品選択（購入用詳細パネル）
+// 商品選択（購入・売却共通で右パネル更新）
 // =======================
 
 function selectShopItem(item) {
   shopSelectedItem = item;
-  const nameEl  = document.getElementById("shopItemName");
-  const descEl  = document.getElementById("shopItemDesc");
-  const priceEl = document.getElementById("shopItemPrice");
-  const buyBtn  = document.getElementById("shopBuyButton");
+  const nameEl   = document.getElementById("shopItemName");
+  const descEl   = document.getElementById("shopItemDesc");
+  const priceEl  = document.getElementById("shopItemPrice");
+  const buyBtn   = document.getElementById("shopBuyButton");
+  const qtyInput = document.getElementById("shopQty");
 
-  if (!item || shopCurrentCategory === "sell") {
+  if (!item) {
+    shopCurrentUnitPrice = 0;
     if (nameEl)  nameEl.textContent = (shopCurrentCategory === "sell")
       ? "売却したいアイテムを左から選んでください。"
       : "商品を選択してください。";
     if (descEl)  descEl.textContent = "";
     if (priceEl) priceEl.textContent = "";
+    if (qtyInput) qtyInput.value = 1;
+
+    // ★数量UIリセット
+    const qtyBtns = document.querySelectorAll(".qty-btn");
+    qtyBtns.forEach(b => b.disabled = false);
+    if (qtyInput) {
+      qtyInput.readOnly = false;
+    }
+
+    updateShopTotal();
     if (buyBtn) {
       buyBtn.disabled = true;
       buyBtn.onclick = null;
@@ -494,14 +964,53 @@ function selectShopItem(item) {
     return;
   }
 
+  if (shopCurrentCategory === "sell") {
+    // 売却モード: 右パネルは「売却用詳細」
+    shopCurrentUnitPrice = item.price;
+    if (nameEl)  nameEl.textContent = item.name;
+    if (descEl)  descEl.textContent = `所持数: ${item.count}`;
+    if (priceEl) priceEl.textContent = `売値: ${item.price}G / 個`;
+
+    if (qtyInput) {
+      qtyInput.value = 1;
+      qtyInput.readOnly = false;
+    }
+    const qtyBtns = document.querySelectorAll(".qty-btn");
+    qtyBtns.forEach(b => b.disabled = false);
+
+    updateShopTotal();
+
+    if (buyBtn) {
+      buyBtn.disabled = false;
+      buyBtn.onclick = () => {
+        const amount = getShopQty();
+        sellMultipleItems(item, amount);
+      };
+    }
+    return;
+  }
+
+  // 購入モード
   const effectivePrice = getEffectiveShopPrice(item.price);
+  shopCurrentUnitPrice = effectivePrice;
 
   if (nameEl)  nameEl.textContent = item.name;
-  if (descEl)  descEl.textContent = item.desc;
-  if (priceEl) {
-    // 割引後の最終価格だけ表示（元価格を出したければここで併記も可）
-    priceEl.textContent = `価格: ${effectivePrice}G`;
+  if (descEl)  descEl.textContent = item.desc || "";
+  if (priceEl) priceEl.textContent = `価格: ${effectivePrice}G / 個`;
+
+  const isService = (shopCurrentCategory === "service");
+
+  if (qtyInput) {
+    qtyInput.value = 1;
+    qtyInput.readOnly = isService; // ★サービスは編集不可
   }
+
+  const qtyBtns = document.querySelectorAll(".qty-btn");
+  qtyBtns.forEach(b => {
+    b.disabled = isService; // ★サービスでは +/- ボタンも無効
+  });
+
+  updateShopTotal();
 
   if (buyBtn) {
     buyBtn.disabled = false;
@@ -510,23 +1019,25 @@ function selectShopItem(item) {
 }
 
 // =======================
-// 購入処理（既存仕様＋定食）
+// 購入処理（既存仕様＋定食＋数量反映）
 // =======================
 
 function buyShopItem(item) {
   if (!item) return;
 
-  const priceToPay = getEffectiveShopPrice(item.price);
+  const qty = getShopQty(); // ★数量を取得
+  if (qty <= 0) return;
+
+  const unitPrice = getEffectiveShopPrice(item.price);
+  const priceToPay = unitPrice * (shopCurrentCategory === "service" ? 1 : qty); // ★サービスは常に1回分
 
   if (money < priceToPay) {
     appendLog("ゴールドが足りない。");
     return;
   }
 
-  // ★経済ログ用: 購入前残高
+  // 経済ログ用: 購入前残高
   const moneyBefore = money;
-
-  money -= priceToPay;
 
   if (shopCurrentCategory === "item") {
     // 通常ポーション
@@ -534,21 +1045,29 @@ function buyShopItem(item) {
       const p = potions.find(x => x.id === item.potionId);
       if (!p) {
         appendLog("この商品はまだ実装されていない。");
-      } else {
-        potionCounts[p.id] = (potionCounts[p.id] || 0) + 1;
-        appendLog(`${item.name} を購入した。`);
+        return;
       }
+
+      // ここまで来たら成功扱いで減算＆付与
+      money -= priceToPay;
+      potionCounts[p.id] = (potionCounts[p.id] || 0) + qty; // ★数量分加算
+      appendLog(`${item.name} を ${qty}個購入した。`);
     } else {
       // 爆弾T1（道具）購入: 道具倉庫に追加
       if (typeof toolCounts === "object") {
+        money -= priceToPay;
         const toolId = "bomb_T1";
-        toolCounts[toolId] = (toolCounts[toolId] || 0) + 1;
-        appendLog(`${item.name} を購入した（道具として倉庫に追加された）。`);
+        toolCounts[toolId] = (toolCounts[toolId] || 0) + qty; // ★数量分
+        appendLog(`${item.name} を ${qty}個購入した（道具として倉庫に追加された）。`);
       } else {
         appendLog("道具の保管領域が未定義です（toolCounts）。");
+        return;
       }
     }
   } else if (shopCurrentCategory === "service") {
+    // サービスは常に1回分だけ効果を適用
+    money -= priceToPay;
+
     if (item.kind === "innHP") {
       hp = hpMax;
       appendLog("宿屋で休み、HPが全回復した。");
@@ -557,7 +1076,7 @@ function buyShopItem(item) {
       mp = mpMax;
       appendLog("宿屋で休み、HPとMPが全回復した。");
     } else if (item.kind === "meal") {
-      // ★定食: 空腹＆水分 +30 回復
+      // 定食: 空腹＆水分 +30 回復
       if (typeof restoreHungerThirst === "function") {
         restoreHungerThirst(30, 30);
       }
@@ -565,7 +1084,7 @@ function buyShopItem(item) {
     }
   }
 
-  // ★経済ログ: ショップ購入
+  // 経済ログ: ショップ購入
   if (typeof debugRecordEconomy === "function" && typeof money === "number") {
     try {
       debugRecordEconomy(moneyBefore, money, "shopBuy");
@@ -579,9 +1098,6 @@ function buyShopItem(item) {
 // =======================
 // カテゴリタブ初期化
 // =======================
-//
-// 既存の .shop-category-button に加えて、
-// data-category="sell" のタブをHTML側に足しておく前提。
 
 function initShopTabs() {
   const buttons = document.querySelectorAll(".shop-category-button");
@@ -589,6 +1105,10 @@ function initShopTabs() {
     btn.addEventListener("click", () => {
       const cat = btn.getAttribute("data-category");
       if (!cat) return;
+      
+      buttons.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      
       shopCurrentCategory = cat;
       renderShopList();
     });
@@ -602,5 +1122,14 @@ function initShopTabs() {
 function initShop() {
   updateShopGoldDisplay();
   initShopTabs();
+  initShopQtyControls();
+  
+  shopCurrentCategory = "item";
+  
+  const firstBtn = document.querySelector('.shop-category-button[data-category="item"]');
+  if (firstBtn) {
+    firstBtn.classList.add("active");
+  }
+  
   renderShopList();
 }

@@ -465,21 +465,53 @@ function buildAppLayout() {
               <h3>ショップ</h3>
               <p>消耗品やサービスを購入できます。</p>
 
-              <p>所持ゴールド: <span id="shopGoldDisplay">0</span>G</p>
+              <div class="shop-root">
+                <div class="shop-header">
+                  <div class="shop-title">ショップ</div>
+                  <div class="shop-money">
+                    所持ゴールド:
+                    <span id="shopGoldDisplay" class="shop-money-value">0</span>G
+                  </div>
+                </div>
 
-              <div id="shopCategoryTabs">
-                <button class="shop-category-button" data-category="item">消耗品</button>
-                <button class="shop-category-button" data-category="service">サービス</button>
-                <button class="shop-category-button" data-category="sell">売却</button>
-              </div>
+                <div class="shop-tabs">
+                  <button class="shop-category-button" data-category="item">消耗品</button>
+                  <button class="shop-category-button" data-category="service">サービス</button>
+                  <button class="shop-category-button" data-category="sell">売却</button>
+                </div>
 
-              <div id="shopItemList"></div>
+                <div class="shop-body">
+                  <!-- 左: アイテムリスト -->
+                  <div id="shopItemList"></div>
 
-              <div id="shopItemDetail" style="margin-top: 8px; border-top: 1px solid #888; padding-top: 8px;">
-                <p id="shopItemName">商品を選択してください。</p>
-                <p id="shopItemDesc"></p>
-                <p id="shopItemPrice"></p>
-                <button id="shopBuyButton" disabled>購入する</button>
+                  <!-- 右: 詳細・数量・ボタン -->
+                  <div id="shopItemDetail">
+                    <div id="shopItemName">商品を選択してください。</div>
+                    <div id="shopItemDesc"></div>
+                    <div id="shopItemPrice"></div>
+
+                    <div class="shop-detail-row">
+                      <label for="shopQty">数量</label>
+                      <div class="shop-qty-control">
+                        <button type="button" class="qty-btn" data-delta="-10">-10</button>
+                        <button type="button" class="qty-btn" data-delta="-1">-1</button>
+                        <input type="number" id="shopQty" value="1" min="1">
+                        <button type="button" class="qty-btn" data-delta="1">+1</button>
+                        <button type="button" class="qty-btn" data-delta="10">+10</button>
+                      </div>
+                    </div>
+
+                    <div class="shop-detail-row">
+                      <div>合計金額: <span id="shopTotal">0</span>G</div>
+                    </div>
+
+                    <div class="shop-detail-buttons">
+                      <button id="shopBuyButton" class="shop-btn-primary" disabled>購入する</button>
+                      <!-- 売却モードで使う（今は隠しっぱなしでOK） -->
+                      <button id="shopSellAllButton" class="shop-btn-danger" style="display:none;">全部売る</button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 

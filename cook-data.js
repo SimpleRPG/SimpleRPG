@@ -1049,6 +1049,25 @@ window.cookingMats = window.cookingMats || {};
   // ---- 完成料理（食べ物） ----
   (window.COOKING_RECIPES.food || []).forEach(r => {
     const eff = r.effect || {};
+
+    // requires を craft.cost 形式に集計
+    const cost = {};
+    (r.requires || []).forEach(req => {
+      if (!req || !req.id) return;
+      const amt = typeof req.amount === "number" ? req.amount : 1;
+      cost[req.id] = (cost[req.id] || 0) + amt;
+    });
+
+    // tier ラベルから数値ティアを取得（なければ1）
+    let tierNum = 1;
+    if (r.tier && typeof r.tier === "string") {
+      const m = r.tier.match(/^T(\d+)/);
+      if (m) {
+        const n = parseInt(m[1], 10);
+        if (!Number.isNaN(n)) tierNum = n;
+      }
+    }
+
     defs[r.id] = {
       id: r.id,
       name: r.name,
@@ -1075,13 +1094,40 @@ window.cookingMats = window.cookingMats || {};
       foodStatusId: eff.statusId || null,
       foodStatusTurns: eff.durationTurns || 0,
       foodHungerRecover: eff.hungerRecover || 0,
-      foodThirstRecover: eff.thirstRecover || 0
+      foodThirstRecover: eff.thirstRecover || 0,
+
+      // 将来の成功率・原価計算用のクラフトメタ（今は成功率100%扱い）
+      craft: {
+        enabled: true,
+        category: "food",
+        tier: tierNum,
+        kind: "cooking",
+        baseRate: 1.0,
+        cost
+      }
     };
   });
 
   // ---- 完成料理（飲み物） ----
   (window.COOKING_RECIPES.drink || []).forEach(r => {
     const eff = r.effect || {};
+
+    const cost = {};
+    (r.requires || []).forEach(req => {
+      if (!req || !req.id) return;
+      const amt = typeof req.amount === "number" ? req.amount : 1;
+      cost[req.id] = (cost[req.id] || 0) + amt;
+    });
+
+    let tierNum = 1;
+    if (r.tier && typeof r.tier === "string") {
+      const m = r.tier.match(/^T(\d+)/);
+      if (m) {
+        const n = parseInt(m[1], 10);
+        if (!Number.isNaN(n)) tierNum = n;
+      }
+    }
+
     defs[r.id] = {
       id: r.id,
       name: r.name,
@@ -1106,7 +1152,16 @@ window.cookingMats = window.cookingMats || {};
       drinkStatusId: eff.statusId || null,
       drinkStatusTurns: eff.durationTurns || 0,
       drinkHungerRecover: eff.hungerRecover || 0,
-      drinkThirstRecover: eff.thirstRecover || 0
+      drinkThirstRecover: eff.thirstRecover || 0,
+
+      craft: {
+        enabled: true,
+        category: "drink",
+        tier: tierNum,
+        kind: "cooking",
+        baseRate: 1.0,
+        cost
+      }
     };
   });
 

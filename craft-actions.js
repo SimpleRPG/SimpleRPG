@@ -104,7 +104,7 @@ function craftWeapon(){
   const q = rollQualityBySkillLv(skillLv);
   const qName = QUALITY_NAMES[q];
 
-  // ★ ここを ITEM_META 由来の baseEnh に変更（旧 weapons 配列依存を排除）
+  // ★ ITEM_META 由来の baseEnh
   let baseEnh = 0;
   if (typeof getItemMeta === "function") {
     const meta = getItemMeta(recipe.id);
@@ -121,13 +121,9 @@ function craftWeapon(){
 
   appendLog(`${qName}${recipe.name} をクラフトした`);
 
-  // ★ 鍛冶ギルド用：武器クラフト依頼を進行
-  if (typeof onCraftCompletedForGuild === "function") {
-    onCraftCompletedForGuild({
-      category: "weapon",
-      recipeId: recipe.id,
-      tier: getTierNumberFromId(recipe.id)
-    });
+  // ★ smithデイリー: 武器/防具制作15個
+  if (typeof onSmithCraftCompletedForGuild === "function") {
+    onSmithCraftCompletedForGuild(recipe.id);
   }
 
   // 成功ログ
@@ -227,7 +223,7 @@ function craftArmor(){
   const q = rollQualityBySkillLv(skillLv);
   const qName = QUALITY_NAMES[q];
 
-  // ★ ここを ITEM_META 由来の baseEnh に変更（旧 armors 配列依存を排除）
+  // ★ ITEM_META 由来の baseEnh
   let baseEnh = 0;
   if (typeof getItemMeta === "function") {
     const meta = getItemMeta(recipe.id);
@@ -242,13 +238,9 @@ function craftArmor(){
 
   appendLog(`${qName}${recipe.name} をクラフトした`);
 
-  // ★ 鍛冶ギルド用：防具クラフト依頼を進行
-  if (typeof onCraftCompletedForGuild === "function") {
-    onCraftCompletedForGuild({
-      category: "armor",
-      recipeId: recipe.id,
-      tier: getTierNumberFromId(recipe.id)
-    });
+  // ★ smithデイリー: 武器/防具制作15個
+  if (typeof onSmithCraftCompletedForGuild === "function") {
+    onSmithCraftCompletedForGuild(recipe.id);
   }
 
   if (typeof debugRecordCraft === "function") {
@@ -359,13 +351,9 @@ function craftPotion(){
 
   appendLog(`${recipe.name} をクラフトした`);
 
-  // ★ 錬金ギルド用：ポーションクラフト依頼を進行
-  if (typeof onCraftCompletedForGuild === "function") {
-    onCraftCompletedForGuild({
-      category: "potion",
-      recipeId: recipe.id,
-      tier: getTierNumberFromId(recipe.id)
-    });
+  // ★ alchemistデイリー: ポーション/道具制作15個
+  if (typeof onAlchCraftCompletedForGuild === "function") {
+    onAlchCraftCompletedForGuild(recipe.id);
   }
 
   if (typeof debugRecordCraft === "function") {
@@ -475,13 +463,9 @@ function craftTool(){
 
   appendLog(`${recipe.name} をクラフトした`);
 
-  // ★ 錬金／道具系ギルド用：道具クラフト依頼を進行
-  if (typeof onCraftCompletedForGuild === "function") {
-    onCraftCompletedForGuild({
-      category: "tool",
-      recipeId: recipe.id,
-      tier: getTierNumberFromId(recipe.id)
-    });
+  // ★ alchemistデイリー: ポーション/道具制作15個
+  if (typeof onAlchCraftCompletedForGuild === "function") {
+    onAlchCraftCompletedForGuild(recipe.id);
   }
 
   if (typeof debugRecordCraft === "function") {

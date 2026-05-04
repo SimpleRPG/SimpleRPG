@@ -324,10 +324,27 @@ function getTierFromItemId(id) {
   return null;
 }
 
-function notifyAlchUse(kind, itemId) {
+// ★修正: 使用個数を渡せるようにする（デフォルト1）
+// count は「今回消費した個数」想定
+function notifyAlchUse(kind, itemId, count) {
   if (typeof onAlchConsumableUsedForGuild === "function") {
     const tier = getTierFromItemId(itemId);
-    onAlchConsumableUsedForGuild({ kind, tier });
+    const amount = (typeof count === "number" && count > 0) ? count : 1;
+    onAlchConsumableUsedForGuild({ kind, itemId, tier, amount });
+  }
+}
+
+// ★追加: 料理ギルド用（食べる or 売る）通知
+// kind: "eat" | "drink" | "sell", amount: 消費/売却した個数
+function notifyCookingUseOrSell(kind, itemId, amount) {
+  if (typeof addDailyProgressFromProduction === "function") {
+    const n = (typeof amount === "number" && amount > 0) ? amount : 1;
+    addDailyProgressFromProduction({
+      kind: "cooking_use_or_sell",
+      amount: n,
+      itemId: itemId,
+      meta: { useKind: kind }
+    });
   }
 }
 
@@ -430,7 +447,8 @@ function usePotionOutsideBattle() {
     } catch (e) {}
   }
 
-  notifyAlchUse("potion", p.id);
+  // 1個消費したので count=1
+  notifyAlchUse("potion", p.id, 1);
 
   refreshUseItemSelect();
   updateDisplay();
@@ -514,7 +532,8 @@ function useBattleItem() {
       } catch (e) {}
     }
 
-    notifyAlchUse("potion", p.id);
+    // 1個消費したので count=1
+    notifyAlchUse("potion", p.id, 1);
 
   } else if (category === "tool") {
     if (typeof carryTools === "undefined") {
@@ -617,7 +636,8 @@ function useBattleItem() {
         appendLog(`${itemName}を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
       }
 
-      notifyAlchUse("tool", id);
+      // 1個消費したので count=1
+      notifyAlchUse("tool", id, 1);
 
       // ★追加: テト用アイテム使用ログ（戦闘道具）
       if (typeof window.tetoRecordItemUse === "function") {
@@ -769,6 +789,11 @@ function eatFoodInField() {
     } catch (e) {}
   }
 
+  // ★追加: 料理ギルドデイリー（食べる or 売る）
+  if (typeof notifyCookingUseOrSell === "function") {
+    notifyCookingUseOrSell("eat", id, 1);
+  }
+
   notifyBuffFoodOrDrink(recipe.effect);
 
   if (typeof refreshCarryFoodDrinkSelects === "function") {
@@ -821,6 +846,11 @@ function drinkInField() {
         mpAfter: mp
       });
     } catch (e) {}
+  }
+
+  // ★追加: 料理ギルドデイリー（食べる or 売る）
+  if (typeof notifyCookingUseOrSell === "function") {
+    notifyCookingUseOrSell("drink", id, 1);
   }
 
   notifyBuffFoodOrDrink(recipe.effect);
@@ -925,7 +955,7 @@ function logGatherBaseRequiredMats(matKey, currentLv, nextLv, needInter, needSta
     const haveStar = getStarShardCountForGather();
     lines.push(`- ${RARE_GATHER_ITEM_ID}: 必要 ${needStar} 個 / 所持 ${haveStar} 個`);
   }
-  appendLog(lines.join("\\\\n"));
+  appendLog(lines.join("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n"));
 }
 
 // =======================

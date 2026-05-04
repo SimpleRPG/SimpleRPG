@@ -4,7 +4,7 @@
 // =======================
 // 市場（売り注文＋買い注文）
 // =======================
-// ※ MATERIAL_TIER_VALUES は craft-data.js 側で window.MATERIAL_TIER_VALUES として定義される前提
+// ※ MATERIAL_TIER_VALUES は craft-item-data.js 側で window.MATERIAL_TIER_VALUES として定義される前提
 
 // 料理素材（レシピに使う素材）は一律 5G 相当
 const COOKING_INGREDIENT_BASE_VALUE = 5;
@@ -94,7 +94,7 @@ function addSellLog(buyerLabel, category, itemId, amount, totalPrice) {
 // ここでは旧仕様の t1/t2/t3 直接アクセスをやめ、
 // それらのヘルパーを利用するだけにする。
 
-// 合計から指定量を減らす（T1→T2→T3 の順で消費）
+// 合計から指定量を減らす（T1→T2→T3... の順で消費）
 function consumeBaseMaterials(key, amount) {
   if (typeof window.getMatTotal !== "function" ||
       typeof window.getMatTierCount !== "function" ||
@@ -107,7 +107,6 @@ function consumeBaseMaterials(key, amount) {
 
   let remain = amount;
 
-  // T1 → T2 → T3 の順で減らす
   const maxTier = typeof window.MATERIAL_MAX_T === "number" ? window.MATERIAL_MAX_T : 3;
   for (let tier = 1; tier <= maxTier && remain > 0; tier++) {
     const have = getMatTierCount(key, tier);
@@ -159,8 +158,13 @@ function removeItemForSell(category, itemId, amount){
     }
 
     weaponCounts[itemId] = have - removed;
-    if(equippedWeaponId === itemId && weaponCounts[itemId] <= 0){
+    if (typeof equippedWeaponId !== "undefined" &&
+        equippedWeaponId === itemId &&
+        weaponCounts[itemId] <= 0) {
       equippedWeaponId = null;
+      if (typeof window !== "undefined") {
+        window.equippedWeaponId = null;
+      }
     }
     return true;
   } else if(category === "armor"){
@@ -190,8 +194,13 @@ function removeItemForSell(category, itemId, amount){
     }
 
     armorCounts[itemId] = have - removed;
-    if(equippedArmorId === itemId && armorCounts[itemId] <= 0){
+    if (typeof equippedArmorId !== "undefined" &&
+        equippedArmorId === itemId &&
+        armorCounts[itemId] <= 0) {
       equippedArmorId = null;
+      if (typeof window !== "undefined") {
+        window.equippedArmorId = null;
+      }
     }
     return true;
   } else if(category === "potion"){
@@ -297,9 +306,11 @@ function getItemLabel(category, itemId){
     return itemId;
   } else if(category === "cooking"){
     if (typeof COOKING_RECIPES !== "undefined") {
-      const fr = COOKING_RECIPES.food.find(r => r.id === itemId);
+      const foods = Array.isArray(COOKING_RECIPES.food) ? COOKING_RECIPES.food : [];
+      const drinks = Array.isArray(COOKING_RECIPES.drink) ? COOKING_RECIPES.drink : [];
+      const fr = foods.find(r => r.id === itemId);
       if (fr) return fr.name;
-      const dr = COOKING_RECIPES.drink.find(r => r.id === itemId);
+      const dr = drinks.find(r => r.id === itemId);
       if (dr) return dr.name;
     }
     return itemId;
@@ -314,8 +325,10 @@ function getItemLabel(category, itemId){
     }
 
     if (typeof COOKING_RECIPES !== "undefined") {
-      const fr = COOKING_RECIPES.food.find(r => r.id === itemId);
-      const dr = COOKING_RECIPES.drink.find(r => r.id === itemId);
+      const foods = Array.isArray(COOKING_RECIPES.food) ? COOKING_RECIPES.food : [];
+      const drinks = Array.isArray(COOKING_RECIPES.drink) ? COOKING_RECIPES.drink : [];
+      const fr = foods.find(r => r.id === itemId);
+      const dr = drinks.find(r => r.id === itemId);
       if (fr) return fr.name;
       if (dr) return dr.name;
     }
@@ -378,7 +391,7 @@ function renderMyListings() {
     const label = getItemLabel(g.category, g.itemId);
     const nameCol = (label + "              ").slice(0, 12);
     const amountCol = String(g.amount).padStart(3, " ");
-    const priceCol  = (String(g.price) + "G").padStart(6, " ");
+    the const priceCol  = (String(g.price) + "G").padStart(6, " ");
     return `${nameCol}  x${amountCol}  @${priceCol}`;
   });
 
@@ -478,6 +491,53 @@ function doMarketSell(){
     }
   }
 
+  // ロールバック用スナップショット
+  const snapshot = {
+    uiCategory,
+    itemId,
+    amount,
+    restore: () => {
+      if (uiCategory === "weapon") {
+        weaponCounts[itemId] = (weaponCounts[itemId] || 0) + amount;
+      } else if (uiCategory === "armor") {
+        armorCounts[itemId] = (armorCounts[itemId] || 0) + amount;
+      } else if (uiCategory === "potion") {
+        potionCounts[itemId] = (potionCounts[itemId] || 0) + amount;
+      } else if (uiCategory === "tool") {
+        toolCounts[itemId] = (toolCounts[itemId] || 0) + amount;
+      } else if (uiCategory === "materialBase" || uiCategory === "material") {
+        if (itemId === "wood" || itemId === "ore" || itemId === "herb" ||
+            itemId === "cloth" || itemId === "leather" || itemId === "water") {
+          addBaseMaterials(itemId, amount);
+        } else if (itemId === RARE_GATHER_ITEM_ID && typeof itemCounts === "object") {
+          itemCounts[itemId] = (itemCounts[itemId] || 0) + amount;
+        } else if (typeof intermediateMats === "object" && intermediateMats[itemId] != null) {
+          intermediateMats[itemId] = (intermediateMats[itemId] || 0) + amount;
+        } else if (typeof cookedFoods === "object" && cookedFoods[itemId]) {
+          cookedFoods[itemId] = (cookedFoods[itemId] || 0) + amount;
+        } else if (typeof cookedDrinks === "object" && cookedDrinks[itemId]) {
+          cookedDrinks[itemId] = (cookedDrinks[itemId] || 0) + amount;
+        }
+      } else if (uiCategory === "materialInter") {
+        if (typeof intermediateMats === "object") {
+          intermediateMats[itemId] = (intermediateMats[itemId] || 0) + amount;
+        }
+      } else if (uiCategory === "cooking") {
+        if (typeof cookedFoods === "object" && cookedFoods[itemId]) {
+          cookedFoods[itemId] = (cookedFoods[itemId] || 0) + amount;
+        } else if (typeof cookedDrinks === "object" && cookedDrinks[itemId]) {
+          cookedDrinks[itemId] = (cookedDrinks[itemId] || 0) + amount;
+        }
+      }
+    }
+  };
+
+  // ★ 先に在庫を減らしてからサーバーに出品要求を送る（幽霊出品対策）
+  if(!removeItemForSell(uiCategory, itemId, amount)){
+    if (typeof appendLog === "function") appendLog("[市] 手持ちの個数が足りません");
+    return;
+  }
+
   const label = getItemLabel(uiCategory, itemId);
 
   if (window.globalSocket) {
@@ -491,11 +551,21 @@ function doMarketSell(){
           if (!res || !res.ok) {
             const errMsg = res && res.error ? res.error : "出品に失敗しました";
             if (typeof appendLog === "function") appendLog(`[市] ${errMsg}`);
-            return;
-          }
 
-          if(!removeItemForSell(uiCategory, itemId, amount)){
-            if (typeof appendLog === "function") appendLog("[市] 手持ちの個数が足りません");
+            // サーバー側で失敗した場合は在庫をロールバック
+            try {
+              snapshot.restore();
+              if (typeof updateDisplay === "function") updateDisplay();
+              if (typeof refreshWarehouseUI === "function") refreshWarehouseUI();
+              if (typeof refreshMarketSellCandidates === "function") {
+                refreshMarketSellCandidates();
+              }
+              if (typeof refreshMarketSellItems === "function") {
+                refreshMarketSellItems();
+              }
+            } catch (e2) {
+            }
+
             return;
           }
 
@@ -554,15 +624,24 @@ function doMarketSell(){
       return;
     } catch (e) {
       if (typeof appendLog === "function") appendLog("[市] オンライン市場への出品に失敗しました");
+      // emit 例外時もロールバック
+      try {
+        snapshot.restore();
+        if (typeof updateDisplay === "function") updateDisplay();
+        if (typeof refreshWarehouseUI === "function") refreshWarehouseUI();
+        if (typeof refreshMarketSellCandidates === "function") {
+          refreshMarketSellCandidates();
+        }
+        if (typeof refreshMarketSellItems === "function") {
+          refreshMarketSellItems();
+        }
+      } catch (e2) {
+      }
       return;
     }
   }
 
-  if(!removeItemForSell(uiCategory, itemId, amount)){
-    if (typeof appendLog === "function") appendLog("[市] 手持ちの個数が足りません");
-    return;
-  }
-
+  // オフライン市場: 従来どおり、そのまま出品確定
   const listing = {
     id: marketListingIdSeq++,
     sellerId: "player",
@@ -644,7 +723,7 @@ function doMarketBuyOrder(){
               buyerId,
               category: serverOrder.category || category,
               itemKey: serverOrder.itemKey || itemId,
-              price: serverOrder.price != null ? serverOrder.price : price,
+              price: serverOrder.price !=null ? serverOrder.price : price,
               maxAmount: serverOrder.maxAmount != null ? serverOrder.maxAmount : amount,
               remainAmount: serverOrder.remainAmount != null ? serverOrder.remainAmount : amount,
               reservedMoney: reservedMoneyLocal
@@ -849,90 +928,136 @@ function refreshMarketOrderList(){
 }
 
 // -----------------------
-// 原価（理論価値）計算ヘルパー
+// 原価（理論価値）計算ヘルパー（ITEM_META ベース）
 // -----------------------
 function getTheoreticalCost(category, itemId) {
+  // 料理素材かどうか
+  function isCookingIngredientId(id) {
+    return /^meat_/.test(id) ||
+           /^veg_/.test(id) ||
+           /^grain_/.test(id) ||
+           /^spice_/.test(id) ||
+           /^fish_/.test(id);
+  }
+
+  // 一次素材1個あたりの価値
   function getBaseMaterialCost(baseKey, tier) {
     const tbl = window.MATERIAL_TIER_VALUES || {};
-    if (tier === "t1") return tbl.t1 || 3;
-    if (tier === "t2") return tbl.t2 || 5;
-    if (tier === "t3") return tbl.t3 || 10;
+    if (tbl && typeof tbl === "object") {
+      const key = typeof tier === "string" ? tier : ("t" + tier);
+      if (typeof tbl[key] === "number") {
+        return tbl[key];
+      }
+    }
+
+    if (tier === "t1" || tier === 1) return 3;
+    if (tier === "t2" || tier === 2) return 5;
+    if (tier === "t3" || tier === 3) return 10;
+    if (tier === "t4" || tier === 4) return 15;
+    if (tier === "t5" || tier === 5) return 25;
+    if (tier === "t6" || tier === 6) return 40;
+    if (tier === "t7" || tier === 7) return 60;
+    if (tier === "t8" || tier === 8) return 90;
+    if (tier === "t9" || tier === 9) return 130;
+    if (tier === "t10" || tier === 10) return 180;
     return 0;
   }
 
-  function getIntermediateCost(id) {
-    if (!Array.isArray(INTERMEDIATE_MATERIALS)) return 0;
-    const mat = INTERMEDIATE_MATERIALS.find(m => m.id === id);
-    if (!mat || !mat.from) return 0;
+  // cost: { itemId: amount } を一次素材ベースで評価
+  function getCostFromCostObject(cost) {
+    if (!cost || typeof cost !== "object") return 0;
 
     let total = 0;
-    Object.keys(mat.from).forEach(baseKey => {
-      const tiers = mat.from[baseKey];
-      Object.keys(tiers).forEach(tier => {
-        const amount = tiers[tier] || 0;
-        total += getBaseMaterialCost(baseKey, tier) * amount;
-      });
+    Object.keys(cost).forEach(id => {
+      const amount = cost[id] || 0;
+      if (!amount) return;
+
+      // 料理素材は一律 5G
+      if (isCookingIngredientId(id)) {
+        total += COOKING_INGREDIENT_BASE_VALUE * amount;
+        return;
+      }
+
+      // 一次素材 or 中間素材かを判定するために parseTieredId を利用
+      let tierNum = null;
+      let baseId = null;
+      if (typeof window.parseTieredId === "function") {
+        const parsed = window.parseTieredId(id);
+        if (parsed && parsed.baseId && parsed.tier) {
+          baseId = parsed.baseId;
+          tierNum = parsed.tier;
+        }
+      }
+
+      if (tierNum != null && baseId) {
+        const unit = getBaseMaterialCost(baseId, tierNum);
+        total += unit * amount;
+      }
+      // ティア不明な ID は評価しない（旧フォールバック削除）
     });
+
     return total;
   }
 
-  function getRecipeCost(cat, id) {
-    if (typeof CRAFT_RECIPES !== "object" || !CRAFT_RECIPES[cat]) return 0;
-    const list = CRAFT_RECIPES[cat];
-    const r = list.find(x => x.id === id);
-    if (!r || !r.cost) return 0;
+  // ITEM_META(craft) ベースの原価
+  function getRecipeCostByMeta(id) {
+    if (typeof window.getItemMeta !== "function") return 0;
+    const meta = window.getItemMeta(id);
+    if (!meta || !meta.craft || !meta.craft.enabled) return 0;
 
-    let total = 0;
-    Object.keys(r.cost).forEach(key => {
-      const amount = r.cost[key] || 0;
+    const craft = meta.craft;
+    const costObj = craft.cost || {};
+    const total = getCostFromCostObject(costObj);
 
-      const isIntermediate =
-        Array.isArray(INTERMEDIATE_MATERIALS) &&
-        INTERMEDIATE_MATERIALS.some(m => m.id === key);
-
-      if (isIntermediate) {
-        total += getIntermediateCost(key) * amount;
-      } else {
-        let baseKey = key;
-        let tier = "t1";
-
-        const m = key.match(/(.+)_T([123])/);
-        if (m) {
-          baseKey = m[1];
-          tier = "t" + m[2];
-        }
-
-        total += getBaseMaterialCost(baseKey, tier) * amount;
-      }
-    });
-
+    // 平均成功率（tier に応じた既存ロジックを維持）
     let avgRate = 0.7;
-    if (/_T1$/.test(id)) avgRate = 0.8;
-    else if (/_T2$/.test(id)) avgRate = 0.7;
-    else if (/_T3$/.test(id)) avgRate = 0.6;
+    let tierNum = null;
 
-    if (avgRate <= 0) avgRate = 0.7;
+    if (typeof window.getItemTier === "function") {
+      tierNum = window.getItemTier(id);
+    }
+    if (!tierNum && typeof window.parseTieredId === "function") {
+      const parsed = window.parseTieredId(id);
+      if (parsed && parsed.tier) tierNum = parsed.tier;
+    }
+
+    if (tierNum === 1) avgRate = 0.8;
+    else if (tierNum === 2) avgRate = 0.7;
+    else if (tierNum === 3) avgRate = 0.6;
+    else if (tierNum >= 4) avgRate = 0.5;
+
+    if (!avgRate || avgRate <= 0) avgRate = 0.7;
 
     const v = total / avgRate;
     return Math.ceil(v);
   }
 
   if (category === "material") {
+    // 一次素材
     if (itemId === "wood" || itemId === "ore" || itemId === "herb" ||
         itemId === "cloth" || itemId === "leather" || itemId === "water") {
+      // T1 の価値を代表値として使う（既存仕様を維持）
       return getBaseMaterialCost(itemId, "t1");
     }
+    // レア採取素材
     if (itemId === RARE_GATHER_ITEM_ID) {
       return 50;
     }
-    if (Array.isArray(INTERMEDIATE_MATERIALS) &&
-        INTERMEDIATE_MATERIALS.some(m => m.id === itemId)) {
-      return getIntermediateCost(itemId);
+    // 料理素材（cookingMat）は一律 5G
+    if (isCookingIngredientId(itemId)) {
+      return COOKING_INGREDIENT_BASE_VALUE;
+    }
+    // 中間素材 or 料理完成品など ITEM_META ベースで評価できる素材
+    if (typeof window.getItemMeta === "function") {
+      const meta = window.getItemMeta(itemId);
+      if (meta && meta.craft && meta.craft.enabled) {
+        return getRecipeCostByMeta(itemId);
+      }
     }
     return 0;
   } else if (category === "weapon" || category === "armor" ||
              category === "potion" || category === "tool") {
-    return getRecipeCost(category, itemId);
+    return getRecipeCostByMeta(itemId);
   }
 
   return 0;

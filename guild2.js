@@ -248,6 +248,21 @@ function claimGuildQuestReward(guildId, questDef, isSpecial) {
   }
 }
 
+// 本日のギルドデイリー一覧を返す（依頼タブ用）
+function getTodayGuildDailies() {
+  if (!window.playerGuildId || !GUILDS[window.playerGuildId]) {
+    return [];
+  }
+
+  // 日付が変わっていたらここでリセット（0時リセット）
+  if (typeof maybeResetGuildDailiesByDate === "function") {
+    maybeResetGuildDailiesByDate();
+  }
+
+  const all = window.guildDailyProgress || {};
+  return Object.entries(all); // [ [id, prog], ... ]
+}
+
 function renderGuildQuests() {
   const listEl = document.getElementById("guildQuestList");
   if (!listEl) return;
@@ -263,9 +278,105 @@ function renderGuildQuests() {
   const guildId = window.playerGuildId;
   const quests = getGuildQuestList(guildId);
 
+  // 先にデイリー依頼（あれば）を表示
+  const dailyEntries = getTodayGuildDailies();
+  if (dailyEntries.length > 0) {
+    const header = document.createElement("div");
+    header.style.margin = "0 0 4px 0";
+
+    const title = document.createElement("div");
+    title.textContent = "本日のデイリー依頼";
+    title.style.fontWeight = "bold";
+    title.style.color = "#ffda6a";
+    header.appendChild(title);
+
+    const note = document.createElement("div");
+    note.textContent = "※1日1回だけ報酬を受け取れる日課クエストです（報酬: ゴールド100＋経験値80）。";
+    note.style.fontSize = "11px";
+    note.style.color = "#ccc";
+    header.appendChild(note);
+
+    listEl.appendChild(header);
+
+    dailyEntries.forEach(([id, prog]) => {
+      const box = document.createElement("div");
+      box.style.border = "1px solid #444";
+      box.style.padding = "4px";
+      box.style.marginBottom = "4px";
+      box.style.background = "#151515";
+
+      // 上部行（[デイリー]バッジ + タイトル）
+      const titleRow = document.createElement("div");
+      titleRow.style.display = "flex";
+      titleRow.style.alignItems = "center";
+      titleRow.style.gap = "4px";
+
+      const badge = document.createElement("span");
+      badge.textContent = "デイリー";
+      badge.style.fontSize = "10px";
+      badge.style.padding = "1px 4px";
+      badge.style.borderRadius = "3px";
+      badge.style.backgroundColor = "#335";
+      badge.style.color = "#ffda6a";
+
+      const titleSpan = document.createElement("span");
+      titleSpan.textContent = prog.name || "ギルドデイリー";
+      titleSpan.style.fontWeight = "bold";
+
+      titleRow.appendChild(badge);
+      titleRow.appendChild(titleSpan);
+      box.appendChild(titleRow);
+
+      if (prog.desc) {
+        const desc = document.createElement("div");
+        desc.textContent = prog.desc;
+        desc.style.fontSize = "11px";
+        box.appendChild(desc);
+      }
+
+      const status = document.createElement("div");
+      status.style.fontSize = "11px";
+      status.style.marginTop = "2px";
+      status.textContent = `進行: ${prog.count}/${prog.target}`;
+      box.appendChild(status);
+
+      const btnRow = document.createElement("div");
+      btnRow.style.marginTop = "4px";
+
+      const btn = document.createElement("button");
+      btn.style.fontSize = "11px";
+
+      if (prog.rewardTaken) {
+        btn.textContent = "報酬受取済み";
+        btn.disabled = true;
+      } else if (!prog.done) {
+        btn.textContent = "未達成";
+        btn.disabled = true;
+      } else {
+        btn.textContent = "報酬を受け取る";
+        btn.disabled = false;
+        btn.addEventListener("click", () => {
+          if (typeof claimGuildDailyReward === "function") {
+            claimGuildDailyReward(id);
+          }
+        });
+      }
+
+      btnRow.appendChild(btn);
+      box.appendChild(btnRow);
+
+      listEl.appendChild(box);
+    });
+
+    // デイリーと通常依頼の区切り
+    const sep = document.createElement("hr");
+    sep.style.margin = "6px 0";
+    listEl.appendChild(sep);
+  }
+
   if (!quests.length) {
     const p = document.createElement("p");
-    p.textContent = "このギルドにはまだ依頼が用意されていません。";
+    p.textContent = "このギルドにはまだ通常依頼が用意されていません。";
     listEl.appendChild(p);
     return;
   }
@@ -885,7 +996,7 @@ function renderGuildRewards() {
 function renderGuildUI() {
   renderGuildHeader();
   renderGuildList();
-  renderGuildQuests();
+  renderGuildQuests();   // 依頼タブ内でデイリー＋通常依頼をまとめて表示
   renderGuildRewards();
 }
 

@@ -209,7 +209,13 @@ function matchBuyOrdersForListing(listing) {
     const use = Math.min(order.remainAmount, remain);
     if (use <= 0) continue;
 
+    // ★修正: 部分マッチした分だけ remainAmount と reservedMoney を減らす
     order.remainAmount -= use;
+    if (typeof order.reservedMoney === "number") {
+      order.reservedMoney -= use * order.price;
+      if (order.reservedMoney < 0) order.reservedMoney = 0;
+    }
+
     remain -= use;
 
     matchedOrders.push({

@@ -24,6 +24,33 @@ window.guildQuestProgress = window.guildQuestProgress || {};
 window.citizenshipUnlocked = window.citizenshipUnlocked || false;
 
 // =======================
+// ★追加: ギルドデイリー状態（日付ベース）
+// =======================
+//
+// - guildDailyProgress: その日のデイリー一覧と進捗。
+//   例: {
+//     "daily_warrior_kill20_any": {
+//       guildId: "warrior",
+//       kind: "battle",
+//       by: null,
+//       count: 3,
+//       target: 20,
+//       done: false,
+//       rewardTaken: false,
+//       name: "日課: 戦士の鍛錬",
+//       desc: "敵を20体倒す。"
+//     },
+//     ...
+//   }
+//
+// - guildDailyDate: "YYYY-MM-DD"（ローカル日付）。これが変わったらリセット＆新規生成。
+// - guildDailyTakenDate: その日すでにどこかのギルドでデイリー報酬を受け取った日付
+//   （ギルド切り替えでデイリー再受注／再報酬を防ぐため）
+window.guildDailyProgress = window.guildDailyProgress || {};
+window.guildDailyDate = window.guildDailyDate || null;
+window.guildDailyTakenDate = window.guildDailyTakenDate || null;
+
+// =======================
 // 名声・ランク定義
 // =======================
 
@@ -355,6 +382,12 @@ function refreshGuildQuestUIIfNeeded() {
   }
 }
 
+function refreshGuildDailyUIIfNeeded() {
+  if (typeof renderGuildDailies === "function") {
+    renderGuildDailies();
+  }
+}
+
 // 任意の依頼を「受注状態」にするヘルパー（UIから呼ぶ）
 function acceptGuildQuest(questId) {
   if (!questId) return;
@@ -370,6 +403,193 @@ function acceptGuildQuest(questId) {
   if (typeof renderGuildQuests === "function") {
     renderGuildQuests();
   }
+}
+
+// =======================
+// ★追加: デイリー用 日付ヘルパーと生成・リセット
+// =======================
+
+// ローカル時刻で "YYYY-MM-DD" を作る
+function getTodayKey() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = (d.getMonth() + 1).toString().padStart(2, "0");
+  const day = d.getDate().toString().padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+// 所属ギルドに応じて本日のデイリーを生成（2件固定／プールそのまま）
+function generateGuildDailiesForCurrentGuild() {
+  const gid = window.playerGuildId;
+  if (!gid) {
+    window.guildDailyProgress = {};
+    return;
+  }
+
+  const today = getTodayKey();
+
+  // ★すでに今日どこかのギルドでデイリー報酬を受け取っている場合は、
+  //   ギルドを切り替えてもその日はデイリー無しとする（再受注防止）。
+  if (window.guildDailyTakenDate === today) {
+    window.guildDailyProgress = {};
+    window.guildDailyDate = today;
+    if (typeof appendLog === "function") {
+      appendLog("本日のギルドデイリーはすでに完了している。");
+    }
+    refreshGuildDailyUIIfNeeded();
+    return;
+  }
+
+  const pools = window.GUILD_DAILY_POOLS || {};
+  const pool = pools[gid];
+  if (!pool || !pool.length) {
+    window.guildDailyProgress = {};
+    window.guildDailyDate = today;
+    refreshGuildDailyUIIfNeeded();
+    return;
+  }
+
+  // 仕様：各ギルド2個想定なので、プール内容をそのまま使う
+  const map = {};
+
+  pool.forEach(def => {
+    if (!def || !def.id) return;
+    map[def.id] = {
+      guildId: gid,
+      id: def.id,
+      name: def.name || "",
+      desc: def.desc || "",
+      kind: def.kind || "battle",
+      by: def.by || null,
+      count: 0,
+      target: def.target || 1,
+      done: false,
+      rewardTaken: false
+    };
+  });
+
+  window.guildDailyProgress = map;
+  window.guildDailyDate = today;
+
+  if (typeof appendLog === "function") {
+    appendLog(`${GUILDS[gid].name} の本日のデイリー依頼が更新された。`);
+  }
+
+  refreshGuildDailyUIIfNeeded();
+}
+
+// 日付が変わっていたらデイリーをリセット（0時リセット想定）
+function maybeResetGuildDailiesByDate() {
+  const today = getTodayKey();
+  if (window.guildDailyDate !== today) {
+    generateGuildDailiesForCurrentGuild();
+  }
+}
+
+// バトル系デイリー進捗加算
+// params: { by: "phys"|"magic"|"pet"|..., isBoss: bool, ... }
+function addDailyProgressFromBattle(params) {
+  if (!params) return;
+  const by = params.by || null;
+
+  const all = window.guildDailyProgress || {};
+  let changed = false;
+
+  for (const id in all) {
+    if (!Object.prototype.hasOwnProperty.call(all, id)) continue;
+    const d = all[id];
+    if (!d || d.done || d.kind !== "battle") continue;
+
+    // 「敵を20体倒す」系: by 指定なし → どの撃破手段でも+1
+    if (!d.by) {
+      d.count = Math.min(d.target, (d.count || 0) + 1);
+      if (d.count >= d.target) {
+        d.done = true;
+      }
+      changed = true;
+      continue;
+    }
+
+    // 物理 / 魔法 / ペット など、by が一致したときだけ加算
+    if (d.by && d.by === by) {
+      d.count = Math.min(d.target, (d.count || 0) + 1);
+      if (d.count >= d.target) {
+        d.done = true;
+      }
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    refreshGuildDailyUIIfNeeded();
+  }
+}
+
+// ★修正: 生産・消費系デイリー進捗加算
+// params: { kind: string, amount?: number, category?: string, itemId?: string, meta?: object }
+function addDailyProgressFromProduction(params) {
+  if (!params || !params.kind) return;
+  const kind = params.kind;
+  const amount = (typeof params.amount === "number" && params.amount > 0) ? params.amount : 1;
+
+  const all = window.guildDailyProgress || {};
+  let changed = false;
+
+  for (const id in all) {
+    if (!Object.prototype.hasOwnProperty.call(all, id)) continue;
+    const d = all[id];
+    if (!d || d.done) continue;
+
+    // battle 系は addDailyProgressFromBattle 側で扱う
+    if (d.kind !== kind) continue;
+
+    d.count = Math.min(d.target, (d.count || 0) + amount);
+    if (d.count >= d.target) {
+      d.done = true;
+    }
+    changed = true;
+  }
+
+  if (changed) {
+    refreshGuildDailyUIIfNeeded();
+  }
+}
+
+// デイリー報酬受取（名声なし、ゴールド100 & 経験値80）
+function claimGuildDailyReward(dailyId) {
+  if (!dailyId) return;
+  const all = window.guildDailyProgress || {};
+  const d = all[dailyId];
+  if (!d) return;
+  if (!d.done || d.rewardTaken) return;
+
+  const gid = d.guildId || window.playerGuildId;
+  if (!gid || !GUILDS[gid]) return;
+
+  // ★名声は増やさない
+  // addGuildFame(gid, 10);
+
+  // ★ゴールド100
+  money = (money || 0) + 100;
+
+  // ★経験値80（既存の addExp ロジックに乗せる）
+  if (typeof addExp === "function") {
+    addExp(80);
+  } else {
+    exp = (exp || 0) + 80;
+  }
+
+  d.rewardTaken = true;
+
+  // ★本日分のデイリー報酬を受け取った日付を記録
+  //   「全部取り終えたら」ではなく「1件でも受け取った時点」でロックする仕様。
+  window.guildDailyTakenDate = getTodayKey();
+
+  if (typeof appendLog === "function") {
+    appendLog(`${GUILDS[gid].name} のデイリー依頼「${d.name}」を達成し、ゴールド100と経験値80を獲得した！`);
+  }
+
+  refreshGuildDailyUIIfNeeded();
 }
 
 // =======================
@@ -446,6 +666,9 @@ function onEnemyKilledForGuild(params) {
     updateQuestProgress("forest_boss_1", 1, 1);
   }
 
+  // ★追加: 戦闘系ギルドデイリー進捗（敵種別は問わず）
+  addDailyProgressFromBattle(params);
+
   // 特別依頼の達成状況チェック（フラグはここでは立てない）
   checkCitizenshipUnlocked();
 
@@ -482,20 +705,73 @@ function onBuffFoodEatenForGuild() {
   updateQuestProgress("cooking_buff", 1, 2);
   updateQuestProgress("cooking_use_food_or_drink", 1, 5);
 
+  // ★デイリー（料理ギルド）：バフ付き料理を食べたときも使用としてカウント
+  if (typeof addDailyProgressFromProduction === "function") {
+    addDailyProgressFromProduction({
+      kind: "cooking_use_or_sell",
+      amount: 1
+    });
+  }
+
   checkCitizenshipUnlocked();
 
   refreshGuildQuestUIIfNeeded();
 }
 
 // 錬金ギルド用：ポーション／道具を使用したときに呼ぶ
-// params: { kind: "potion" | "tool" }
+// params: { kind: "potion" | "tool", itemId?: string, meta?: object }
 function onAlchConsumableUsedForGuild(params) {
   // T1〜帯共通使用
   updateQuestProgress("alch_use_potion_or_tool", 1, 5);
 
+  // デイリー: 使用/売却をまとめてカウント（kindは "alch_use_or_sell" で固定）
+  if (typeof addDailyProgressFromProduction === "function") {
+    addDailyProgressFromProduction({
+      kind: "alch_use_or_sell",
+      amount: 1,
+      itemId: params && params.itemId,
+      meta: params && params.meta ? params.meta : null
+    });
+  }
+
   // T2専用使用（T2ポーション／T2道具使用時のみ別フックから呼ぶ想定なら、
   // そのフック側でこのIDを叩く形でもOK。ここでは仕様を変えないので既存のまま。）
-  // ※ 仕様は変えたくないので、今は追加ロジックをここには入れていない。
+
+  checkCitizenshipUnlocked();
+
+  refreshGuildQuestUIIfNeeded();
+}
+
+// ★追加: 錬金ギルド用（使用 or 売却で呼ぶ汎用フック）
+// params: { itemId: string, amount?: number, meta?: object }
+function onAlchConsumableUsedOrSoldForGuild(params) {
+  if (typeof addDailyProgressFromProduction === "function") {
+    addDailyProgressFromProduction({
+      kind: "alch_use_or_sell",
+      amount: params && typeof params.amount === "number" ? params.amount : 1,
+      itemId: params && params.itemId,
+      meta: params && params.meta ? params.meta : null
+    });
+  }
+
+  checkCitizenshipUnlocked();
+
+  refreshGuildQuestUIIfNeeded();
+}
+
+// ★追加: 料理ギルド用（使用 or 売却で呼ぶ汎用フック）
+// params: { mode: "use" | "sell", itemId: string, amount?: number, meta?: object }
+function notifyCookingUseOrSell(mode, itemId, amount, meta) {
+  const amt = (typeof amount === "number" && amount > 0) ? amount : 1;
+
+  if (typeof addDailyProgressFromProduction === "function") {
+    addDailyProgressFromProduction({
+      kind: "cooking_use_or_sell",
+      amount: amt,
+      itemId: itemId,
+      meta: meta || null
+    });
+  }
 
   checkCitizenshipUnlocked();
 
@@ -506,6 +782,9 @@ function onAlchConsumableUsedForGuild(params) {
 function onEquipEnhancedForGuild(params) {
   // 既存T1〜帯（2回強化）
   updateQuestProgress("smith_enhance", 1, 2);
+
+  // 将来的に smith デイリーにも流す場合はここで:
+  // addDailyProgressFromProduction({ kind: "smith_enhance" });
 
   // T2専用の強化回数を別で数えたい場合は、
   // T2装備強化時だけ別フラグから `updateQuestProgress("smith_enhance_t2", 1, 3)` を呼ぶ想定。
@@ -719,6 +998,9 @@ function joinGuild(guildId) {
   if (!window.guildFame[guildId]) {
     window.guildFame[guildId] = 0;
   }
+
+  // ギルド変更時にデイリーも更新（所属ギルドが変わるため）
+  maybeResetGuildDailiesByDate();
 
   if (typeof renderGuildUI === "function") {
     renderGuildUI();

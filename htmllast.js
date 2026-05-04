@@ -592,15 +592,22 @@ document.addEventListener("DOMContentLoaded", () => {
   setupStatusSkillTabs();
   setupGatherSubTabs();
   setupGatherCookingTabs();
-  // setupGatherMaterialToggle(); // ← game-ui.js の実装と競合するため削除
   setupMagicDistTabs();
   setupCookingCraftTabs();
   setupLifeCraftTabs();
   setupWarehouseTabs();
   setupMarketTabs();
   setupGuildInnerTabs();
-  // setupStatusDetailToggle(); // ← game-ui.js の実装と競合するため削除
   setupSocketIoClient();
+  
+  // ★★★ ショップと倉庫UIの初期化を追加 ★★★
+  if (typeof initBattleAndShopUI === "function") {
+    initBattleAndShopUI();
+  }
+  
+  if (typeof refreshWarehouseUI === "function") {
+    refreshWarehouseUI();
+  }
 });
 
 // 必要なら setStatusSubPage を他から呼べるように

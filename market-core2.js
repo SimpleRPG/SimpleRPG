@@ -423,7 +423,6 @@ function refreshMarketSellItems(){
       maxCountForSelected = toolCounts[itemSel.value] || 0;
     }
   } else if (category === "materialBase") {
-    
     const mats = [
       { id:"wood",    name:"木",    count: getMatTotal("wood") },
       { id:"ore",     name:"鉱石",  count: getMatTotal("ore") },
@@ -569,7 +568,7 @@ function refreshMarketSellItems(){
 }
 
 // -----------------------
-// 買い注文用アイテムセレクト初期化
+// 買い注文用アイテムセレクト初期化（ITEM_META ベース）
 // -----------------------
 function initMarketOrderItemSelect() {
   const sel = document.getElementById("marketOrderItem");
@@ -587,6 +586,7 @@ function initMarketOrderItemSelect() {
     sel.appendChild(opt);
   };
 
+  // 素材（一次＋レア＋中間＋料理完成品）は従来どおり category "material"
   const baseNames = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
   Object.keys(baseNames).forEach(key => {
     append("material", key, `素材: ${baseNames[key]}`);
@@ -610,26 +610,42 @@ function initMarketOrderItemSelect() {
     });
   }
 
-  if (typeof weapons !== "undefined") {
+  // 武器・防具・ポーションは既存マスターから
+  if (Array.isArray(weapons)) {
     weapons.forEach(w => {
       append("weapon", w.id, `武器: ${w.name}`);
     });
   }
-  if (typeof armors !== "undefined") {
+  if (Array.isArray(armors)) {
     armors.forEach(a => {
       append("armor", a.id, `防具: ${a.name}`);
     });
   }
-  if (typeof potions !== "undefined") {
+  if (Array.isArray(potions)) {
     potions.forEach(p => {
       append("potion", p.id, `ポーション: ${p.name}`);
     });
   }
-  if (typeof toolCounts === "object") {
-    Object.keys(toolCounts).forEach(id => {
-      const label = getItemLabel("tool", id);
-      append("tool", id, `道具: ${label}`);
+
+  // 道具は ITEM_META / tools マスターから列挙（所持数 toolCounts 依存をやめる）
+  if (Array.isArray(window.tools)) {
+    window.tools.forEach(t => {
+      const id = t.id;
+      const name = t.name || getItemLabel("tool", id);
+      append("tool", id, `道具: ${name}`);
     });
+  } else if (typeof window.getItemMeta === "function") {
+    // tools マスターが無い場合は ITEM_META 側から category=tool のものを拾う
+    if (Array.isArray(window.ITEM_META_LIST)) {
+      window.ITEM_META_LIST.forEach(meta => {
+        if (!meta || !meta.id) return;
+        if (meta.category === "tool") {
+          const id = meta.id;
+          const name = meta.name || getItemLabel("tool", id);
+          append("tool", id, `道具: ${name}`);
+        }
+      });
+    }
   }
 
   if (!sel.options.length) {
@@ -764,6 +780,7 @@ function detectSellFromDiff(prevList, newList) {
 
     const now = newMap.get(prev.id);
 
+    // 完売したケース
     if (!now) {
       const soldAmount = prev.amount;
       if (soldAmount > 0) {
@@ -772,10 +789,30 @@ function detectSellFromDiff(prevList, newList) {
           money += totalPrice;
         }
         addSellLog("プレイヤー", prev.category, prev.itemId, soldAmount, totalPrice);
+
+        // ★ 錬金ギルドデイリー: ポーション/道具を市場で売った扱いにする（個数分カウント）
+        if (typeof onAlchConsumableUsedOrSoldForGuild === "function") {
+          if (prev.category === "potion" || prev.category === "tool") {
+            onAlchConsumableUsedOrSoldForGuild({
+              itemId: prev.itemId,
+              amount: soldAmount,
+              meta: null
+            });
+          }
+        }
+
+        // ★ 料理ギルドデイリー: 料理/飲み物を市場で売った扱いにする
+        if (typeof notifyCookingUseOrSell === "function") {
+          // 出品時カテゴリは material だが、itemId は料理/飲み物レシピIDになっている想定
+          if (prev.category === "material") {
+            notifyCookingUseOrSell("sell", prev.itemId, soldAmount);
+          }
+        }
       }
       return;
     }
 
+    // 一部だけ売れたケース
     if (now.amount < prev.amount) {
       const diff = prev.amount - now.amount;
       if (diff > 0) {
@@ -784,6 +821,24 @@ function detectSellFromDiff(prevList, newList) {
           money += totalPrice;
         }
         addSellLog("プレイヤー", prev.category, prev.itemId, diff, totalPrice);
+
+        // ★ 錬金ギルドデイリー: 部分的に売れた分も個数分カウント
+        if (typeof onAlchConsumableUsedOrSoldForGuild === "function") {
+          if (prev.category === "potion" || prev.category === "tool") {
+            onAlchConsumableUsedOrSoldForGuild({
+              itemId: prev.itemId,
+              amount: diff,
+              meta: null
+            });
+          }
+        }
+
+        // ★ 料理ギルドデイリー: 部分売却分もカウント
+        if (typeof notifyCookingUseOrSell === "function") {
+          if (prev.category === "material") {
+            notifyCookingUseOrSell("sell", prev.itemId, diff);
+          }
+        }
       }
     }
   });
@@ -792,12 +847,17 @@ function detectSellFromDiff(prevList, newList) {
 // =======================
 // サーバー市場との同期（Socket.io）
 // =======================
+
+// ★ 多重登録防止フラグ（追加）
+let marketSocketInited = false;
+
 function setupMarketSocketSync() {
   if (typeof window === "undefined") return;
+  if (!window.globalSocket) return;
 
-  if (!window.globalSocket) {
-    return;
-  }
+  // すでに初期化済みなら何もしない
+  if (marketSocketInited) return;
+  marketSocketInited = true;
 
   try {
     window.globalSocket.on("market:listResult", (serverListings) => {
