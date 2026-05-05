@@ -1,7 +1,8 @@
 // pet-ui.js
 // ペットUI一式（倉庫タブ・拠点タブ共用）
 
-let selectedPetIdForCare = "main";
+// ★修正: デフォルトは null にして、最初の描画時に先頭ペットを選ぶ
+let selectedPetIdForCare = null;
 
 // =======================
 // 表示用データ取得
@@ -43,7 +44,8 @@ function getPetDisplayInfoListForUI() {
     hp: petHp,
     hpMax: petHpMax,
     affinity,
-    isCareDoneToday: careDone
+    isCareDoneToday: careDone,
+    isActive: true
   });
 
   return list;
@@ -75,6 +77,12 @@ function renderPetList(root) {
     return;
   }
 
+  // ★修正: 選択IDが空か無効なら、アクティブペットを選択状態にする
+  const currentActivePetId = window.activePetId || null;
+  if (!selectedPetIdForCare || !pets.some(p => p.id === selectedPetIdForCare)) {
+    selectedPetIdForCare = currentActivePetId || pets[0].id;
+  }
+
   let html = "";
   html += `<table class="pet-list-table" style="width:100%; font-size:12px; border-collapse:collapse;">`;
   html += `
@@ -85,6 +93,7 @@ function renderPetList(root) {
         <th style="border-bottom:1px solid #555; text-align:left; padding:2px 4px;">Lv</th>
         <th style="border-bottom:1px solid #555; text-align:left; padding:2px 4px;">親密度</th>
         <th style="border-bottom:1px solid #555; text-align:left; padding:2px 4px;">今日のお世話</th>
+        <th style="border-bottom:1px solid #555; text-align:center; padding:2px 4px;">★</th>
       </tr>
     </thead>
     <tbody>
@@ -92,11 +101,13 @@ function renderPetList(root) {
 
   pets.forEach(pet => {
     const isSelected = pet.id === selectedPetIdForCare;
+    const isActive = pet.isActive || false;
     const careText = pet.isCareDoneToday ? "済み" : "まだ";
     const careColor = pet.isCareDoneToday ? "#8f8" : "#f88";
     const rowStyle = isSelected
       ? "background-color:rgba(255,255,255,0.06);"
       : "";
+    const activeIcon = isActive ? "★" : "";
 
     html += `
       <tr class="pet-list-row"
@@ -107,6 +118,7 @@ function renderPetList(root) {
         <td style="padding:2px 4px;">${pet.level}</td>
         <td style="padding:2px 4px;">${pet.affinity}%</td>
         <td style="padding:2px 4px; color:${careColor};">${careText}</td>
+        <td style="padding:2px 4px; text-align:center; color:#ff0;">${activeIcon}</td>
       </tr>
     `;
   });
@@ -117,9 +129,8 @@ function renderPetList(root) {
   const rows = listContainer.querySelectorAll(".pet-list-row");
   rows.forEach(row => {
     row.addEventListener("click", () => {
-      const petId = row.dataset.petId || "main";
+      const petId = row.dataset.petId || null;
       selectedPetIdForCare = petId;
-      // 選択ハイライトとお世話ボックスを更新
       renderPetList(root);
       renderPetCareBox(root);
     });
@@ -280,6 +291,12 @@ function renderPetCareBox(root) {
     return;
   }
 
+  // ★修正: 選択IDの補正（一覧と同じロジック）
+  const currentActivePetId = window.activePetId || null;
+  if (!selectedPetIdForCare || !pets.some(p => p.id === selectedPetIdForCare)) {
+    selectedPetIdForCare = currentActivePetId || pets[0].id;
+  }
+
   const pet = pets.find(p => p.id === selectedPetIdForCare) || pets[0];
 
   const careText = pet.isCareDoneToday ? "済み" : "まだ";
@@ -312,6 +329,13 @@ function renderPetCareBox(root) {
     }
   }
 
+  // ★修正: 選択中のペットがすでにアクティブかどうかをチェック
+  const isAlreadyActive = (selectedPetIdForCare === currentActivePetId);
+  const changeDisabledAttr = isAlreadyActive ? "disabled" : "";
+  const changeNoteText = isAlreadyActive
+    ? "（このペットは既にアクティブです）"
+    : "（一覧から選択したペットをアクティブにします）";
+
   careBox.innerHTML = `
     <div style="margin-bottom:4px;">
       <strong>${pet.name}</strong>
@@ -327,11 +351,11 @@ function renderPetCareBox(root) {
       <span style="font-size:11px; color:#ccc;">${pettingNoteText}</span>
       <button type="button" class="petCareFeedBtn" ${feedDisabledAttr}>ご飯をあげる</button>
       <span style="font-size:11px; color:#ccc;">${feedNoteText}</span>
-      <button type="button" class="petCareChangeBtn">ペットを切り替える</button>
     </div>
-    <p style="margin-top:4px; font-size:11px; color:#ccc;">
-      ※ ご飯や複数ペット切り替えは今後拡張予定です。
-    </p>
+    <div style="margin-top:8px; padding-top:8px; border-top:1px solid #555;">
+      <button type="button" class="petCareChangeBtn" ${changeDisabledAttr}>このペットをアクティブにする</button>
+      <span style="font-size:11px; color:#ccc; margin-left:4px;">${changeNoteText}</span>
+    </div>
   `;
 
   const btnPetting = careBox.querySelector(".petCarePettingBtn");
@@ -378,9 +402,34 @@ function renderPetCareBox(root) {
 
   if (btnChange) {
     btnChange.addEventListener("click", () => {
-      // 将来の複数ペット実装用。現状はダミーとしてメッセージのみ表示。
-      if (typeof appendLog === "function") {
-        appendLog("ペット切り替えは、将来ペットが複数体になったときに実装されます。");
+      // ★修正: 選択中のペットがすでにアクティブなら何もしない
+      if (selectedPetIdForCare === currentActivePetId) {
+        if (typeof appendLog === "function") {
+          appendLog(`${pet.name}はすでにアクティブです。`);
+        }
+        return;
+      }
+
+      // ★修正: 実際にアクティブペットを切り替える
+      if (typeof window.switchActivePet === "function") {
+        window.switchActivePet(selectedPetIdForCare);
+        if (typeof appendLog === "function") {
+          appendLog(`アクティブペットを「${pet.name}」に切り替えました！`);
+        }
+        
+        // ★修正: game-core側のUI更新も呼ぶ
+        if (typeof recalcStats === "function") {
+          recalcStats();
+        }
+        if (typeof updateDisplay === "function") {
+          updateDisplay();
+        }
+        
+        // ★修正: ペットUI再描画
+        renderPetList(root);
+        renderPetCareBox(root);
+      } else if (typeof appendLog === "function") {
+        appendLog("ペット切り替え機能がまだ準備できていない…。");
       }
     });
   }
@@ -411,7 +460,7 @@ function buildWarehousePetPage() {
 
 // 拠点タブ用（新規）
 function buildHousingPetPage() {
-  const root = document.getElementById("housingPagePetInner"); // ←HTML側で用意するdiv
+  const root = document.getElementById("housingPagePetInner");
   buildPetPage(root);
 }
 

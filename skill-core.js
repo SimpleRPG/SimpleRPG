@@ -295,8 +295,10 @@ function calcPetDamage() {
 }
 
 function doPetTurn() {
+  // ★ 動物使い以外・敵不在・ペット不在/戦闘不能なら何もしない
   if (jobId !== 2) return;
   if (!currentEnemy) return;
+  if (typeof hasCompanion === "function" && !hasCompanion()) return;
   if (petHp <= 0) return;
 
   let usedSkill = false;
@@ -381,7 +383,7 @@ function doPetTurn() {
   if (enemyHp <= 0) {
     enemyHp = 0;
 
-    // ★ ギルド用ヘルパーにペット撃破を通知
+    // ★ ギルド用ヘルパーにペット撃破を通知（動物使い時のみ）
     if (typeof onEnemyKilledForGuild === "function") {
       onEnemyKilledForGuild({ by: "pet", isBoss: !!isBossBattle });
     }

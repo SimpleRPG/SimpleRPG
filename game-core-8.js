@@ -54,7 +54,14 @@ function onEnemyDefeatedCore(enemyInst, killFlag, killSource) {
     rollEnemyDrops(enemyInst.id, dropRateBonus);
   }
 
-  if (typeof addPetExp === "function") {
+  // ★修正: 動物使いかつ、ペットが場に出ていて生存している場合のみ、従来どおり exp/2 を付与
+  if (typeof addPetExp === "function" &&
+      typeof hasCompanion === "function" &&
+      typeof jobId === "number" &&
+      jobId === 2 &&
+      hasCompanion() &&
+      typeof petHp === "number" &&
+      petHp > 0) {
     addPetExp(Math.floor(expGain / 2));
   }
 
@@ -955,7 +962,7 @@ function logGatherBaseRequiredMats(matKey, currentLv, nextLv, needInter, needSta
     const haveStar = getStarShardCountForGather();
     lines.push(`- ${RARE_GATHER_ITEM_ID}: 必要 ${needStar} 個 / 所持 ${haveStar} 個`);
   }
-  appendLog(lines.join("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n"));
+  appendLog(lines.join("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n"));
 }
 
 // =======================

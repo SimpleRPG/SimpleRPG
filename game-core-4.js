@@ -171,6 +171,11 @@ function getGatherStatsList() {
 
 function tryCompanionExtraGatherOnce(onExtra) {
   if (typeof onExtra !== "function") return;
+
+  // ★追加: 動物使いのときだけペット採取ボーナスを発動させる
+  // jobId は game-core-1.js 側のグローバル（0:戦士,1:魔法使い,2:動物使い,3:錬金術師）
+  if (typeof window.jobId === "number" && window.jobId !== 2) return;
+
   if (typeof hasCompanion !== "function" ||
       typeof getCurrentCompanionTrait !== "function") return;
   if (!hasCompanion()) return;

@@ -597,6 +597,6 @@ function rollQualityBySkillLv(skillLv) {
       }
     };
   });
-
+window.INTERMEDIATE_MATERIALS = INTERMEDIATE_MATERIALS;
   registerItemDefs(defs);
 })();

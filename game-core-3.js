@@ -491,10 +491,13 @@ function playerAttack() {
       return;
     }
 
-    // ★修正: ペット選択済みかつHP>0のときのみペットターンを実行
-    if (typeof hasCompanion === "function" && hasCompanion() && petHp > 0) {
-      doPetTurn();
-    }
+// ★動物使いかつペット選択済み＆生存時だけペットターン
+if (jobId === 2 &&
+    typeof hasCompanion === "function" &&
+    hasCompanion() &&
+    petHp > 0) {
+  doPetTurn();
+}
 
     if (enemyHp <= 0) {
       enemyHp = 0;

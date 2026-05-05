@@ -47,7 +47,9 @@ window.addEventListener("DOMContentLoaded", () => {
     tabWarehouse: "pageWarehouse",
     tabStatus:    "pageStatus",
     tabGuild:     "pageGuild",
-    tabHelp:      "pageHelp"
+    tabHelp:      "pageHelp",
+    // ★追加: 拠点タブ
+    tabHousing:   "pageHousing"
   };
 
   const tabPages = Object.values(tabButtonsMap)
@@ -122,6 +124,22 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     }
 
+    // ★追加: 拠点
+    if (pageId === "pageHousing") {
+      // 拠点ステータス（市民権・土地など）とタブ表示をセーブ状態から再反映
+      if (typeof refreshHousingFromState === "function") {
+        refreshHousingFromState();
+      } else if (typeof refreshHousingStatusAndTab === "function") {
+        // セーフティ: 旧フックしか無い場合
+        refreshHousingStatusAndTab();
+      }
+
+      // 拠点タブを開いたタイミングで、拠点内倉庫UI（housingWarehouseInner 側）も最新化
+      if (typeof refreshWarehouseUI === "function") {
+        refreshWarehouseUI();
+      }
+    }
+
     // ステータス
     if (pageId === "pageStatus") {
       if (typeof refreshStatusUI === "function") {
@@ -154,6 +172,10 @@ window.addEventListener("DOMContentLoaded", () => {
     }
     if (typeof refreshCarryFoodDrinkSelects === "function") {
       refreshCarryFoodDrinkSelects();
+    }
+    // ★追加: ペットのミニステータスもここで常に最新化する
+    if (typeof updatePetMiniStatus === "function") {
+      updatePetMiniStatus();
     }
   }
 
@@ -297,32 +319,32 @@ window.addEventListener("DOMContentLoaded", () => {
   // --------------------
   // 市場タブ・ボタン
   // --------------------
-  const marketSellPanel = document.getElementById("marketSellPanel");
-  const marketBuyPanel  = document.getElementById("marketBuyPanel");
-  const marketTabSell   = document.getElementById("marketTabSell");
-  const marketTabBuy    = document.getElementById("marketTabBuy");
+  const marketSellPanel2 = document.getElementById("marketSellPanel");
+  const marketBuyPanel2  = document.getElementById("marketBuyPanel");
+  const marketTabSell2   = document.getElementById("marketTabSell");
+  const marketTabBuy2    = document.getElementById("marketTabBuy");
 
-  if (marketSellPanel && marketBuyPanel && marketTabSell && marketTabBuy) {
-    marketSellPanel.style.display = "";
-    marketBuyPanel.style.display  = "none";
-    marketTabSell.classList.add("active");
-    marketTabBuy.classList.remove("active");
+  if (marketSellPanel2 && marketBuyPanel2 && marketTabSell2 && marketTabBuy2) {
+    marketSellPanel2.style.display = "";
+    marketBuyPanel2.style.display  = "none";
+    marketTabSell2.classList.add("active");
+    marketTabBuy2.classList.remove("active");
 
-    marketTabSell.addEventListener("click", () => {
-      marketSellPanel.style.display = "";
-      marketBuyPanel.style.display  = "none";
-      marketTabSell.classList.add("active");
-      marketTabBuy.classList.remove("active");
+    marketTabSell2.addEventListener("click", () => {
+      marketSellPanel2.style.display = "";
+      marketBuyPanel2.style.display  = "none";
+      marketTabSell2.classList.add("active");
+      marketTabBuy2.classList.remove("active");
       if (typeof refreshMarketSellCandidates === "function") {
         refreshMarketSellCandidates();
       }
     });
 
-    marketTabBuy.addEventListener("click", () => {
-      marketSellPanel.style.display = "none";
-      marketBuyPanel.style.display  = "";
-      marketTabSell.classList.remove("active");
-      marketTabBuy.classList.add("active");
+    marketTabBuy2.addEventListener("click", () => {
+      marketSellPanel2.style.display = "none";
+      marketBuyPanel2.style.display  = "";
+      marketTabSell2.classList.remove("active");
+      marketTabBuy2.classList.add("active");
       if (typeof refreshMarketBuyList === "function") {
         refreshMarketBuyList();
       }

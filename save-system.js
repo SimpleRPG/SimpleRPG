@@ -10,6 +10,7 @@ const SAVE_KEY = "myGatherGameSave_v1";
 // ==============================
 function makeSaveData() {
   let player, pet, companionTypeId, companionTraitId;
+  let petListSafe, activePetIdSafe;
   let materialsSafe, gatherSkillsSafe, craftSkillsSafe, intermediateMatsSafe, cookingMatsSafe, lastGatherInfoSafe, gatherStatsSafe;
   let itemCountsSafe, weaponsSafe, armorsSafe, potionsSafe;
   let weaponCountsSafe, armorCountsSafe, potionCountsSafe;
@@ -80,6 +81,18 @@ function makeSaveData() {
   try {
     companionTypeId  = (typeof window !== "undefined") ? (window.companionTypeId  || null) : null;
     companionTraitId = (typeof window !== "undefined") ? (window.companionTraitId || null) : null;
+  } catch (e) {
+    throw e;
+  }
+
+  // ★追加: 複数ペット基盤のセーブ（petList / activePetId）
+  try {
+    if (typeof window !== "undefined" && Array.isArray(window.petList)) {
+      petListSafe = window.petList;
+    } else {
+      petListSafe = [];
+    }
+    activePetIdSafe = (typeof window !== "undefined") ? (window.activePetId || null) : null;
   } catch (e) {
     throw e;
   }
@@ -198,12 +211,16 @@ function makeSaveData() {
     // --------------------------------
     player,
 
-    // ペット関連
+    // ペット関連（従来の単一ペット用）
     pet,
 
     // ペット種・特性
     companionTypeId,
     companionTraitId,
+
+    // ★追加: 複数ペット用のリストとアクティブID
+    petList: petListSafe,
+    activePetId: activePetIdSafe,
 
     // --------------------------------
     // 採取・クラフト・素材
@@ -435,7 +452,7 @@ function applySaveData(data) {
     throw e;
   }
 
-  // -------- ペット --------
+  // -------- ペット（従来の単一ペット） --------
   try {
     if (data.pet) {
       const pet = data.pet;
@@ -470,6 +487,34 @@ function applySaveData(data) {
         if (typeof companionTraitId !== "undefined") {
           companionTraitId = data.companionTraitId;
         }
+      }
+    }
+  } catch (e) {
+    throw e;
+  }
+
+  // ★追加: 複数ペット用 petList / activePetId のロード
+  try {
+    if (typeof window !== "undefined") {
+      if (Array.isArray(data.petList)) {
+        window.petList = data.petList;
+      } else {
+        window.petList = Array.isArray(window.petList) ? window.petList : [];
+      }
+      if ("activePetId" in data) {
+        window.activePetId = data.activePetId || null;
+      } else if (!window.activePetId) {
+        window.activePetId = null;
+      }
+
+      // 旧セーブ互換: petList が空で companionTypeId があるなら 1 匹だけ移行
+      if (typeof window.ensurePetListFromLegacy === "function") {
+        window.ensurePetListFromLegacy();
+      }
+
+      // activePetId があり、同期ヘルパーがあれば単一ペット変数へ反映
+      if (typeof window.loadActivePetToGlobals === "function" && window.activePetId) {
+        window.loadActivePetToGlobals();
       }
     }
   } catch (e) {

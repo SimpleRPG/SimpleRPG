@@ -858,19 +858,10 @@ function renderFullWarehouseUI(root, prefix) {
   }
 
   // =======================
-  // ★素材3表は「倉庫タブ側(root が pageWarehouseInner のときだけ)」で描画
-  // 拠点倉庫タブでは元仕様通りスキップ
+  // 素材3表の描画（倉庫タブ / 拠点倉庫タブ 共通）
   // =======================
-  if (root.id === "pageWarehouseInner") {
-    if (typeof renderWarehouseGatherMaterials === "function") {
-      renderWarehouseGatherMaterials();
-    }
-    if (typeof renderWarehouseIntermediateMaterials === "function") {
-      renderWarehouseIntermediateMaterials();
-    }
-    if (typeof renderWarehouseCookingMaterials === "function") {
-      renderWarehouseCookingMaterials();
-    }
+  if (typeof renderMaterialsTables === "function") {
+    renderMaterialsTables(root, prefix);
   }
 }
 
@@ -950,9 +941,48 @@ function consumeDrinkFromWarehouse(id) {
 }
 
 // =======================
+// 倉庫サブタブ共通初期化
+// =======================
+function setupWarehouseSubTabs(root, prefix) {
+  const tabItems      = root.querySelector("#" + prefix + "warehouseTabItems");
+  const tabMaterials  = root.querySelector("#" + prefix + "warehouseTabMaterials");
+  const pageItems     = root.querySelector("#" + prefix + "warehousePageItems");
+  const pageMaterials = root.querySelector("#" + prefix + "warehousePageMaterials");
+
+  if (!tabItems || !tabMaterials || !pageItems || !pageMaterials) {
+    return;
+  }
+
+  function setWarehouseSubPage(key) {
+    const isItems = key === "items";
+    pageItems.style.display     = isItems ? "" : "none";
+    pageMaterials.style.display = isItems ? "none" : "";
+    tabItems.classList.toggle("active", isItems);
+    tabMaterials.classList.toggle("active", !isItems);
+  }
+
+  tabItems.addEventListener("click", () => {
+    setWarehouseSubPage("items");
+    // ★倉庫サブタブ切り替え時にも倉庫UIを更新（装備・アイテム側リストが変化している可能性があるため）
+    if (typeof refreshWarehouseUI === "function") {
+      refreshWarehouseUI();
+    }
+  });
+
+  tabMaterials.addEventListener("click", () => {
+    setWarehouseSubPage("materials");
+    // ★素材タブに切り替えたら、常に最新の素材3表を描画
+    if (typeof refreshWarehouseUI === "function") {
+      refreshWarehouseUI();
+    }
+  });
+
+  setWarehouseSubPage("items");
+}
+
+// =======================
 // 戦闘スキル＋ショップ＋倉庫サブタブなど init
 // =======================
-
 function initBattleAndShopUI() {
   if (typeof refreshEquipSelects === "function") {
     refreshEquipSelects();
@@ -1142,37 +1172,16 @@ function initBattleAndShopUI() {
     });
   }
 
-  // 倉庫タブ内のサブタブ（アイテム / 素材）: 上部倉庫タブのみ対象
+  // 倉庫 / 拠点の倉庫サブタブ（アイテム / 素材）を共通初期化
   (function () {
-    const pageWarehouseInner = document.getElementById("pageWarehouseInner");
-    if (!pageWarehouseInner) return;
+    const pageWarehouseInner     = document.getElementById("pageWarehouseInner");
+    const housingWarehouseInner  = document.getElementById("housingWarehouseInner");
 
-    const tabItems      = pageWarehouseInner.querySelector("#warehouseTabItems");
-    const tabMaterials  = pageWarehouseInner.querySelector("#warehouseTabMaterials");
-    const pageItems     = pageWarehouseInner.querySelector("#warehousePageItems");
-    const pageMaterials = pageWarehouseInner.querySelector("#warehousePageMaterials");
-
-    if (!tabItems || !tabMaterials || !pageItems || !pageMaterials) {
-      return;
+    if (pageWarehouseInner) {
+      setupWarehouseSubTabs(pageWarehouseInner, "");
     }
-
-    function setWarehouseSubPage(key) {
-      if (key === "items") {
-        pageItems.style.display     = "";
-        pageMaterials.style.display = "none";
-        tabItems.classList.add("active");
-        tabMaterials.classList.remove("active");
-      } else {
-        pageItems.style.display     = "none";
-        pageMaterials.style.display = "";
-        tabItems.classList.remove("active");
-        tabMaterials.classList.add("active");
-      }
+    if (housingWarehouseInner) {
+      setupWarehouseSubTabs(housingWarehouseInner, "housing");
     }
-
-    tabItems.addEventListener("click", () => setWarehouseSubPage("items"));
-    tabMaterials.addEventListener("click", () => setWarehouseSubPage("materials"));
-
-    setWarehouseSubPage("items");
   })();
 }

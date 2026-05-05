@@ -112,7 +112,8 @@ function buildAppLayout() {
 
       <!-- ペットの簡易ステータス（常時表示用） -->
       <div id="petInfoMini" class="pet-only">
-        ペットLv: <span id="petLevelMini">1</span>
+        ペット: <span id="petNameMini">-</span>
+        Lv: <span id="petLevelMini">1</span>
         / HP: <span id="petHpMini">10</span> / <span id="petHpMaxMini">10</span>
       </div>
       

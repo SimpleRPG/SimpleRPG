@@ -148,6 +148,207 @@ let companionTypeId  = window.companionTypeId;
 let companionTraitId = window.companionTraitId;
 
 // =======================
+// 複数ペット基盤: グローバルリスト
+// =======================
+//
+// ・従来は「単一ペットのステ変数」を直接使っていたが、
+//   それを「アクティブペットのキャッシュ」とみなし、
+//   実体は petList 配列に保持する。
+// ・既存セーブ互換のため、petList が空なら起動時に
+//   単一ペット変数から1件だけ移行する。
+
+window.petList = Array.isArray(window.petList) ? window.petList : [];
+window.activePetId = window.activePetId || null;
+
+/**
+ * 旧セーブ（単一ペット）から petList への移行ヘルパ。
+ * 
+ * 条件:
+ * - petList が空
+ * - companionTypeId がセット済み（=ペットを選択済み）
+ * 
+ * 実行すると、現在の単一ペット変数から1匹ぶんのレコードを生成して
+ * petList に追加し、activePetId を設定する。
+ */
+function ensurePetListFromLegacy() {
+  // すでに petList があれば何もしない
+  if (Array.isArray(window.petList) && window.petList.length > 0) return;
+  // ペット未選択なら何もしない
+  if (!companionTypeId) return;
+
+  // 単一ペット変数を安全に読む（未定義時はフォールバック）
+  const name      = (typeof window.petName === "string") ? window.petName : "ペット";
+  const level     = (typeof window.petLevel === "number") ? window.petLevel : 1;
+  const exp       = (typeof window.petExp === "number") ? window.petExp : 0;
+  const expToNext = (typeof window.petExpToNext === "number") ? window.petExpToNext : 5;
+  const rebirth   = (typeof window.petRebirthCount === "number") ? window.petRebirthCount : 0;
+  const hpBase    = (typeof window.petHpBase === "number") ? window.petHpBase : 10;
+  const atkBase   = (typeof window.petAtkBase === "number") ? window.petAtkBase : 4;
+  const defBase   = (typeof window.petDefBase === "number") ? window.petDefBase : 2;
+  const hpMax     = (typeof window.petHpMax === "number") ? window.petHpMax : hpBase;
+  const hp        = (typeof window.petHp === "number") ? window.petHp : hpMax;
+  const growth    = (typeof window.petGrowthType === "number") ? window.petGrowthType : (window.PET_GROWTH_BALANCE || 0);
+  const buffRate  = (typeof window.petBuffRate === "number") ? window.petBuffRate : 1.0;
+  const skills    = Array.isArray(window.petSkills) ? window.petSkills.slice() : [];
+
+  const petId = "p_1";
+
+  const record = {
+    id: petId,
+    name,
+    typeId: companionTypeId,
+    traitId: companionTraitId,
+    level,
+    exp,
+    expToNext,
+    rebirthCount: rebirth,
+    hpBase,
+    atkBase,
+    defBase,
+    hpMax,
+    hp,
+    growthType: growth,
+    buffRate,
+    skills
+  };
+
+  window.petList = [record];
+  window.activePetId = petId;
+}
+
+/**
+ * アクティブペット（activePetId）のレコードを取得する。
+ * 見つからなければ null。
+ */
+function getActivePetRecord() {
+  if (!window.activePetId || !Array.isArray(window.petList)) return null;
+  return window.petList.find(p => p && p.id === window.activePetId) || null;
+}
+
+/**
+ * petList のレコード内容を単一ペット変数（petLevel, petHpBase 等）に反映する。
+ * 
+ * - アクティブペットがいない場合は何もしない。
+ * - companionTypeId / companionTraitId もレコード側にあるものを優先する。
+ * - HP/MP/SP の再計算は game-core 側の recalcStats に任せる前提。
+ */
+function loadActivePetToGlobals() {
+  const rec = getActivePetRecord();
+  if (!rec) return;
+
+  // 種・特性
+  companionTypeId  = rec.typeId || companionTypeId;
+  companionTraitId = rec.traitId || companionTraitId;
+  window.companionTypeId  = companionTypeId;
+  window.companionTraitId = companionTraitId;
+
+  // 名前
+  window.petName = rec.name || "ペット";
+
+  // ステータス系
+  window.petLevel        = typeof rec.level === "number" ? rec.level : 1;
+  window.petExp          = typeof rec.exp === "number" ? rec.exp : 0;
+  window.petExpToNext    = typeof rec.expToNext === "number" ? rec.expToNext : 5;
+  window.petRebirthCount = typeof rec.rebirthCount === "number" ? rec.rebirthCount : 0;
+
+  window.petHpBase  = typeof rec.hpBase === "number" ? rec.hpBase : 10;
+  window.petAtkBase = typeof rec.atkBase === "number" ? rec.atkBase : 4;
+  window.petDefBase = typeof rec.defBase === "number" ? rec.defBase : 2;
+
+  // 最大HP / 現在HP は game-core-1.js の recalcStats でも再計算されるが、
+  // ここではレコード上の値を優先してセットしておく。
+  if (typeof rec.hpMax === "number") {
+    window.petHpMax = rec.hpMax;
+  }
+  if (typeof rec.hp === "number") {
+    window.petHp = rec.hp;
+  }
+
+  window.petGrowthType = typeof rec.growthType === "number"
+    ? rec.growthType
+    : (window.PET_GROWTH_BALANCE || 0);
+
+  window.petBuffRate = typeof rec.buffRate === "number" ? rec.buffRate : 1.0;
+
+  if (Array.isArray(rec.skills)) {
+    window.petSkills = rec.skills.slice();
+  }
+
+  // ステ再計算・UI 更新
+  try {
+    if (typeof recalcStats === "function") {
+      recalcStats();
+    } else if (typeof updateDisplay === "function") {
+      updateDisplay();
+    }
+  } catch (e) {
+    // noop
+  }
+}
+
+/**
+ * 単一ペット変数の内容を petList のアクティブレコードへ書き戻す。
+ * 
+ * - アクティブペットがいなければ何もしない。
+ * - petList には基本的に「アクティブの最新値」が常に反映される想定。
+ */
+function saveActivePetFromGlobals() {
+  const rec = getActivePetRecord();
+  if (!rec) return;
+
+  // 名前
+  if (typeof window.petName === "string") {
+    rec.name = window.petName;
+  }
+
+  // 種・特性
+  rec.typeId  = companionTypeId;
+  rec.traitId = companionTraitId;
+
+  // ステータス
+  rec.level        = (typeof window.petLevel === "number") ? window.petLevel : rec.level;
+  rec.exp          = (typeof window.petExp === "number") ? window.petExp : rec.exp;
+  rec.expToNext    = (typeof window.petExpToNext === "number") ? window.petExpToNext : rec.expToNext;
+  rec.rebirthCount = (typeof window.petRebirthCount === "number") ? window.petRebirthCount : rec.rebirthCount;
+
+  rec.hpBase  = (typeof window.petHpBase === "number") ? window.petHpBase : rec.hpBase;
+  rec.atkBase = (typeof window.petAtkBase === "number") ? window.petAtkBase : rec.atkBase;
+  rec.defBase = (typeof window.petDefBase === "number") ? window.petDefBase : rec.defBase;
+
+  rec.hpMax = (typeof window.petHpMax === "number") ? window.petHpMax : rec.hpMax;
+  rec.hp    = (typeof window.petHp === "number") ? window.petHp : rec.hp;
+
+  rec.growthType = (typeof window.petGrowthType === "number") ? window.petGrowthType : rec.growthType;
+  rec.buffRate   = (typeof window.petBuffRate === "number") ? window.petBuffRate : rec.buffRate;
+
+  if (Array.isArray(window.petSkills)) {
+    rec.skills = window.petSkills.slice();
+  }
+}
+
+/**
+ * アクティブペットを切り替える。
+ * 
+ * - 現アクティブがいれば saveActivePetFromGlobals() で書き戻し。
+ * - activePetId を更新。
+ * - loadActivePetToGlobals() で単一変数に反映。
+ */
+function switchActivePet(petId) {
+  if (!petId || !Array.isArray(window.petList)) return;
+  const exists = window.petList.some(p => p && p.id === petId);
+  if (!exists) return;
+
+  // 現アクティブを保存
+  saveActivePetFromGlobals();
+
+  // 切り替え
+  window.activePetId = petId;
+
+  // 新アクティブをロード
+  loadActivePetToGlobals();
+}
+
+// =======================
 // セットアップ系ヘルパー
 // =======================
 
@@ -168,6 +369,45 @@ function setCompanionByTypeId(typeId) {
   window.companionTraitId = companionTraitId;
 
   // ペット名は初期値「ペット」を維持したいのでここでは上書きしない
+
+  // まだ petList が空なら、新規ペットとして1匹分レコードを作る
+  if (!Array.isArray(window.petList) || window.petList.length === 0) {
+    const petId = "p_1";
+    const name  = (typeof window.petName === "string") ? window.petName : "ペット";
+
+    const level     = (typeof window.petLevel === "number") ? window.petLevel : 1;
+    const exp       = (typeof window.petExp === "number") ? window.petExp : 0;
+    const expToNext = (typeof window.petExpToNext === "number") ? window.petExpToNext : 5;
+    const rebirth   = (typeof window.petRebirthCount === "number") ? window.petRebirthCount : 0;
+    const hpBase    = (typeof window.petHpBase === "number") ? window.petHpBase : 10;
+    const atkBase   = (typeof window.petAtkBase === "number") ? window.petAtkBase : 4;
+    const defBase   = (typeof window.petDefBase === "number") ? window.petDefBase : 2;
+    const hpMax     = (typeof window.petHpMax === "number") ? window.petHpMax : hpBase;
+    const hp        = (typeof window.petHp === "number") ? window.petHp : hpMax;
+    const growth    = (typeof window.petGrowthType === "number") ? window.petGrowthType : (window.PET_GROWTH_BALANCE || 0);
+    const buffRate  = (typeof window.petBuffRate === "number") ? window.petBuffRate : 1.0;
+    const skills    = Array.isArray(window.petSkills) ? window.petSkills.slice() : [];
+
+    window.petList = [{
+      id: petId,
+      name,
+      typeId: companionTypeId,
+      traitId: companionTraitId,
+      level,
+      exp,
+      expToNext,
+      rebirthCount: rebirth,
+      hpBase,
+      atkBase,
+      defBase,
+      hpMax,
+      hp,
+      growthType: growth,
+      buffRate,
+      skills
+    }];
+    window.activePetId = petId;
+  }
 }
 
 /**
@@ -232,43 +472,54 @@ function markPetCareDoneToday() {
 // =======================
 //
 // 倉庫ペットタブなど UI から、表示に必要なペット情報を
-// 配列でまとめて受け取れるようにする（将来複数ペット前提）。
+// 配列でまとめて受け取れるようにする（複数ペット前提）。
 
 /**
  * 現在のペットたちの表示用情報を配列で返す。
- * 今は1体だけを "main" として返すが、将来はここを拡張すればよい。
  * 
- * @returns {Array<{id:string,name:string,speciesName:string,level:number,hp:number,hpMax:number,affinity:number,isCareDoneToday:boolean}>}
+ * @returns {Array<{id:string,name:string,speciesName:string,level:number,hp:number,hpMax:number,affinity:number,isCareDoneToday:boolean,isActive:boolean}>}
  */
 function getPetDisplayInfoList() {
   const list = [];
 
   if (!hasCompanion()) {
+    // companionTypeId が未設定なら「まだ一匹も選んでいない」扱い
     return list;
   }
 
-  const compType = (typeof getCurrentCompanionType === "function")
-    ? getCurrentCompanionType()
-    : null;
+  // petList が空で、かつ companionTypeId がある場合は旧セーブ互換として1件だけ作る
+  ensurePetListFromLegacy();
 
-  const speciesName = compType ? (compType.name || "不明") : "不明";
+  if (!Array.isArray(window.petList)) {
+    return list;
+  }
 
-  const petName   = typeof window.petName === "string" ? window.petName : "ペット";
-  const petLevel  = typeof window.petLevel === "number" ? window.petLevel : 1;
-  const petHp     = typeof window.petHp === "number" ? window.petHp : 0;
-  const petHpMax  = typeof window.petHpMax === "number" ? window.petHpMax : 0;
+  const todayCare = isPetCareDoneToday();
   const affinity  = typeof window.petAffinity === "number" ? window.petAffinity : 0;
 
-  list.push({
-    id: "main",
-    name: petName,
-    speciesName,
-    level: petLevel,
-    hp: petHp,
-    hpMax: petHpMax,
-    affinity,
-    isCareDoneToday: isPetCareDoneToday()
-  });
+  for (const rec of window.petList) {
+    if (!rec) continue;
+
+    // 種類名は rec.typeId から取得（なければ現在の companionTypeId）
+    const typeId = rec.typeId || companionTypeId;
+    let speciesName = "不明";
+    const compType = COMPANION_TYPES.find(c => c.id === typeId);
+    if (compType) {
+      speciesName = compType.name || "不明";
+    }
+
+    list.push({
+      id: rec.id,
+      name: rec.name || "ペット",
+      speciesName,
+      level: typeof rec.level === "number" ? rec.level : 1,
+      hp: typeof rec.hp === "number" ? rec.hp : 0,
+      hpMax: typeof rec.hpMax === "number" ? rec.hpMax : 0,
+      affinity,
+      isCareDoneToday: todayCare,
+      isActive: (rec.id === window.activePetId)
+    });
+  }
 
   return list;
 }
@@ -408,7 +659,7 @@ const PET_PETTING_AFFINITY_GAIN = 3;
 // ペットへのご飯共有クールタイム（ミリ秒）
 const PET_FEED_COOLDOWN_MS = 8 * 60 * 60 * 1000;
 
-// 直近でご飯をあげた時刻（ms、Date.now()）[web:82][web:85][web:181]
+// 直近でご飯をあげた時刻（ms、Date.now()）
 if (typeof window.lastPetFeedTime !== "number") {
   window.lastPetFeedTime = 0;
 }
@@ -506,7 +757,7 @@ function carePetPetting() {
  */
 function canFeedPetNow() {
   if (!lastPetFeedTime) return true;
-  const now = Date.now(); // [web:82][web:85][web:181]
+  const now = Date.now();
   const elapsed = now - lastPetFeedTime;
   return elapsed >= PET_FEED_COOLDOWN_MS;
 }
@@ -517,7 +768,7 @@ function canFeedPetNow() {
  */
 function getPetFeedCooldownRemainingMs() {
   if (!lastPetFeedTime) return 0;
-  const now = Date.now(); // [web:82][web:85][web:181]
+  const now = Date.now();
   const elapsed = now - lastPetFeedTime;
   const remain = PET_FEED_COOLDOWN_MS - elapsed;
   return remain > 0 ? remain : 0;
@@ -674,7 +925,7 @@ function feedPetWithItem(itemId) {
   window.petAffinity = after;
 
   // クールタイム更新（共有）
-  lastPetFeedTime = Date.now(); // [web:82][web:85][web:181]
+  lastPetFeedTime = Date.now();
   window.lastPetFeedTime = lastPetFeedTime;
 
   if (typeof appendLog === "function") {
@@ -717,4 +968,10 @@ if (typeof window !== "undefined") {
   window.canFeedPetNow = canFeedPetNow;
   window.getPetFeedCooldownRemainingMs = getPetFeedCooldownRemainingMs;
   window.feedPetWithItem = feedPetWithItem;
+
+  // 複数ペット基盤関連も公開
+  window.ensurePetListFromLegacy = ensurePetListFromLegacy;
+  window.loadActivePetToGlobals = loadActivePetToGlobals;
+  window.saveActivePetFromGlobals = saveActivePetFromGlobals;
+  window.switchActivePet = switchActivePet;
 }

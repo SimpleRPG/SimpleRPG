@@ -396,10 +396,10 @@ function buildStatusPage() {
 
   // ===== サブタブ切り替え =====
   const tabMain  = document.getElementById("statusTabMain");
-  const tabStats = document.getElementById("statusTabStats");   // HTML に合わせて修正済み
+  const tabStats = document.getElementById("statusTabStats");
   const tabSkill = document.getElementById("statusTabSkill");
   const pageMain  = document.getElementById("statusPageMain");
-  const pageStats = document.getElementById("statusPageStats"); // HTML に合わせて修正済み
+  const pageStats = document.getElementById("statusPageStats");
   const pageSkill = document.getElementById("statusPageSkill");
 
   function setStatusSubPage(kind) {
@@ -419,7 +419,6 @@ function buildStatusPage() {
     pageSkill.style.display = isSkill ? "" : "none";
 
     if (isStats) {
-      // 統計タブに入ったら、統計サブタブ（採取/クラフト/戦闘/釣り図鑑）を初期化
       if (typeof initStatusStatsSubTabs === "function") {
         initStatusStatsSubTabs();
       }
@@ -477,11 +476,9 @@ function buildStatusPage() {
   const filterButtons = document.querySelectorAll(".skill-filter-btn");
   filterButtons.forEach(btn => {
     btn.addEventListener("click", () => {
-      // activeクラスの切り替え（見た目用）
       filterButtons.forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
 
-      // data-filter の値を skilltree.js 側に渡す
       const filter = btn.dataset.filter || "all";
       if (typeof setSkillTreeFilter === "function") {
         setSkillTreeFilter(filter);
@@ -559,7 +556,6 @@ function updateGatherMatDetailText() {
 
   label.textContent = labelText;
 
-  // 詳細エリアには基本素材テーブルを出す（定義は game-ui-3.js 側）
   if (typeof renderBasicMaterialTableInto === "function") {
     renderBasicMaterialTableInto(area);
   }
@@ -572,11 +568,9 @@ function updateCraftMatDetailText() {
 
   const names = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
 
-  // いまアクティブなクラフトカテゴリを判定（data-cat="cooking" が active なら料理タブ）
   const cookingTabBtn = document.querySelector('#craftCategoryTabs .craft-cat-tab[data-cat="cooking"]');
   const isCookingTabActive = cookingTabBtn && cookingTabBtn.classList.contains("active");
 
-  // 料理タブがアクティブのときは、倉庫の料理素材表と同じテーブルを表示
   if (isCookingTabActive && typeof COOKING_MAT_NAMES !== "undefined") {
     area.innerHTML = "";
 
@@ -612,18 +606,14 @@ function updateCraftMatDetailText() {
     return;
   }
 
-  // 通常クラフトカテゴリのとき: 基本素材テーブル＋中間素材テーブルを表示
   area.innerHTML = "";
 
-  // 上段: 基本採取素材テーブル（定義は game-ui-3.js 側）
   const basicBox = document.createElement("div");
   if (typeof renderBasicMaterialTableInto === "function") {
     renderBasicMaterialTableInto(basicBox);
   }
   area.appendChild(basicBox);
 
-  // 下段: 中間素材
-  // ★ WH-03 fix: window と素の定数の混在をやめ、window.INTERMEDIATE_MATERIALS のみに統一
   if (typeof window.intermediateMats !== "undefined" &&
       Array.isArray(window.INTERMEDIATE_MATERIALS)) {
 
@@ -685,25 +675,34 @@ function updateCraftMatDetailText() {
 }
 
 // =======================
-// 倉庫タブ：素材一覧（採取 / 中間 / 料理）描画
+// 倉庫タブ：素材一覧（採取 / 中間 / 料理）描画（共通化版）
 // =======================
 
-// 採取素材テーブルを #gatherMaterialsList 内に描画
-function renderWarehouseGatherMaterials() {
-  const box = document.getElementById("gatherMaterialsList");
+function renderMaterialsTables(root, prefix) {
+  if (!root) return;
+
+  renderGatherMaterialsTable(root, prefix);
+  renderIntermediateMaterialsTable(root, prefix);
+  renderCookingMaterialsTable(root, prefix);
+}
+
+// 採取素材テーブルを prefix付きID内に描画
+function renderGatherMaterialsTable(root, prefix) {
+  const box = root.querySelector("#" + prefix + "gatherMaterialsList");
   if (!box || !window.materials) return;
 
   box.innerHTML = "";
 
   const names = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
   const kinds = ["wood","ore","herb","cloth","leather","water"];
-  const tiers = ["t1","t2","t3"];
-  const tierLabels = { t1:"T1", t2:"T2", t3:"T3" };
+
+  const maxTier = (typeof window.MATERIAL_MAX_T === "number" && window.MATERIAL_MAX_T > 0)
+    ? window.MATERIAL_MAX_T
+    : 3;
 
   const table = document.createElement("table");
   table.className = "mat-table";
 
-  // ヘッダ行（左端は Tier、その右に種類）
   const thead = document.createElement("thead");
   const htr = document.createElement("tr");
 
@@ -720,35 +719,25 @@ function renderWarehouseGatherMaterials() {
   thead.appendChild(htr);
   table.appendChild(thead);
 
-  // ボディ（行=Tier, 列=種類）
   const tbody = document.createElement("tbody");
 
-  tiers.forEach(tKey => {
+  for (let tierNum = 1; tierNum <= maxTier; tierNum++) {
     const tr = document.createElement("tr");
 
     const thTier = document.createElement("th");
-    thTier.textContent = tierLabels[tKey] || tKey.toUpperCase();
+    thTier.textContent = "T" + tierNum;
     tr.appendChild(thTier);
 
     kinds.forEach(k => {
       const td = document.createElement("td");
       let val = 0;
 
-      // materials-core.js のAPIを優先的に使用
       if (typeof getMatTierCount === "function") {
-        const tierNum =
-          (tKey === "t1") ? 1 :
-          (tKey === "t2") ? 2 :
-          (tKey === "t3") ? 3 : 1;
         val = getMatTierCount(k, tierNum);
       } else {
-        // フォールバック：配列の index から読む
-        const mArr = window.materials[k] || [];
-        const idx =
-          (tKey === "t1") ? 0 :
-          (tKey === "t2") ? 1 :
-          (tKey === "t3") ? 2 : 0;
-        val = mArr[idx] || 0;
+        const mArr = window.materials && window.materials[k];
+        const idx = tierNum - 1;
+        val = (mArr && mArr[idx]) || 0;
       }
 
       td.textContent = val;
@@ -756,20 +745,18 @@ function renderWarehouseGatherMaterials() {
     });
 
     tbody.appendChild(tr);
-  });
+  }
 
   table.appendChild(tbody);
   box.appendChild(table);
 }
 
-// 中間素材テーブルを #intermediateMaterialsList 内に描画
-function renderWarehouseIntermediateMaterials() {
-  const box = document.getElementById("intermediateMaterialsList");
+// 中間素材テーブルを prefix付きID内に描画（縦=Tier, 横=素材）
+function renderIntermediateMaterialsTable(root, prefix) {
+  const box = root.querySelector("#" + prefix + "intermediateMaterialsList");
   if (!box) return;
 
-  // ★ WH-03 fix:
-  // 在庫がない or マスタ配列が無い場合のみ「ありません」を出し、
-  // 判定・src とも window.INTERMEDIATE_MATERIALS に統一する。
+  // 在庫がない or マスタ配列が無い場合のみ「ありません」を出す（元仕様維持）
   if (!window.intermediateMats || !Array.isArray(window.INTERMEDIATE_MATERIALS)) {
     box.textContent = "中間素材はまだありません。";
     return;
@@ -780,73 +767,90 @@ function renderWarehouseIntermediateMaterials() {
   const mats = window.intermediateMats;
   const src  = window.INTERMEDIATE_MATERIALS;
 
-  // 種類ごとに T1/T2/T3 をまとめたいので、id 接頭辞でグルーピング
-  // 例: woodPlank_T1/T2/T3 → key = woodPlank
-  const groups = {};
+  // 素材ごとの tier 別在庫を集計
+  // id 形式: T1_woodPlank / T2_woodPlank / ...
+  const groups = {}; // baseKey -> { name, tiers: { tierNum: count } }
+
   src.forEach(m => {
     const id = m.id;
     if (!id) return;
-    const baseKey = id.replace(/_T[123]$/, "");
+
+    const mTierMatch = id.match(/^T([0-9]+)_(.+)$/);
+    const tierNum = mTierMatch ? parseInt(mTierMatch[1], 10) : 1;
+    const baseKey = mTierMatch ? mTierMatch[2] : id;
+
     if (!groups[baseKey]) {
+      // 表示名用: "木材板T1" みたいな名前から末尾の Tn をざっくり削る
+      const baseName = m.name.replace(/T[0-9]+$/, "").trim();
       groups[baseKey] = {
-        name: m.name.replace(/T[123]/, "").trim(), // ざっくり: 表示名から Tn を削る
-        t1: 0,
-        t2: 0,
-        t3: 0
+        name: baseName,
+        tiers: {}
       };
     }
-    if (id.endsWith("_T1")) groups[baseKey].t1 += mats[id] || 0;
-    else if (id.endsWith("_T2")) groups[baseKey].t2 += mats[id] || 0;
-    else if (id.endsWith("_T3")) groups[baseKey].t3 += mats[id] || 0;
-    else groups[baseKey].t1 += mats[id] || 0; // ティアなしはT1扱い
+
+    const stock = mats[id] || 0;
+    if (!groups[baseKey].tiers[tierNum]) {
+      groups[baseKey].tiers[tierNum] = 0;
+    }
+    groups[baseKey].tiers[tierNum] += stock;
   });
+
+  // Tier 行数は MATERIAL_MAX_T に追従
+  const maxTier = (typeof window.MATERIAL_MAX_T === "number" && window.MATERIAL_MAX_T > 0)
+    ? window.MATERIAL_MAX_T
+    : 3;
 
   const table = document.createElement("table");
   table.className = "mat-table";
 
   const thead = document.createElement("thead");
   const htr = document.createElement("tr");
-  ["素材","T1","T2","T3","合計"].forEach(label => {
+
+  // 左端: Tier
+  const thTier = document.createElement("th");
+  thTier.textContent = "Tier";
+  htr.appendChild(thTier);
+
+  // 右側: 各中間素材の列
+  const baseKeys = Object.keys(groups);
+  baseKeys.forEach(key => {
+    const g = groups[key];
     const th = document.createElement("th");
-    th.textContent = label;
+    th.textContent = g.name || key;
     htr.appendChild(th);
   });
+
   thead.appendChild(htr);
   table.appendChild(thead);
 
   const tbody = document.createElement("tbody");
-  Object.keys(groups).forEach(key => {
-    const g = groups[key];
-    const total = g.t1 + g.t2 + g.t3;
-    if (total === 0) return;
 
+  // 行 = T1〜maxTier
+  for (let tierNum = 1; tierNum <= maxTier; tierNum++) {
     const tr = document.createElement("tr");
-    const tdName = document.createElement("td");
-    const tdT1 = document.createElement("td");
-    const tdT2 = document.createElement("td");
-    const tdT3 = document.createElement("td");
-    const tdTotal = document.createElement("td");
-    tdName.textContent = g.name || key;
-    tdT1.textContent = g.t1;
-    tdT2.textContent = g.t2;
-    tdT3.textContent = g.t3;
-    tdTotal.textContent = total;
 
-    tr.appendChild(tdName);
-    tr.appendChild(tdT1);
-    tr.appendChild(tdT2);
-    tr.appendChild(tdT3);
-    tr.appendChild(tdTotal);
+    const tdTier = document.createElement("th");
+    tdTier.textContent = "T" + tierNum;
+    tr.appendChild(tdTier);
+
+    baseKeys.forEach(key => {
+      const g = groups[key];
+      const tiers = g.tiers || {};
+      const td = document.createElement("td");
+      td.textContent = tiers[tierNum] || 0;
+      tr.appendChild(td);
+    });
+
     tbody.appendChild(tr);
-  });
+  }
 
   table.appendChild(tbody);
   box.appendChild(table);
 }
 
-// 料理素材テーブルを #cookingMaterialsList 内に描画
-function renderWarehouseCookingMaterials() {
-  const box = document.getElementById("cookingMaterialsList");
+// 料理素材テーブルを prefix付きID内に描画
+function renderCookingMaterialsTable(root, prefix) {
+  const box = root.querySelector("#" + prefix + "cookingMaterialsList");
   if (!box) return;
   if (typeof COOKING_MAT_NAMES === "undefined") {
     box.textContent = "料理素材情報がありません。";

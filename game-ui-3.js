@@ -565,7 +565,7 @@ function initJobPetRebirthUI() {
     });
   }
 
-  // ★拠点タブ内サブタブ（拠点 / 倉庫）の初期化
+  // ★拠点タブ内サブタブ（拠点 / 倉庫 / ペット）の初期化
   if (typeof initHousingSubTabs === "function") {
     initHousingSubTabs();
   }
@@ -905,12 +905,14 @@ function initStatusStatsSubTabs() {
 }
 
 // ==========================
-// 拠点タブ内サブタブ（拠点 / 倉庫）
+// 拠点タブ内サブタブ（拠点 / 倉庫 / ペット）
 // ==========================
 function initHousingSubTabs() {
   const tabContainer = document.getElementById("housingSubTabs");
   const pageMain = document.getElementById("housingPageMain");
   const pageWh   = document.getElementById("housingPageWarehouse");
+  const pagePet  = document.getElementById("housingPagePet");
+
   if (!tabContainer || !pageMain || !pageWh) return;
 
   const tabs = tabContainer.querySelectorAll(".housing-sub-tab");
@@ -923,12 +925,23 @@ function initHousingSubTabs() {
     });
 
     const isMain = (kind === "housing-main");
+    const isWh   = (kind === "housing-warehouse");
+    const isPet  = (kind === "housing-pet");
+
     pageMain.style.display = isMain ? "" : "none";
-    pageWh.style.display   = isMain ? "none" : "";
+    pageWh.style.display   = isWh ? "" : "none";
+    if (pagePet) {
+      pagePet.style.display = isPet ? "" : "none";
+    }
 
     // 倉庫サブタブを開いたときに倉庫UIを更新
-    if (!isMain && typeof refreshWarehouseUI === "function") {
+    if (isWh && typeof refreshWarehouseUI === "function") {
       refreshWarehouseUI();
+    }
+
+    // ペットサブタブを開いたときにペットUI描画
+    if (isPet && typeof buildHousingPetPage === "function") {
+      buildHousingPetPage();
     }
   }
 

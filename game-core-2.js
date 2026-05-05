@@ -180,9 +180,18 @@ function promptRenamePet() {
 function addPetExp(amount) {
   if (jobId !== 2) return;
 
+  // ★複数ペット対応: 処理前に現在のアクティブペット状態を petList に保存しておく
+  if (typeof window.saveActivePetFromGlobals === "function") {
+    window.saveActivePetFromGlobals();
+  }
+
   // ★ ペットも上限に達していたら経験値だけ加算して終了
   if (petLevel >= MAX_PET_LEVEL) {
     petExp += amount;
+    // ★保存（上限でも経験値は持つので petList 側も追従させる）
+    if (typeof window.saveActivePetFromGlobals === "function") {
+      window.saveActivePetFromGlobals();
+    }
     updateDisplay();
     return;
   }
@@ -223,6 +232,12 @@ function addPetExp(amount) {
   if (leveled) {
     appendLog(`${petName}のレベルが上がった！ Lv${petLevel}`);
   }
+
+  // ★複数ペット対応: レベルアップ後の最新ステータスを petList のアクティブペットに反映
+  if (typeof window.saveActivePetFromGlobals === "function") {
+    window.saveActivePetFromGlobals();
+  }
+
   updateDisplay();
 }
 
@@ -261,7 +276,7 @@ function applyRebirthBonus() {
     }
   }
   // ★ 普通の改行に修正
-  return "転生ボーナス:\n" + msgList.join("\n");
+  return "転生ボーナス:\\n" + msgList.join("\\n");
 }
 
 function applyPetRebirthBonus() {
@@ -364,6 +379,11 @@ function doRebirth() {
   petHpMax = baseHpForMax + petRebirthCount * 3;
   petHp    = petHpMax;
 
+  // ★複数ペット対応: 転生後のペット状態を petList のアクティブレコードに保存
+  if (typeof window.saveActivePetFromGlobals === "function") {
+    window.saveActivePetFromGlobals();
+  }
+
   // 戦闘状態リセット
   currentEnemy = null;
   enemyHp      = 0;
@@ -378,9 +398,9 @@ function doRebirth() {
 
   // ★ ログも普通の改行に統一
   appendLog(
-    `転生した！ 転生回数: ${rebirthCount}\n` +
-    `成長タイプ: ${getGrowthTypeName()}\n` +
-    `${bonusMsg}\n` +
+    `転生した！ 転生回数: ${rebirthCount}\\n` +
+    `成長タイプ: ${getGrowthTypeName()}\\n` +
+    `${bonusMsg}\\n` +
     `ペット転生回数: ${petRebirthCount}（基礎ATKとHPが強化された）`
   );
 
@@ -712,11 +732,23 @@ function isBeastTamer() {
 
 // ペット簡易ステータス（上部バー下のミニ表示）更新
 function updatePetMiniStatus() {
+  const nameEl  = document.getElementById("petNameMini");
   const lvEl    = document.getElementById("petLevelMini");
   const hpEl    = document.getElementById("petHpMini");
   const hpMaxEl = document.getElementById("petHpMaxMini");
   if (!lvEl || !hpEl || !hpMaxEl) return;
 
+  // 名前: アクティブペットがいるときだけ petName を表示、それ以外は "-"
+  if (nameEl) {
+    const hasPet = (jobId === 2) && !!window.companionTypeId;
+    if (hasPet && typeof petName === "string" && petName.length > 0) {
+      nameEl.textContent = petName;
+    } else {
+      nameEl.textContent = "-";
+    }
+  }
+
+  // 数値部分は既存どおり
   lvEl.textContent    = (typeof petLevel === "number") ? petLevel : "-";
   hpEl.textContent    = (typeof petHp === "number")    ? petHp    : "-";
   hpMaxEl.textContent = (typeof petHpMax === "number") ? petHpMax : "-";

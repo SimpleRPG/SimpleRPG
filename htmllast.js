@@ -55,19 +55,11 @@ function updateWarehousePetTabVisibility() {
     isTamer = false;
   }
 
-  // // 必要ならデバッグ用にコメントアウトを外してログを見る
-  // console.log("[updateWarehousePetTabVisibility]", {
-  //   isTamer,
-  //   hasBtnPet: !!btnPet,
-  //   hasPagePet: !!pagePet,
-  //   displayBefore: btnPet.style.display
-  // });
-
   if (isTamer) {
     // 動物使いならペットタブボタンを表示
     btnPet.style.display  = "";
     // ページは「選ばれたときだけ」表示するので、ここでは display をいじらない
-    // （setWarehouseTab がページ表示を管理する）
+    // （倉庫タブの表示切り替えは game-ui-2.js 側の setupWarehouseSubTabs が担当）
   } else {
     // それ以外の職業ではペットタブを隠す
     const wasActive = btnPet.classList.contains("active");
@@ -80,17 +72,14 @@ function updateWarehousePetTabVisibility() {
 
     // もしペットタブがアクティブだったなら、安全側として「装備・アイテム」に戻す
     if (wasActive) {
-      if (typeof setWarehouseTab === "function") {
-        setWarehouseTab("items");
-      } else {
-        // ローカル版 fallback
-        btnItems.classList.add("active");
-        btnMats.classList.remove("active");
-        pageItems.style.display = "";
-        pageItems.classList.add("active");
-        pageMats.style.display  = "none";
-        pageMats.classList.remove("active");
-      }
+      // game-ui-2.js 側のタブ制御（setupWarehouseSubTabs）を前提に、
+      // ローカルに装備・アイテムタブに戻す
+      btnItems.classList.add("active");
+      btnMats.classList.remove("active");
+      pageItems.style.display = "";
+      pageItems.classList.add("active");
+      pageMats.style.display  = "none";
+      pageMats.classList.remove("active");
     }
   }
 }
@@ -465,8 +454,6 @@ function setupLifeCraftTabs() {
     const isFarm = kind === "farm";
     panelFarm.style.display = isFarm ? "" : "none";
     panelFurniture.style.display = isFarm ? "none" : "";
-    // ★ここでは activeCraftCategory や updateCraftCostInfo は触らない
-    //   （クラフト系の状態管理は ui-craft-and-farm.js 側に任せる）
   }
 
   tabs.forEach(btn => {
@@ -481,68 +468,82 @@ function setupLifeCraftTabs() {
 }
 
 // -----------------------------
-// 倉庫内サブタブ（装備・アイテム / 素材 / ペット）
+// 拠点ページ内サブタブ（拠点 / 倉庫 / ペット）
 // -----------------------------
-// 他の関数からも使いたいので、function 宣言にしてグローバルに出しておく
-function setWarehouseTab(kind) {
-  const btnItems = document.getElementById("warehouseTabItems");
-  const btnMats  = document.getElementById("warehouseTabMaterials");
-  const btnPet   = document.getElementById("warehouseTabPet");
+function setupHousingSubTabs() {
+  const tabButtons = document.querySelectorAll(".housing-sub-tab");
+  const pageMain      = document.getElementById("housingPageMain");
+  const pageWarehouse = document.getElementById("housingPageWarehouse");
+  const pagePet       = document.getElementById("housingPagePet");
 
-  const pageItems = document.getElementById("warehousePageItems");
-  const pageMats  = document.getElementById("warehousePageMaterials");
-  const pagePet   = document.getElementById("warehousePagePet");
+  if (!tabButtons.length || !pageMain || !pageWarehouse || !pagePet) return;
 
-  if (!btnItems || !btnMats || !pageItems || !pageMats) return;
-  // ペットは「ない環境」も想定して null 許容
-  const isItems = kind === "items";
-  const isMats  = kind === "materials";
-  const isPet   = kind === "pet";
+  const pages = {
+    "housing-main": pageMain,
+    "housing-warehouse": pageWarehouse,
+    "housing-pet": pagePet,
+  };
 
-  // ボタン側 active
-  btnItems.classList.toggle("active", isItems);
-  btnMats.classList.toggle("active", isMats);
-  if (btnPet) {
-    // ボタンが存在し、かつ非表示でなければ active を付ける
-    const canUsePet = btnPet.style.display !== "none";
-    btnPet.classList.toggle("active", isPet && canUsePet);
+  function setHousingSub(pageKey) {
+    tabButtons.forEach(btn => {
+      const key = btn.dataset.housingPage;
+      const active = key === pageKey;
+      btn.classList.toggle("active", active);
+    });
+
+    Object.keys(pages).forEach(key => {
+      const pg = pages[key];
+      if (!pg) return;
+      const active = key === pageKey;
+      pg.style.display = active ? "" : "none";
+      pg.classList.toggle("active", active);
+    });
+
+    // 倉庫サブタブを開いたら中身も更新
+    if (pageKey === "housing-warehouse" && typeof refreshWarehouseUI === "function") {
+      refreshWarehouseUI();
+    }
   }
 
-  // ページ側表示
-  pageItems.style.display = isItems ? "" : "none";
-  pageItems.classList.toggle("active", isItems);
+  tabButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.housingPage || "housing-main";
+      setHousingSub(key);
+    });
+  });
 
-  pageMats.style.display  = isMats ? "" : "none";
-  pageMats.classList.toggle("active", isMats);
-
-  if (pagePet && btnPet) {
-    const canUsePet = btnPet.style.display !== "none";
-    const showPet   = isPet && canUsePet;
-    pagePet.style.display = showPet ? "" : "none";
-    pagePet.classList.toggle("active", showPet);
-  }
+  setHousingSub("housing-main");
 }
 
-function setupWarehouseTabs() {
-  const btnItems = document.getElementById("warehouseTabItems");
-  const btnMats  = document.getElementById("warehouseTabMaterials");
-  const btnPet   = document.getElementById("warehouseTabPet");
+// -----------------------------
+// 拠点内倉庫サブタブ（装備・アイテム / 素材）
+// -----------------------------
+function setupHousingWarehouseTabs() {
+  const btnItems = document.getElementById("housingWarehouseTabItems");
+  const btnMats  = document.getElementById("housingWarehouseTabMaterials");
+  const pageItems = document.getElementById("housingWarehousePageItems");
+  const pageMats  = document.getElementById("housingWarehousePageMaterials");
 
-  if (!btnItems || !btnMats) return;
+  if (!btnItems || !btnMats || !pageItems || !pageMats) return;
 
-  btnItems.addEventListener("click", () => setWarehouseTab("items"));
-  btnMats.addEventListener("click", () => setWarehouseTab("materials"));
+  function setHousingWarehouse(kind) {
+    const isItems = kind === "items";
+    const isMats  = kind === "materials";
 
-  if (btnPet) {
-    btnPet.addEventListener("click", () => {
-      // 非表示状態のときは無視
-      if (btnPet.style.display === "none") return;
-      setWarehouseTab("pet");
-    });
+    btnItems.classList.toggle("active", isItems);
+    btnMats.classList.toggle("active", isMats);
+
+    pageItems.style.display = isItems ? "" : "none";
+    pageItems.classList.toggle("active", isItems);
+
+    pageMats.style.display  = isMats ? "" : "none";
+    pageMats.classList.toggle("active", isMats);
   }
 
-  // 初期状態は装備・アイテムタブ
-  setWarehouseTab("items");
+  btnItems.addEventListener("click", () => setHousingWarehouse("items"));
+  btnMats.addEventListener("click", () => setHousingWarehouse("materials"));
+
+  setHousingWarehouse("items");
 }
 
 // -----------------------------
@@ -659,9 +660,6 @@ function setupGuildInnerTabs() {
 // -----------------------------
 // ペット成長タイプ変更ボタン / モーダル配線
 // -----------------------------
-
-// ステータスタブなどにある「ペット成長タイプを変更」ボタンから
-// petGrowthModal を開く。
 function setupPetGrowthButton() {
   const btn = document.getElementById("changePetGrowthBtn");
   const modal = document.getElementById("petGrowthModal");
@@ -672,7 +670,6 @@ function setupPetGrowthButton() {
   });
 }
 
-// petGrowthModal 内のボタンから petGrowthType を更新する。
 function setupPetGrowthModal() {
   const modal = document.getElementById("petGrowthModal");
   if (!modal) return;
@@ -685,7 +682,6 @@ function setupPetGrowthModal() {
       const g = parseInt(btn.dataset.growth, 10);
       if (isNaN(g)) return;
 
-      // 実データは game-core-1.js 側の petGrowthType をそのまま使う
       window.petGrowthType = g;
 
       if (typeof appendLog === "function") {
@@ -696,8 +692,6 @@ function setupPetGrowthModal() {
         appendLog(`ペットの成長タイプを「${label}」に変更した。`);
       }
 
-      // 成長タイプ変更で将来の伸びや内部係数が変わる可能性があるため、
-      // ステータス再計算と画面更新を呼んでおく
       if (typeof recalcStats === "function") {
         recalcStats();
       }
@@ -720,7 +714,6 @@ function setupPetGrowthModal() {
 function setupSocketIoClient() {
   try {
     if (typeof io === "undefined") {
-      // Socket.io クライアントライブラリが読み込まれていない場合は、静かに諦める
       return;
     }
 
@@ -731,7 +724,6 @@ function setupSocketIoClient() {
     window.globalSocket = socket;
 
     socket.on("connect", () => {
-      // 接続時のログ出力は行わない（必要なら appendLog などを再度追加）
       socket.emit("ping-from-client");
 
       if (typeof window.setupMarketSocketSync === "function") {
@@ -740,14 +732,11 @@ function setupSocketIoClient() {
     });
 
     socket.on("pong-from-server", () => {
-      // pong 受信時のログ出力は行わない
     });
 
     socket.on("connect_error", () => {
-      // 接続エラー時のログ出力は行わない
     });
   } catch (e) {
-    // 初期化エラー時のログ出力も行わない
   }
 }
 
@@ -764,17 +753,17 @@ document.addEventListener("DOMContentLoaded", () => {
   setupMagicDistTabs();
   setupCookingCraftTabs();
   setupLifeCraftTabs();
-  setupWarehouseTabs();
+  // ★倉庫内サブタブは game-ui-2.js の setupWarehouseSubTabs に統合したのでここでは呼ばない
+  setupHousingSubTabs();
+  setupHousingWarehouseTabs();
   setupMarketTabs();
   setupGuildInnerTabs();
   setupSocketIoClient();
 
-  // ★★★ ペットタブ可視状態の初期反映（職業が決まっていなくても一度評価しておく） ★★★
   if (typeof updateWarehousePetTabVisibility === "function") {
     updateWarehousePetTabVisibility();
   }
 
-  // ★★★ ショップと倉庫UIの初期化を追加 ★★★
   if (typeof initBattleAndShopUI === "function") {
     initBattleAndShopUI();
   }
@@ -783,13 +772,11 @@ document.addEventListener("DOMContentLoaded", () => {
     refreshWarehouseUI();
   }
 
-  // ★★★ ペット成長タイプ変更ボタン / モーダルの初期化 ★★★
   setupPetGrowthButton();
   setupPetGrowthModal();
 });
 
-// 必要なら setStatusSubPage / setWarehouseTab を他から呼べるように
+// 必要なら setStatusSubPage を他から呼べるように
 if (typeof window !== "undefined") {
   window.setStatusSubPage = setStatusSubPage;
-  window.setWarehouseTab  = setWarehouseTab;
 }

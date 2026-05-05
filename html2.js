@@ -159,7 +159,7 @@
         </div>
 
         <!-- 戦闘統計ページ（中身は別JSで描画予定） -->
-        <div id="statusStatsPageBattle" class="status-stats-page" style="display:none;">
+        <div id="statusStatsPageBattle" class="status-stats-page" style="display:none%;">
           <h4>戦闘統計</h4>
           <div id="battleStatsContainer" class="status-block" style="max-height:300px; overflow:auto; font-size:12px;">
           </div>
@@ -326,11 +326,11 @@
           <div id="housingWarehouseInner">
             <div>
               <div id="housingWarehouseSubTabs" style="margin-bottom:8px;">
-                <button id="housingWarehouseTabItems" class="warehouse-sub-tab active">装備・アイテム</button>
-                <button id="housingWarehouseTabMaterials" class="warehouse-sub-tab">素材</button>
+                <button id="housingwarehouseTabItems" class="warehouse-sub-tab active">装備・アイテム</button>
+                <button id="housingwarehouseTabMaterials" class="warehouse-sub-tab">素材</button>
               </div>
 
-              <div id="housingWarehousePageItems" class="warehouse-sub-page active">
+              <div id="housingwarehousePageItems" class="warehouse-sub-page active">
                 <div id="housingWarehouseLists">
                   <div class="warehouse-box">
                     <h3>手持ち</h3>
@@ -381,19 +381,19 @@
                 </div>
               </div>
 
-              <div id="housingWarehousePageMaterials" class="warehouse-sub-page" style="display:none;">
+              <div id="housingwarehousePageMaterials" class="warehouse-sub-page" style="display:none;">
                 <h3>素材一覧</h3>
 
                 <h4>採取素材</h4>
-                <div id="housingGatherMaterialsList">
+                <div id="housinggatherMaterialsList">
                 </div>
 
                 <h4>中間素材</h4>
-                <div id="housingIntermediateMaterialsList">
+                <div id="housingintermediateMaterialsList">
                 </div>
 
                 <h4>料理素材</h4>
-                <div id="housingCookingMaterialsList">
+                <div id="housingcookingMaterialsList">
                 </div>
               </div>
             </div>
