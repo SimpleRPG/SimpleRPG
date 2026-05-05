@@ -6,8 +6,16 @@
 // =======================
 
 // ★ レベル上限
-const MAX_LEVEL     = 100;
-const MAX_PET_LEVEL = 100;
+//   - MAX_LEVEL / MAX_PET_LEVEL は game-core-1.js 側ですでに const 宣言されている想定。
+//   - ここでは「すでに存在するならそれを使い、なければデフォルト値を入れる」だけにする。
+//   - const での再宣言は SyntaxError になるので避ける。
+if (typeof MAX_LEVEL === "undefined") {
+  // 念のためのフォールバック（通常は game-core-1.js で定義済み）
+  var MAX_LEVEL = 100;
+}
+if (typeof MAX_PET_LEVEL === "undefined") {
+  var MAX_PET_LEVEL = 100;
+}
 
 // ★ レベルに応じた最大HP加算量を返す関数
 // Lv1 は +0、Lv2 以降は +2ずつ伸ばす（Lv2: +2, Lv3: +4, ...）。
@@ -315,7 +323,7 @@ function confirmRebirth() {
 function doRebirth() {
   // ★ 先に基礎ステを初期値に戻す（レベルチェックは confirmRebirth 側に一本化）
   resetBaseStatsToInitial();
-  //転生ごとにランダムな成長タイプ、職業変更を促す一因に
+  // 転生ごとにランダムな成長タイプ、職業変更を促す一因に
   rebirthCount++;
   growthType = Math.floor(Math.random() * 5); // 0〜4の成長タイプに再ロール
   const bonusMsg = applyRebirthBonus();
@@ -675,6 +683,11 @@ function applyJobChange(newJobId) {
     updateBattleSkillUIByJob();
   }
   updateBossButtonUI();
+
+  // ★追加: 動物使いかどうかに応じて倉庫ペットタブの表示状態を更新
+  if (typeof window.updateWarehousePetTabVisibility === "function") {
+    window.updateWarehousePetTabVisibility();
+  }
 }
 
 function changePetGrowthType() {
@@ -691,6 +704,10 @@ function changePetGrowthType() {
 // ★職業ヘルパ
 function isAlchemist() {
   return jobId === 3;
+}
+
+function isBeastTamer() {
+  return jobId === 2;
 }
 
 // ペット簡易ステータス（上部バー下のミニ表示）更新

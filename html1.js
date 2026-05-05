@@ -437,7 +437,7 @@ function buildAppLayout() {
               <div style="margin-top:8px;">
                 <h4 style="margin:4px 0;">防具強化</h4>
                 <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
-                  <label style="font-size:12px;">強化対象防具:</label>
+                  <label style="fontサイズ:12px;">強化対象防具:</label>
                   <select id="enhanceArmorTargetSelect" style="flex:1;"></select>
                 </div>
                 <button id="enhanceArmorBtn">防具を強化</button>
@@ -718,6 +718,8 @@ function buildAppLayout() {
                 <div id="warehouseSubTabs" style="margin-bottom:8px;">
                   <button id="warehouseTabItems" class="warehouse-sub-tab active">装備・アイテム</button>
                   <button id="warehouseTabMaterials" class="warehouse-sub-tab">素材</button>
+                  <!-- ★動物使い専用ペットタブ（JS側で isBeastTamer 時に表示） -->
+                  <button id="warehouseTabPet" class="warehouse-sub-tab" style="display:none;">ペット</button>
                 </div>
 
                 <div id="warehousePageItems" class="warehouse-sub-page active">
@@ -785,6 +787,11 @@ function buildAppLayout() {
                   <h4>料理素材</h4>
                   <div id="cookingMaterialsList">
                   </div>
+                </div>
+
+                <!-- ★ペット用サブページ（中身はJS側で描画） -->
+                <div id="warehousePagePet" class="warehouse-sub-page" style="display:none;">
+                  <!-- ペットタブの中身は別JSで生成 -->
                 </div>
               </div>
 

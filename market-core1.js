@@ -391,7 +391,7 @@ function renderMyListings() {
     const label = getItemLabel(g.category, g.itemId);
     const nameCol = (label + "              ").slice(0, 12);
     const amountCol = String(g.amount).padStart(3, " ");
-    the const priceCol  = (String(g.price) + "G").padStart(6, " ");
+    const priceCol  = (String(g.price) + "G").padStart(6, " ");
     return `${nameCol}  x${amountCol}  @${priceCol}`;
   });
 

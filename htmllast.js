@@ -29,6 +29,73 @@ function updateHousingWarehouseTabs() {
 }
 
 // -----------------------------
+// 倉庫タブ内ペットサブタブの表示制御（動物使い専用）
+// -----------------------------
+function updateWarehousePetTabVisibility() {
+  const btnItems = document.getElementById("warehouseTabItems");
+  const btnMats  = document.getElementById("warehouseTabMaterials");
+  const btnPet   = document.getElementById("warehouseTabPet");
+
+  const pageItems = document.getElementById("warehousePageItems");
+  const pageMats  = document.getElementById("warehousePageMaterials");
+  const pagePet   = document.getElementById("warehousePagePet");
+
+  // ボタンやページがなければ何もしない（古いHTMLとの互換）
+  if (!btnPet || !pagePet || !btnItems || !btnMats || !pageItems || !pageMats) return;
+
+  // 職業判定ヘルパーがあれば使う。なければ単純に jobId===2 を見る
+  let isTamer = false;
+  try {
+    if (typeof window.isBeastTamer === "function") {
+      isTamer = window.isBeastTamer();
+    } else if (typeof window.jobId === "number") {
+      isTamer = (window.jobId === 2);
+    }
+  } catch (e) {
+    isTamer = false;
+  }
+
+  // // 必要ならデバッグ用にコメントアウトを外してログを見る
+  // console.log("[updateWarehousePetTabVisibility]", {
+  //   isTamer,
+  //   hasBtnPet: !!btnPet,
+  //   hasPagePet: !!pagePet,
+  //   displayBefore: btnPet.style.display
+  // });
+
+  if (isTamer) {
+    // 動物使いならペットタブボタンを表示
+    btnPet.style.display  = "";
+    // ページは「選ばれたときだけ」表示するので、ここでは display をいじらない
+    // （setWarehouseTab がページ表示を管理する）
+  } else {
+    // それ以外の職業ではペットタブを隠す
+    const wasActive = btnPet.classList.contains("active");
+
+    btnPet.style.display  = "none";
+    btnPet.classList.remove("active");
+
+    pagePet.style.display = "none";
+    pagePet.classList.remove("active");
+
+    // もしペットタブがアクティブだったなら、安全側として「装備・アイテム」に戻す
+    if (wasActive) {
+      if (typeof setWarehouseTab === "function") {
+        setWarehouseTab("items");
+      } else {
+        // ローカル版 fallback
+        btnItems.classList.add("active");
+        btnMats.classList.remove("active");
+        pageItems.style.display = "";
+        pageItems.classList.add("active");
+        pageMats.style.display  = "none";
+        pageMats.classList.remove("active");
+      }
+    }
+  }
+}
+
+// -----------------------------
 // メインタブ切り替え
 // -----------------------------
 function setupMainTabs() {
@@ -67,6 +134,11 @@ function setupMainTabs() {
       page.classList.toggle("active", active);
       page.style.display = active ? "" : "none";
     });
+
+    // ★倉庫タブに切り替えたタイミングでも、ペットタブ表示状態を再評価する
+    if (pageId === "pageWarehouse" && typeof updateWarehousePetTabVisibility === "function") {
+      updateWarehousePetTabVisibility();
+    }
   }
 
   buttons.forEach(dBtn => {
@@ -409,28 +481,67 @@ function setupLifeCraftTabs() {
 }
 
 // -----------------------------
-// 倉庫内サブタブ（装備・アイテム / 素材）
+// 倉庫内サブタブ（装備・アイテム / 素材 / ペット）
 // -----------------------------
+// 他の関数からも使いたいので、function 宣言にしてグローバルに出しておく
+function setWarehouseTab(kind) {
+  const btnItems = document.getElementById("warehouseTabItems");
+  const btnMats  = document.getElementById("warehouseTabMaterials");
+  const btnPet   = document.getElementById("warehouseTabPet");
+
+  const pageItems = document.getElementById("warehousePageItems");
+  const pageMats  = document.getElementById("warehousePageMaterials");
+  const pagePet   = document.getElementById("warehousePagePet");
+
+  if (!btnItems || !btnMats || !pageItems || !pageMats) return;
+  // ペットは「ない環境」も想定して null 許容
+  const isItems = kind === "items";
+  const isMats  = kind === "materials";
+  const isPet   = kind === "pet";
+
+  // ボタン側 active
+  btnItems.classList.toggle("active", isItems);
+  btnMats.classList.toggle("active", isMats);
+  if (btnPet) {
+    // ボタンが存在し、かつ非表示でなければ active を付ける
+    const canUsePet = btnPet.style.display !== "none";
+    btnPet.classList.toggle("active", isPet && canUsePet);
+  }
+
+  // ページ側表示
+  pageItems.style.display = isItems ? "" : "none";
+  pageItems.classList.toggle("active", isItems);
+
+  pageMats.style.display  = isMats ? "" : "none";
+  pageMats.classList.toggle("active", isMats);
+
+  if (pagePet && btnPet) {
+    const canUsePet = btnPet.style.display !== "none";
+    const showPet   = isPet && canUsePet;
+    pagePet.style.display = showPet ? "" : "none";
+    pagePet.classList.toggle("active", showPet);
+  }
+}
+
 function setupWarehouseTabs() {
   const btnItems = document.getElementById("warehouseTabItems");
   const btnMats  = document.getElementById("warehouseTabMaterials");
-  const pageItems= document.getElementById("warehousePageItems");
-  const pageMats = document.getElementById("warehousePageMaterials");
-  if (!btnItems || !btnMats || !pageItems || !pageMats) return;
+  const btnPet   = document.getElementById("warehouseTabPet");
 
-  function setWarehouseTab(kind) {
-    const isItems = kind === "items";
-    btnItems.classList.toggle("active", isItems);
-    btnMats.classList.toggle("active", !isItems);
-    pageItems.style.display = isItems ? "" : "none";
-    pageItems.classList.toggle("active", isItems);
-    pageMats.style.display  = !isItems ? "" : "none";
-    pageMats.classList.toggle("active", !isItems);
-  }
+  if (!btnItems || !btnMats) return;
 
   btnItems.addEventListener("click", () => setWarehouseTab("items"));
   btnMats.addEventListener("click", () => setWarehouseTab("materials"));
 
+  if (btnPet) {
+    btnPet.addEventListener("click", () => {
+      // 非表示状態のときは無視
+      if (btnPet.style.display === "none") return;
+      setWarehouseTab("pet");
+    });
+  }
+
+  // 初期状態は装備・アイテムタブ
   setWarehouseTab("items");
 }
 
@@ -546,6 +657,64 @@ function setupGuildInnerTabs() {
 }
 
 // -----------------------------
+// ペット成長タイプ変更ボタン / モーダル配線
+// -----------------------------
+
+// ステータスタブなどにある「ペット成長タイプを変更」ボタンから
+// petGrowthModal を開く。
+function setupPetGrowthButton() {
+  const btn = document.getElementById("changePetGrowthBtn");
+  const modal = document.getElementById("petGrowthModal");
+  if (!btn || !modal) return;
+
+  btn.addEventListener("click", () => {
+    modal.classList.remove("hidden");
+  });
+}
+
+// petGrowthModal 内のボタンから petGrowthType を更新する。
+function setupPetGrowthModal() {
+  const modal = document.getElementById("petGrowthModal");
+  if (!modal) return;
+
+  const buttons = modal.querySelectorAll("#petGrowthButtons button");
+  const closeBtn = document.getElementById("petGrowthCloseBtn");
+
+  buttons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const g = parseInt(btn.dataset.growth, 10);
+      if (isNaN(g)) return;
+
+      // 実データは game-core-1.js 側の petGrowthType をそのまま使う
+      window.petGrowthType = g;
+
+      if (typeof appendLog === "function") {
+        const label =
+          g === 1 ? "タンク型" :
+          g === 2 ? "アタッカー型" :
+          "バランス型";
+        appendLog(`ペットの成長タイプを「${label}」に変更した。`);
+      }
+
+      // 成長タイプ変更で将来の伸びや内部係数が変わる可能性があるため、
+      // ステータス再計算と画面更新を呼んでおく
+      if (typeof recalcStats === "function") {
+        recalcStats();
+      }
+      if (typeof updateDisplay === "function") {
+        updateDisplay();
+      }
+    });
+  });
+
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => {
+      modal.classList.add("hidden");
+    });
+  }
+}
+
+// -----------------------------
 // Socket.io 初期化
 // -----------------------------
 function setupSocketIoClient() {
@@ -599,18 +768,28 @@ document.addEventListener("DOMContentLoaded", () => {
   setupMarketTabs();
   setupGuildInnerTabs();
   setupSocketIoClient();
-  
+
+  // ★★★ ペットタブ可視状態の初期反映（職業が決まっていなくても一度評価しておく） ★★★
+  if (typeof updateWarehousePetTabVisibility === "function") {
+    updateWarehousePetTabVisibility();
+  }
+
   // ★★★ ショップと倉庫UIの初期化を追加 ★★★
   if (typeof initBattleAndShopUI === "function") {
     initBattleAndShopUI();
   }
-  
+
   if (typeof refreshWarehouseUI === "function") {
     refreshWarehouseUI();
   }
+
+  // ★★★ ペット成長タイプ変更ボタン / モーダルの初期化 ★★★
+  setupPetGrowthButton();
+  setupPetGrowthModal();
 });
 
-// 必要なら setStatusSubPage を他から呼べるように
+// 必要なら setStatusSubPage / setWarehouseTab を他から呼べるように
 if (typeof window !== "undefined") {
   window.setStatusSubPage = setStatusSubPage;
+  window.setWarehouseTab  = setWarehouseTab;
 }

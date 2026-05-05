@@ -280,7 +280,7 @@ function recalcStats() {
   }
   const hpMaxRate   = skillBonus.hpMaxRate   || 0; // 最大HP+%
   const mpMaxRate   = skillBonus.mpMaxRate   || 0; // 最大MP+%（必要なら定義）
-  const spMaxRate   = skillBonus.spMaxRate   || 0; // 最大SP+%（必要なら定義）
+  const spMaxRate   = skillBonus.spMaxRate   || 0; // 最大SP+%
   const atkRate     = skillBonus.atkRate     || 0; // 物理攻撃+%
   const defRate     = skillBonus.defRate     || 0; // 防御+%
 
@@ -478,7 +478,13 @@ function recalcStats() {
     petHpMax = petHpBase + petRebirthCount * 3;
   }
   if (petHpMax < 1) petHpMax = 1;
-  petHp = Math.min(petHp, petHpMax);
+
+  // 現在のペットHPが未初期化（0以下）の場合のみ、最大値に合わせておく
+  if (petHp <= 0) {
+    petHp = petHpMax;
+  } else {
+    petHp = Math.min(petHp, petHpMax);
+  }
   // ★ここまでペットHP計算
 
   if (typeof updateDisplay === "function") {
@@ -556,7 +562,9 @@ function initGame() {
 
   expToNext = BASE_EXP_PER_LEVEL;
 
+  // ★ペット最大HPを再計算したあと、初期ゲーム開始時だけHPを最大にしておく
   recalcStats();
+  petHp = petHpMax;
 }
 
 // =======================
@@ -834,6 +842,20 @@ function updateDisplay() {
   if (skCraftMaterial && craftSkills.material)  skCraftMaterial.textContent  = craftSkills.material.lv;
   if (skCraftCooking  && craftSkills.cooking)   skCraftCooking.textContent   = craftSkills.cooking.lv;
   if (skCraftFurniture && craftSkills.furniture) skCraftFurniture.textContent = craftSkills.furniture.lv;
+
+  // ★追加: ペットタブの表示を最新化（倉庫タブ / 拠点タブ共用）
+  if (typeof renderPetList === "function" && typeof renderPetCareBox === "function") {
+    const whRoot = document.getElementById("warehousePagePet");
+    if (whRoot) {
+      renderPetList(whRoot);
+      renderPetCareBox(whRoot);
+    }
+    const housingRoot = document.getElementById("housingPagePetInner");
+    if (housingRoot) {
+      renderPetList(housingRoot);
+      renderPetCareBox(housingRoot);
+    }
+  }
 
   // ★追加: 倉庫UIの更新（料理・装備などを最新にする）
   if (typeof refreshWarehouseUI === "function") {

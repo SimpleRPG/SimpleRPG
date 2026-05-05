@@ -306,6 +306,7 @@
       <div id="housingSubTabs" style="margin-bottom:8px;">
         <button class="housing-sub-tab active" data-housing-page="housing-main">拠点</button>
         <button class="housing-sub-tab" data-housing-page="housing-warehouse">倉庫</button>
+        <button class="housing-sub-tab" data-housing-page="housing-pet">ペット</button>
       </div>
 
       <div id="housingPages">
@@ -428,6 +429,14 @@
                 ※上部の倉庫タブと同じ内容がここからも確認できます。
               </p>
             </aside>
+          </div>
+        </div>
+
+        <!-- ペットサブタブ: 倉庫タブと同じペット画面を表示するための枠 -->
+        <div id="housingPagePet" class="housing-sub-page" style="display:none;">
+          <h3>ペット</h3>
+          <div id="housingPagePetInner">
+            <!-- ペットタブの中身は pet-ui.js 側で生成 -->
           </div>
         </div>
       </div>
