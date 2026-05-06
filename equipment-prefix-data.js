@@ -2,7 +2,7 @@
 // 接頭語データ + ロール用ヘルパ
 
 // 接頭語マスタ
-// ※とりあえずシンプルな3種類だけ例で置いておく
+// 攻撃・魔攻・最大HP 系だけを使う
 window.EQUIP_PREFIXES = [
   {
     id: "sharp",
@@ -13,6 +13,23 @@ window.EQUIP_PREFIXES = [
     hpPct: 0
   },
   {
+    id: "fierce",
+    prefix: "激しい",
+    desc: "攻撃+8%",
+    atkPct: 0.08,
+    intPct: 0,
+    hpPct: 0
+  },
+  {
+    id: "brutal",
+    prefix: "残忍な",
+    desc: "攻撃+12%",
+    atkPct: 0.12,
+    intPct: 0,
+    hpPct: 0
+  },
+
+  {
     id: "wise",
     prefix: "賢い",
     desc: "魔攻+5%",
@@ -21,10 +38,61 @@ window.EQUIP_PREFIXES = [
     hpPct: 0
   },
   {
+    id: "mystic",
+    prefix: "神秘の",
+    desc: "魔攻+8%",
+    atkPct: 0,
+    intPct: 0.08,
+    hpPct: 0
+  },
+  {
+    id: "arcane",
+    prefix: "秘術の",
+    desc: "魔攻+12%",
+    atkPct: 0,
+    intPct: 0.12,
+    hpPct: 0
+  },
+
+  {
     id: "vital",
     prefix: "頑健な",
     desc: "最大HP+5%",
     atkPct: 0,
+    intPct: 0,
+    hpPct: 0.05
+  },
+  {
+    id: "stout",
+    prefix: "分厚い",
+    desc: "最大HP+8%",
+    atkPct: 0,
+    intPct: 0,
+    hpPct: 0.08
+  },
+  {
+    id: "bulwark",
+    prefix: "堅固な",
+    desc: "最大HP+12%",
+    atkPct: 0,
+    intPct: 0,
+    hpPct: 0.12
+  },
+
+  // 少しだけ複合系
+  {
+    id: "balanced",
+    prefix: "調和の",
+    desc: "攻撃+3% / 魔攻+3%",
+    atkPct: 0.03,
+    intPct: 0.03,
+    hpPct: 0
+  },
+  {
+    id: "guardian",
+    prefix: "守護の",
+    desc: "攻撃+3% / 最大HP+5%",
+    atkPct: 0.03,
     intPct: 0,
     hpPct: 0.05
   }
@@ -34,17 +102,11 @@ window.EQUIP_PREFIXES = [
 // 接頭語付与判定
 // ========================================
 
-// 元実装（Lv100で30%）
-// window.shouldAddEquipPrefix = function (craftSkillLv) {
-//   craftSkillLv = craftSkillLv || 0;
-//   const p = 0.30 * Math.min(1, Math.max(0, craftSkillLv / 100));
-//   return Math.random() < p;
-// };
-
-// ★テスト用: 常に true を返して、クラフト成功時は必ず接頭語ロールする
+// 本番用: Lv100で30%（テスト時はここを return true に差し替え）
 window.shouldAddEquipPrefix = function (craftSkillLv) {
-  // craftSkillLv は無視（デバッグ用）
-  return true;
+  craftSkillLv = craftSkillLv || 0;
+  const p = 0.30 * Math.min(1, Math.max(0, craftSkillLv / 100));
+  return Math.random() < p;
 };
 
 // ========================================
