@@ -214,8 +214,15 @@ function getCurrentAtkForSkill() {
   return base;
 }
 
+// ★ 修正: 接頭語などで補正済みの effINT があればそれを優先して使う
 function getEffectiveIntForMagic() {
-  let base = INT_;
+  let base;
+  if (typeof window !== "undefined" && typeof window.effINT === "number") {
+    base = window.effINT;
+  } else {
+    base = INT_;
+  }
+
   if (typeof applyMagicAttackBuffsForPlayer === "function") {
     base = applyMagicAttackBuffsForPlayer(base);
   }

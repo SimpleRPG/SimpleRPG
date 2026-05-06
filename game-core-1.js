@@ -113,7 +113,7 @@ let potionCounts = {};
 
 // ★ 1本ごとのインスタンス（品質/強化/耐久を持たせる）
 // location: "warehouse" | "carry" | "equipped"
-let weaponInstances = []; // { id, quality, enhance, durability, location }
+let weaponInstances = []; // { id, quality, enhance, durability, location, options }
 let armorInstances  = [];
 
 // 既存セーブとの整合を取りつつ、必ず配列にしておく
@@ -279,19 +279,74 @@ function recalcStats() {
     skillBonus = {};
   }
   const hpMaxRate   = skillBonus.hpMaxRate   || 0; // 最大HP+%
-  const mpMaxRate   = skillBonus.mpMaxRate   || 0; // 最大MP+%（必要なら定義）
+  const mpMaxRate   = skillBonus.mpMaxRate   || 0; // 最大MP+%
   const spMaxRate   = skillBonus.spMaxRate   || 0; // 最大SP+%
   const atkRate     = skillBonus.atkRate     || 0; // 物理攻撃+%
   const defRate     = skillBonus.defRate     || 0; // 防御+%
+
+  // ★ 接頭語・その他オプション由来の補正をまとめるオブジェクト
+  const prefixMods = {
+    // 基礎ステ%補正（STR/VIT/INT/DEX/LUK の素値に掛ける）
+    strPct: 0,
+    vitPct: 0,
+    intPct: 0,
+    dexPct: 0,
+    lukPct: 0,
+
+    // 最終値系%補正（必要に応じて使用）
+    atkPct: 0,
+    defPct: 0,
+    hpPct:  0,
+    mpPct:  0,
+    spPct:  0
+  };
+
+  // オプション1つ分を prefixMods に合算するヘルパー
+  function addOptionToMods(opt, mods) {
+    if (!opt || !mods) return;
+    Object.keys(opt).forEach(k => {
+      const v = opt[k];
+      if (typeof v !== "number") return;
+      if (Object.prototype.hasOwnProperty.call(mods, k)) {
+        mods[k] += v;
+      }
+    });
+  }
+
+  // 装備インスタンスから options を mods に流し込むヘルパー
+  function applyInstanceOptions(inst, mods) {
+    if (!inst || !Array.isArray(inst.options)) return;
+    inst.options.forEach(opt => {
+      addOptionToMods(opt, mods);
+    });
+  }
 
   // ★ まず「素の最大値」を基礎値から毎回作り直す（空腹・水分デバフはここではまだ掛けない）
   let baseHpMax = hpMaxBase;
   let baseMpMax = mpMaxBase;
   let baseSpMax = spMaxBase;
 
-  // 基本攻撃・防御
-  let baseAtk = STR + Math.floor(level * 0.5);
-  let baseDef = VIT + Math.floor(level * 0.5);
+  // ==========
+  // 素のステータスを接頭語で補正
+  // ==========
+  //
+  // 接頭語データ側で、基礎ステ用に strPct / vitPct / intPct / dexPct / lukPct を使う想定。
+  // （現時点では EQUIP_PREFIXES は atkPct / intPct / hpPct だけだが、
+  //  将来 strPct などを追加しても recalcStats 側はこのロジックを変えずに済む）
+
+  // 元の素ステ
+  let baseSTR = STR;
+  let baseVIT = VIT;
+  let baseINT = INT_;
+  let baseDEX = DEX_;
+  let baseLUK = LUK_;
+
+  // ここで一旦、装備 options から prefixMods を集計するために、
+  // 武器・防具インスタンスを先に見る（装備性能計算と並行して行う）。
+
+  // 基本攻撃・防御（補正後ステで再計算するため、ここでは0で初期化して後で上書き）
+  let baseAtk = 0;
+  let baseDef = 0;
 
   let weaponAtk = 0;
   let weaponScaleStr = 0;
@@ -316,6 +371,8 @@ function recalcStats() {
         weaponScaleInt  = w.scaleInt || 0;
         weaponEnhance   = (inst.enhance != null ? inst.enhance : (w.enhance || 0));
         weaponQuality   = inst.quality || 0;
+        // 接頭語オプションを集計
+        applyInstanceOptions(inst, prefixMods);
       }
     }
   } else if (equippedWeaponId) {
@@ -326,6 +383,7 @@ function recalcStats() {
       weaponScaleInt  = w.scaleInt || 0;
       weaponEnhance   = w.enhance || 0;
       weaponQuality   = 0; // 旧仕様は品質なし（通常品）
+      // 旧 ID 装備は options 無し
     }
   }
 
@@ -340,6 +398,8 @@ function recalcStats() {
         armorBonusDex  = a.bonusDex || 0;
         armorEnhance   = (inst.enhance != null ? inst.enhance : (a.enhance || 0));
         armorQuality   = inst.quality || 0;
+        // 接頭語オプションを集計
+        applyInstanceOptions(inst, prefixMods);
       }
     }
   } else if (equippedArmorId) {
@@ -352,6 +412,50 @@ function recalcStats() {
       armorQuality   = 0;
     }
   }
+
+  // ★ 接頭語による基礎ステ%補正を適用（素のステに対して）
+  //   例: strPct=0.10 なら STR を 1.10 倍した値を「実際に計算に使うステ」とする。
+  let effSTR = baseSTR;
+  let effVIT = baseVIT;
+  let effINT = baseINT;
+  let effDEX = baseDEX;
+  let effLUK = baseLUK;
+
+  if (prefixMods.strPct) {
+    effSTR = Math.floor(effSTR * (1 + prefixMods.strPct));
+  }
+  if (prefixMods.vitPct) {
+    effVIT = Math.floor(effVIT * (1 + prefixMods.vitPct));
+  }
+  if (prefixMods.intPct) {
+    effINT = Math.floor(effINT * (1 + prefixMods.intPct));
+  }
+  if (prefixMods.dexPct) {
+    effDEX = Math.floor(effDEX * (1 + prefixMods.dexPct));
+  }
+  if (prefixMods.lukPct) {
+    effLUK = Math.floor(effLUK * (1 + prefixMods.lukPct));
+  }
+
+  // 以降の計算では effSTR/effVIT/effINT/effDEX/effLUK を使う
+  // （表示用のステータスパネルは、現状どおり素の STR/VIT/INT_/DEX_/LUK_ をそのまま出している）
+
+  // ★ 接頭語・ステ補正後の実効ステータスを外部から参照できるように公開
+  if (typeof window !== "undefined") {
+    window.effSTR = effSTR;
+    window.effVIT = effVIT;
+    window.effINT = effINT;
+    window.effDEX = effDEX;
+    window.effLUK = effLUK;
+  }
+
+  // ==========
+  // 攻撃・防御の元になる値を計算
+  // ==========
+
+  // 基本攻撃・防御（補正後ステから）
+  baseAtk = effSTR + Math.floor(level * 0.5);
+  baseDef = effVIT + Math.floor(level * 0.5);
 
   // 強化補正（1段階あたり+5%想定）
   let WEAPON_ENH_RATE   = 0.05;
@@ -376,15 +480,15 @@ function recalcStats() {
   let enhancedArmorDef  = Math.floor(armorDef * armorEnhRate  * armorQualityRate);
 
   // ステータス由来の攻撃
-  let atkFromStr = Math.floor(STR * 0.5);
-  let atkFromDex = Math.floor(DEX_ * 0.3);
-  let atkFromWeaponStr = Math.floor(STR * weaponScaleStr);
-  let atkFromWeaponInt = Math.floor(INT_ * weaponScaleInt);
+  let atkFromStr = Math.floor(effSTR * 0.5);
+  let atkFromDex = Math.floor(effDEX * 0.3);
+  let atkFromWeaponStr = Math.floor(effSTR * weaponScaleStr);
+  let atkFromWeaponInt = Math.floor(effINT * weaponScaleInt);
 
   // ステータス由来の防御
-  let defFromVit = Math.floor(VIT * 0.7);
-  let defFromDex = Math.floor(DEX_ * 0.2);
-  let defFromArmorVit = Math.floor(VIT * armorScaleVit);
+  let defFromVit = Math.floor(effVIT * 0.7);
+  let defFromDex = Math.floor(effDEX * 0.2);
+  let defFromArmorVit = Math.floor(effVIT * armorScaleVit);
 
   // ===== 空腹・水分デバフ反映（攻撃・防御） =====
   if (typeof hungerAtkIntRate === "number") {
@@ -399,10 +503,10 @@ function recalcStats() {
     defFromArmorVit = Math.floor(defFromArmorVit * thirstDefDexLukRate);
   }
 
-  // ===== ステータス→最大HP/MP/SP への追加分を反映 =====
-  const hpFromVit = Math.floor(VIT * HP_PER_VIT_POINT);
-  const mpFromInt = Math.floor(INT_ * MP_PER_INT_POINT);
-  const spFromDex = Math.floor(DEX_ * SP_PER_DEX_POINT);
+  // ===== ステータス→最大HP/MP/SP への追加分を反映（補正後ステを使用） =====
+  const hpFromVit = Math.floor(effVIT * HP_PER_VIT_POINT);
+  const mpFromInt = Math.floor(effINT * MP_PER_INT_POINT);
+  const spFromDex = Math.floor(effDEX * SP_PER_DEX_POINT);
 
   baseHpMax += hpFromVit;
   baseMpMax += mpFromInt;
@@ -417,6 +521,17 @@ function recalcStats() {
   }
   if (spMaxRate !== 0) {
     baseSpMax = Math.floor(baseSpMax * (1 + spMaxRate));
+  }
+
+  // ===== 接頭語による最大値ボーナス（hpPct/mpPct/spPct） =====
+  if (prefixMods.hpPct) {
+    baseHpMax = Math.floor(baseHpMax * (1 + prefixMods.hpPct));
+  }
+  if (prefixMods.mpPct) {
+    baseMpMax = Math.floor(baseMpMax * (1 + prefixMods.mpPct));
+  }
+  if (prefixMods.spPct) {
+    baseSpMax = Math.floor(baseSpMax * (1 + prefixMods.spPct));
   }
 
   // ===== 空腹・水分デバフ反映（最大HP/MP/SP） =====
@@ -457,6 +572,14 @@ function recalcStats() {
     defFromVit +
     defFromDex +
     defFromArmorVit;
+
+  // 接頭語による最終攻撃・防御ボーナス
+  if (prefixMods.atkPct) {
+    rawAtkTotal = Math.floor(rawAtkTotal * (1 + prefixMods.atkPct));
+  }
+  if (prefixMods.defPct) {
+    rawDefTotal = Math.floor(rawDefTotal * (1 + prefixMods.defPct));
+  }
 
   // スキルツリーの攻撃・防御ボーナス反映
   if (atkRate !== 0) {
@@ -524,7 +647,7 @@ function initWeaponsAndArmors() {
   equippedWeaponIndex = null;
   equippedArmorIndex  = null;
   window.equippedWeaponIndex = null;
-  window.equippedArmorIndex  = null;
+  window.equippedArmorIndex = null;
 }
 
 function initIntermediateMats() {

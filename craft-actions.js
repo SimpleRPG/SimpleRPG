@@ -3,25 +3,29 @@
 
 // ★ 武器・防具インスタンス追加ヘルパー
 // weaponInstances / armorInstances / MAX_DURABILITY / weaponCounts / armorCounts を利用する前提
-function addWeaponInstance(id, quality, enhance) {
+function addWeaponInstance(id, quality, enhance, options) {
   const inst = {
     id,
     quality: quality || 0,
     enhance: enhance || 0,
     durability: MAX_DURABILITY,
-    location: "warehouse"
+    location: "warehouse",
+    // ★接頭語などのオプション（省略時はnull）
+    options: options || null
   };
   weaponInstances.push(inst);
   weaponCounts[id] = (weaponCounts[id] || 0) + 1;
 }
 
-function addArmorInstance(id, quality, enhance) {
+function addArmorInstance(id, quality, enhance, options) {
   const inst = {
     id,
     quality: quality || 0,
     enhance: enhance || 0,
     durability: MAX_DURABILITY,
-    location: "warehouse"
+    location: "warehouse",
+    // ★接頭語などのオプション（省略時はnull）
+    options: options || null
   };
   armorInstances.push(inst);
   armorCounts[id] = (armorCounts[id] || 0) + 1;
@@ -113,13 +117,29 @@ function craftWeapon(){
     }
   }
 
+  // ★ 接頭語ロール（クラフトスキルLvに応じて）
+  let options = null;
+  if (typeof shouldAddEquipPrefix === "function" &&
+      typeof rollEquipPrefix === "function" &&
+      shouldAddEquipPrefix(skillLv)) {
+    const opt = rollEquipPrefix(recipe.id, "weapon");
+    if (opt) {
+      options = [opt];
+    }
+  }
+
   // インスタンスを生成し、倉庫に追加
-  addWeaponInstance(recipe.id, q, baseEnh);
+  addWeaponInstance(recipe.id, q, baseEnh, options);
 
   // 統計: 成功
   addCraftStat("weapon", recipe.id, true);
 
-  appendLog(`${qName}${recipe.name} をクラフトした`);
+  // ★ログ用: 接頭語＋品質付きの名称を組み立て
+  const baseName = recipe.name;
+  const opt0 = options && options[0];
+  const prefixLabel = opt0 && opt0.prefix ? opt0.prefix : "";
+  const fullNameForLog = `${qName}${prefixLabel}${baseName}`;
+  appendLog(`${fullNameForLog} をクラフトした`);
 
   // ★ smithデイリー: 武器/防具制作15個
   if (typeof onSmithCraftCompletedForGuild === "function") {
@@ -232,11 +252,27 @@ function craftArmor(){
     }
   }
 
-  addArmorInstance(recipe.id, q, baseEnh);
+  // ★ 接頭語ロール（クラフトスキルLvに応じて）
+  let options = null;
+  if (typeof shouldAddEquipPrefix === "function" &&
+      typeof rollEquipPrefix === "function" &&
+      shouldAddEquipPrefix(skillLv)) {
+    const opt = rollEquipPrefix(recipe.id, "armor");
+    if (opt) {
+      options = [opt];
+    }
+  }
+
+  addArmorInstance(recipe.id, q, baseEnh, options);
 
   addCraftStat("armor", recipe.id, true);
 
-  appendLog(`${qName}${recipe.name} をクラフトした`);
+  // ★ログ用: 接頭語＋品質付きの名称を組み立て
+  const baseName = recipe.name;
+  const opt0 = options && options[0];
+  const prefixLabel = opt0 && opt0.prefix ? opt0.prefix : "";
+  const fullNameForLog = `${qName}${prefixLabel}${baseName}`;
+  appendLog(`${fullNameForLog} をクラフトした`);
 
   // ★ smithデイリー: 武器/防具制作15個
   if (typeof onSmithCraftCompletedForGuild === "function") {
@@ -358,7 +394,7 @@ function craftPotion(){
 
   if (typeof debugRecordCraft === "function") {
     try {
-      debugRecordCraft({
+        debugRecordCraft({
         category: "potion",
         recipeId: recipe.id,
         success: true,
@@ -578,7 +614,8 @@ function craftFood(){
   if (!recipe){ appendLog("その料理レシピが存在しない"); return; }
 
   const canByCost = recipe.cost && hasCookingMaterials(recipe.cost);
-  const canByReq  = !recipe.cost && hasCookingMaterialsByRequires(recipe);
+  const canByReq  =
+    !recipe.cost && hasCookingMaterialsByRequires(recipe);
   if (!canByCost && !canByReq){
     appendLog("料理素材が足りない");
     return;
@@ -745,7 +782,8 @@ function craftDrink(){
   if (!recipe){ appendLog("その飲み物レシピが存在しない"); return; }
 
   const canByCost = recipe.cost && hasCookingMaterials(recipe.cost);
-  const canByReq  = !recipe.cost && hasCookingMaterialsByRequires(recipe);
+  const canByReq  =
+    !recipe.cost && hasCookingMaterialsByRequires(recipe);
   if (!canByCost && !canByReq){
     appendLog("料理素材が足りない");
     return;
@@ -910,7 +948,7 @@ function craftFurniture(){
 
   const recipes = getAllCraftRecipesByCategory("furniture");
   const recipe  = recipes.find(r => r.id === sel.value);
-  if (!recipe) { appendLog("その家具レシピは存在しない"); return; }
+  if (!recipe) { appendLog("その家具レシピが存在しない"); return; }
   if (!hasMaterials(recipe.cost)) { appendLog("素材が足りない"); return; }
 
   const skillLv = getCraftSkillLevel("furniture") || 0;

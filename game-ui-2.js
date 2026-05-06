@@ -106,7 +106,7 @@ function renderFullWarehouseUI(root, prefix) {
 
   // インスタンスからラベルを生成（単体）
   function buildWeaponLabelFromInstance(inst) {
-    const name = getWeaponName(inst.id);
+    const baseName = getWeaponName(inst.id);
 
     let qLabel = "";
     if (inst.quality === 2) qLabel = "【傑作】";
@@ -118,11 +118,21 @@ function renderFullWarehouseUI(root, prefix) {
     const dur = inst.durability ?? MAX_DURABILITY;
     const durLabel = `耐久${dur}`;
 
-    return `${qLabel}${name}${enhLabel ? " " + enhLabel : ""} ${durLabel}`;
+    // ★接頭語オプション（あれば表示）
+    let prefix = "";
+    let optDesc = "";
+    const opt = inst.options && inst.options[0];
+    if (opt) {
+      if (opt.prefix) prefix = opt.prefix;
+      if (opt.desc)   optDesc = ` (${opt.desc})`;
+    }
+    const nameWithPrefix = prefix ? `${prefix}${baseName}` : baseName;
+
+    return `${qLabel}${nameWithPrefix}${enhLabel ? " " + enhLabel : ""} ${durLabel}${optDesc}`;
   }
 
   function buildArmorLabelFromInstance(inst) {
-    const name = getArmorName(inst.id);
+    const baseName = getArmorName(inst.id);
 
     let qLabel = "";
     if (inst.quality === 2) qLabel = "【傑作】";
@@ -134,10 +144,20 @@ function renderFullWarehouseUI(root, prefix) {
     const dur = inst.durability ?? MAX_DURABILITY;
     const durLabel = `耐久${dur}`;
 
-    return `${qLabel}${name}${enhLabel ? " " + enhLabel : ""} ${durLabel}`;
+    // ★接頭語オプション（あれば表示）
+    let prefix = "";
+    let optDesc = "";
+    const opt = inst.options && inst.options[0];
+    if (opt) {
+      if (opt.prefix) prefix = opt.prefix;
+      if (opt.desc)   optDesc = ` (${opt.desc})`;
+    }
+    const nameWithPrefix = prefix ? `${prefix}${baseName}` : baseName;
+
+    return `${qLabel}${nameWithPrefix}${enhLabel ? " " + enhLabel : ""} ${durLabel}${optDesc}`;
   }
 
-  // location と性能でグループ化（同性能スタック用）
+  // location と性能＋オプションでグループ化（同性能スタック用）
   function buildWeaponGroups(location) {
     const groups = [];
     if (!Array.isArray(window.weaponInstances)) {
@@ -167,7 +187,18 @@ function renderFullWarehouseUI(root, prefix) {
       const q = inst.quality || 0;
       const e = inst.enhance || 0;
       const d = inst.durability ?? MAX_DURABILITY;
-      const key = `${inst.id}::${q}::${e}::${d}::${loc}`;
+
+      // ★ options 内容もキーに含める（オプション違いは別グループ）
+      let optKey = "";
+      if (inst.options && inst.options.length) {
+        try {
+          optKey = JSON.stringify(inst.options);
+        } catch (e) {
+          optKey = "optErr";
+        }
+      }
+
+      const key = `${inst.id}::${q}::${e}::${d}::${loc}::${optKey}`;
 
       if (!map[key]) {
         map[key] = {
@@ -216,7 +247,18 @@ function renderFullWarehouseUI(root, prefix) {
       const q = inst.quality || 0;
       const e = inst.enhance || 0;
       const d = inst.durability ?? MAX_DURABILITY;
-      const key = `${inst.id}::${q}::${e}::${d}::${loc}`;
+
+      // ★ options 内容もキーに含める
+      let optKey = "";
+      if (inst.options && inst.options.length) {
+        try {
+          optKey = JSON.stringify(inst.options);
+        } catch (e) {
+          optKey = "optErr";
+        }
+      }
+
+      const key = `${inst.id}::${q}::${e}::${d}::${loc}::${optKey}`;
 
       if (!map[key]) {
         map[key] = {
@@ -462,11 +504,21 @@ function renderFullWarehouseUI(root, prefix) {
     carryWeaponsBox.innerHTML = "";
     const groups = buildWeaponGroups("carry");
     groups.forEach(group => {
+      // グループ代表から options を拾う
+      let options = null;
+      if (Array.isArray(window.weaponInstances) &&
+          group.instanceIndexes &&
+          group.instanceIndexes.length > 0) {
+        const inst0 = window.weaponInstances[group.instanceIndexes[0]];
+        if (inst0 && inst0.options) options = inst0.options;
+      }
+
       const dummyInst = {
         id: group.id,
         quality: group.quality,
         enhance: group.enhance,
-        durability: group.durability
+        durability: group.durability,
+        options
       };
       const label = buildWeaponLabelFromInstance(dummyInst);
       const row = createRow(label, group.count, [
@@ -528,11 +580,20 @@ function renderFullWarehouseUI(root, prefix) {
     carryArmorsBox.innerHTML = "";
     const groups = buildArmorGroups("carry");
     groups.forEach(group => {
+      let options = null;
+      if (Array.isArray(window.armorInstances) &&
+          group.instanceIndexes &&
+          group.instanceIndexes.length > 0) {
+        const inst0 = window.armorInstances[group.instanceIndexes[0]];
+        if (inst0 && inst0.options) options = inst0.options;
+      }
+
       const dummyInst = {
         id: group.id,
         quality: group.quality,
         enhance: group.enhance,
-        durability: group.durability
+        durability: group.durability,
+        options
       };
       const label = buildArmorLabelFromInstance(dummyInst);
       const row = createRow(label, group.count, [
@@ -725,11 +786,20 @@ function renderFullWarehouseUI(root, prefix) {
     whWeaponsBox.innerHTML = "";
     const groups = buildWeaponGroups("warehouse");
     groups.forEach(group => {
+      let options = null;
+      if (Array.isArray(window.weaponInstances) &&
+          group.instanceIndexes &&
+          group.instanceIndexes.length > 0) {
+        const inst0 = window.weaponInstances[group.instanceIndexes[0]];
+        if (inst0 && inst0.options) options = inst0.options;
+      }
+
       const dummyInst = {
         id: group.id,
         quality: group.quality,
         enhance: group.enhance,
-        durability: group.durability
+        durability: group.durability,
+        options
       };
       const label = buildWeaponLabelFromInstance(dummyInst);
       const row = createRow(label, group.count, [
@@ -784,11 +854,20 @@ function renderFullWarehouseUI(root, prefix) {
     whArmorsBox.innerHTML = "";
     const groups = buildArmorGroups("warehouse");
     groups.forEach(group => {
+      let options = null;
+      if (Array.isArray(window.armorInstances) &&
+          group.instanceIndexes &&
+          group.instanceIndexes.length > 0) {
+        const inst0 = window.armorInstances[group.instanceIndexes[0]];
+        if (inst0 && inst0.options) options = inst0.options;
+      }
+
       const dummyInst = {
         id: group.id,
         quality: group.quality,
         enhance: group.enhance,
-        durability: group.durability
+        durability: group.durability,
+        options
       };
       const label = buildArmorLabelFromInstance(dummyInst);
       const row = createRow(label, group.count, [
