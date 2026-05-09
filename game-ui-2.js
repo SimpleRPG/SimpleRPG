@@ -104,58 +104,8 @@ function renderFullWarehouseUI(root, prefix) {
     return getItemNameFromMeta(id);
   }
 
-  // インスタンスからラベルを生成（単体）
-  function buildWeaponLabelFromInstance(inst) {
-    const baseName = getWeaponName(inst.id);
-
-    let qLabel = "";
-    if (inst.quality === 2) qLabel = "【傑作】";
-    else if (inst.quality === 1) qLabel = "【良品】";
-
-    const enh = inst.enhance || 0;
-    const enhLabel = enh > 0 ? `+${enh}` : "";
-
-    const dur = inst.durability ?? MAX_DURABILITY;
-    const durLabel = `耐久${dur}`;
-
-    // ★接頭語オプション（あれば表示）
-    let prefix = "";
-    let optDesc = "";
-    const opt = inst.options && inst.options[0];
-    if (opt) {
-      if (opt.prefix) prefix = opt.prefix;
-      if (opt.desc)   optDesc = ` (${opt.desc})`;
-    }
-    const nameWithPrefix = prefix ? `${prefix}${baseName}` : baseName;
-
-    return `${qLabel}${nameWithPrefix}${enhLabel ? " " + enhLabel : ""} ${durLabel}${optDesc}`;
-  }
-
-  function buildArmorLabelFromInstance(inst) {
-    const baseName = getArmorName(inst.id);
-
-    let qLabel = "";
-    if (inst.quality === 2) qLabel = "【傑作】";
-    else if (inst.quality === 1) qLabel = "【良品】";
-
-    const enh = inst.enhance || 0;
-    const enhLabel = enh > 0 ? `+${enh}` : "";
-
-    const dur = inst.durability ?? MAX_DURABILITY;
-    const durLabel = `耐久${dur}`;
-
-    // ★接頭語オプション（あれば表示）
-    let prefix = "";
-    let optDesc = "";
-    const opt = inst.options && inst.options[0];
-    if (opt) {
-      if (opt.prefix) prefix = opt.prefix;
-      if (opt.desc)   optDesc = ` (${opt.desc})`;
-    }
-    const nameWithPrefix = prefix ? `${prefix}${baseName}` : baseName;
-
-    return `${qLabel}${nameWithPrefix}${enhLabel ? " " + enhLabel : ""} ${durLabel}${optDesc}`;
-  }
+  // ※ 装備ラベル生成は craft-core.js 側の
+  // buildWeaponLabelFromInstance / buildArmorLabelFromInstance を利用する想定。
 
   // location と性能＋オプションでグループ化（同性能スタック用）
   function buildWeaponGroups(location) {

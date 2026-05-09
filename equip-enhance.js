@@ -747,18 +747,13 @@ function refreshEnhanceTargetSelects(prevWeaponKey, prevArmorKey) {
     } else {
       weaponInstances.forEach((inst, i) => {
         if (!inst || !inst.id) return;
-        const base = weapons.find(w => w.id === inst.id);
-        const name = base ? base.name : inst.id;
-        const q    = inst.quality || 0;
-        const enh  = inst.enhance || 0;
-        let label  = name;
-        if (q > 0) {
-          label += q === 1 ? "[良品]" : (q === 2 ? "[傑作]" : `[品質${q}]`);
-        }
-        if (enh > 0) {
-          label += ` +${enh}`;
-        }
         const key = makeWeaponInstanceKey(i, inst);
+
+        // 共通ラベルヘルパーを利用（品質・接頭語・耐久・desc まで）
+        const label = typeof buildWeaponLabelFromInstance === "function"
+          ? buildWeaponLabelFromInstance(inst)
+          : inst.id;
+
         const opt = document.createElement("option");
         opt.value = key;
         opt.textContent = label;
@@ -784,18 +779,12 @@ function refreshEnhanceTargetSelects(prevWeaponKey, prevArmorKey) {
     } else {
       armorInstances.forEach((inst, i) => {
         if (!inst || !inst.id) return;
-        const base = armors.find(a => a.id === inst.id);
-        const name = base ? base.name : inst.id;
-        const q    = inst.quality || 0;
-        const enh  = inst.enhance || 0;
-        let label  = name;
-        if (q > 0) {
-          label += q === 1 ? "[良品]" : (q === 2 ? "[傑作]" : `[品質${q}]`);
-        }
-        if (enh > 0) {
-          label += ` +${enh}`;
-        }
         const key = makeArmorInstanceKey(i, inst);
+
+        const label = typeof buildArmorLabelFromInstance === "function"
+          ? buildArmorLabelFromInstance(inst)
+          : inst.id;
+
         const opt = document.createElement("option");
         opt.value = key;
         opt.textContent = label;
@@ -918,7 +907,14 @@ function consumeOneWeaponInstanceAsMaterial(weaponId){
     usedQuality = inst.quality || 0;
     usedEnh     = inst.enhance || 0;
 
+    // インスタンス削除
     weaponInstances.splice(i, 1);
+    // 装備中インデックスが後ろにある場合は1つ前に詰める
+    if (typeof window.equippedWeaponIndex === "number" &&
+        window.equippedWeaponIndex > i) {
+      window.equippedWeaponIndex--;
+    }
+
     weaponCounts[weaponId] =
       Math.max(0, (weaponCounts[weaponId] || 0) - 1);
 
@@ -945,7 +941,14 @@ function consumeOneArmorInstanceAsMaterial(armorId){
     usedQuality = inst.quality || 0;
     usedEnh     = inst.enhance || 0;
 
+    // インスタンス削除
     armorInstances.splice(i, 1);
+    // 装備中インデックスが後ろにある場合は1つ前に詰める
+    if (typeof window.equippedArmorIndex === "number" &&
+        window.equippedArmorIndex > i) {
+      window.equippedArmorIndex--;
+    }
+
     armorCounts[armorId] =
       Math.max(0, (armorCounts[armorId] || 0) - 1);
 
@@ -1072,7 +1075,13 @@ function enhanceWeapon(){
 
   if (success) {
     inst.enhance++;
-    appendLog(`武器強化成功！ ${base.name}+${inst.enhance}になった（同名武器1本消費${inst.enhance - 1 >= STAR_SHARD_NEED_LV ? "＋星屑の結晶消費" : ""}）`);
+
+    // 共通ラベルヘルパーで名前を生成（接頭語・品質込み）
+    const label = typeof buildWeaponLabelFromInstance === "function"
+      ? buildWeaponLabelFromInstance(inst)
+      : `${base.name}+${inst.enhance}`;
+
+    appendLog(`武器強化成功！ ${label}になった（同名武器1本消費${inst.enhance - 1 >= STAR_SHARD_NEED_LV ? "＋星屑の結晶消費" : ""}）`);
   } else {
     appendLog(`武器強化失敗…（同名武器は消費された${inst.enhance >= STAR_SHARD_NEED_LV ? "／星屑の結晶も消費された" : ""}）`);
   }
@@ -1181,7 +1190,12 @@ function enhanceArmor(){
 
   if (success) {
     inst.enhance++;
-    appendLog(`防具強化成功！ ${base.name}+${inst.enhance}になった（同名防具1つ消費${inst.enhance - 1 >= STAR_SHARD_NEED_LV ? "＋星屑の結晶消費" : ""}）`);
+
+    const label = typeof buildArmorLabelFromInstance === "function"
+      ? buildArmorLabelFromInstance(inst)
+      : `${base.name}+${inst.enhance}`;
+
+    appendLog(`防具強化成功！ ${label}になった（同名防具1つ消費${inst.enhance - 1 >= STAR_SHARD_NEED_LV ? "＋星屑の結晶消費" : ""}）`);
   } else {
     appendLog(`防具強化失敗…（同名防具は消費された${inst.enhance >= STAR_SHARD_NEED_LV ? "／星屑の結晶も消費された" : ""}）`);
   }

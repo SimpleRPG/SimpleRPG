@@ -569,3 +569,101 @@ function getGuildCraftSuccessBonus(category) {
 
   return 0;
 }
+
+// =======================
+// 装備ラベル共通ヘルパー（接頭語対応）
+// =======================
+
+// inst: { id, quality, enhance, durability, options }
+// weapons/armors, MAX_DURABILITY, EQUIP_PREFIXES などは別ファイルで定義済み前提。
+function buildWeaponLabelFromInstance(inst) {
+  if (!inst || !inst.id) return "";
+
+  let baseName = inst.id;
+  if (typeof getItemNameFromMeta === "function") {
+    // ITEM_META.name 優先（武器名）
+    baseName = getItemNameFromMeta(inst.id) || inst.id;
+  } else if (Array.isArray(weapons)) {
+    const w = weapons.find(x => x.id === inst.id);
+    if (w && w.name) baseName = w.name;
+  }
+
+  let qLabel = "";
+  if (typeof inst.quality === "number" && inst.quality > 0) {
+    const qIndex = inst.quality;
+    qLabel = QUALITY_NAMES[qIndex] || "";
+  }
+
+  const enh = inst.enhance || 0;
+  const enhLabel = enh > 0 ? `+${enh}` : "";
+
+  const dur = (typeof inst.durability === "number")
+    ? inst.durability
+    : (typeof MAX_DURABILITY === "number" ? MAX_DURABILITY : 0);
+  const durLabel = dur > 0 ? `耐久${dur}` : "";
+
+  let prefix = "";
+  let optDesc = "";
+  if (Array.isArray(inst.options) && inst.options.length > 0) {
+    const opt = inst.options[0];
+    if (opt && opt.prefix) prefix = opt.prefix;
+    if (opt && opt.desc)   optDesc = ` (${opt.desc})`;
+  }
+
+  const nameWithPrefix = prefix ? `${prefix}${baseName}` : baseName;
+
+  let label = "";
+  if (qLabel) label += qLabel;
+  label += nameWithPrefix;
+  if (enhLabel) label += ` ${enhLabel}`;
+  if (durLabel) label += ` ${durLabel}`;
+  if (optDesc)  label += optDesc;
+
+  return label;
+}
+
+function buildArmorLabelFromInstance(inst) {
+  if (!inst || !inst.id) return "";
+
+  let baseName = inst.id;
+  if (typeof getItemNameFromMeta === "function") {
+    // ITEM_META.name 優先（防具名）
+    baseName = getItemNameFromMeta(inst.id) || inst.id;
+  } else if (Array.isArray(armors)) {
+    const a = armors.find(x => x.id === inst.id);
+    if (a && a.name) baseName = a.name;
+  }
+
+  let qLabel = "";
+  if (typeof inst.quality === "number" && inst.quality > 0) {
+    const qIndex = inst.quality;
+    qLabel = QUALITY_NAMES[qIndex] || "";
+  }
+
+  const enh = inst.enhance || 0;
+  const enhLabel = enh > 0 ? `+${enh}` : "";
+
+  const dur = (typeof inst.durability === "number")
+    ? inst.durability
+    : (typeof MAX_DURABILITY === "number" ? MAX_DURABILITY : 0);
+  const durLabel = dur > 0 ? `耐久${dur}` : "";
+
+  let prefix = "";
+  let optDesc = "";
+  if (Array.isArray(inst.options) && inst.options.length > 0) {
+    const opt = inst.options[0];
+    if (opt && opt.prefix) prefix = opt.prefix;
+    if (opt && opt.desc)   optDesc = ` (${opt.desc})`;
+  }
+
+  const nameWithPrefix = prefix ? `${prefix}${baseName}` : baseName;
+
+  let label = "";
+  if (qLabel) label += qLabel;
+  label += nameWithPrefix;
+  if (enhLabel) label += ` ${enhLabel}`;
+  if (durLabel) label += ` ${durLabel}`;
+  if (optDesc)  label += optDesc;
+
+  return label;
+}

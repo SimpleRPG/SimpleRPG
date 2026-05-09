@@ -117,12 +117,21 @@ function craftWeapon(){
     }
   }
 
+  // ★ ティアを取得（レシピに tier があればそれを使い、なければ ID から推定）
+  let itemTier = 1;
+  if (typeof recipe.tier === "number") {
+    itemTier = recipe.tier;
+  } else if (typeof getTierNumberFromId === "function") {
+    itemTier = getTierNumberFromId(recipe.id) || 1;
+  }
+
   // ★ 接頭語ロール（クラフトスキルLvに応じて）
   let options = null;
   if (typeof shouldAddEquipPrefix === "function" &&
       typeof rollEquipPrefix === "function" &&
       shouldAddEquipPrefix(skillLv)) {
-    const opt = rollEquipPrefix(recipe.id, "weapon");
+    // ティア情報を渡して、そのティアに見合ったレアリティの接頭語をロール
+    const opt = rollEquipPrefix(recipe.id, "weapon", { itemTier: itemTier });
     if (opt) {
       options = [opt];
     }
@@ -252,12 +261,21 @@ function craftArmor(){
     }
   }
 
+  // ★ ティアを取得（レシピに tier があればそれを使い、なければ ID から推定）
+  let itemTier = 1;
+  if (typeof recipe.tier === "number") {
+    itemTier = recipe.tier;
+  } else if (typeof getTierNumberFromId === "function") {
+    itemTier = getTierNumberFromId(recipe.id) || 1;
+  }
+
   // ★ 接頭語ロール（クラフトスキルLvに応じて）
   let options = null;
   if (typeof shouldAddEquipPrefix === "function" &&
       typeof rollEquipPrefix === "function" &&
       shouldAddEquipPrefix(skillLv)) {
-    const opt = rollEquipPrefix(recipe.id, "armor");
+    // ティア情報を渡して、そのティアに見合ったレアリティの接頭語をロール
+    const opt = rollEquipPrefix(recipe.id, "armor", { itemTier: itemTier });
     if (opt) {
       options = [opt];
     }
