@@ -150,9 +150,13 @@ function craftWeapon(){
   const fullNameForLog = `${qName}${prefixLabel}${baseName}`;
   appendLog(`${fullNameForLog} をクラフトした`);
 
-  // ★ smithデイリー: 武器/防具制作15個
-  if (typeof onSmithCraftCompletedForGuild === "function") {
-    onSmithCraftCompletedForGuild(recipe.id);
+  // ★ smithデイリー: 武器/防具制作15個 → ギルド共通ハンドラに統一
+  if (typeof onCraftCompletedForGuild === "function") {
+    onCraftCompletedForGuild({
+      category: "weapon",
+      recipeId: recipe.id,
+      tier: itemTier
+    });
   }
 
   // 成功ログ
@@ -292,9 +296,13 @@ function craftArmor(){
   const fullNameForLog = `${qName}${prefixLabel}${baseName}`;
   appendLog(`${fullNameForLog} をクラフトした`);
 
-  // ★ smithデイリー: 武器/防具制作15個
-  if (typeof onSmithCraftCompletedForGuild === "function") {
-    onSmithCraftCompletedForGuild(recipe.id);
+  // ★ smithデイリー: 武器/防具制作15個 → ギルド共通ハンドラに統一
+  if (typeof onCraftCompletedForGuild === "function") {
+    onCraftCompletedForGuild({
+      category: "armor",
+      recipeId: recipe.id,
+      tier: itemTier
+    });
   }
 
   if (typeof debugRecordCraft === "function") {
@@ -405,9 +413,15 @@ function craftPotion(){
 
   appendLog(`${recipe.name} をクラフトした`);
 
-  // ★ alchemistデイリー: ポーション/道具制作15個
-  if (typeof onAlchCraftCompletedForGuild === "function") {
-    onAlchCraftCompletedForGuild(recipe.id);
+  // ★ alchemistデイリー: ポーション/道具制作15個 → ギルド共通ハンドラに統一
+  if (typeof onCraftCompletedForGuild === "function") {
+    onCraftCompletedForGuild({
+      category: "potion",
+      recipeId: recipe.id,
+      tier: recipe.tier || (typeof getTierNumberFromId === "function"
+        ? getTierNumberFromId(recipe.id)
+        : 1)
+    });
   }
 
   if (typeof debugRecordCraft === "function") {
@@ -517,9 +531,15 @@ function craftTool(){
 
   appendLog(`${recipe.name} をクラフトした`);
 
-  // ★ alchemistデイリー: ポーション/道具制作15個
-  if (typeof onAlchCraftCompletedForGuild === "function") {
-    onAlchCraftCompletedForGuild(recipe.id);
+  // ★ alchemistデイリー: ポーション/道具制作15個 → ギルド共通ハンドラに統一
+  if (typeof onCraftCompletedForGuild === "function") {
+    onCraftCompletedForGuild({
+      category: "tool",
+      recipeId: recipe.id,
+      tier: recipe.tier || (typeof getTierNumberFromId === "function"
+        ? getTierNumberFromId(recipe.id)
+        : 1)
+    });
   }
 
   if (typeof debugRecordCraft === "function") {

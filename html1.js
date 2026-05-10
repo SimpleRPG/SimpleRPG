@@ -432,6 +432,11 @@ function buildAppLayout() {
                   <label style="font-size:12px;">強化対象武器:</label>
                   <select id="enhanceWeaponTargetSelect" style="flex:1;"></select>
                 </div>
+                <!-- ★追加: 素材に使う武器（任意） -->
+                <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
+                  <label style="font-size:12px;">素材に使う武器:</label>
+                  <select id="enhanceWeaponMaterialSelect" style="flex:1;"></select>
+                </div>
                 <button id="enhanceWeaponBtn">武器を強化</button>
               </div>
 
@@ -440,6 +445,11 @@ function buildAppLayout() {
                 <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
                   <label style="fontサイズ:12px;">強化対象防具:</label>
                   <select id="enhanceArmorTargetSelect" style="flex:1;"></select>
+                </div>
+                <!-- ★追加: 素材に使う防具（任意） -->
+                <div style="display:flex; gap:4px; align-items:center; margin-bottom:4px;">
+                  <label style="font-size:12px;">素材に使う防具:</label>
+                  <select id="enhanceArmorMaterialSelect" style="flex:1;"></select>
                 </div>
                 <button id="enhanceArmorBtn">防具を強化</button>
               </div>
@@ -849,6 +859,19 @@ function buildAppLayout() {
         <div id="log"></div>
       </div><!-- /#sideColumn -->
     </div><!-- /#layoutBody -->
+
+    <!-- ★装備強化用の確認モーダル -->
+    <div id="enhanceConfirmModal" class="modal-center hidden">
+      <div class="modal-box small">
+        <div id="enhanceConfirmMessage" style="margin-bottom:8px; font-size:12px;">
+          良品または強化済みの装備を素材にしようとしています。本当に素材にしますか？
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:4px;">
+          <button id="enhanceConfirmCancelBtn">やめる</button>
+          <button id="enhanceConfirmOkBtn" class="shop-btn-danger">使う</button>
+        </div>
+      </div>
+    </div>
   `;
 }
 

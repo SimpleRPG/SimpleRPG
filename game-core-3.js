@@ -218,7 +218,7 @@ function commitCurrentBattleStats(resultType) {
 // 仕様を変えず、「死亡処理の直後に 1 行呼ぶだけ」のユーティリティ。
 // - window.isTetoControlling が true の時だけ動作
 // - tetoRecordDeath("battle", {...}) 経由で debugRecordDeath にも届く
-function recordBattleDeathForDebug(moneyBefore, moneyAfter, equipBroken) {
+function recordBattleDeathForDebug(moneyBefore, moneyAfter, equipBroken, source) {
   if (!window.isTetoControlling || typeof window.tetoRecordDeath !== "function") {
     return;
   }
@@ -232,12 +232,138 @@ function recordBattleDeathForDebug(moneyBefore, moneyAfter, equipBroken) {
       moneyLost: (typeof moneyBefore === "number" && typeof moneyAfter === "number")
         ? Math.max(0, moneyBefore - moneyAfter)
         : 0,
-      equipBroken: !!equipBroken
+      equipBroken: !!equipBroken,
+      source: source || "battle"
     };
     window.tetoRecordDeath("battle", ctx);
   } catch (e) {
     if (window.console && console.error) console.error(e);
   }
+}
+
+// =======================
+// ★共通: プレイヤー死亡処理
+// =======================
+//
+// 呼び出し元ごとの差分（ログ文言や self-damage メッセージ）は、呼んだ側で出してからここに入る。
+// ここでは「倒れた後」の挙動だけを担当する。
+function handlePlayerDeathCommon(source) {
+  appendLog("あなたは倒れてしまった…");
+
+  // ★テト用フック: 戦闘死
+  if (window.isTetoControlling && typeof window.tetoOnPlayerDeath === "function") {
+    try {
+      window.tetoOnPlayerDeath("battle");
+    } catch (e) {
+      if (window.console && console.error) console.error(e);
+    }
+  }
+
+  // ★死亡時は撤退状態も必ずリセット（罠死亡と同じ挙動に揃える）
+  window.isRetreating     = false;
+  window.retreatTurnsLeft = 0;
+
+  window.isExploring   = false;
+  window.exploringArea = "field";
+
+  // ★デバッグ用: 経済ログ（死亡による所持金半減）
+  const moneyBefore = money;
+
+  hp    = hpMax;
+  mp    = mpMax;
+  sp    = spMax;
+  petHp = petHpMax;
+
+  const moneyAfterBeforePenalty = money;
+  money = Math.floor(money / 2);
+
+  if (typeof debugRecordEconomy === "function") {
+    try {
+      debugRecordEconomy(moneyBefore, money, "deathPenalty");
+    } catch (e) {}
+  }
+
+  let brokeSomething = false;
+
+  // 装備インスタンス前提で耐久-30＆破損処理
+  function reduceDurabilityOnEquip() {
+    if (typeof equippedWeaponIndex === "number" &&
+        Array.isArray(window.weaponInstances)) {
+      const idx = equippedWeaponIndex;
+      const inst = window.weaponInstances[idx];
+      if (inst) {
+        const maxDur = (typeof MAX_DURABILITY === "number") ? MAX_DURABILITY : 10;
+        inst.durability = Math.max(0, (inst.durability ?? maxDur) - 30);
+        if (inst.durability <= 0) {
+          const wName = (weapons.find(w => w.id === inst.id)?.name) || inst.id;
+          appendLog(`${wName} は壊れて消滅した…`);
+          const cnt = weaponCounts[inst.id] || 0;
+          weaponCounts[inst.id] = Math.max(0, cnt - 1);
+          window.weaponInstances.splice(idx, 1);
+          equippedWeaponIndex = null;
+          equippedWeaponId    = null;
+          if (typeof window !== "undefined") {
+            window.equippedWeaponIndex = null;
+            window.equippedWeaponId    = null;
+          }
+          brokeSomething = true;
+        } else {
+          brokeSomething = true;
+        }
+      }
+    }
+
+    if (typeof equippedArmorIndex === "number" &&
+        Array.isArray(window.armorInstances)) {
+      const idx = equippedArmorIndex;
+      const inst = window.armorInstances[idx];
+      if (inst) {
+        const maxDur = (typeof MAX_DURABILITY === "number") ? MAX_DURABILITY : 10;
+        inst.durability = Math.max(0, (inst.durability ?? maxDur) - 30);
+        if (inst.durability <= 0) {
+          const aName = (armors.find(a => a.id === inst.id)?.name) || inst.id;
+          appendLog(`${aName} は壊れて消滅した…`);
+          const cnt = armorCounts[inst.id] || 0;
+          armorCounts[inst.id] = Math.max(0, cnt - 1);
+          window.armorInstances.splice(idx, 1);
+          equippedArmorIndex = null;
+          equippedArmorId    = null;
+          if (typeof window !== "undefined") {
+            window.equippedArmorIndex = null;
+            window.equippedArmorId    = null;
+          }
+          brokeSomething = true;
+        } else {
+          brokeSomething = true;
+        }
+      }
+    }
+
+    if (typeof refreshEquipSelects === "function") {
+      refreshEquipSelects();
+    }
+    if (typeof recalcStats === "function") {
+      recalcStats();
+    } else {
+      updateDisplay();
+    }
+  }
+
+  reduceDurabilityOnEquip();
+
+  if (brokeSomething) {
+    appendLog("街に戻った… 休んで回復し、所持ゴールドを半分失い、装備の耐久度が30減少した。");
+  } else {
+    appendLog("街に戻った… 休んで回復し、所持ゴールドを半分失った。");
+  }
+
+  // ★テト用: 戦闘死亡ログ記録（経済ペナルティ反映後の金額と装備破損フラグを渡す）
+  recordBattleDeathForDebug(moneyBefore, money, brokeSomething, source);
+
+  // ★戦闘統計に「敗北」を反映（ここから debugRecordBattle も呼ばれる）
+  commitCurrentBattleStats("lose");
+
+  endBattleCommon();
 }
 
 // =======================
@@ -491,13 +617,13 @@ function playerAttack() {
       return;
     }
 
-// ★動物使いかつペット選択済み＆生存時だけペットターン
-if (jobId === 2 &&
-    typeof hasCompanion === "function" &&
-    hasCompanion() &&
-    petHp > 0) {
-  doPetTurn();
-}
+    // ★動物使いかつペット選択済み＆生存時だけペットターン
+    if (jobId === 2 &&
+        typeof hasCompanion === "function" &&
+        hasCompanion() &&
+        petHp > 0) {
+      doPetTurn();
+    }
 
     if (enemyHp <= 0) {
       enemyHp = 0;
@@ -539,147 +665,8 @@ if (jobId === 2 &&
 
     if (hp <= 0) {
       hp = 0;
-      appendLog("あなたは倒れてしまった…");
-
-      // ★テト用フック: 戦闘死
-      if (window.isTetoControlling && typeof window.tetoOnPlayerDeath === "function") {
-        try {
-          window.tetoOnPlayerDeath("battle");
-        } catch (e) {
-          if (window.console && console.error) console.error(e);
-        }
-      }
-
-      // ★死亡時は撤退状態も必ずリセット（罠死亡と同じ挙動に揃える）
-      window.isRetreating     = false;
-      window.retreatTurnsLeft = 0;
-
-      window.isExploring   = false;
-      window.exploringArea = "field";
-
-      // ★デバッグ用: 経済ログ（死亡による所持金半減）
-      const moneyBefore = money;
-
-      hp    = hpMax;
-      mp    = mpMax;
-      sp    = spMax;
-      petHp = petHpMax;
-
-      const moneyAfterBeforePenalty = money;
-      money = Math.floor(money / 2);
-
-      if (typeof debugRecordEconomy === "function") {
-        try {
-          debugRecordEconomy(moneyBefore, money, "deathPenalty");
-        } catch (e) {}
-      }
-
-      let brokeSomething = false;
-
-      function reduceDurabilityOnEquip() {
-        if (typeof equippedWeaponIndex === "number" &&
-            Array.isArray(window.weaponInstances)) {
-          const idx = equippedWeaponIndex;
-          const inst = window.weaponInstances[idx];
-          if (inst) {
-            inst.durability = Math.max(0, (inst.durability ?? MAX_DURABILITY) - 30);
-            if (inst.durability <= 0) {
-              const wName = (weapons.find(w => w.id === inst.id)?.name) || inst.id;
-              appendLog(`${wName} は壊れて消滅した…`);
-              const cnt = weaponCounts[inst.id] || 0;
-              weaponCounts[inst.id] = Math.max(0, cnt - 1);
-              window.weaponInstances.splice(idx, 1);
-              equippedWeaponIndex = null;
-              equippedWeaponId    = null;
-              brokeSomething = true;
-            } else {
-              brokeSomething = true;
-            }
-          }
-        }
-
-        if (typeof equippedArmorIndex === "number" &&
-            Array.isArray(window.armorInstances)) {
-          const idx = equippedArmorIndex;
-          const inst = window.armorInstances[idx];
-          if (inst) {
-            inst.durability = Math.max(0, (inst.durability ?? MAX_DURABILITY) - 30);
-            if (inst.durability <= 0) {
-              const aName = (armors.find(a => a.id === inst.id)?.name) || inst.id;
-              appendLog(`${aName} は壊れて消滅した…`);
-              const cnt = armorCounts[inst.id] || 0;
-              armorCounts[inst.id] = Math.max(0, cnt - 1);
-              window.armorInstances.splice(idx, 1);
-              equippedArmorIndex = null;
-              equippedArmorId    = null;
-              brokeSomething = true;
-            } else {
-              brokeSomething = true;
-            }
-          }
-        }
-
-        if (!Array.isArray(window.weaponInstances) && equippedWeaponId && Array.isArray(weapons)) {
-          const w = weapons.find(x => x.id === equippedWeaponId);
-          if (w && typeof w.durability === "number") {
-            w.durability = Math.max(0, w.durability - 30);
-            if (w.durability <= 0) {
-              const cnt = weaponCounts[w.id] || 0;
-              weaponCounts[w.id] = Math.max(0, cnt - 1);
-              appendLog(`${w.name} は壊れてしまった…`);
-              brokeSomething = true;
-              if (weaponCounts[w.id] <= 0 && equippedWeaponId === w.id) {
-                equippedWeaponId = null;
-              }
-            } else {
-              brokeSomething = true;
-            }
-          }
-        }
-
-        if (!Array.isArray(window.armorInstances) && equippedArmorId && Array.isArray(armors)) {
-          const a = armors.find(x => x.id === equippedArmorId);
-          if (a && typeof a.durability === "number") {
-            a.durability = Math.max(0, a.durability - 30);
-            if (a.durability <= 0) {
-              const cnt = armorCounts[a.id] || 0;
-              armorCounts[a.id] = Math.max(0, cnt - 1);
-              appendLog(`${a.name} は壊れてしまった…`);
-              brokeSomething = true;
-              if (armorCounts[a.id] <= 0 && equippedArmorId === a.id) {
-                equippedArmorId = null;
-              }
-            } else {
-              brokeSomething = true;
-            }
-          }
-        }
-
-        if (typeof refreshEquipSelects === "function") {
-          refreshEquipSelects();
-        }
-        if (typeof recalcStats === "function") {
-          recalcStats();
-        } else {
-          updateDisplay();
-        }
-      }
-
-      reduceDurabilityOnEquip();
-
-      if (brokeSomething) {
-        appendLog("街に戻った… 休んで回復し、所持ゴールドを半分失い、装備の耐久度が30減少した。");
-      } else {
-        appendLog("街に戻った… 休んで回復し、所持ゴールドを半分失った。");
-      }
-
-      // ★テト用: 戦闘死亡ログ記録（経済ペナルティ反映後の金額と装備破損フラグを渡す）
-      recordBattleDeathForDebug(moneyBefore, money, brokeSomething);
-
-      // ★戦闘統計に「敗北」を反映（ここから debugRecordBattle も呼ばれる）
-      commitCurrentBattleStats("lose");
-
-      endBattleCommon();
+      // 自傷死も通常の戦闘死亡と同じ処理
+      handlePlayerDeathCommon("self");
     } else {
       tickSkillBuffTurns();
       renderPlayerStatusIcons();
@@ -737,147 +724,8 @@ function enemyTurn() {
 
     if (hp <= 0) {
       hp = 0;
-      appendLog("あなたは倒れてしまった…");
-
-      // ★テト用フック: 戦闘死
-      if (window.isTetoControlling && typeof window.tetoOnPlayerDeath === "function") {
-        try {
-          window.tetoOnPlayerDeath("battle");
-        } catch (e) {
-          if (window.console && console.error) console.error(e);
-        }
-      }
-
-      // ★死亡時は撤退状態も必ずリセット（罠死亡と同じ挙動に揃える）
-      window.isRetreating     = false;
-      window.retreatTurnsLeft = 0;
-
-      window.isExploring   = false;
-      window.exploringArea = "field";
-
-      // ★デバッグ用: 経済ログ（死亡による所持金半減）
-      const moneyBefore = money;
-
-      hp    = hpMax;
-      mp    = mpMax;
-      sp    = spMax;
-      petHp = petHpMax;
-
-      const moneyAfterBeforePenalty = money;
-      money = Math.floor(money / 2);
-
-      if (typeof debugRecordEconomy === "function") {
-        try {
-          debugRecordEconomy(moneyBefore, money, "deathPenalty");
-        } catch (e) {}
-      }
-
-      let brokeSomething = false;
-
-      function reduceDurabilityOnEquip() {
-        if (typeof equippedWeaponIndex === "number" &&
-            Array.isArray(window.weaponInstances)) {
-          const idx = equippedWeaponIndex;
-          const inst = window.weaponInstances[idx];
-          if (inst) {
-            inst.durability = Math.max(0, (inst.durability ?? MAX_DURABILITY) - 30);
-            if (inst.durability <= 0) {
-              const wName = (weapons.find(w => w.id === inst.id)?.name) || inst.id;
-              appendLog(`${wName} は壊れて消滅した…`);
-              const cnt = weaponCounts[inst.id] || 0;
-              weaponCounts[inst.id] = Math.max(0, cnt - 1);
-              window.weaponInstances.splice(idx, 1);
-              equippedWeaponIndex = null;
-              equippedWeaponId    = null;
-              brokeSomething = true;
-            } else {
-              brokeSomething = true;
-            }
-          }
-        }
-
-        if (typeof equippedArmorIndex === "number" &&
-            Array.isArray(window.armorInstances)) {
-          const idx = equippedArmorIndex;
-          const inst = window.armorInstances[idx];
-          if (inst) {
-            inst.durability = Math.max(0, (inst.durability ?? MAX_DURABILITY) - 30);
-            if (inst.durability <= 0) {
-              const aName = (armors.find(a => a.id === inst.id)?.name) || inst.id;
-              appendLog(`${aName} は壊れて消滅した…`);
-              const cnt = armorCounts[inst.id] || 0;
-              armorCounts[inst.id] = Math.max(0, cnt - 1);
-              window.armorInstances.splice(idx, 1);
-              equippedArmorIndex = null;
-              equippedArmorId    = null;
-              brokeSomething = true;
-            } else {
-              brokeSomething = true;
-            }
-          }
-        }
-
-        if (!Array.isArray(window.weaponInstances) && equippedWeaponId && Array.isArray(weapons)) {
-          const w = weapons.find(x => x.id === equippedWeaponId);
-          if (w && typeof w.durability === "number") {
-            w.durability = Math.max(0, w.durability - 30);
-            if (w.durability <= 0) {
-              const cnt = weaponCounts[w.id] || 0;
-              weaponCounts[w.id] = Math.max(0, cnt - 1);
-              appendLog(`${w.name} は壊れてしまった…`);
-              brokeSomething = true;
-              if (weaponCounts[w.id] <= 0 && equippedWeaponId === w.id) {
-                equippedWeaponId = null;
-              }
-            } else {
-              brokeSomething = true;
-            }
-          }
-        }
-
-        if (!Array.isArray(window.armorInstances) && equippedArmorId && Array.isArray(armors)) {
-          const a = armors.find(x => x.id === equippedArmorId);
-          if (a && typeof a.durability === "number") {
-            a.durability = Math.max(0, a.durability - 30);
-            if (a.durability <= 0) {
-              const cnt = armorCounts[a.id] || 0;
-              armorCounts[a.id] = Math.max(0, cnt - 1);
-              appendLog(`${a.name} は壊れてしまった…`);
-              brokeSomething = true;
-              if (armorCounts[a.id] <= 0 && equippedArmorId === a.id) {
-                equippedArmorId = null;
-              }
-            } else {
-              brokeSomething = true;
-            }
-          }
-        }
-
-        if (typeof refreshEquipSelects === "function") {
-          refreshEquipSelects();
-        }
-        if (typeof recalcStats === "function") {
-          recalcStats();
-        } else {
-          updateDisplay();
-        }
-      }
-
-      reduceDurabilityOnEquip();
-
-      if (brokeSomething) {
-        appendLog("街に戻った… 休んで回復し、所持ゴールドを半分失い、装備の耐久度が30減少した。");
-      } else {
-        appendLog("街に戻った… 休んで回復し、所持ゴールドを半分失った。");
-      }
-
-      // ★テト用: 戦闘死亡ログ記録
-      recordBattleDeathForDebug(moneyBefore, money, brokeSomething);
-
-      // ★戦闘統計に「敗北」を反映（ここから debugRecordBattle も呼ばれる）
-      commitCurrentBattleStats("lose");
-
-      endBattleCommon();
+      // 敵攻撃による戦闘死
+      handlePlayerDeathCommon("enemy");
     } else {
       tickSkillBuffTurns();
       renderPlayerStatusIcons();

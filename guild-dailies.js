@@ -110,8 +110,41 @@ window.GUILD_DAILY_POOLS = {
       kind: "cooking_use_or_sell",           // 食べる/マーケット売買/ショップ売却イベント用
       target: 5
     }
-  ]
+  ],
 
-  // 将来:
-  // gather, food もここに同じ形で追加していく予定。
+  // ▼採取ギルド（gather）デイリー
+  gather: [
+    {
+      id: "daily_gather_mat30",
+      name: "日課: 採取の基礎",
+      desc: "通常素材を30個採取する。",
+      kind: "gather_mat30",   // onGatherCompletedForGuild(kind: "gather") から total を流す
+      target: 30
+    },
+    {
+      id: "daily_gather_stardust_1",
+      name: "日課: 星屑拾い",
+      desc: "星屑の結晶を1個入手する。",
+      kind: "gather_stardust",   // 星屑の結晶ドロップ時に1カウント
+      target: 1
+    }
+  ],
+
+  // ▼食材ギルド（food）デイリー
+  food: [
+    {
+      id: "daily_food_mat30",
+      name: "日課: 食材集め",
+      desc: "料理素材を30個採取する。",
+      kind: "food_mat30",   // gatherCooking から kind: "food", total を流す
+      target: 30
+    },
+    {
+      id: "daily_food_legend_or_gold_1",
+      name: "日課: 至高の食材",
+      desc: "伝説素材か金品質の料理素材を1個入手する。",
+      kind: "food_legend_or_gold",   // レジェンド or 金品質入手時に1カウント
+      target: 1
+    }
+  ]
 };

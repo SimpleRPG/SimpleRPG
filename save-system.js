@@ -598,10 +598,31 @@ function applySaveData(data) {
       data.armorInstances.forEach(i => armorInstances.push(i));
     }
 
-    if ("equippedWeaponId" in data)         equippedWeaponId    = data.equippedWeaponId;
-    if ("equippedArmorId" in data)          equippedArmorId     = data.equippedArmorId;
-    if ("equippedWeaponIndex" in data)      equippedWeaponIndex = data.equippedWeaponIndex;
-    if ("equippedArmorIndex" in data)       equippedArmorIndex  = data.equippedArmorIndex;
+    // ★ 装備インデックス／ID をローカルと window 両方に反映（ロード後に消えないようにする）
+    if ("equippedWeaponId" in data) {
+      equippedWeaponId = data.equippedWeaponId;
+      if (typeof window !== "undefined") {
+        window.equippedWeaponId = data.equippedWeaponId;
+      }
+    }
+    if ("equippedArmorId" in data) {
+      equippedArmorId = data.equippedArmorId;
+      if (typeof window !== "undefined") {
+        window.equippedArmorId = data.equippedArmorId;
+      }
+    }
+    if ("equippedWeaponIndex" in data) {
+      equippedWeaponIndex = data.equippedWeaponIndex;
+      if (typeof window !== "undefined") {
+        window.equippedWeaponIndex = data.equippedWeaponIndex;
+      }
+    }
+    if ("equippedArmorIndex" in data) {
+      equippedArmorIndex = data.equippedArmorIndex;
+      if (typeof window !== "undefined") {
+        window.equippedArmorIndex = data.equippedArmorIndex;
+      }
+    }
 
     if (data.carryPotions && typeof carryPotions === "object") {
       Object.keys(carryPotions).forEach(k => delete carryPotions[k]);

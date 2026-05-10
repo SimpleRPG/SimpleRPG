@@ -125,16 +125,11 @@ weaponInstances = window.weaponInstances;
 armorInstances  = window.armorInstances;
 
 // ★ どのインスタンスを装備しているか（indexで保持）
-// 旧仕様の ID 装備も一応残す（セーブ互換用）
 window.equippedWeaponIndex = (typeof window.equippedWeaponIndex === "number") ? window.equippedWeaponIndex : null;
 window.equippedArmorIndex  = (typeof window.equippedArmorIndex  === "number") ? window.equippedArmorIndex  : null;
-window.equippedWeaponId    = window.equippedWeaponId || null;
-window.equippedArmorId     = window.equippedArmorId  || null;
 
 let equippedWeaponIndex = window.equippedWeaponIndex;
 let equippedArmorIndex  = window.equippedArmorIndex;
-let equippedWeaponId    = window.equippedWeaponId;
-let equippedArmorId     = window.equippedArmorId;
 
 // =======================
 // 素材・中間素材
@@ -261,15 +256,13 @@ function applyInitialStatsForJob(selectedJobId) {
 // =======================
 
 function recalcStats() {
-  // ローカルと window の equippedIndex を同期（どこかで window 側だけ書き換えられても拾えるように）
+  // ローカルと window の equippedIndex を同期
   if (typeof window.equippedWeaponIndex === "number" || window.equippedWeaponIndex === null) {
     equippedWeaponIndex = window.equippedWeaponIndex;
   }
   if (typeof window.equippedArmorIndex === "number" || window.equippedArmorIndex === null) {
     equippedArmorIndex = window.equippedArmorIndex;
   }
-  equippedWeaponId = window.equippedWeaponId || null;
-  equippedArmorId  = window.equippedArmorId  || null;
 
   // ★スキルツリーボーナスを取得（なければ0扱い）
   let skillBonus = null;
@@ -329,10 +322,6 @@ function recalcStats() {
   // ==========
   // 素のステータスを接頭語で補正
   // ==========
-  //
-  // 接頭語データ側で、基礎ステ用に strPct / vitPct / intPct / dexPct / lukPct を使う想定。
-  // （現時点では EQUIP_PREFIXES は atkPct / intPct / hpPct だけだが、
-  //  将来 strPct などを追加しても recalcStats 側はこのロジックを変えずに済む）
 
   // 元の素ステ
   let baseSTR = STR;
@@ -360,7 +349,7 @@ function recalcStats() {
   let armorEnhance = 0;
   let armorQuality = 0;
 
-  // ★ 武器は「装備中インスタンス」を最優先、なければID装備を見る
+  // ★ 武器は「装備中インスタンス」を見る
   if (equippedWeaponIndex != null && Array.isArray(weaponInstances)) {
     let inst = weaponInstances[equippedWeaponIndex];
     if (inst) {
@@ -375,19 +364,9 @@ function recalcStats() {
         applyInstanceOptions(inst, prefixMods);
       }
     }
-  } else if (equippedWeaponId) {
-    let w = weapons.find(x => x.id === equippedWeaponId);
-    if (w) {
-      weaponAtk       = w.atk || 0;
-      weaponScaleStr  = w.scaleStr || 0;
-      weaponScaleInt  = w.scaleInt || 0;
-      weaponEnhance   = w.enhance || 0;
-      weaponQuality   = 0; // 旧仕様は品質なし（通常品）
-      // 旧 ID 装備は options 無し
-    }
   }
 
-  // ★ 防具も同様にインスタンス優先
+  // ★ 防具も同様にインスタンスのみ
   if (equippedArmorIndex != null && Array.isArray(armorInstances)) {
     let inst = armorInstances[equippedArmorIndex];
     if (inst) {
@@ -402,19 +381,9 @@ function recalcStats() {
         applyInstanceOptions(inst, prefixMods);
       }
     }
-  } else if (equippedArmorId) {
-    let a = armors.find(x => x.id === equippedArmorId);
-    if (a) {
-      armorDef       = a.def || 0;
-      armorScaleVit  = a.scaleVit || 0;
-      armorBonusDex  = a.bonusDex || 0;
-      armorEnhance   = a.enhance || 0;
-      armorQuality   = 0;
-    }
   }
 
   // ★ 接頭語による基礎ステ%補正を適用（素のステに対して）
-  //   例: strPct=0.10 なら STR を 1.10 倍した値を「実際に計算に使うステ」とする。
   let effSTR = baseSTR;
   let effVIT = baseVIT;
   let effINT = baseINT;
@@ -632,12 +601,6 @@ function initWeaponsAndArmors() {
   armors.forEach(a  => armorCounts[a.id]  = 0);
   potions.forEach(p => potionCounts[p.id] = 0);
 
-  // 旧仕様のID装備もリセット
-  equippedWeaponId = null;
-  equippedArmorId  = null;
-  window.equippedWeaponId = null;
-  window.equippedArmorId  = null;
-
   // インスタンス配列もリセット（window 参照と同期）
   weaponInstances.length = 0;
   armorInstances.length  = 0;
@@ -789,9 +752,6 @@ function updateDisplay() {
         let w = weapons.find(x => x.id === inst.id);
         if (w) nameText = w.name;
       }
-    } else if (equippedWeaponId) {
-      let w = weapons.find(x => x.id === equippedWeaponId);
-      if (w) nameText = w.name;
     }
     eqWpnName.textContent = nameText;
   }
@@ -804,9 +764,6 @@ function updateDisplay() {
         let a = armors.find(x => x.id === inst.id);
         if (a) nameText = a.name;
       }
-    } else if (equippedArmorId) {
-      let a = armors.find(x => x.id === equippedArmorId);
-      if (a) nameText = a.name;
     }
     eqArmName.textContent = nameText;
   }

@@ -590,6 +590,14 @@ function gatherCooking(mode) {
         addItemByMeta(RARE_GATHER_ITEM_ID, 1);
       }
       appendLog("✨ 星屑の結晶を手に入れた！（料理採取）");
+
+      // ★ ギルドデイリー: 星屑採取1個（料理採取）
+      if (typeof addDailyProgressFromProduction === "function") {
+        addDailyProgressFromProduction({
+          kind: "gather_stardust",
+          amount: 1
+        });
+      }
     }
   }
 
@@ -1051,6 +1059,14 @@ function gather(){
         addItemByMeta(RARE_GATHER_ITEM_ID, 1);
       }
       appendLog("✨ 星屑の結晶を手に入れた！");
+
+      // ★ ギルドデイリー: 星屑採取1個（通常採取）
+      if (typeof addDailyProgressFromProduction === "function") {
+        addDailyProgressFromProduction({
+          kind: "gather_stardust",
+          amount: 1
+        });
+      }
     }
   }
 

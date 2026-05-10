@@ -24,7 +24,7 @@ window.guildQuestProgress = window.guildQuestProgress || {};
 window.citizenshipUnlocked = window.citizenshipUnlocked || false;
 
 // =======================
-// ★追加: ギルドデイリー状態（日付ベース）
+// ★ギルドデイリー状態（日付ベース）
 // =======================
 //
 // - guildDailyProgress: その日のデイリー一覧と進捗。
@@ -406,7 +406,7 @@ function acceptGuildQuest(questId) {
 }
 
 // =======================
-// ★追加: デイリー用 日付ヘルパーと生成・リセット
+// デイリー用 日付ヘルパーと生成・リセット
 // =======================
 
 // ローカル時刻で "YYYY-MM-DD" を作る
@@ -418,7 +418,7 @@ function getTodayKey() {
   return `${y}-${m}-${day}`;
 }
 
-// 所属ギルドに応じて本日のデイリーを生成（2件固定／プールそのまま）
+// 所属ギルドに応じて本日のデイリーを生成（プール内容をそのまま使用）
 function generateGuildDailiesForCurrentGuild() {
   const gid = window.playerGuildId;
   if (!gid) {
@@ -449,7 +449,6 @@ function generateGuildDailiesForCurrentGuild() {
     return;
   }
 
-  // 仕様：各ギルド2個想定なので、プール内容をそのまま使う
   const map = {};
 
   pool.forEach(def => {
@@ -525,7 +524,7 @@ function addDailyProgressFromBattle(params) {
   }
 }
 
-// ★修正: 生産・消費系デイリー進捗加算
+// 生産・消費系デイリー進捗加算
 // params: { kind: string, amount?: number, category?: string, itemId?: string, meta?: object }
 function addDailyProgressFromProduction(params) {
   if (!params || !params.kind) return;
@@ -666,7 +665,7 @@ function onEnemyKilledForGuild(params) {
     updateQuestProgress("forest_boss_1", 1, 1);
   }
 
-  // ★追加: 戦闘系ギルドデイリー進捗（敵種別は問わず）
+  // 戦闘系ギルドデイリー進捗（敵種別は問わず）
   addDailyProgressFromBattle(params);
 
   // 特別依頼の達成状況チェック（フラグはここでは立てない）
@@ -676,7 +675,7 @@ function onEnemyKilledForGuild(params) {
   refreshGuildQuestUIIfNeeded();
 }
 
-// ★ 転生時に呼ばれる想定のヘルパー
+// 転生時に呼ばれる想定のヘルパー
 // params: { jobId: number }
 function onRebirthForGuild(params) {
   if (!params) return;
@@ -705,7 +704,7 @@ function onBuffFoodEatenForGuild() {
   updateQuestProgress("cooking_buff", 1, 2);
   updateQuestProgress("cooking_use_food_or_drink", 1, 5);
 
-  // ★デイリー（料理ギルド）：バフ付き料理を食べたときも使用としてカウント
+  // デイリー（料理ギルド）：バフ付き料理を食べたときも使用としてカウント
   if (typeof addDailyProgressFromProduction === "function") {
     addDailyProgressFromProduction({
       kind: "cooking_use_or_sell",
@@ -742,7 +741,7 @@ function onAlchConsumableUsedForGuild(params) {
   refreshGuildQuestUIIfNeeded();
 }
 
-// ★追加: 錬金ギルド用（使用 or 売却で呼ぶ汎用フック）
+// 錬金ギルド用（使用 or 売却で呼ぶ汎用フック）
 // params: { itemId: string, amount?: number, meta?: object }
 function onAlchConsumableUsedOrSoldForGuild(params) {
   if (typeof addDailyProgressFromProduction === "function") {
@@ -759,7 +758,7 @@ function onAlchConsumableUsedOrSoldForGuild(params) {
   refreshGuildQuestUIIfNeeded();
 }
 
-// ★追加: 料理ギルド用（使用 or 売却で呼ぶ汎用フック）
+// 料理ギルド用（使用 or 売却で呼ぶ汎用フック）
 // params: { mode: "use" | "sell", itemId: string, amount?: number, meta?: object }
 function notifyCookingUseOrSell(mode, itemId, amount, meta) {
   const amt = (typeof amount === "number" && amount > 0) ? amount : 1;
@@ -883,6 +882,33 @@ function onCraftCompletedForGuild(params) {
     updateQuestProgress("cooking_special_citizen", 1, 15);
   }
 
+  // デイリー：鍛冶クラフト完了イベント
+  if (typeof addDailyProgressFromProduction === "function") {
+    if (category === "weapon" || category === "armor") {
+      // smith デイリー: 武器か防具を制作
+      addDailyProgressFromProduction({
+        kind: "smith_craft_gear",
+        amount: 1
+      });
+    }
+
+    // デイリー：錬金クラフト完了イベント
+    if (category === "potion" || category === "tool") {
+      addDailyProgressFromProduction({
+        kind: "alch_craft_tool_or_potion",
+        amount: 1
+      });
+    }
+
+    // デイリー：料理クラフト完了イベント
+    if (category === "food" || category === "drink") {
+      addDailyProgressFromProduction({
+        kind: "cooking_craft_food_or_drink",
+        amount: 1
+      });
+    }
+  }
+
   checkCitizenshipUnlocked();
 
   refreshGuildQuestUIIfNeeded();
@@ -940,9 +966,14 @@ function onGatherCompletedForGuild(params) {
         updateQuestProgress("gather_t1_water_30", t1, 30);
         updateQuestProgress("gather_t2_water_30", t2, 30);
       }
+    }
 
-      // 仕様上は使っていないが、total を任意素材系に流用するならここで扱う余地あり
-      // （現状は T1/T2 を個別に見ているので total は参照しない）
+    // デイリー：通常素材を30個採取する
+    if (typeof addDailyProgressFromProduction === "function" && total > 0) {
+      addDailyProgressFromProduction({
+        kind: "gather_mat30",
+        amount: total
+      });
     }
   }
 
@@ -960,10 +991,27 @@ function onGatherCompletedForGuild(params) {
       if (mode && FOOD_QUEST_CONFIG.byMode[mode]) {
         applyQuestConfig(FOOD_QUEST_CONFIG.byMode[mode], total);
       }
+
+      // デイリー：料理素材を30個採取する
+      if (typeof addDailyProgressFromProduction === "function") {
+        addDailyProgressFromProduction({
+          kind: "food_mat30",
+          amount: total
+        });
+      }
     }
 
+    // rare フラグは、伝説魚やレア釣果があった場合に true
     if (isRare) {
       applyQuestConfig(FOOD_QUEST_CONFIG.rare, 1);
+
+      // デイリー：伝説素材か金品質の料理素材を1個入手する
+      if (typeof addDailyProgressFromProduction === "function") {
+        addDailyProgressFromProduction({
+          kind: "food_legend_or_gold",
+          amount: 1
+        });
+      }
     }
   }
 
@@ -1021,11 +1069,9 @@ if (typeof window.getGuildNameById === "undefined") {
 }
 
 // =======================
-// ★追加: テト用に GUILDS / GUILD_ORDER をグローバル公開
+// GUILDS / GUILD_ORDER をグローバル公開
 // =======================
 
-// 仕様は変えず、既存のローカル定義をそのまま window にエクスポートするだけ。
-// これにより、teto-ai4.js から window.GUILDS / window.GUILD_ORDER を参照できる。
 if (typeof window.GUILDS === "undefined") {
   window.GUILDS = GUILDS;
 }
