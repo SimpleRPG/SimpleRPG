@@ -220,6 +220,17 @@ window.addEventListener("DOMContentLoaded", () => {
       craftPanels[k].style.display = (k === cat) ? "" : "none";
     });
 
+    // ★ 装備種別セレクトの表示/非表示切り替え
+    //   craftKindRow は html1.js 側に既に存在している行をそのまま使う
+    const kindRow = document.getElementById("craftKindRow");
+    if (kindRow) {
+      if (cat === "weapon" || cat === "armor") {
+        kindRow.classList.remove("craft-kind-hidden");
+      } else {
+        kindRow.classList.add("craft-kind-hidden");
+      }
+    }
+
     const infoEl = document.getElementById("craftCostInfo");
 
     if (cat === "weapon") {

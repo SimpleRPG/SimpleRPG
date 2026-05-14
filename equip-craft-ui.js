@@ -142,22 +142,83 @@ function refreshEnhanceMaterialSelects() {
   }
 }
 
+// ★ Tier 解放可否をアクティブカテゴリのスキルLvから判定
+function getActiveCraftSkillLevelForTier() {
+  const activeCat = window.activeCraftCategory || lastCraftCategory || "weapon";
+
+  if (activeCat === "weapon")        return getCraftSkillLevel("weapon");
+  if (activeCat === "armor")         return getCraftSkillLevel("armor");
+  if (activeCat === "potion")        return getCraftSkillLevel("potion");
+  if (activeCat === "tool")          return getCraftSkillLevel("tool");
+  if (activeCat === "material")      return getCraftSkillLevel("material");
+  if (activeCat === "cookingFood" ||
+      activeCat === "cookingDrink")  return getCraftSkillLevel("cooking");
+  if (activeCat === "furniture")     return getCraftSkillLevel("furniture");
+
+  // デフォルトは全カテゴリの最大Lv（万一 activeCat が未知の場合）
+  const weaponLv    = getCraftSkillLevel("weapon");
+  const armorLv     = getCraftSkillLevel("armor");
+  const potionLv    = getCraftSkillLevel("potion");
+  const toolLv      = getCraftSkillLevel("tool");
+  const materialLv  = getCraftSkillLevel("material");
+  const cookingLv   = getCraftSkillLevel("cooking");
+  const furnitureLv = typeof getCraftSkillLevel === "function"
+    ? getCraftSkillLevel("furniture")
+    : 0;
+
+  return Math.max(weaponLv, armorLv, potionLv, toolLv, materialLv, cookingLv, furnitureLv);
+}
+
+// ★ スキルLvから最大解放ティアを返す（T1〜T10）
+function getMaxTierBySkillLv(lv) {
+  if (lv >= 90) return "T10";
+  if (lv >= 80) return "T9";
+  if (lv >= 70) return "T8";
+  if (lv >= 60) return "T7";
+  if (lv >= 50) return "T6";
+  if (lv >= 40) return "T5";
+  if (lv >= 30) return "T4";
+  if (lv >= 20) return "T3";
+  if (lv >= 10) return "T2";
+  return "T1";
+}
+
+// ★ 「ティア:すべて」のときに、スキルLvで解放済みティアだけ残す共通フィルタ
+// tierFilter: "all" | "T1"〜"T10"
+// tierValue:  レシピ側のティア "T1"〜"T10"（なければ true 扱い）
+// skillLvForTier: そのカテゴリのスキルLv
+function isTierAllowedForFilter(tierFilter, tierValue, skillLvForTier) {
+  if (!tierValue) return true;
+
+  if (tierFilter === "all") {
+    const maxTier = getMaxTierBySkillLv(skillLvForTier || 0);
+    const order = ["T1","T2","T3","T4","T5","T6","T7","T8","T9","T10"];
+    const idx = order.indexOf(tierValue);
+    const maxIdx = order.indexOf(maxTier);
+    if (idx === -1 || maxIdx === -1) return false;
+    return idx <= maxIdx;
+  }
+
+  return tierValue === tierFilter;
+}
+
 function refreshEquipSelects(){
   if (typeof weapons === "undefined" || typeof armors === "undefined") {
     console.warn("equip-enhance: weapons/armors が未初期化のため、refreshEquipSelects をスキップ");
     return;
   }
 
-  const wSel      = document.getElementById("weaponEquipSelect");
-  const aSel      = document.getElementById("armorEquipSelect");
-  const wCraftSel = document.getElementById("weaponSelect");
-  const aCraftSel = document.getElementById("armorSelect");
-  const pCraftSel = document.getElementById("potionSelect");
-  const tCraftSel = document.getElementById("toolSelect");
-  const interSel  = document.getElementById("intermediateSelect");
-  const foodSel   = document.getElementById("foodSelect");
-  const drinkSel  = document.getElementById("drinkSelect");
-  const tierSel   = document.getElementById("craftTierSelect");
+  const wSel         = document.getElementById("weaponEquipSelect");
+  const aSel         = document.getElementById("armorEquipSelect");
+  const wCraftSel    = document.getElementById("weaponSelect");
+  const aCraftSel    = document.getElementById("armorSelect");
+  const pCraftSel    = document.getElementById("potionSelect");
+  const tCraftSel    = document.getElementById("toolSelect");
+  const interSel     = document.getElementById("intermediateSelect");
+  const foodSel      = document.getElementById("foodSelect");
+  const drinkSel     = document.getElementById("drinkSelect");
+  const tierSel      = document.getElementById("craftTierSelect");
+  const furnCraftSel = document.getElementById("furnitureSelect");
 
   const enhanceWeaponSel = document.getElementById("enhanceWeaponTargetSelect");
   const enhanceArmorSel  = document.getElementById("enhanceArmorTargetSelect");
@@ -165,32 +226,42 @@ function refreshEquipSelects(){
   // ★ まず「解放されているTierまで」だけを tier セレクトに残す
   let tierFilter = "all";
   if (tierSel) {
-    const weaponLv   = getCraftSkillLevel("weapon");
-    const armorLv    = getCraftSkillLevel("armor");
-    const potionLv   = getCraftSkillLevel("potion");
-    const toolLv     = getCraftSkillLevel("tool");
-    const materialLv = getCraftSkillLevel("material");
-    const cookingLv  = getCraftSkillLevel("cooking");
+    const activeLv = getActiveCraftSkillLevelForTier();
 
-    const maxLv = Math.max(weaponLv, armorLv, potionLv, toolLv, materialLv, cookingLv);
-    const canT2 = maxLv >= 10;
-    const canT3 = maxLv >= 20;
+    const canT2  = activeLv >= 10;
+    const canT3  = activeLv >= 20;
+    const canT4  = activeLv >= 30;
+    const canT5  = activeLv >= 40;
+    const canT6  = activeLv >= 50;
+    const canT7  = activeLv >= 60;
+    const canT8  = activeLv >= 70;
+    const canT9  = activeLv >= 80;
+    const canT10 = activeLv >= 90;
+
+    const canTier = (v) => {
+      if (v === "all" || v === "T1") return true;
+      if (v === "T2")  return canT2;
+      if (v === "T3")  return canT3;
+      if (v === "T4")  return canT4;
+      if (v === "T5")  return canT5;
+      if (v === "T6")  return canT6;
+      if (v === "T7")  return canT7;
+      if (v === "T8")  return canT8;
+      if (v === "T9")  return canT9;
+      if (v === "T10") return canT10;
+      return true;
+    };
 
     Array.from(tierSel.options).forEach(opt => {
-      if (opt.value === "all" || opt.value === "T1") {
-        opt.disabled = false;
-        opt.hidden   = false;
-      } else if (opt.value === "T2") {
-        opt.disabled = !canT2;
-        opt.hidden   = !canT2;
-      } else if (opt.value === "T3") {
-        opt.disabled = !canT3;
-        opt.hidden   = !canT3;
-      }
+      const v = opt.value;
+      const allowed = canTier(v);
+      opt.disabled = !allowed;
+      opt.hidden   = !allowed;
     });
 
-    if (tierSel.value === "T2" && !canT2) tierSel.value = "all";
-    if (tierSel.value === "T3" && !canT3) tierSel.value = "all";
+    if (!canTier(tierSel.value)) {
+      tierSel.value = "all";
+    }
 
     tierFilter = tierSel.value;
   }
@@ -199,13 +270,14 @@ function refreshEquipSelects(){
   const kindSel    = document.getElementById("craftKindSelect");
   const kindFilter = kindSel ? kindSel.value : "all"; // all | normal | gather
 
-  const prevWeaponId  = wCraftSel ? wCraftSel.value : null;
-  const prevArmorId   = aCraftSel ? aCraftSel.value : null;
-  const prevPotionId  = pCraftSel ? pCraftSel.value : null;
-  const prevToolId    = tCraftSel ? tCraftSel.value : null;
-  const prevInterId   = interSel  ? interSel.value  : null;
-  const prevFoodId    = foodSel   ? foodSel.value   : null;
-  const prevDrinkId   = drinkSel  ? drinkSel.value  : null;
+  const prevWeaponId  = wCraftSel    ? wCraftSel.value    : null;
+  const prevArmorId   = aCraftSel    ? aCraftSel.value    : null;
+  const prevPotionId  = pCraftSel    ? pCraftSel.value    : null;
+  const prevToolId    = tCraftSel    ? tCraftSel.value    : null;
+  const prevInterId   = interSel     ? interSel.value     : null;
+  const prevFoodId    = foodSel      ? foodSel.value      : null;
+  const prevDrinkId   = drinkSel     ? drinkSel.value     : null;
+  const prevFurnId    = furnCraftSel ? furnCraftSel.value : null;
 
   const prevEnhWeaponKey = enhanceWeaponSel ? enhanceWeaponSel.value : null;
   const prevEnhArmorKey  = enhanceArmorSel  ? enhanceArmorSel.value  : null;
@@ -250,11 +322,9 @@ function refreshEquipSelects(){
       : [];
 
     recipes.forEach(r => {
-      // tierFilter: all / T1 / T2 / T3
-      if (tierFilter !== "all") {
-        const t = r.tier || getTierFromId(r.id);
-        if (t !== tierFilter) return;
-      }
+      const t = r.tier || getTierFromId(r.id); // "T1"〜"T10" を想定
+      if (!isTierAllowedForFilter(tierFilter, t, weaponSkillLv)) return;
+
       const k = r.kind || "normal";
       if (kindFilter !== "all" && k !== kindFilter) return;
 
@@ -296,10 +366,9 @@ function refreshEquipSelects(){
       : [];
 
     recipes.forEach(r => {
-      if (tierFilter !== "all") {
-        const t = r.tier || getTierFromId(r.id);
-        if (t !== tierFilter) return;
-      }
+      const t = r.tier || getTierFromId(r.id);
+      if (!isTierAllowedForFilter(tierFilter, t, armorSkillLv)) return;
+
       const k = r.kind || "normal";
       if (kindFilter !== "all" && k !== kindFilter) return;
 
@@ -341,10 +410,8 @@ function refreshEquipSelects(){
       : [];
 
     recipes.forEach(r => {
-      if (tierFilter !== "all") {
-        const t = r.tier || getTierFromId(r.id);
-        if (t !== tierFilter) return;
-      }
+      const t = r.tier || getTierFromId(r.id);
+      if (!isTierAllowedForFilter(tierFilter, t, potionSkillLv)) return;
 
       if (!canShowByTierAndSkill(r.id, potionSkillLv)) return;
 
@@ -384,10 +451,8 @@ function refreshEquipSelects(){
       : [];
 
     recipes.forEach(r => {
-      if (tierFilter !== "all") {
-        const t = r.tier || getTierFromId(r.id);
-        if (t !== tierFilter) return;
-      }
+      const t = r.tier || getTierFromId(r.id);
+      if (!isTierAllowedForFilter(tierFilter, t, toolSkillLv)) return;
 
       if (!canShowByTierAndSkill(r.id, toolSkillLv)) return;
 
@@ -422,10 +487,8 @@ function refreshEquipSelects(){
       : [];
 
     recipes.forEach(r => {
-      if (tierFilter !== "all") {
-        const t = r.tier || getTierFromId(r.id);
-        if (t !== tierFilter) return;
-      }
+      const t = r.tier || getTierFromId(r.id);
+      if (!isTierAllowedForFilter(tierFilter, t, materialSkillLv)) return;
       if (!canShowByTierAndSkill(r.id, materialSkillLv)) return;
 
       const opt = document.createElement("option");
@@ -441,6 +504,38 @@ function refreshEquipSelects(){
   }
 
   // =======================
+  // 家具クラフトセレクト（ITEM_META.craft.furniture）
+  // =======================
+  if (furnCraftSel) {
+    furnCraftSel.innerHTML = "";
+    const furnitureSkillLv = typeof getCraftSkillLevel === "function"
+      ? getCraftSkillLevel("furniture") || 0
+      : 0;
+
+    const recipes = typeof getAllCraftRecipesByCategory === "function"
+      ? getAllCraftRecipesByCategory("furniture")
+      : [];
+
+    recipes.forEach(r => {
+      const t = r.tier || getTierFromId(r.id);
+      if (!isTierAllowedForFilter(tierFilter, t, furnitureSkillLv)) return;
+      if (!canShowByTierAndSkill(r.id, furnitureSkillLv)) return;
+
+      const opt = document.createElement("option");
+      opt.value = r.id;
+      opt.textContent = r.name || r.id;
+      furnCraftSel.appendChild(opt);
+    });
+
+    if (prevFurnId &&
+        Array.from(furnCraftSel.options).some(o => o.value === prevFurnId)) {
+      furnCraftSel.value = prevFurnId;
+    } else if (!furnCraftSel.value && furnCraftSel.options.length > 0) {
+      furnCraftSel.selectedIndex = 0;
+    }
+  }
+
+  // =======================
   // 料理（food/drink）は従来どおり COOKING_RECIPES 参照
   // =======================
   if (foodSel) {
@@ -449,10 +544,8 @@ function refreshEquipSelects(){
 
     if (COOKING_RECIPES && Array.isArray(COOKING_RECIPES.food)) {
       COOKING_RECIPES.food.forEach(r => {
-        if (tierFilter !== "all" && typeof r.tier !== "undefined") {
-          const t = String(r.tier);
-          if (t !== tierFilter) return;
-        }
+        const t = (typeof r.tier !== "undefined") ? String(r.tier) : null;
+        if (!isTierAllowedForFilter(tierFilter, t, cookingLv)) return;
         if (!canShowCookingRecipeBySkill(r, cookingLv)) return;
 
         const opt   = document.createElement("option");
@@ -478,10 +571,8 @@ function refreshEquipSelects(){
 
     if (COOKING_RECIPES && Array.isArray(COOKING_RECIPES.drink)) {
       COOKING_RECIPES.drink.forEach(r => {
-        if (tierFilter !== "all" && typeof r.tier !== "undefined") {
-          const t = String(r.tier);
-          if (t !== tierFilter) return;
-        }
+        const t = (typeof r.tier !== "undefined") ? String(r.tier) : null;
+        if (!isTierAllowedForFilter(tierFilter, t, cookingLv)) return;
         if (!canShowCookingRecipeBySkill(r, cookingLv)) return;
 
         const opt   = document.createElement("option");
@@ -548,6 +639,11 @@ function refreshEquipSelects(){
       lastCraftCategory = "cookingDrink";
       return true;
     }
+    if (cat === "furniture" && furnCraftSel && furnCraftSel.value) {
+      updateCraftCostInfo("furniture", furnCraftSel.value);
+      lastCraftCategory = "furniture";
+      return true;
+    }
     return false;
   };
 
@@ -562,6 +658,7 @@ function refreshEquipSelects(){
   if (updateCraftByCategory("material"))      return;
   if (updateCraftByCategory("cookingFood"))   return;
   if (updateCraftByCategory("cookingDrink"))  return;
+  if (updateCraftByCategory("furniture"))     return;
 
   if (infoEl) {
     infoEl.textContent = "必要素材：-";

@@ -769,10 +769,6 @@ document.addEventListener("DOMContentLoaded", () => {
     updateWarehousePetTabVisibility();
   }
 
-  if (typeof initBattleAndShopUI === "function") {
-    initBattleAndShopUI();
-  }
-
   if (typeof refreshWarehouseUI === "function") {
     refreshWarehouseUI();
   }

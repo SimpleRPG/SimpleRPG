@@ -467,6 +467,11 @@ input[type="text"] {
   margin: 4px 0;
 }
 
+/* ★武器・防具以外で行ごと隠すためのクラス */
+.craft-kind-hidden {
+  display: none;
+}
+
 #craftTierRow + #craftKindRow {
   margin-left: 12px;
 }
