@@ -355,7 +355,7 @@ function applyRebirthBonus() {
     }
   }
   // ★ 普通の改行に修正
-  return "転生ボーナス:\n" + msgList.join("\n");
+  return "転生ボーナス:\\n" + msgList.join("\\n");
 }
 
 function applyPetRebirthBonus() {
@@ -477,7 +477,7 @@ function doRebirth() {
   if (rebirthCombatPt > 0) {
     bonusMsg = applyRebirthBonus();
   } else {
-    bonusMsg = "転生ボーナス:\n(戦闘転生なし)";
+    bonusMsg = "転生ボーナス:\\n(戦闘転生なし)";
   }
 
   // ペット転生ボーナスは、仕様に合わせてここでは「全転生共通」で付与を維持
@@ -537,14 +537,14 @@ function doRebirth() {
 
   // ★ ログも普通の改行に統一
   appendLog(
-    `転生した！ 転生回数: ${rebirthCount}\n` +
+    `転生した！ 転生回数: ${rebirthCount}\\n` +
     `転生タイプ: ${
       lastRebirthType === "gather" ? "採取" :
       lastRebirthType === "craft"  ? "クラフト" :
       "戦闘"
-    }\n` +
-    `成長タイプ: ${getGrowthTypeName()}\n` +
-    `${bonusMsg}\n` +
+    }\\n` +
+    `成長タイプ: ${getGrowthTypeName()}\\n` +
+    `${bonusMsg}\\n` +
     `ペット転生回数: ${petRebirthCount}（基礎ATKとHPが強化された）`
   );
 
@@ -852,6 +852,13 @@ function applyJobChange(newJobId) {
   if (typeof window.updateWarehousePetTabVisibility === "function") {
     window.updateWarehousePetTabVisibility();
   }
+
+// ★追加: 初回の職業決定時だけ、遊び方タブへ誘導
+if (isFirstJobChange && typeof window.showHelpPage === "function") {
+  setTimeout(() => {
+    window.showHelpPage();
+  }, 0); // 0〜30msくらいでOK
+}
 }
 
 function changePetGrowthType() {

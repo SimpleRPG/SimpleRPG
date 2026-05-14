@@ -130,6 +130,11 @@ function setupMainTabs() {
     }
   }
 
+  // ★外部（ui-core.js など）からメインタブを切り替えられるように公開
+  if (typeof window !== "undefined") {
+    window.setMainTab = setMainTab;
+  }
+
   buttons.forEach(dBtn => {
     dBtn.addEventListener("click", () => {
       const def = tabDefs.find(d => d.btn === dBtn.id);

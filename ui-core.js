@@ -70,20 +70,24 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // ページ表示切り替え
-    tabPages.forEach(p => {
-      if (!p) return;
-      const isActive = (p.id === pageId);
-      p.classList.toggle("active", isActive);
-    });
+    // ★表示切り替えは htmllast.js 側の setMainTab に委譲
+    if (typeof window.setMainTab === "function") {
+      window.setMainTab(pageId);
+    } else {
+      // セーフティ: 旧ロジック（setMainTab が無い場合のみ）
+      tabPages.forEach(p => {
+        if (!p) return;
+        const isActive = (p.id === pageId);
+        p.classList.toggle("active", isActive);
+      });
 
-    // タブボタン active 切替
-    Object.entries(tabButtonsMap).forEach(([btnId, pid]) => {
-      const btn = document.getElementById(btnId);
-      if (!btn) return;
-      const isActive = (pid === pageId);
-      btn.classList.toggle("active", isActive);
-    });
+      Object.entries(tabButtonsMap).forEach(([btnId, pid]) => {
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+        const isActive = (pid === pageId);
+        btn.classList.toggle("active", isActive);
+      });
+    }
 
     // 魔巧区タブを開いたとき
     if (pageId === "pageMagicDist") {
@@ -178,6 +182,11 @@ window.addEventListener("DOMContentLoaded", () => {
       updatePetMiniStatus();
     }
   }
+
+  // ★外部からヘルプタブを開くためのラッパ（初回ジョブ決定時用）
+  window.showHelpPage = function() {
+    showTabByPageId("pageHelp");
+  };
 
   Object.entries(tabButtonsMap).forEach(([btnId, pageId]) => {
     const btn = document.getElementById(btnId);
