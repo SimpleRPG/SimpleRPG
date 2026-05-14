@@ -279,26 +279,127 @@ if (typeof window.registerStorageImpl === "function") {
 //
 // storageKind: "cooking" 向けに、cookingMats を操作する実装。
 // cook-data.js 側で window.cookingMats を初期化している前提。
+// 仕様:
+//   - 旧データ: cookingMats[id] = number
+//   - 新データ: cookingMats[id] = { total, quality: {0,1,2} }
+//   - getCount は常に total を返す。
+//   - add/remove は品質不明操作なので、増加は普通品質に寄せる。
+//     減少は 普通→銀→金 の順に削る簡易ルールにする。
 
 if (typeof window.registerStorageImpl === "function") {
   window.registerStorageImpl("cooking", {
     getCount(id) {
       if (!window.cookingMats) return 0;
-      return window.cookingMats[id] || 0;
+      const entry = window.cookingMats[id];
+      if (!entry) return 0;
+      if (typeof entry === "number") return entry; // 旧形式互換
+      if (entry && typeof entry === "object" && typeof entry.total === "number") {
+        return entry.total;
+      }
+      return 0;
     },
     add(id, amount) {
       amount = amount | 0;
       if (!amount) return;
-      if (!window.cookingMats) window.cookingMats = {};
-      const cur = window.cookingMats[id] || 0;
-      window.cookingMats[id] = Math.max(0, cur + amount);
+
+      window.cookingMats = window.cookingMats || {};
+      const prev = window.cookingMats[id];
+
+      let entry;
+      if (prev && typeof prev === "object" && "total" in prev) {
+        entry = prev;
+        entry.quality = entry.quality || { 0: 0, 1: 0, 2: 0 };
+      } else {
+        const total = typeof prev === "number" ? prev : 0;
+        entry = {
+          total: total,
+          quality: { 0: 0, 1: 0, 2: 0 }
+        };
+      }
+
+      const before = entry.total || 0;
+      const after = Math.max(0, before + amount);
+      const diff = after - before;
+      entry.total = after;
+
+      // 品質内訳: ここからの増加分は普通品質に寄せる
+      if (diff > 0) {
+        entry.quality[0] = (entry.quality[0] || 0) + diff;
+      } else if (diff < 0) {
+        // 減る場合は普通→銀→金の順で削る
+        let remain = -diff;
+        const q = entry.quality;
+        const order = [0, 1, 2];
+        for (let i = 0; i < order.length && remain > 0; i++) {
+          const k = order[i];
+          const curQ = q[k] || 0;
+          if (curQ <= 0) continue;
+          const dec = Math.min(curQ, remain);
+          q[k] = curQ - dec;
+          remain -= dec;
+        }
+        entry.quality = q;
+      }
+
+      window.cookingMats[id] = entry;
+
+      // 互換ビュー cookingMatsQuality も更新
+      window.cookingMatsQuality = window.cookingMatsQuality || {};
+      const qEntry = window.cookingMatsQuality[id] || { 0: 0, 1: 0, 2: 0 };
+      qEntry[0] = entry.quality[0] || 0;
+      qEntry[1] = entry.quality[1] || 0;
+      qEntry[2] = entry.quality[2] || 0;
+      window.cookingMatsQuality[id] = qEntry;
     },
     remove(id, amount) {
       amount = amount | 0;
       if (!amount) return;
-      if (!window.cookingMats) window.cookingMats = {};
-      const cur = window.cookingMats[id] || 0;
-      window.cookingMats[id] = Math.max(0, cur - amount);
+
+      window.cookingMats = window.cookingMats || {};
+      const prev = window.cookingMats[id];
+
+      let entry;
+      if (prev && typeof prev === "object" && "total" in prev) {
+        entry = prev;
+        entry.quality = entry.quality || { 0: 0, 1: 0, 2: 0 };
+      } else {
+        const total = typeof prev === "number" ? prev : 0;
+        // 全部「普通品質」として初期化しておく
+        entry = {
+          total: total,
+          quality: { 0: total, 1: 0, 2: 0 }
+        };
+      }
+
+      const before = entry.total || 0;
+      const after = Math.max(0, before - amount);
+      const diff = before - after; // 実際に減った数
+      entry.total = after;
+
+      if (diff > 0) {
+        let remain = diff;
+        const q = entry.quality;
+        const order = [0, 1, 2];
+        for (let i = 0; i < order.length && remain > 0; i++) {
+          const k = order[i];
+          const curQ = q[k] || 0;
+          if (curQ <= 0) continue;
+          const dec = Math.min(curQ, remain);
+          q[k] = curQ - dec;
+          remain -= dec;
+        }
+        entry.quality = q;
+      }
+
+      window.cookingMats[id] = entry;
+
+      // 互換ビュー cookingMatsQuality も更新
+      window.cookingMatsQuality = window.cookingMatsQuality || {};
+      const qEntry = window.cookingMatsQuality[id] || { 0: 0, 1: 0, 2: 0 };
+      qEntry[0] = entry.quality[0] || 0;
+      qEntry[1] = entry.quality[1] || 0;
+      qEntry[2] = entry.quality[2] || 0;
+      window.cookingMatsQuality[id] = qEntry;
     }
   });
 }

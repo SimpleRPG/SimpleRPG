@@ -6,6 +6,84 @@
 
 // 先頭あたりに
 window.cookingMats = window.cookingMats || {};
+window.cookingMatsQuality = window.cookingMatsQuality || {};
+
+// =======================
+// cookingMats 統合マイグレーション
+// =======================
+//
+// 旧データ:
+//   cookingMats[id] = number
+//   cookingMatsQuality[id] = {0,1,2}
+// 新データ:
+//   cookingMats[id] = { total, quality: {0,1,2} }
+
+(function initCookingMatsUnifiedStore() {
+  const store = window.cookingMats;
+  const oldQuality = window.cookingMatsQuality || {};
+
+  // 既存 cookingMats 側から統合
+  Object.keys(store).forEach(id => {
+    const val = store[id];
+    if (val && typeof val === "object" && "total" in val) {
+      // すでに新形式ならそのまま
+      return;
+    }
+
+    const total = typeof val === "number" ? val : 0;
+    const q = oldQuality[id] || { 0: 0, 1: 0, 2: 0 };
+    const q0 = q[0] || 0;
+    const q1 = q[1] || 0;
+    const q2 = q[2] || 0;
+    const sumQ = q0 + q1 + q2;
+
+    const fixedTotal = total > 0 ? total : sumQ;
+
+    store[id] = {
+      total: fixedTotal,
+      quality: {
+        0: q0,
+        1: q1,
+        2: q2
+      }
+    };
+  });
+
+  // quality だけあって total がない id も補完
+  Object.keys(oldQuality).forEach(id => {
+    const exists = store[id] && typeof store[id] === "object" && "total" in store[id];
+    if (exists) return;
+
+    const q = oldQuality[id] || { 0: 0, 1: 0, 2: 0 };
+    const q0 = q[0] || 0;
+    const q1 = q[1] || 0;
+    const q2 = q[2] || 0;
+    const sumQ = q0 + q1 + q2;
+
+    store[id] = {
+      total: sumQ,
+      quality: {
+        0: q0,
+        1: q1,
+        2: q2
+      }
+    };
+  });
+
+  // 互換用ビューとして cookingMatsQuality を再構築
+  const newQuality = {};
+  Object.keys(store).forEach(id => {
+    const entry = store[id];
+    if (!entry || typeof entry !== "object") return;
+    const q = entry.quality || {};
+    newQuality[id] = {
+      0: q[0] || 0,
+      1: q[1] || 0,
+      2: q[2] || 0
+    };
+  });
+  window.cookingMatsQuality = newQuality;
+})();
 
 // ========================================
 // COOKING_RECIPES 定義（テンプレ＋T10拡張）
@@ -40,7 +118,7 @@ window.cookingMats = window.cookingMats || {};
     return result;
   }
 
-  // T1〜T3 は元の構成を優先して再現し、それ以降は候補から増やす方針。[web:196]
+  // T1〜T3 は元の構成を優先して再現し、それ以降は候補から増やす方針。
 
   // ---- 食べ物テンプレ ----
   const FOOD_TEMPLATES = [

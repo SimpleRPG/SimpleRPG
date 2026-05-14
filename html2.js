@@ -30,6 +30,12 @@
           <button id="changeJobBtn" style="margin-left:4px; font-size:11px; padding:1px 6px;">職業を変更</button>
         </div>
 
+        <!-- ★転生ポイント表示行（ゲーム内ロジックは game-ui-3.js の updateRebirthPointStatus が更新） -->
+        <div class="status-block">
+          転生ポイント:
+          <span id="statusRebirthPoints">戦闘: 0 / 採取: 0 / クラフト: 0</span>
+        </div>
+
         <div class="status-block" id="statusCitizenRow">
           市民権: 未取得（いずれかのギルドの特別依頼で解放）
         </div>
@@ -127,7 +133,7 @@
         </div>
 
         <!-- 採取統計ページ -->
-        <div id="statusStatsPageGather" class="status-stats-page" style="display:block;">
+        <div id="statusStatsPageGather" class="status-stats-page" style="display:block%;">
           <h4>採取統計</h4>
 
           <!-- ★採取の道のりサマリー -->
@@ -486,7 +492,7 @@
     document.body.appendChild(jobModal);
   }
 
-  // 転生確認モーダル
+  // 転生確認モーダル（転生タイプ選択付き）
   if (!document.getElementById("rebirthModal")) {
     const rebirthModal = document.createElement("div");
     rebirthModal.id = "rebirthModal";
@@ -496,10 +502,63 @@
         <h3>転生の確認</h3>
         <p id="rebirthModalMessage" style="font-size:0.9em;">
         </p>
+
+        <!-- ★転生タイプ選択 -->
+        <div id="rebirthTypeArea" style="margin-top:8px; font-size:0.9em;">
+          <div style="margin-bottom:4px;">今回の転生で、どの分野にボーナスを振りますか？</div>
+          <div id="rebirthTypeButtons" style="display:flex; gap:4px; flex-wrap:wrap;">
+            <button type="button" class="rebirth-type-btn" data-type="combat">戦闘</button>
+            <button type="button" class="rebirth-type-btn" data-type="gather">採取</button>
+            <button type="button" class="rebirth-type-btn" data-type="craft">クラフト</button>
+          </div>
+          <div style="margin-top:4px; font-size:0.8em; color:#ccc;">
+            戦闘: レベルアップ時のステ上昇とHP/MP/SPなどが伸びやすくなります。<br>
+            採取: 採取量やEXTRA率など、採取関連の恒久ボーナスが増えます。<br>
+            クラフト: クラフト成功率や品質、素材コスト軽減などのボーナスに振られます。
+          </div>
+        </div>
+
         <div style="margin-top:10px; text-align:right;">
           <button id="rebirthCancelBtn" onclick="closeRebirthModal()">やめる</button>
           <button id="rebirthConfirmBtn" onclick="confirmRebirth()">転生する</button>
         </div>
+
+        <script>
+          (function() {
+            const container = document.getElementById("rebirthTypeButtons");
+            if (!container) return;
+            const buttons = container.querySelectorAll(".rebirth-type-btn");
+            if (!buttons.length) return;
+
+            function applySelected(type) {
+              buttons.forEach(btn => {
+                const t = btn.dataset.type;
+                if (t === type) {
+                  btn.classList.add("selected");
+                } else {
+                  btn.classList.remove("selected");
+                }
+              });
+            }
+
+            // 既存セーブ互換: lastRebirthType が window にあればそれを初期選択にする
+            let initialType = (window.lastRebirthType === "gather" || window.lastRebirthType === "craft")
+              ? window.lastRebirthType
+              : "combat";
+            applySelected(initialType);
+
+            buttons.forEach(btn => {
+              btn.addEventListener("click", () => {
+                const type = btn.dataset.type;
+                if (!type) return;
+                if (typeof window.setRebirthType === "function") {
+                  window.setRebirthType(type);
+                }
+                applySelected(type);
+              });
+            });
+          })();
+        </script>
       </div>
     `;
     document.body.appendChild(rebirthModal);

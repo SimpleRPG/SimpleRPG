@@ -209,13 +209,47 @@ function plantFarmSlot(index, selectedId) {
     appendLog("料理素材の保管オブジェクトが未定義です（cookingMats）");
     return;
   }
-  const have = cookingMats[cropId] || 0;
+
+  const entry = cookingMats[cropId];
+  const have =
+    (entry && typeof entry === "object" && typeof entry.total === "number")
+      ? entry.total
+      : (typeof entry === "number" ? entry : 0);
+
   if (have <= 0) {
     const name = (farmMeta && farmMeta.name) || cropId;
     appendLog(`${name}を持っていないので植えられない`);
     return;
   }
-  cookingMats[cropId] = have - 1;
+
+  // 在庫を1つ減らす（新構造と旧構造の両方に対応）
+  if (entry && typeof entry === "object" && typeof entry.total === "number") {
+    entry.total = have - 1;
+
+    // 品質内訳からも1つ減らす（普通→銀→金の優先順、仕様がなければ簡易ルール）
+    const q = entry.quality || { 0: 0, 1: 0, 2: 0 };
+    if (q[0] > 0) {
+      q[0] -= 1;
+    } else if (q[1] > 0) {
+      q[1] -= 1;
+    } else if (q[2] > 0) {
+      q[2] -= 1;
+    }
+    entry.quality = q;
+    cookingMats[cropId] = entry;
+
+    // 互換ビュー cookingMatsQuality があれば更新
+    if (typeof window.cookingMatsQuality === "object") {
+      const qEntry = window.cookingMatsQuality[cropId] || { 0: 0, 1: 0, 2: 0 };
+      qEntry[0] = entry.quality[0] || 0;
+      qEntry[1] = entry.quality[1] || 0;
+      qEntry[2] = entry.quality[2] || 0;
+      window.cookingMatsQuality[cropId] = qEntry;
+    }
+  } else {
+    // 旧形式セーブ互換: 純粋な number として減らす
+    cookingMats[cropId] = have - 1;
+  }
 
   // ここまで来たら cropId は必ず有効な畑作物ID
   slot.cropId = cropId;

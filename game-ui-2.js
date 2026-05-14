@@ -268,25 +268,25 @@ function renderFullWarehouseUI(root, prefix) {
       {
         label: "外す",
         onClick: () => {
-          if (typeof equipWeaponFromCarry === "function" &&
-              typeof window.equippedWeaponIndex === "number" &&
+          // 仕様: 装備解除は倉庫に戻す
+          if (typeof window.equippedWeaponIndex === "number" &&
               Array.isArray(window.weaponInstances)) {
             const idx = window.equippedWeaponIndex;
             const inst = window.weaponInstances[idx];
             if (inst) {
-              // 装備解除は倉庫に戻す（元仕様維持）
               inst.location = "warehouse";
             }
             window.equippedWeaponIndex = null;
             window.equippedWeaponId = null;
-            if (typeof recalcStats === "function") recalcStats();
             if (typeof syncEquipmentCountsFromInstances === "function") {
               syncEquipmentCountsFromInstances();
             }
-            refreshWarehouseUI();
           } else if (window.equippedWeaponId) {
             window.equippedWeaponId = null;
-            if (typeof recalcStats === "function") recalcStats();
+          }
+
+          if (typeof recalcStats === "function") recalcStats();
+          if (typeof refreshWarehouseUI === "function") {
             refreshWarehouseUI();
           }
         }
@@ -316,24 +316,25 @@ function renderFullWarehouseUI(root, prefix) {
       {
         label: "外す",
         onClick: () => {
-          if (typeof equipArmorFromCarry === "function" &&
-              typeof window.equippedArmorIndex === "number" &&
+          // 仕様: 装備解除は倉庫に戻す
+          if (typeof window.equippedArmorIndex === "number" &&
               Array.isArray(window.armorInstances)) {
             const idx = window.equippedArmorIndex;
             const inst = window.armorInstances[idx];
             if (inst) {
-              inst.location = "carry";
+              inst.location = "warehouse";
             }
             window.equippedArmorIndex = null;
             window.equippedArmorId = null;
-            if (typeof recalcStats === "function") recalcStats();
             if (typeof syncEquipmentCountsFromInstances === "function") {
               syncEquipmentCountsFromInstances();
             }
-            refreshWarehouseUI();
           } else if (window.equippedArmorId) {
             window.equippedArmorId = null;
-            if (typeof recalcStats === "function") recalcStats();
+          }
+
+          if (typeof recalcStats === "function") recalcStats();
+          if (typeof refreshWarehouseUI === "function") {
             refreshWarehouseUI();
           }
         }
@@ -475,20 +476,13 @@ function renderFullWarehouseUI(root, prefix) {
         {
           label: "装備",
           onClick: () => {
-            if (Array.isArray(window.weaponInstances) &&
-                typeof window.equippedWeaponIndex === "number") {
-              // 既に何か装備中なら、それを carry に戻す
-              const curIdx = window.equippedWeaponIndex;
-              const curInst = window.weaponInstances[curIdx];
-              if (curInst) {
-                curInst.location = "carry";
-              }
-            }
-
-            // このグループから1本を装備
-            if (Array.isArray(window.weaponInstances) &&
-                group.instanceIndexes &&
-                group.instanceIndexes.length > 0) {
+            // 手持ちから装備するので equipWeaponFromCarry 経由
+            if (typeof equipWeaponFromCarry === "function") {
+              equipWeaponFromCarry(group.id);
+            } else if (Array.isArray(window.weaponInstances) &&
+                       group.instanceIndexes &&
+                       group.instanceIndexes.length > 0) {
+              // フォールバック（理論上は走らせたくない）
               const instIndex = group.instanceIndexes[0];
               const inst = window.weaponInstances[instIndex];
               if (inst) {
@@ -496,20 +490,8 @@ function renderFullWarehouseUI(root, prefix) {
                 window.equippedWeaponIndex = instIndex;
                 window.equippedWeaponId = inst.id;
               }
-            } else if (typeof equipWeaponFromCarry === "function") {
-              // 旧仕様フォールバック
-              equipWeaponFromCarry(group.id);
-            } else if (typeof equipWeapon === "function") {
-              window.equippedWeaponId = group.id;
-              if (typeof appendLog === "function") appendLog("武器を装備した");
-              if (typeof updateDisplay === "function") updateDisplay();
             }
-
-            if (typeof recalcStats === "function") recalcStats();
-            if (typeof syncEquipmentCountsFromInstances === "function") {
-              syncEquipmentCountsFromInstances();
-            }
-            refreshWarehouseUI();
+            // 装備の副作用は equip-api 側に寄せたのでここでは何もしない
           }
         },
         {
@@ -550,18 +532,12 @@ function renderFullWarehouseUI(root, prefix) {
         {
           label: "装備",
           onClick: () => {
-            if (Array.isArray(window.armorInstances) &&
-                typeof window.equippedArmorIndex === "number") {
-              const curIdx = window.equippedArmorIndex;
-              const curInst = window.armorInstances[curIdx];
-              if (curInst) {
-                curInst.location = "carry";
-              }
-            }
-
-            if (Array.isArray(window.armorInstances) &&
-                group.instanceIndexes &&
-                group.instanceIndexes.length > 0) {
+            // 手持ちから装備するので equipArmorFromCarry 経由
+            if (typeof equipArmorFromCarry === "function") {
+              equipArmorFromCarry(group.id);
+            } else if (Array.isArray(window.armorInstances) &&
+                       group.instanceIndexes &&
+                       group.instanceIndexes.length > 0) {
               const instIndex = group.instanceIndexes[0];
               const inst = window.armorInstances[instIndex];
               if (inst) {
@@ -569,19 +545,8 @@ function renderFullWarehouseUI(root, prefix) {
                 window.equippedArmorIndex = instIndex;
                 window.equippedArmorId = inst.id;
               }
-            } else if (typeof equipArmorFromCarry === "function") {
-              equipArmorFromCarry(group.id);
-            } else if (typeof equipArmor === "function") {
-              window.equippedArmorId = group.id;
-              if (typeof appendLog === "function") appendLog("防具を装備した");
-              if (typeof updateDisplay === "function") updateDisplay();
             }
-
-            if (typeof recalcStats === "function") recalcStats();
-            if (typeof syncEquipmentCountsFromInstances === "function") {
-              syncEquipmentCountsFromInstances();
-            }
-            refreshWarehouseUI();
+            // 副作用は equip-api 側
           }
         },
         {
@@ -756,9 +721,13 @@ function renderFullWarehouseUI(root, prefix) {
         {
           label: "装備",
           onClick: () => {
-            // 倉庫から直接装備：一対一交換
-            if (Array.isArray(window.weaponInstances)) {
-              // 既に装備中の武器は倉庫に戻す
+            // 倉庫から装備するので equipWeaponFromWarehouse 経由
+            if (typeof equipWeaponFromWarehouse === "function") {
+              equipWeaponFromWarehouse(group.id);
+            } else if (Array.isArray(window.weaponInstances) &&
+                       group.instanceIndexes &&
+                       group.instanceIndexes.length > 0) {
+              // フォールバック
               if (typeof window.equippedWeaponIndex === "number") {
                 const curIdx = window.equippedWeaponIndex;
                 const curInst = window.weaponInstances[curIdx];
@@ -766,24 +735,15 @@ function renderFullWarehouseUI(root, prefix) {
                   curInst.location = "warehouse";
                 }
               }
-              // このグループから1本を装備
-              if (group.instanceIndexes && group.instanceIndexes.length > 0) {
-                const instIndex = group.instanceIndexes[0];
-                const inst = window.weaponInstances[instIndex];
-                if (inst) {
-                  inst.location = "equipped";
-                  window.equippedWeaponIndex = instIndex;
-                  window.equippedWeaponId = inst.id;
-                }
+              const instIndex = group.instanceIndexes[0];
+              const inst = window.weaponInstances[instIndex];
+              if (inst) {
+                inst.location = "equipped";
+                window.equippedWeaponIndex = instIndex;
+                window.equippedWeaponId = inst.id;
               }
-              if (typeof recalcStats === "function") recalcStats();
-              if (typeof syncEquipmentCountsFromInstances === "function") {
-                syncEquipmentCountsFromInstances();
-              }
-            } else if (typeof equipWeaponFromWarehouse === "function") {
-              equipWeaponFromWarehouse(group.id);
             }
-            refreshWarehouseUI();
+            // 副作用は equip-api 側
           }
         },
         {
@@ -824,7 +784,12 @@ function renderFullWarehouseUI(root, prefix) {
         {
           label: "装備",
           onClick: () => {
-            if (Array.isArray(window.armorInstances)) {
+            // 倉庫から装備するので equipArmorFromWarehouse 経由
+            if (typeof equipArmorFromWarehouse === "function") {
+              equipArmorFromWarehouse(group.id);
+            } else if (Array.isArray(window.armorInstances) &&
+                       group.instanceIndexes &&
+                       group.instanceIndexes.length > 0) {
               if (typeof window.equippedArmorIndex === "number") {
                 const curIdx = window.equippedArmorIndex;
                 const curInst = window.armorInstances[curIdx];
@@ -832,23 +797,15 @@ function renderFullWarehouseUI(root, prefix) {
                   curInst.location = "warehouse";
                 }
               }
-              if (group.instanceIndexes && group.instanceIndexes.length > 0) {
-                const instIndex = group.instanceIndexes[0];
-                const inst = window.armorInstances[instIndex];
-                if (inst) {
-                  inst.location = "equipped";
-                  window.equippedArmorIndex = instIndex;
-                  window.equippedArmorId = inst.id;
-                }
+              const instIndex = group.instanceIndexes[0];
+              const inst = window.armorInstances[instIndex];
+              if (inst) {
+                inst.location = "equipped";
+                window.equippedArmorIndex = instIndex;
+                window.equippedArmorId = inst.id;
               }
-              if (typeof recalcStats === "function") recalcStats();
-              if (typeof syncEquipmentCountsFromInstances === "function") {
-                syncEquipmentCountsFromInstances();
-              }
-            } else if (typeof equipArmorFromWarehouse === "function") {
-              equipArmorFromWarehouse(group.id);
             }
-            refreshWarehouseUI();
+            // 副作用は equip-api 側
           }
         },
         {

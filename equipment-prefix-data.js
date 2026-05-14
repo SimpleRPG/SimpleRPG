@@ -310,8 +310,8 @@ window.shouldAddEquipPrefix = function (craftSkillLv) {
 //
 // 既存呼び出し:
 //
-\
-  rollEquipPrefix(itemId, kind)
+
+//  rollEquipPrefix(itemId, kind)
 // 拡張呼び出し:
 //   rollEquipPrefix(itemId, kind, { itemTier: 5 })
 //   rollEquipPrefix(itemId, kind, { itemTier: 7, itemRarity: "rare" })

@@ -256,6 +256,62 @@ function applyCraftCostReduction(rawCost) {
 }
 
 // =======================
+// 転生クラフトボーナスヘルパー
+// =======================
+
+// rebirthCraftPt は game-core-2.js 側で管理されている想定
+function getRebirthCraftPoint() {
+  if (typeof window.rebirthCraftPt !== "number" || window.rebirthCraftPt <= 0) {
+    return 0;
+  }
+  return window.rebirthCraftPt;
+}
+
+// 成功率ボーナス（0.05%/pt、上限なし。呼び出し側で最終的に Math.min(...,1)）
+function getCraftSuccessBonusFromRebirth() {
+  const pt = getRebirthCraftPoint();
+  if (!pt) return 0;
+  return pt * 0.0005;
+}
+
+// 良品/傑作ボーナス（上限なし。呼び出し側でクランプ）
+function getCraftQualityBonusFromRebirth() {
+  const pt = getRebirthCraftPoint();
+  if (!pt) {
+    return {
+      goodBonus: 0,
+      greatBonus: 0
+    };
+  }
+  return {
+    goodBonus: pt * 0.0005, // 0.05%/pt
+    greatBonus: pt * 0.0002 // 0.02%/pt
+  };
+}
+
+// 失敗時の素材返却確率（0.05%/pt、上限なし）
+function getCraftRefundChanceFromRebirth() {
+  const pt = getRebirthCraftPoint();
+  if (!pt) return 0;
+  return pt * 0.0005;
+}
+
+// cost オブジェクトから、一定割合だけ返却する簡易ヘルパー
+function refundMaterialsPartially(cost, rate) {
+  if (!cost || !rate || rate <= 0) return;
+  if (typeof addItemByMeta !== "function") return;
+
+  Object.keys(cost).forEach(id => {
+    const used = cost[id] | 0;
+    if (!used) return;
+    const refund = Math.floor(used * rate);
+    if (refund > 0) {
+      addItemByMeta(id, refund);
+    }
+  });
+}
+
+// =======================
 // 必要素材表示（メタ前提）
 // =======================
 

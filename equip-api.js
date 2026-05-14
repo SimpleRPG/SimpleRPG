@@ -3,6 +3,20 @@
 // 装備 API（倉庫・手持ちからの装備/付け替え）
 // =======================
 
+// 共通後処理ヘルパー: ステ更新・在庫同期・UI更新
+function afterEquipChange() {
+  if (typeof recalcStats === "function") {
+    recalcStats();
+  }
+  if (typeof syncEquipmentCountsFromInstances === "function" &&
+      (Array.isArray(window.weaponInstances) || Array.isArray(window.armorInstances))) {
+    syncEquipmentCountsFromInstances();
+  }
+  if (typeof refreshWarehouseUI === "function") {
+    refreshWarehouseUI();
+  }
+}
+
 // 倉庫からの直接装備ヘルパー
 function equipWeaponFromWarehouse(weaponId) {
   if (window.isExploring || window.currentEnemy) {
@@ -19,6 +33,7 @@ function equipWeaponFromWarehouse(weaponId) {
   if (hasInstances && window.equippedWeaponIndex != null) {
     const oldInst = window.weaponInstances[window.equippedWeaponIndex];
     if (oldInst) {
+      // 仕様: 倉庫から装備したら旧装備は倉庫へ
       oldInst.location = "warehouse";
       if (typeof weaponCounts === "object") {
         weaponCounts[oldInst.id] = (weaponCounts[oldInst.id] || 0) + 1;
@@ -27,21 +42,27 @@ function equipWeaponFromWarehouse(weaponId) {
     window.equippedWeaponIndex = null;
     window.equippedWeaponId    = null;
   } else if (!hasInstances && window.equippedWeaponId) {
-    weaponCounts[window.equippedWeaponId] = (weaponCounts[window.equippedWeaponId] || 0) + 1;
+    if (typeof weaponCounts === "object") {
+      weaponCounts[window.equippedWeaponId] =
+        (weaponCounts[window.equippedWeaponId] || 0) + 1;
+    }
     window.equippedWeaponId = null;
   }
 
   if (!hasInstances) {
     // インスタンス未使用フォールバック
     if (!weaponCounts[weaponId] || weaponCounts[weaponId] <= 0) {
-      appendLog("倉庫に装備可能な武器がない");
+      if (typeof appendLog === "function") {
+        appendLog("倉庫に装備可能な武器がない");
+      }
       return;
     }
     weaponCounts[weaponId] = Math.max(0, (weaponCounts[weaponId] || 0) - 1);
     window.equippedWeaponId = weaponId;
-    appendLog("武器を装備した。");
-    if (typeof recalcStats === "function") recalcStats();
-    if (typeof refreshWarehouseUI === "function") refreshWarehouseUI();
+    if (typeof appendLog === "function") {
+      appendLog("武器を装備した。");
+    }
+    afterEquipChange();
     return;
   }
 
@@ -57,7 +78,9 @@ function equipWeaponFromWarehouse(weaponId) {
     }
   }
   if (idx < 0) {
-    appendLog("倉庫に装備可能な武器インスタンスが見つからない");
+    if (typeof appendLog === "function") {
+      appendLog("倉庫に装備可能な武器インスタンスが見つからない");
+    }
     return;
   }
 
@@ -70,9 +93,10 @@ function equipWeaponFromWarehouse(weaponId) {
     weaponCounts[weaponId] = Math.max(0, (weaponCounts[weaponId] || 0) - 1);
   }
 
-  appendLog("武器を装備した。");
-  if (typeof recalcStats === "function") recalcStats();
-  if (typeof refreshWarehouseUI === "function") refreshWarehouseUI();
+  if (typeof appendLog === "function") {
+    appendLog("武器を装備した。");
+  }
+  afterEquipChange();
 }
 
 function equipArmorFromWarehouse(armorId) {
@@ -91,6 +115,7 @@ function equipArmorFromWarehouse(armorId) {
       Array.isArray(window.armorInstances)) {
     const oldInst = window.armorInstances[window.equippedArmorIndex];
     if (oldInst) {
+      // 仕様: 倉庫の物を装備したら旧装備は倉庫へ
       oldInst.location = "warehouse";
       if (typeof armorCounts === "object") {
         armorCounts[oldInst.id] = (armorCounts[oldInst.id] || 0) + 1;
@@ -99,22 +124,27 @@ function equipArmorFromWarehouse(armorId) {
     window.equippedArmorIndex = null;
     window.equippedArmorId    = null;
   } else if (!hasInstances && window.equippedArmorId) {
-    armorCounts[window.equippedArmorId] =
-      (armorCounts[window.equippedArmorId] || 0) + 1;
+    if (typeof armorCounts === "object") {
+      armorCounts[window.equippedArmorId] =
+        (armorCounts[window.equippedArmorId] || 0) + 1;
+    }
     window.equippedArmorId = null;
   }
 
   if (!hasInstances) {
     // インスタンス未使用フォールバック
     if (!armorCounts[armorId] || armorCounts[armorId] <= 0) {
-      appendLog("倉庫に装備可能な防具がない");
+      if (typeof appendLog === "function") {
+        appendLog("倉庫に装備可能な防具がない");
+      }
       return;
     }
     armorCounts[armorId] = Math.max(0, (armorCounts[armorId] || 0) - 1);
     window.equippedArmorId = armorId;
-    appendLog("防具を装備した。");
-    if (typeof recalcStats === "function") recalcStats();
-    if (typeof refreshWarehouseUI === "function") refreshWarehouseUI();
+    if (typeof appendLog === "function") {
+      appendLog("防具を装備した。");
+    }
+    afterEquipChange();
     return;
   }
 
@@ -129,7 +159,9 @@ function equipArmorFromWarehouse(armorId) {
     }
   }
   if (idx < 0) {
-    appendLog("倉庫に装備可能な防具インスタンスが見つからない");
+    if (typeof appendLog === "function") {
+      appendLog("倉庫に装備可能な防具インスタンスが見つからない");
+    }
     return;
   }
 
@@ -142,9 +174,10 @@ function equipArmorFromWarehouse(armorId) {
     armorCounts[armorId] = Math.max(0, (armorCounts[armorId] || 0) - 1);
   }
 
-  appendLog("防具を装備した。");
-  if (typeof recalcStats === "function") recalcStats();
-  if (typeof refreshWarehouseUI === "function") refreshWarehouseUI();
+  if (typeof appendLog === "function") {
+    appendLog("防具を装備した。");
+  }
+  afterEquipChange();
 }
 
 // 手持ちからの装備ヘルパー
@@ -163,6 +196,7 @@ function equipWeaponFromCarry(weaponId) {
   if (hasInstances && window.equippedWeaponIndex != null) {
     const oldInst = window.weaponInstances[window.equippedWeaponIndex];
     if (oldInst) {
+      // 仕様: 手持ちの武器を装備したら旧装備は手持ちへ
       oldInst.location = "carry";
     }
     window.equippedWeaponIndex = null;
@@ -179,15 +213,21 @@ function equipWeaponFromCarry(weaponId) {
     // インスタンス未使用フォールバック:
     // carryWeapons にあれば 1 本消費して装備IDにする
     if (!window.carryWeapons || !(window.carryWeapons[weaponId] > 0)) {
-      appendLog("手持ちに装備可能な武器がない");
+      if (typeof appendLog === "function") {
+        appendLog("手持ちに装備可能な武器がない");
+      }
       return;
     }
-    window.carryWeapons[weaponId] = Math.max(0, (window.carryWeapons[weaponId] || 0) - 1);
-    if (window.carryWeapons[weaponId] <= 0) delete window.carryWeapons[weaponId];
+    window.carryWeapons[weaponId] =
+      Math.max(0, (window.carryWeapons[weaponId] || 0) - 1);
+    if (window.carryWeapons[weaponId] <= 0) {
+      delete window.carryWeapons[weaponId];
+    }
     window.equippedWeaponId = weaponId;
-    appendLog("武器を装備した。");
-    if (typeof recalcStats === "function") recalcStats();
-    if (typeof refreshWarehouseUI === "function") refreshWarehouseUI();
+    if (typeof appendLog === "function") {
+      appendLog("武器を装備した。");
+    }
+    afterEquipChange();
     return;
   }
 
@@ -203,7 +243,9 @@ function equipWeaponFromCarry(weaponId) {
     }
   }
   if (idx < 0) {
-    appendLog("手持ちに装備可能な武器がない");
+    if (typeof appendLog === "function") {
+      appendLog("手持ちに装備可能な武器がない");
+    }
     return;
   }
 
@@ -212,9 +254,10 @@ function equipWeaponFromCarry(weaponId) {
   window.equippedWeaponIndex = idx;
   window.equippedWeaponId    = weaponId;
 
-  appendLog("武器を装備した。");
-  if (typeof recalcStats === "function") recalcStats();
-  if (typeof refreshWarehouseUI === "function") refreshWarehouseUI();
+  if (typeof appendLog === "function") {
+    appendLog("武器を装備した。");
+  }
+  afterEquipChange();
 }
 
 function equipArmorFromCarry(armorId) {
@@ -228,9 +271,11 @@ function equipArmorFromCarry(armorId) {
 
   const hasInstances = Array.isArray(window.armorInstances);
 
+  // 旧装備を手持ちに戻す
   if (hasInstances && window.equippedArmorIndex != null) {
     const oldInst = window.armorInstances[window.equippedArmorIndex];
     if (oldInst) {
+      // 仕様: 手持ちの防具を装備したら旧装備は手持ちへ
       oldInst.location = "carry";
     }
     window.equippedArmorIndex = null;
@@ -245,15 +290,21 @@ function equipArmorFromCarry(armorId) {
 
   if (!hasInstances) {
     if (!window.carryArmors || !(window.carryArmors[armorId] > 0)) {
-      appendLog("手持ちに装備可能な防具がない");
+      if (typeof appendLog === "function") {
+        appendLog("手持ちに装備可能な防具がない");
+      }
       return;
     }
-    window.carryArmors[armorId] = Math.max(0, (window.carryArmors[armorId] || 0) - 1);
-    if (window.carryArmors[armorId] <= 0) delete window.carryArmors[armorId];
+    window.carryArmors[armorId] =
+      Math.max(0, (window.carryArmors[armorId] || 0) - 1);
+    if (window.carryArmors[armorId] <= 0) {
+      delete window.carryArmors[armorId];
+    }
     window.equippedArmorId = armorId;
-    appendLog("防具を装備した。");
-    if (typeof recalcStats === "function") recalcStats();
-    if (typeof refreshWarehouseUI === "function") refreshWarehouseUI();
+    if (typeof appendLog === "function") {
+      appendLog("防具を装備した。");
+    }
+    afterEquipChange();
     return;
   }
 
@@ -268,7 +319,9 @@ function equipArmorFromCarry(armorId) {
     }
   }
   if (idx < 0) {
-    appendLog("手持ちに装備可能な防具がない");
+    if (typeof appendLog === "function") {
+      appendLog("手持ちに装備可能な防具がない");
+    }
     return;
   }
 
@@ -277,7 +330,8 @@ function equipArmorFromCarry(armorId) {
   window.equippedArmorIndex = idx;
   window.equippedArmorId    = armorId;
 
-  appendLog("防具を装備した。");
-  if (typeof recalcStats === "function") recalcStats();
-  if (typeof refreshWarehouseUI === "function") refreshWarehouseUI();
+  if (typeof appendLog === "function") {
+    appendLog("防具を装備した。");
+  }
+  afterEquipChange();
 }

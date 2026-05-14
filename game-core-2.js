@@ -17,6 +17,21 @@ if (typeof MAX_PET_LEVEL === "undefined") {
   var MAX_PET_LEVEL = 100;
 }
 
+// ★ 転生タイプ別カウンタ（戦闘/採取/クラフト）
+//   - 既存セーブ互換のため window 経由で拾っておく
+window.rebirthCombatPt = typeof window.rebirthCombatPt === "number" ? window.rebirthCombatPt : 0;
+window.rebirthGatherPt = typeof window.rebirthGatherPt === "number" ? window.rebirthGatherPt : 0;
+window.rebirthCraftPt  = typeof window.rebirthCraftPt  === "number" ? window.rebirthCraftPt  : 0;
+
+let rebirthCombatPt = window.rebirthCombatPt; // 戦闘転生に振った回数
+let rebirthGatherPt = window.rebirthGatherPt; // 採取転生に振った回数
+let rebirthCraftPt  = window.rebirthCraftPt;  // クラフト転生に振った回数
+
+// ★ 直近の転生タイプ（"combat" | "gather" | "craft"）
+//   - 既存セーブでは未定義なので、その場合は "combat" 扱いにして従来仕様を維持
+window.lastRebirthType = window.lastRebirthType || "combat";
+let lastRebirthType = window.lastRebirthType;
+
 // ★ レベルに応じた最大HP加算量を返す関数
 // Lv1 は +0、Lv2 以降は +2ずつ伸ばす（Lv2: +2, Lv3: +4, ...）。
 function getHpLevelBonus() {
@@ -56,11 +71,73 @@ function applyLevelUpGrowth() {
 }
 
 function getLevelUpRolls() {
-  // 基本1ロール + 転生回数ぶん上乗せ
-  return 1 + rebirthCount;
+  // ★ 基本1ロール + 「戦闘に振った転生回数」ぶん上乗せ
+  //   既存仕様は rebirthCount ベースだったが、戦闘転生のみ成長させる意図で rebirthCombatPt に変更
+  return 1 + rebirthCombatPt;
 }
 
-function addExp(amount) {
+// =======================
+// 行動別EXP設計ヘルパー
+// =======================
+
+// 満腹判定ラッパ（undefined でも安全に）
+function isPlayerWellFed() {
+  return (typeof isWellFed === "function") ? isWellFed() : false;
+}
+
+// 戦闘1勝あたりの経験値を返す
+// 既存仕様: 非満腹 5 / 満腹 8
+function getBattleExpPerWin(enemy) {
+  return isPlayerWellFed() ? 8 : 5;
+}
+
+// 非戦闘行動（採取・クラフトなど）1回あたりのEXP（設計値）
+// - 採取: 空腹3 / 満腹4
+// - クラフト: 空腹3 / 満腹4
+// - 自動採取: 空腹2 / 満腹3（放置分はやや控えめ）
+// - その他: 空腹2 / 満腹3（とりあえず控えめ）
+function getNonBattleExpPerAction(source) {
+  const wellFed = isPlayerWellFed();
+
+  if (source === "gather") {
+    return wellFed ? 4 : 3;
+  }
+
+  if (source === "craft") {
+    return wellFed ? 4 : 3;
+  }
+
+  return wellFed ? 3 : 2;
+}
+
+// =======================
+// EXP加算本体
+// =======================
+
+function addExp(amount, source) {
+  // source: "battle" | "gather" | "craft" | "autoGather" | "guild" | ... | undefined
+
+  // ▼ 1. 行動種別に応じて「実際に入れるEXP量」を決める
+  let finalAmount = amount | 0; // 念のため整数化
+
+  if (!source) {
+    source = "other";
+  }
+
+  if (source === "battle") {
+    // 戦闘は getBattleExpPerWin などで計算済みの値をそのまま使う前提
+    finalAmount = amount;
+  } else {
+    // 非戦闘行動は source に応じて設計値を上書き
+    finalAmount = getNonBattleExpPerAction(source);
+  }
+
+  if (finalAmount <= 0) {
+    return;
+  }
+
+  amount = finalAmount;
+
   // ★ すでに上限なら経験値だけ溜めてレベルアップ処理は行わない
   if (level >= MAX_LEVEL) {
     exp += amount;
@@ -244,8 +321,10 @@ function addPetExp(amount) {
 function applyRebirthBonus() {
   const choices = ["STR","VIT","INT","DEX","LUK","HP","MP","SP"];
   let msgList = [];
-  // ★ 転生直後に貰えるポイント回数 = 転生回数 × 3
-  const rolls = rebirthCount * 3;
+  // ★ 転生直後に貰えるポイント回数 = 「戦闘転生回数 × 3」
+  //   従来は rebirthCount * 3 だったが、「採取/クラフトに振ったぶんは戦闘成長なし」
+  //  という仕様にするため、rebirthCombatPt ベースに変更
+  const rolls = rebirthCombatPt * 3;
 
   for (let i = 0; i < rolls; i++) {
     const pick = choices[Math.floor(Math.random() * choices.length)];
@@ -276,7 +355,7 @@ function applyRebirthBonus() {
     }
   }
   // ★ 普通の改行に修正
-  return "転生ボーナス:\\n" + msgList.join("\\n");
+  return "転生ボーナス:\n" + msgList.join("\n");
 }
 
 function applyPetRebirthBonus() {
@@ -301,6 +380,17 @@ function resetBaseStatsToInitial() {
   spMaxBase = 10;
 }
 
+// ★ 転生タイプ選択（簡易版）
+//   - 本番ではモーダルのボタン等から lastRebirthType をセットする想定
+//   - 未設定セーブ互換のため、何も選ばれていなければ "combat" のまま
+function setRebirthType(type) {
+  if (type !== "combat" && type !== "gather" && type !== "craft") {
+    return;
+  }
+  lastRebirthType = type;
+  window.lastRebirthType = type;
+}
+
 // 転生確認モーダルを開く
 function openRebirthModal() {
   const modal = document.getElementById("rebirthModal");
@@ -311,7 +401,8 @@ function openRebirthModal() {
     "転生を行うと、レベルは1に戻り、必要経験値もリセットされます。<br>" +
     "ステータスは初期値に戻りますが、これまでの転生回数に応じた<br>" +
     "恒久ボーナス（転生回数×3）とペットの強化は蓄積されます。<br>" +
-    "レベルアップで得られるステータスポイントが転生回数分上乗せされます。<br><br>" +
+    "レベルアップで得られるステータスポイントが転生回数分上乗せされます。<br>" +
+    "転生時には『戦闘 / 採取 / クラフト』のどれに振るかを選択できます。<br><br>" +
     `※転生には現在レベル${REBIRTH_LEVEL_REQ}以上が必要です。<br>` +
     "条件を満たしていない場合は説明のみ表示されます。<br><br>" +
     "本当に転生しますか？";
@@ -332,16 +423,64 @@ function confirmRebirth() {
     return;
   }
   closeRebirthModal();
+  // ★ lastRebirthType が不正/未設定なら戦闘扱い
+  if (lastRebirthType !== "combat" && lastRebirthType !== "gather" && lastRebirthType !== "craft") {
+    lastRebirthType = "combat";
+    window.lastRebirthType = "combat";
+  }
   doRebirth();
 }
+
+// ★ Teto AI からの自動転生用エントリ
+//   - UIモーダルは開かず、レベル条件と lastRebirthType だけ確認して doRebirth を呼ぶ
+//   - 仕様は人間操作と同じ（レベル100以上必須）
+window.tryRebirth = function() {
+  if (level < REBIRTH_LEVEL_REQ) {
+    return false;
+  }
+  if (lastRebirthType !== "combat" && lastRebirthType !== "gather" && lastRebirthType !== "craft") {
+    lastRebirthType = "combat";
+    window.lastRebirthType = "combat";
+  }
+  doRebirth();
+  return true;
+};
 
 function doRebirth() {
   // ★ 先に基礎ステを初期値に戻す（レベルチェックは confirmRebirth 側に一本化）
   resetBaseStatsToInitial();
-  // 転生ごとにランダムな成長タイプ、職業変更を促す一因に
+
+  // ★ 総転生回数は従来どおりカウント（表示や他処理用）
   rebirthCount++;
-  growthType = Math.floor(Math.random() * 5); // 0〜4の成長タイプに再ロール
-  const bonusMsg = applyRebirthBonus();
+
+  // ★ 転生タイプ別に処理を分岐
+  if (lastRebirthType === "gather") {
+    // 採取転生: 戦闘用ボーナスは付けない
+    rebirthGatherPt++;
+    window.rebirthGatherPt = rebirthGatherPt;
+    // 成長タイプはそのまま維持（もしくはランダムロールしてもよいが、ここでは既存仕様を崩さないために変更しない）
+  } else if (lastRebirthType === "craft") {
+    // クラフト転生: 戦闘用ボーナスは付けない
+    rebirthCraftPt++;
+    window.rebirthCraftPt = rebirthCraftPt;
+  } else {
+    // 戦闘転生（既存仕様の挙動）
+    rebirthCombatPt++;
+    window.rebirthCombatPt = rebirthCombatPt;
+
+    // 転生ごとにランダムな成長タイプ、職業変更を促す一因に
+    growthType = Math.floor(Math.random() * 5); // 0〜4の成長タイプに再ロール
+  }
+
+  // ★ 戦闘用転生ボーナスは「戦闘転生が一度以上行われているときだけ」適用
+  let bonusMsg = "";
+  if (rebirthCombatPt > 0) {
+    bonusMsg = applyRebirthBonus();
+  } else {
+    bonusMsg = "転生ボーナス:\n(戦闘転生なし)";
+  }
+
+  // ペット転生ボーナスは、仕様に合わせてここでは「全転生共通」で付与を維持
   applyPetRebirthBonus();
 
   // レベル・経験値リセット
@@ -398,9 +537,14 @@ function doRebirth() {
 
   // ★ ログも普通の改行に統一
   appendLog(
-    `転生した！ 転生回数: ${rebirthCount}\\n` +
-    `成長タイプ: ${getGrowthTypeName()}\\n` +
-    `${bonusMsg}\\n` +
+    `転生した！ 転生回数: ${rebirthCount}\n` +
+    `転生タイプ: ${
+      lastRebirthType === "gather" ? "採取" :
+      lastRebirthType === "craft"  ? "クラフト" :
+      "戦闘"
+    }\n` +
+    `成長タイプ: ${getGrowthTypeName()}\n` +
+    `${bonusMsg}\n` +
     `ペット転生回数: ${petRebirthCount}（基礎ATKとHPが強化された）`
   );
 
@@ -409,6 +553,11 @@ function doRebirth() {
   }
   updateDisplay();
   updateSkillButtonsByJob();
+
+  // ★追加: 転生直後に転生ポイント表示も更新（UI側のステータス行）
+  if (typeof updateRebirthPointStatus === "function") {
+    updateRebirthPointStatus();
+  }
 }
 
 // =======================
@@ -447,11 +596,6 @@ function isWellFed() {
   const now = Date.now();
   if (now < wellFedUntil) return true;
   return hunger >= 90 && thirst >= 90;
-}
-
-// 戦闘1勝あたりの経験値を返す
-function getBattleExpPerWin(enemy) {
-  return isWellFed() ? 8 : 5;
 }
 
 // ★ 空腹・水分の値から各種係数を更新する

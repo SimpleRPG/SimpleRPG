@@ -55,9 +55,9 @@ let gatherSkillTreeBonus = {
 function refreshGatherSkillTreeBonus() {
   if (typeof getGlobalSkillTreeBonus === "function") {
     const b = getGlobalSkillTreeBonus() || {};
-    gatherSkillTreeBonus.gatherAmountBonusRate    = b.gatherAmountBonusRate    || 0;
-    gatherSkillTreeBonus.extraGatherBonusRateAdd  = b.extraGatherBonusRateAdd  || 0;
-    gatherSkillTreeBonus.gatherEquipBonusChanceAdd= b.gatherEquipBonusChanceAdd|| 0;
+    gatherSkillTreeBonus.gatherAmountBonusRate     = b.gatherAmountBonusRate    || 0;
+    gatherSkillTreeBonus.extraGatherBonusRateAdd   = b.extraGatherBonusRateAdd  || 0;
+    gatherSkillTreeBonus.gatherEquipBonusChanceAdd = b.gatherEquipBonusChanceAdd|| 0;
 
     const failRateReduce = b.gatherFailPenaltyRate || 0;
     gatherSkillTreeBonus.gatherFailPenaltyRate = Math.max(0, 1 - failRateReduce);
@@ -319,6 +319,25 @@ function refreshGatherFieldSelect() {
 }
 
 // =======================
+// 料理素材付与ヘルパー
+// =======================
+
+function giveCookingMat(id, quality) {
+  if (!id) return;
+
+  const q = (quality === 0 || quality === 1 || quality === 2) ? quality : 0;
+
+  // 品質テーブル＋個数を一括更新（正式入口）
+  if (typeof addCookingMatWithQuality === "function") {
+    addCookingMatWithQuality(id, q);
+  } else {
+    // フォールバック: 品質管理がまだ無い環境
+    window.cookingMats = window.cookingMats || {};
+    window.cookingMats[id] = (window.cookingMats[id] || 0) + 1;
+  }
+}
+
+// =======================
 // 食材調達（狩猟 / 釣り）
 // =======================
 
@@ -433,16 +452,8 @@ function gatherCooking(mode) {
         ? rollCookingMatQuality()
         : 0;
 
-      // 品質テーブル更新（従来仕様）
-      if (typeof addCookingMatWithQuality === "function") {
-        addCookingMatWithQuality(id, q);
-      }
-
-      // 在庫カウントは ITEM_META 経由を優先（cooking ストレージ）
-      if (typeof addItemByMeta === "function") {
-        addItemByMeta(id, 1);
-      } else {
-        cookingMats[id] = (cookingMats[id] || 0) + 1;
+      if (typeof giveCookingMat === "function") {
+        giveCookingMat(id, q);
       }
 
       gained[id] = (gained[id] || 0) + 1;
@@ -478,14 +489,8 @@ function gatherCooking(mode) {
         ? rollCookingMatQuality()
         : 0;
 
-      if (typeof addCookingMatWithQuality === "function") {
-        addCookingMatWithQuality(finalFishId, q);
-      }
-
-      if (typeof addItemByMeta === "function") {
-        addItemByMeta(finalFishId, 1);
-      } else {
-        cookingMats[finalFishId] = (cookingMats[finalFishId] || 0) + 1;
+      if (typeof giveCookingMat === "function") {
+        giveCookingMat(finalFishId, q);
       }
 
       gained[finalFishId] = (gained[finalFishId] || 0) + 1;
@@ -522,17 +527,11 @@ function gatherCooking(mode) {
         ? rollCookingMatQuality()
         : 0;
 
-      if (typeof addCookingMatWithQuality === "function") {
-        addCookingMatWithQuality(pickId, q);
+      if (typeof giveCookingMat === "function") {
+        giveCookingMat(pickId, q);
       }
 
-      if (typeof addItemByMeta === "function") {
-        addItemByMeta(pickId, 1);
-      } else {
-        cookingMats[pickId] = (cookingMats[pickId] || 0) + 1;
-      }
-
-      gained[pickId]      = (gained[pickId]      || 0) + 1;
+      gained[pickId] = (gained[pickId] || 0) + 1;
       appendLog("ペットが追加で料理素材を見つけてきた！");
     }
   });
@@ -540,6 +539,11 @@ function gatherCooking(mode) {
   Object.keys(gained).forEach(id => {
     addGatherStat(id, gained[id]);
   });
+
+  // ★プレイヤーEXP: 料理系採取1回ごとに gather ソースで1を渡す
+  if (typeof addExp === "function") {
+    addExp(1, "gather");
+  }
 
   addGatherSkillExp(skillKey);
 
@@ -656,6 +660,31 @@ function addGatherSkillExp(resourceKey){
   }
 }
 
+// =======================
+// 採取転生ボーナス（+1個抽選）
+// =======================
+
+// rebirthGatherPt は game-core-2.js 側で管理されている想定
+function getGatherRebirthExtraCountOnce() {
+  if (typeof window.rebirthGatherPt !== "number" || window.rebirthGatherPt <= 0) {
+    return 0;
+  }
+
+  // 200転生で+1個確定、その後は超えたぶんが確率で+1個
+  // 例: pt=450 → chance=450/200=2.25 → +2個確定＋25%でさらに+1個
+  const chance = window.rebirthGatherPt / 200;
+
+  const guaranteed = Math.floor(chance);
+  const frac       = chance - guaranteed;
+
+  let extra = guaranteed;
+  if (frac > 0 && Math.random() < frac) {
+    extra += 1;
+  }
+
+  return extra;
+}
+
 function calcGatherAmount(resourceKey){
   const s = gatherSkills[resourceKey];
   const lv = s ? s.lv : 0;
@@ -672,6 +701,9 @@ function calcGatherAmount(resourceKey){
     const rate = gatherSkillTreeBonus.gatherAmountBonusRate;
     total = Math.max(1, Math.floor(total * (1 + rate)));
   }
+
+  // ★ 採取転生ボーナス: この採取1回ぶんの「+1個抽選」をまとめて足す
+  total += getGatherRebirthExtraCountOnce();
 
   return Math.max(1, total);
 }
@@ -1080,6 +1112,11 @@ function gather(){
       // 必要なら tierCounts 全体もここに載せられる
     }
   };
+
+  // ★プレイヤーEXP: 通常採取1回ごとに gather ソースで1を渡す
+  if (typeof addExp === "function") {
+    addExp(1, "gather");
+  }
 
   if (typeof handleHungerThirstOnAction === "function") {
     handleHungerThirstOnAction("gather");

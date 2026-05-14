@@ -47,7 +47,8 @@ function onEnemyDefeatedCore(enemyInst, killFlag, killSource) {
     `${enemyInst.name}を倒した！ 経験値${expGain}と${moneyGain}Gを手に入れた`
   );
 
-  addExp(expGain);
+  // ★戦闘由来のEXP
+  addExp(expGain, "battle");
   money += moneyGain;
 
   if (typeof rollEnemyDrops === "function") {
@@ -962,7 +963,7 @@ function logGatherBaseRequiredMats(matKey, currentLv, nextLv, needInter, needSta
     const haveStar = getStarShardCountForGather();
     lines.push(`- ${RARE_GATHER_ITEM_ID}: 必要 ${needStar} 個 / 所持 ${haveStar} 個`);
   }
-  appendLog(lines.join("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n"));
+  appendLog(lines.join("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n"));
 }
 
 // =======================

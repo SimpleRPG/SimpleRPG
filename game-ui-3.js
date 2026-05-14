@@ -412,6 +412,19 @@ function openCompanionModalIfNeeded() {
   }
 }
 
+// ★転生ポイントのステータス表示更新
+// #statusRebirthPoints 要素があれば、現在の転生ポイントを表示する。
+function updateRebirthPointStatus() {
+  const el = document.getElementById("statusRebirthPoints");
+  if (!el) return;
+
+  const combatPt = (typeof window.rebirthCombatPt === "number") ? window.rebirthCombatPt : 0;
+  const gatherPt = (typeof window.rebirthGatherPt === "number") ? window.rebirthGatherPt : 0;
+  const craftPt  = (typeof window.rebirthCraftPt  === "number") ? window.rebirthCraftPt  : 0;
+
+  el.textContent = `戦闘: ${combatPt} / 採取: ${gatherPt} / クラフト: ${craftPt}`;
+}
+
 // ★UI初期化（職業・ペット・転生まわり）
 function initJobPetRebirthUI() {
   if (typeof buildStatusPage === "function") {
@@ -569,6 +582,9 @@ function initJobPetRebirthUI() {
   if (typeof initHousingSubTabs === "function") {
     initHousingSubTabs();
   }
+
+  // ★転生ポイント表示更新
+  updateRebirthPointStatus();
 }
 
 // --------------------

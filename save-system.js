@@ -33,6 +33,11 @@ function makeSaveData() {
       exp,
       expToNext,
       rebirthCount,
+      // ★追加: 転生タイプ別ポイントと直近の転生タイプもセーブ
+      rebirthCombatPt: (typeof rebirthCombatPt !== "undefined") ? rebirthCombatPt : 0,
+      rebirthGatherPt: (typeof rebirthGatherPt !== "undefined") ? rebirthGatherPt : 0,
+      rebirthCraftPt:  (typeof rebirthCraftPt  !== "undefined") ? rebirthCraftPt  : 0,
+      lastRebirthType: (typeof lastRebirthType !== "undefined") ? lastRebirthType : "combat",
       growthType,
       STR,
       VIT,
@@ -413,6 +418,33 @@ function applySaveData(data) {
       if ("exp" in p)            exp            = p.exp;
       if ("expToNext" in p)      expToNext      = p.expToNext;
       if ("rebirthCount" in p)   rebirthCount   = p.rebirthCount;
+
+      // ★追加: 転生タイプ別ポイントと直近の転生タイプをロード
+      if ("rebirthCombatPt" in p) {
+        rebirthCombatPt = p.rebirthCombatPt;
+        if (typeof window !== "undefined") {
+          window.rebirthCombatPt = rebirthCombatPt;
+        }
+      }
+      if ("rebirthGatherPt" in p) {
+        rebirthGatherPt = p.rebirthGatherPt;
+        if (typeof window !== "undefined") {
+          window.rebirthGatherPt = rebirthGatherPt;
+        }
+      }
+      if ("rebirthCraftPt" in p) {
+        rebirthCraftPt = p.rebirthCraftPt;
+        if (typeof window !== "undefined") {
+          window.rebirthCraftPt = rebirthCraftPt;
+        }
+      }
+      if ("lastRebirthType" in p) {
+        lastRebirthType = p.lastRebirthType || "combat";
+        if (typeof window !== "undefined") {
+          window.lastRebirthType = lastRebirthType;
+        }
+      }
+
       if ("growthType" in p)     growthType     = p.growthType;
 
       if ("STR" in p)            STR            = p.STR;

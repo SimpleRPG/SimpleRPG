@@ -58,6 +58,11 @@ function craftWeapon(){
     ? getCraftSuccessBonusByTrait()
     : 0;
 
+  // ★転生クラフトボーナス（成功率）
+  if (typeof getCraftSuccessBonusFromRebirth === "function") {
+    successRate += getCraftSuccessBonusFromRebirth();
+  }
+
   // ★日替わりボーナス: 武器クラフト成功率
   let dailyAdd = 0;
   if (typeof getDailyCraftBonus === "function") {
@@ -68,7 +73,8 @@ function craftWeapon(){
     }
   }
 
-  successRate = Math.min(1, successRate + guildBonus + traitBonus);
+  // 最終的な成功率は 0〜1 にクランプ
+  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus));
 
   // ログ用: 実際に消費されるコスト（軽減後）
   refreshCraftSkillTreeBonus();
@@ -81,6 +87,17 @@ function craftWeapon(){
   const success = roll < successRate;
 
   if (!success) {
+    // ★転生クラフトボーナス: 失敗時の素材一部返却
+    if (typeof getCraftRefundChanceFromRebirth === "function" &&
+        typeof refundMaterialsPartially === "function") {
+      const refundChance = getCraftRefundChanceFromRebirth();
+      if (refundChance > 0 && Math.random() < refundChance) {
+        // 使った素材の20%を返却
+        refundMaterialsPartially(finalCost, 0.2);
+        appendLog("職人としての経験から、一部の素材を回収できた。");
+      }
+    }
+
     // 統計: 失敗
     addCraftStat("weapon", recipe.id, false);
     appendLog(`${recipe.name} のクラフトに失敗した…（素材は消費された）`);
@@ -159,7 +176,6 @@ function craftWeapon(){
     });
   }
 
-  // 成功ログ
   if (typeof debugRecordCraft === "function") {
     try {
       debugRecordCraft({
@@ -175,6 +191,11 @@ function craftWeapon(){
         dailyBonus: dailyAdd
       });
     } catch (e) {}
+  }
+
+  // ★ プレイヤーEXP: クラフト成功1回 = 非戦闘行動1回（空腹3/満腹4想定）
+  if (typeof addExp === "function") {
+    addExp(1, "gather");
   }
 
   refreshEquipSelects();
@@ -208,6 +229,11 @@ function craftArmor(){
     ? getCraftSuccessBonusByTrait()
     : 0;
 
+  // ★転生クラフトボーナス（成功率）
+  if (typeof getCraftSuccessBonusFromRebirth === "function") {
+    successRate += getCraftSuccessBonusFromRebirth();
+  }
+
   // ★日替わりボーナス: 防具クラフト成功率
   let dailyAdd = 0;
   if (typeof getDailyCraftBonus === "function") {
@@ -218,7 +244,7 @@ function craftArmor(){
     }
   }
 
-  successRate = Math.min(1, successRate + guildBonus + traitBonus);
+  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus));
 
   refreshCraftSkillTreeBonus();
   const finalCost = applyCraftCostReduction(recipe.cost) || {};
@@ -230,6 +256,16 @@ function craftArmor(){
   const success = roll < successRate;
 
   if (!success) {
+    // ★転生クラフトボーナス: 失敗時の素材一部返却
+    if (typeof getCraftRefundChanceFromRebirth === "function" &&
+        typeof refundMaterialsPartially === "function") {
+      const refundChance = getCraftRefundChanceFromRebirth();
+      if (refundChance > 0 && Math.random() < refundChance) {
+        refundMaterialsPartially(finalCost, 0.2);
+        appendLog("職人としての経験から、一部の素材を回収できた。");
+      }
+    }
+
     addCraftStat("armor", recipe.id, false);
     appendLog(`${recipe.name} のクラフトに失敗した…（素材は消費された）`);
 
@@ -322,6 +358,11 @@ function craftArmor(){
     } catch (e) {}
   }
 
+  // ★ プレイヤーEXP
+  if (typeof addExp === "function") {
+    addExp(1, "gather");
+  }
+
   refreshEquipSelects();
   updateDisplay();
 
@@ -353,6 +394,11 @@ function craftPotion(){
     ? getCraftSuccessBonusByTrait()
     : 0;
 
+  // ★転生クラフトボーナス（成功率）
+  if (typeof getCraftSuccessBonusFromRebirth === "function") {
+    successRate += getCraftSuccessBonusFromRebirth();
+  }
+
   // ★日替わりボーナス: ポーションクラフト成功率
   let dailyAdd = 0;
   if (typeof getDailyCraftBonus === "function") {
@@ -363,7 +409,7 @@ function craftPotion(){
     }
   }
 
-  successRate = Math.min(1, successRate + guildBonus + traitBonus);
+  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus));
 
   refreshCraftSkillTreeBonus();
   const finalCost = applyCraftCostReduction(recipe.cost) || {};
@@ -375,6 +421,16 @@ function craftPotion(){
   const success = roll < successRate;
 
   if (!success) {
+    // ★転生クラフトボーナス: 失敗時の素材一部返却
+    if (typeof getCraftRefundChanceFromRebirth === "function" &&
+        typeof refundMaterialsPartially === "function") {
+      const refundChance = getCraftRefundChanceFromRebirth();
+      if (refundChance > 0 && Math.random() < refundChance) {
+        refundMaterialsPartially(finalCost, 0.2);
+        appendLog("職人としての経験から、一部の素材を回収できた。");
+      }
+    }
+
     addCraftStat("potion", recipe.id, false);
     appendLog(`${recipe.name} のクラフトに失敗した…（素材は消費された）`);
     updateDisplay();
@@ -441,6 +497,11 @@ function craftPotion(){
     } catch (e) {}
   }
 
+  // ★ プレイヤーEXP
+  if (typeof addExp === "function") {
+    addExp(1, "gather");
+  }
+
   updateDisplay();
   refreshEquipSelects();
 
@@ -472,6 +533,11 @@ function craftTool(){
     ? getCraftSuccessBonusByTrait()
     : 0;
 
+  // ★転生クラフトボーナス（成功率）
+  if (typeof getCraftSuccessBonusFromRebirth === "function") {
+    successRate += getCraftSuccessBonusFromRebirth();
+  }
+
   // ★日替わりボーナス: 道具クラフト成功率
   let dailyAdd = 0;
   if (typeof getDailyCraftBonus === "function") {
@@ -482,7 +548,7 @@ function craftTool(){
     }
   }
 
-  successRate = Math.min(1, successRate + guildBonus + traitBonus);
+  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus));
 
   refreshCraftSkillTreeBonus();
   const finalCost = applyCraftCostReduction(recipe.cost) || {};
@@ -494,6 +560,16 @@ function craftTool(){
   const success = roll < successRate;
 
   if (!success) {
+    // ★転生クラフトボーナス: 失敗時の素材一部返却
+    if (typeof getCraftRefundChanceFromRebirth === "function" &&
+        typeof refundMaterialsPartially === "function") {
+      const refundChance = getCraftRefundChanceFromRebirth();
+      if (refundChance > 0 && Math.random() < refundChance) {
+        refundMaterialsPartially(finalCost, 0.2);
+        appendLog("職人としての経験から、一部の素材を回収できた。");
+      }
+    }
+
     addCraftStat("tool", recipe.id, false);
     appendLog(`${recipe.name} のクラフトに失敗した…（素材は消費された）`);
     updateDisplay();
@@ -557,6 +633,11 @@ function craftTool(){
         dailyBonus: dailyAdd
       });
     } catch (e) {}
+  }
+
+  // ★ プレイヤーEXP
+  if (typeof addExp === "function") {
+    addExp(1, "gather");
   }
 
   updateDisplay();
@@ -634,6 +715,11 @@ function craftIntermediate(interId){
     } catch (e) {}
   }
 
+  // ★ プレイヤーEXP
+  if (typeof addExp === "function") {
+    addExp(1, "gather");
+  }
+
   appendLog(`${meta.name || interId} を作成した`);
   updateDisplay();
 }
@@ -669,6 +755,11 @@ function craftFood(){
     ? getCraftSuccessBonusByTrait()
     : 0;
 
+  // ★転生クラフトボーナス（成功率）
+  if (typeof getCraftSuccessBonusFromRebirth === "function") {
+    successRate += getCraftSuccessBonusFromRebirth();
+  }
+
   // ★日替わりボーナス: 料理クラフト成功率（食べ物）
   let dailyAdd = 0;
   if (typeof getDailyCraftBonus === "function") {
@@ -679,7 +770,7 @@ function craftFood(){
     }
   }
 
-  successRate = Math.min(1, successRate + guildBonus + traitBonus);
+  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus));
 
   // 実際に消費されるコストをログ用に組み立て
   let finalCost = {};
@@ -722,6 +813,16 @@ function craftFood(){
 
     if (craftSkills.cooking) {
       addCraftSkillExp("cooking");
+    }
+
+    // ★転生クラフトボーナス: 失敗時の素材一部返却
+    if (typeof getCraftRefundChanceFromRebirth === "function" &&
+        typeof refundMaterialsPartially === "function") {
+      const refundChance = getCraftRefundChanceFromRebirth();
+      if (refundChance > 0 && Math.random() < refundChance) {
+        refundMaterialsPartially(finalCost, 0.2);
+        appendLog("職人としての経験から、一部の料理素材を回収できた。");
+      }
     }
 
     addCraftStat("food", recipe.id, false);
@@ -796,6 +897,11 @@ function craftFood(){
     } catch (e) {}
   }
 
+  // ★ プレイヤーEXP
+  if (typeof addExp === "function") {
+    addExp(1, "gather");
+  }
+
   updateDisplay();
   refreshEquipSelects();
 
@@ -837,6 +943,11 @@ function craftDrink(){
     ? getCraftSuccessBonusByTrait()
     : 0;
 
+  // ★転生クラフトボーナス（成功率）
+  if (typeof getCraftSuccessBonusFromRebirth === "function") {
+    successRate += getCraftSuccessBonusFromRebirth();
+  }
+
   // ★日替わりボーナス: 料理クラフト成功率（飲み物）
   let dailyAdd = 0;
   if (typeof getDailyCraftBonus === "function") {
@@ -847,7 +958,7 @@ function craftDrink(){
     }
   }
 
-  successRate = Math.min(1, successRate + guildBonus + traitBonus);
+  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus));
 
   // 実際に消費されるコスト
   let finalCost = {};
@@ -890,6 +1001,16 @@ function craftDrink(){
 
     if (craftSkills.cooking) {
       addCraftSkillExp("cooking");
+    }
+
+    // ★転生クラフトボーナス: 失敗時の素材一部返却
+    if (typeof getCraftRefundChanceFromRebirth === "function" &&
+        typeof refundMaterialsPartially === "function") {
+      const refundChance = getCraftRefundChanceFromRebirth();
+      if (refundChance > 0 && Math.random() < refundChance) {
+        refundMaterialsPartially(finalCost, 0.2);
+        appendLog("職人としての経験から、一部の料理素材を回収できた。");
+      }
     }
 
     addCraftStat("drink", recipe.id, false);
@@ -964,6 +1085,11 @@ function craftDrink(){
     } catch (e) {}
   }
 
+  // ★ プレイヤーEXP
+  if (typeof addExp === "function") {
+    addExp(1, "gather");
+  }
+
   updateDisplay();
   refreshEquipSelects();
 
@@ -986,7 +1112,7 @@ function craftFurniture(){
 
   const recipes = getAllCraftRecipesByCategory("furniture");
   const recipe  = recipes.find(r => r.id === sel.value);
-  if (!recipe) { appendLog("その家具レシピが存在しない"); return; }
+  if (!recipe) { appendLog("その家具レシピは存在しない"); return; }
   if (!hasMaterials(recipe.cost)) { appendLog("素材が足りない"); return; }
 
   const skillLv = getCraftSkillLevel("furniture") || 0;
@@ -999,6 +1125,11 @@ function craftFurniture(){
     ? getCraftSuccessBonusByTrait()
     : 0;
 
+  // ★転生クラフトボーナス（成功率）
+  if (typeof getCraftSuccessBonusFromRebirth === "function") {
+    successRate += getCraftSuccessBonusFromRebirth();
+  }
+
   // ★日替わりボーナス: 家具クラフト成功率（家具カテゴリ用）
   let dailyAdd = 0;
   if (typeof getDailyCraftBonus === "function") {
@@ -1009,7 +1140,7 @@ function craftFurniture(){
     }
   }
 
-  successRate = Math.min(1, successRate + guildBonus + traitBonus);
+  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus));
 
   refreshCraftSkillTreeBonus();
   const finalCost = applyCraftCostReduction(recipe.cost) || {};
@@ -1021,6 +1152,16 @@ function craftFurniture(){
   const success = roll < successRate;
 
   if (!success) {
+    // ★転生クラフトボーナス: 失敗時の素材一部返却
+    if (typeof getCraftRefundChanceFromRebirth === "function" &&
+        typeof refundMaterialsPartially === "function") {
+      const refundChance = getCraftRefundChanceFromRebirth();
+      if (refundChance > 0 && Math.random() < refundChance) {
+        refundMaterialsPartially(finalCost, 0.2);
+        appendLog("職人としての経験から、一部の素材を回収できた。");
+      }
+    }
+
     addCraftStat("furniture", recipe.id, false);
     appendLog(`${recipe.name} のクラフトに失敗した…（素材は消費された）`);
 
@@ -1076,6 +1217,11 @@ function craftFurniture(){
         dailyBonus: dailyAdd
       });
     } catch (e) {}
+  }
+
+  // ★ プレイヤーEXP
+  if (typeof addExp === "function") {
+    addExp(1, "gather");
   }
 
   updateDisplay();
