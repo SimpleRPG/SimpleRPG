@@ -236,8 +236,8 @@ function buildAppLayout() {
                   </div>
 
                   <div style="margin-top:4px; display:flex; gap:4px; flex-wrap:wrap;">
-                    <button id="careFarmAllBtn" onclick="careFarmAll()">農園の世話をする</button>
-                    <button id="harvestFarmAllBtn" onclick="harvestFarmAll()">全て収穫する</button>
+                    <button id="careFarmAllBtn">農園の世話をする</button>
+                    <button id="harvestFarmAllBtn">全て収穫する</button>
                   </div>
                 </div>
               </div>

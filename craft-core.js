@@ -410,16 +410,23 @@ function updateCraftCostInfo(category, recipeId){
     infoEl.textContent = "必要素材：" + (list.length ? list.join(" ") : "-");
     return;
   } else if (category === "fertilizer") {
-    if (typeof getItemMeta !== "function") {
+    // 肥料は ITEM_META ではなく FERTILIZERS 定義を直接参照する
+    const fertTable = (typeof window !== "undefined" && window.FERTILIZERS)
+      ? window.FERTILIZERS
+      : (typeof FERTILIZERS !== "undefined" ? FERTILIZERS : null);
+
+    if (!fertTable) {
       infoEl.textContent = "必要素材：-";
       return;
     }
-    const meta = getItemMeta(recipeId);
-    if (!meta || typeof meta.fertCostPoint !== "number") {
+
+    const fertInfo = fertTable[recipeId];
+    if (!fertInfo || typeof fertInfo.costPoint !== "number") {
       infoEl.textContent = "必要素材：-";
       return;
     }
-    const pt = meta.fertCostPoint;
+
+    const pt = fertInfo.costPoint;
     infoEl.textContent =
       `必要ポイント：${pt}（料理素材ポイント合計。通常=1pt / 銀=2pt / 金=3pt）`;
     return;

@@ -10,7 +10,11 @@
 window.battleCountSinceDurability = window.battleCountSinceDurability || 0;
 
 function onEnemyDefeatedCore(enemyInst, killFlag, killSource) {
-  if (!enemyInst) return;
+  if (!enemyInst) {
+    // ★仕様を変えず、「ありえない状態」を検知するためのゲーム内ログのみ出す
+    appendLog("【デバッグ警告】onEnemyDefeatedCore に enemyInst が渡されていません。");
+    return;
+  }
 
   // ===== 経験値加算 =====
   const expGain = (typeof getBattleExpPerWin === "function")
@@ -963,7 +967,7 @@ function logGatherBaseRequiredMats(matKey, currentLv, nextLv, needInter, needSta
     const haveStar = getStarShardCountForGather();
     lines.push(`- ${RARE_GATHER_ITEM_ID}: 必要 ${needStar} 個 / 所持 ${haveStar} 個`);
   }
-  appendLog(lines.join("\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n"));
+  appendLog(lines.join("\n"));
 }
 
 // =======================

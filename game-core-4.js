@@ -545,6 +545,11 @@ function gatherCooking(mode) {
     addExp(1, "gather");
   }
 
+  // ★農園成長ポイント: 料理採取も「採取扱い」で +1
+  if (typeof addFarmGrowthPoint === "function") {
+    addFarmGrowthPoint("gather");
+  }
+
   addGatherSkillExp(skillKey);
 
   const modeLabel =
@@ -1116,6 +1121,11 @@ function gather(){
   // ★プレイヤーEXP: 通常採取1回ごとに gather ソースで1を渡す
   if (typeof addExp === "function") {
     addExp(1, "gather");
+  }
+
+  // ★農園成長ポイント: 通常採取も +1
+  if (typeof addFarmGrowthPoint === "function") {
+    addFarmGrowthPoint("gather");
   }
 
   if (typeof handleHungerThirstOnAction === "function") {

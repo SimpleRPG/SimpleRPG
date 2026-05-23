@@ -182,24 +182,6 @@ function consumeFarmFertilizerUse(slotIndex) {
 }
 
 // =======================
-// UI補助
-// =======================
-//
-// farm-core.js の updateFarmDetailUI 内から呼ぶと、選択中スロットの肥料状態を表示できる。
-
-function getFarmFertilizerStatusTextForSlot(slotIndex) {
-  const st = window.farmState;
-  if (!st || !Array.isArray(st.slots)) return "肥料：なし";
-  const slot = st.slots[slotIndex];
-  if (!slot || !slot.fertilizer || !slot.fertilizer.id) return "肥料：なし";
-
-  const info = FERTILIZERS[slot.fertilizer.id];
-  if (!info) return "肥料：不明";
-
-  return `肥料：${info.name}（残り${slot.fertilizer.remainUses}回の収穫に効果）`;
-}
-
-// =======================
 // 肥料クラフト用 共通ユーティリティ
 // =======================
 //
@@ -234,11 +216,37 @@ function getCookingMatQuality(matId) {
 // [{ id, count, quality, pointPerUnit }, ...] の配列を返す。
 function getFertilizerCraftCandidates() {
   const list = [];
-  if (typeof cookingMats !== "object") return list;
+  if (typeof window.cookingMats !== "object") return list;
   if (typeof getItemMeta !== "function") return list;
 
-  Object.keys(cookingMats).forEach(id => {
-    const count = cookingMats[id] || 0;
+  Object.keys(window.cookingMats).forEach(id => {
+    const entry = window.cookingMats[id];
+    if (!entry) return;
+
+    // 新形式: { total, quality: {0,1,2} }
+    if (typeof entry === "object" && typeof entry.total === "number") {
+      const total = entry.total || 0;
+      if (total <= 0) return;
+
+      const meta = getItemMeta(id);
+      if (!meta || meta.category !== "cookingMat") return;
+
+      // ここでは「ストア上の品質内訳」ではなく、
+      // ITEM_META 上の quality ラベルでポイントを決める元仕様を維持する。
+      const qualityLabel = getCookingMatQuality(id);
+      const ppu = getFertilizerPointPerUnitByQuality(qualityLabel);
+
+      list.push({
+        id,
+        count: total,
+        quality: qualityLabel,
+        pointPerUnit: ppu
+      });
+      return;
+    }
+
+    // 旧形式: number
+    const count = typeof entry === "number" ? entry : 0;
     if (count <= 0) return;
 
     const meta = getItemMeta(id);
@@ -279,7 +287,7 @@ function craftFertilizerAuto(fertId) {
     return false;
   }
 
-  if (typeof cookingMats !== "object") {
+  if (typeof window.cookingMats !== "object") {
     appendLog("料理素材の保管オブジェクトが未定義です（cookingMats）");
     return false;
   }
@@ -291,13 +299,13 @@ function craftFertilizerAuto(fertId) {
     return false;
   }
 
-  // 手持ち個数が多い順にソート
+  // 手持ち個数が多い順にソート（元仕様どおり）
   candidates.sort((a, b) => (b.count - a.count));
 
   let currentPoint = 0;
   const consumePlan = []; // { id, useCount }
 
-  // 1個ずつ積んでいく
+  // 1個ずつ積んでいく（元仕様の「候補ごとの while」を維持）
   for (let i = 0; i < candidates.length && currentPoint < costPoint; i++) {
     const c = candidates[i];
     let use = 0;
@@ -317,8 +325,45 @@ function craftFertilizerAuto(fertId) {
 
   // 実際に消費
   consumePlan.forEach(p => {
-    cookingMats[p.id] = (cookingMats[p.id] || 0) - p.useCount;
-    if (cookingMats[p.id] < 0) cookingMats[p.id] = 0;
+    const entry = window.cookingMats[p.id];
+    if (!entry) return;
+
+    // 新形式対応: { total, quality:{0,1,2} } または 旧形式 number
+    if (typeof entry === "object" && typeof entry.total === "number") {
+      let remain = p.useCount;
+      const q = entry.quality || { 0: 0, 1: 0, 2: 0 };
+      // 仕様: 減少は 普通→銀→金 の順に削る簡易ルール（materials-core.js と揃える）
+      const order = [0, 1, 2];
+      for (let i = 0; i < order.length && remain > 0; i++) {
+        const k = order[i];
+        const curQ = q[k] || 0;
+        if (curQ <= 0) continue;
+        const dec = Math.min(curQ, remain);
+        q[k] = curQ - dec;
+        remain -= dec;
+      }
+      entry.quality = q;
+
+      const beforeTotal = entry.total || 0;
+      const afterTotal = Math.max(0, beforeTotal - p.useCount);
+      entry.total = afterTotal;
+
+      window.cookingMats[p.id] = entry;
+
+      // 互換ビュー cookingMatsQuality も更新（cook-data.js と同じ方針）
+      window.cookingMatsQuality = window.cookingMatsQuality || {};
+      const qEntry = window.cookingMatsQuality[p.id] || { 0: 0, 1: 0, 2: 0 };
+      qEntry[0] = entry.quality[0] || 0;
+      qEntry[1] = entry.quality[1] || 0;
+      qEntry[2] = entry.quality[2] || 0;
+      window.cookingMatsQuality[p.id] = qEntry;
+    } else {
+      // 旧形式 number の場合はそのまま数値で減算（元仕様）
+      let cur = typeof entry === "number" ? entry : 0;
+      cur = cur - p.useCount;
+      if (cur < 0) cur = 0;
+      window.cookingMats[p.id] = cur;
+    }
   });
 
   window.itemCounts = window.itemCounts || {};
@@ -370,7 +415,7 @@ function craftFertilizerManual(fertId, materials) {
     return false;
   }
 
-  if (typeof cookingMats !== "object") {
+  if (typeof window.cookingMats !== "object") {
     appendLog("料理素材の保管オブジェクトが未定義です（cookingMats）");
     return false;
   }
@@ -379,7 +424,13 @@ function craftFertilizerManual(fertId, materials) {
   let totalPoint = 0;
   for (const m of materials) {
     if (!m || !m.id || !m.count) continue;
-    const have = cookingMats[m.id] || 0;
+    const entry = window.cookingMats[m.id];
+    let have = 0;
+    if (typeof entry === "object" && typeof entry.total === "number") {
+      have = entry.total || 0;
+    } else {
+      have = typeof entry === "number" ? entry : 0;
+    }
     if (have < m.count) {
       appendLog("選択した料理素材の所持数が足りない。");
       return false;
@@ -404,8 +455,43 @@ function craftFertilizerManual(fertId, materials) {
   // ポイントは足りているので、実際に消費
   materials.forEach(m => {
     if (!m || !m.id || !m.count) return;
-    cookingMats[m.id] = (cookingMats[m.id] || 0) - m.count;
-    if (cookingMats[m.id] < 0) cookingMats[m.id] = 0;
+    const entry = window.cookingMats[m.id];
+    if (!entry) return;
+
+    if (typeof entry === "object" && typeof entry.total === "number") {
+      let remain = m.count;
+      const q = entry.quality || { 0: 0, 1: 0, 2: 0 };
+      // 自動と同じく 普通→銀→金 の順で削る
+      const order = [0, 1, 2];
+      for (let i = 0; i < order.length && remain > 0; i++) {
+        const k = order[i];
+        const curQ = q[k] || 0;
+        if (curQ <= 0) continue;
+        const dec = Math.min(curQ, remain);
+        q[k] = curQ - dec;
+        remain -= dec;
+      }
+      entry.quality = q;
+
+      const beforeTotal = entry.total || 0;
+      const afterTotal = Math.max(0, beforeTotal - m.count);
+      entry.total = afterTotal;
+
+      window.cookingMats[m.id] = entry;
+
+      // 互換ビュー cookingMatsQuality も更新
+      window.cookingMatsQuality = window.cookingMatsQuality || {};
+      const qEntry = window.cookingMatsQuality[m.id] || { 0: 0, 1: 0, 2: 0 };
+      qEntry[0] = entry.quality[0] || 0;
+      qEntry[1] = entry.quality[1] || 0;
+      qEntry[2] = entry.quality[2] || 0;
+      window.cookingMatsQuality[m.id] = qEntry;
+    } else {
+      let cur = typeof entry === "number" ? entry : 0;
+      cur = cur - m.count;
+      if (cur < 0) cur = 0;
+      window.cookingMats[m.id] = cur;
+    }
   });
 
   window.itemCounts = window.itemCounts || {};
@@ -423,58 +509,42 @@ function craftFertilizerManual(fertId, materials) {
   return true;
 }
 
-// グローバル公開
-window.getFarmFertilizerInfoForSlot = getFarmFertilizerInfoForSlot;
-window.useFarmFertilizerItem = useFarmFertilizerItem;
-window.applyFarmFertilizerToGrowth = applyFarmFertilizerToGrowth;
-window.applyFarmFertilizerToHarvest = applyFarmFertilizerToHarvest;
-window.applyFarmFertilizerToWaterCost = applyFarmFertilizerToWaterCost;
-window.consumeFarmFertilizerUse = consumeFarmFertilizerUse;
-window.getFarmFertilizerStatusTextForSlot = getFarmFertilizerStatusTextForSlot;
-window.craftFertilizerAuto = craftFertilizerAuto;
-window.craftFertilizerManual = craftFertilizerManual;
-
 // =======================
-// ITEM_META への登録
+// 肥料状態テキスト（スロット用）
 // =======================
 //
-// item-meta-core.js が先に読み込まれている前提。
-// registerItemDefs が無ければ何もしない安全実装。
-// カテゴリ "fertilizer" として登録し、storageKind/storageTab は meta 側で扱う。
-// （storageTab は将来的に farm/garden 用のタブとして利用する想定）
+// farm-core.js 側から
+//   getFarmFertilizerStatusTextForSlot(slotIndex)
+// を呼んで、詳細パネルの「肥料：〜」文言として表示する。
 
-if (typeof registerItemDefs === "function") {
-  (function () {
-    const defs = {};
-    Object.keys(FERTILIZERS).forEach(id => {
-      const f = FERTILIZERS[id];
-      if (!f) return;
-      defs[id] = {
-        id: f.id,
-        name: f.name,
-        category: "fertilizer",
-        tier: f.tier,
-        // 畑専用の意味合いでタグを付けておく
-        tags: ["farm"],
-        // レシピ設計用のコストポイントもメタに寄せておく
-        fertCostPoint: f.costPoint,
-        fertGrowBonus: f.growBonus,
-        fertHarvestBonus: f.harvestBonus,
-        fertWaterSaveRate: f.waterSaveRate,
-        fertUses: f.uses,
-        // クラフトメタ（カテゴリだけ明示しておく）
-        craft: {
-          enabled: true,
-          category: "fertilizer",
-          tier: f.tier,
-          kind: "farm",
-          // 成功率はひとまず固定（必要なら後で段階的に変える）
-          baseRate: 1.0,
-          costPoint: f.costPoint
-          // cost: はポイント制なのでここでは空（専用ロジックで処理）
-        }
-      };
-    });
-    registerItemDefs(defs);
-  })();
+function getFarmFertilizerStatusTextForSlot(slotIndex) {
+  const st = window.farmState;
+  if (!st || !Array.isArray(st.slots)) {
+    return "肥料：なし";
+  }
+
+  const slot = st.slots[slotIndex];
+  if (!slot || !slot.fertilizer || !slot.fertilizer.id) {
+    return "肥料：なし";
+  }
+
+  const fertId = slot.fertilizer.id;
+  const remain = typeof slot.fertilizer.remainUses === "number"
+    ? slot.fertilizer.remainUses
+    : null;
+
+  const fertTable = (typeof window !== "undefined" && window.FERTILIZERS)
+    ? window.FERTILIZERS
+    : (typeof FERTILIZERS !== "undefined" ? FERTILIZERS : null);
+
+  const info = fertTable ? fertTable[fertId] : null;
+  if (!info) {
+    return "肥料：不明";
+  }
+
+  const name = info.name || fertId;
+  if (remain == null) {
+    return `肥料：${name}`;
+  }
+  return `肥料：${name}（残り${remain}回）`;
 }

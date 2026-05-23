@@ -866,13 +866,15 @@ function winBattle(killFlag, killSource) {
   const moneyBefore = (typeof money === "number") ? money : null;
 
   if (typeof onEnemyDefeatedCore === "function") {
-    if (currentEnemy) {
-      onEnemyDefeatedCore(currentEnemy, killFlag, killSource);
+    if (!currentEnemy) {
+      // ★仕様変更ではなく「ありえない状態」の検出用デバッグログ
+      appendLog("【デバッグ警告】winBattle 呼び出し時に currentEnemy が存在しません。");
+      // 敵情報なしで報酬処理を進めないため、ここでは onEnemyDefeatedCore を呼ばず終了
     } else {
-      onEnemyDefeatedCore(undefined, killFlag, killSource);
+      onEnemyDefeatedCore(currentEnemy, killFlag, killSource);
     }
   } else {
-    // 保険として、敵撃破時に戦闘を終了
+    // コア未定義時の保険として、敵撃破時に戦闘を終了
     endBattleCommon();
   }
 

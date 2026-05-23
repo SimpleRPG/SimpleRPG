@@ -505,15 +505,19 @@ function openFarmFertilizerModal(slotIndex) {
     const meta = FERTILIZERS[fertId] || {};
     const name = meta.name || fertId;
     const tierText = (meta.tier != null) ? `T${meta.tier}` : "";
-    const growth = (meta.growthBonusRate != null)
-      ? `成長倍率: x${meta.growthBonusRate}`
+
+    const growth = (meta.growBonus != null)
+      ? `成長倍率: x${(1 + meta.growBonus).toFixed(2)}`
       : "";
-    const amount = (meta.harvestBonusRate != null)
-      ? `収穫倍率: x${meta.harvestBonusRate}`
+
+    const amount = (meta.harvestBonus != null)
+      ? `収穫倍率: x${(1 + meta.harvestBonus).toFixed(2)}`
       : "";
-    const remainUse = (meta.maxUses != null)
-      ? `1枠あたり最大${meta.maxUses}回収穫まで有効`
+
+    const remainUse = (meta.uses != null)
+      ? `1枠あたり最大${meta.uses}回収穫まで有効`
       : "";
+
     const parts = [tierText, growth, amount, remainUse].filter(Boolean);
     descEl.textContent = name + (parts.length ? " / " + parts.join(" / ") : "");
   };
@@ -549,6 +553,36 @@ function openFarmFertilizerModal(slotIndex) {
   cancelBtn.onclick = () => {
     modal.classList.add("hidden");
   };
+}
+
+// =======================
+// 肥料状態テキストヘルパー（1枠ぶん）
+// =======================
+
+// idx: スロットインデックス（0〜3）
+function getFarmFertilizerStatusTextForSlot(idx) {
+  const slot = getFarmSlot(idx);
+  if (!slot) return "肥料：なし";
+
+  const fert = slot.fertilizer;
+  if (!fert || !fert.id) {
+    return "肥料：なし";
+  }
+
+  const table = (typeof FERTILIZERS === "object") ? FERTILIZERS : null;
+  const meta  = table ? table[fert.id] : null;
+
+  const name = (meta && meta.name) || fert.id;
+  const uses = (typeof fert.remainUses === "number") ? fert.remainUses : 0;
+
+  let main = `肥料：${name}`;
+  if (uses > 0) {
+    main += `（残り${uses}回収穫分）`;
+  } else {
+    main += "（効果切れ）";
+  }
+
+  return main;
 }
 
 // =======================

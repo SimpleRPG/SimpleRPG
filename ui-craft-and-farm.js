@@ -168,7 +168,8 @@ function initFertilizerSelect() {
     if (!f) return;
     const opt = document.createElement("option");
     opt.value = f.id;
-    opt.textContent = f.name;
+    // 必要ポイントと名前をまとめて表示（仕様はポイント制のまま）
+    opt.textContent = `${f.name}（必要${f.costPoint}pt）`;
     fertSelect.appendChild(opt);
   });
 
@@ -634,13 +635,8 @@ window.addEventListener("DOMContentLoaded", () => {
       careFarmAll();
     };
 
-    careFarmAllBtn.addEventListener("click", () => {
-      careOnce();
-    });
-
-    setupAutoRepeatButton(careFarmAllBtn, () => {
-      careOnce();
-    }, 100);
+    // クリック1回ぶんの処理は setupAutoRepeatButton 内の action に一本化
+    setupAutoRepeatButton(careFarmAllBtn, careOnce, 100);
   }
 
   // ★肥料セレクト初期化

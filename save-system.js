@@ -19,7 +19,7 @@ function makeSaveData() {
   let toolCountsSafe, cookedFoodsSafe, cookedDrinksSafe, lastBattleItemCategorySafe, lastBattleItemIdSafe;
   let isExploringSafe, exploringAreaSafe, areaBossClearedSafe, areaBossAvailableSafe;
   let shieldBlowGuardTurnRemainSafe, playerStatusesSafe;
-  let hungerSafe, thirstSafe, wellFedUntilSafe, hungerActionCountSafe, thirstActionCountSafe;
+  let hungerSafe, thirstSafe, wellFedUntilSafe;
   let escapeFailBonusSafe;
   let gatherBasesSafe, gatherBaseStockTicksSafe;
   let farmSafe, fishDexSafe;
@@ -149,11 +149,9 @@ function makeSaveData() {
     shieldBlowGuardTurnRemainSafe = shieldBlowGuardTurnRemain;
     playerStatusesSafe = playerStatuses;
 
-    hungerSafe           = hunger;
-    thirstSafe           = thirst;
-    wellFedUntilSafe     = wellFedUntil;
-    hungerActionCountSafe = hungerActionCount;
-    thirstActionCountSafe = thirstActionCount;
+    hungerSafe       = hunger;
+    thirstSafe       = thirst;
+    wellFedUntilSafe = wellFedUntil;
 
     escapeFailBonusSafe = escapeFailBonus;
   } catch (e) {
@@ -283,11 +281,9 @@ function makeSaveData() {
     shieldBlowGuardTurnRemain: shieldBlowGuardTurnRemainSafe,
     playerStatuses:            playerStatusesSafe,
 
-    hunger:            hungerSafe,
-    thirst:            thirstSafe,
-    wellFedUntil:      wellFedUntilSafe,
-    hungerActionCount: hungerActionCountSafe,
-    thirstActionCount: thirstActionCountSafe,
+    hunger:       hungerSafe,
+    thirst:       thirstSafe,
+    wellFedUntil: wellFedUntilSafe,
 
     escapeFailBonus: escapeFailBonusSafe,
 
@@ -746,8 +742,6 @@ function applySaveData(data) {
     if (typeof data.hunger === "number") hunger = data.hunger;
     if (typeof data.thirst === "number") thirst = data.thirst;
     if (typeof data.wellFedUntil === "number") wellFedUntil = data.wellFedUntil;
-    if (typeof data.hungerActionCount === "number") hungerActionCount = data.hungerActionCount;
-    if (typeof data.thirstActionCount === "number") thirstActionCount = data.thirstActionCount;
 
     if (typeof data.escapeFailBonus === "number") escapeFailBonus = data.escapeFailBonus;
   } catch (e) {
