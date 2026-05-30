@@ -26,6 +26,15 @@ const MATERIAL_KEYS   = window.MATERIAL_KEYS;
 const MATERIAL_MAX_T  = window.MATERIAL_MAX_T;
 
 // =======================
+// 星屑の結晶などレア素材用専用在庫
+// =======================
+//
+// 一次素材配列（materials[key][tier-1]）とは別に、
+// parseMaterialId で扱えないレアID（例: "starShard"）を管理する。
+window.rareGatherItems = window.rareGatherItems || {};
+// { [itemId: string]: number }
+
+// =======================
 // 在庫本体（一次素材）
 // =======================
 //
@@ -183,11 +192,19 @@ window.parseMaterialId = window.parseMaterialId || parseMaterialId;
 // 仕様:
 //   ID 形式: "T1_wood" のように、T<ティア>_<素材キー> を前提とする。
 //   既存の materials 構造・セーブデータ形式には一切手を入れない。
+//   例外として、RARE_GATHER_ITEM_ID のようなレア素材は
+//   T形式ではないので rareGatherItems で別管理する。
 
 if (typeof window.registerStorageImpl === "function") {
   window.registerStorageImpl("materials", {
     // ITEM_META 経由での在庫取得: getItemCountByMeta(id) などから呼ばれる想定
     getCount(id) {
+      // 星屑の結晶など T形式でないレア素材を特別扱い
+      if (typeof RARE_GATHER_ITEM_ID === "string" && id === RARE_GATHER_ITEM_ID) {
+        const rare = window.rareGatherItems || {};
+        return rare[id] || 0;
+      }
+
       const parsed = parseMaterialId(id);
       if (!parsed || !parsed.key || !parsed.tier) return 0;
       return getMatTierCount(parsed.key, parsed.tier);
@@ -197,6 +214,16 @@ if (typeof window.registerStorageImpl === "function") {
     add(id, amount) {
       amount = amount | 0;
       if (!amount) return;
+
+      // 星屑の結晶など T形式でないレア素材を特別扱い
+      if (typeof RARE_GATHER_ITEM_ID === "string" && id === RARE_GATHER_ITEM_ID) {
+        window.rareGatherItems = window.rareGatherItems || {};
+        const rare = window.rareGatherItems;
+        rare[id] = (rare[id] || 0) + amount;
+        if (rare[id] < 0) rare[id] = 0;
+        return;
+      }
+
       const parsed = parseMaterialId(id);
       if (!parsed || !parsed.key || !parsed.tier) return;
       addMatTierCount(parsed.key, parsed.tier, amount);
@@ -206,6 +233,17 @@ if (typeof window.registerStorageImpl === "function") {
     remove(id, amount) {
       amount = amount | 0;
       if (!amount) return;
+
+      // 星屑の結晶など T形式でないレア素材を特別扱い
+      if (typeof RARE_GATHER_ITEM_ID === "string" && id === RARE_GATHER_ITEM_ID) {
+        window.rareGatherItems = window.rareGatherItems || {};
+        const rare = window.rareGatherItems;
+        const cur  = rare[id] || 0;
+        const next = cur - amount;
+        rare[id]   = next > 0 ? next : 0;
+        return;
+      }
+
       const parsed = parseMaterialId(id);
       if (!parsed || !parsed.key || !parsed.tier) return;
       // マイナス加算で対応（0未満にはならないのは addMatTierCount 側の仕様どおり）

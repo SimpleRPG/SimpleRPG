@@ -886,16 +886,12 @@ function initStatusStatsSubTabs() {
     if (isCraft) {
       if (typeof initStatusCraftStats === "function") {
         initStatusCraftStats();
-      } else if (typeof renderCraftStatsTable === "function") {
-        renderCraftStatsTable();
       }
     }
 
     if (isBattle) {
       if (typeof initStatusBattleStats === "function") {
         initStatusBattleStats();
-      } else if (typeof renderBattleStatsTable === "function") {
-        renderBattleStatsTable();
       }
     }
 

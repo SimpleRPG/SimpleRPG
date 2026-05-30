@@ -18,7 +18,7 @@
 //    があれば、そちらにもフォールバックする
 
 // 既存の採取統計テーブル描画（サンプル）
-function renderGatherStatsTable() {
+function renderGatherStatsTableDebug() {
   const el = document.getElementById("gatherStatsTable");
   if (!el) return;
   const stats = (typeof debugGetGatherStats === "function") ? debugGetGatherStats() : {};
@@ -52,7 +52,7 @@ function renderGatherStatsTable() {
 }
 
 // 既存のクラフト統計テーブル描画（サンプル）
-function renderCraftStatsTable() {
+function renderCraftStatsTableDebug() {
   const el = document.getElementById("craftStatsTable");
   if (!el) return;
   const stats = (typeof debugGetCraftStats === "function") ? debugGetCraftStats() : {};
@@ -83,7 +83,7 @@ function renderCraftStatsTable() {
 }
 
 // 既存の戦闘統計テーブル描画（サンプル）
-function renderBattleStatsTable() {
+function renderBattleStatsTableDebug() {
   const el = document.getElementById("battleStatsTable");
   if (!el) return;
   const stats = (typeof debugGetBattleStats === "function") ? debugGetBattleStats() : {};
@@ -121,7 +121,7 @@ function renderBattleStatsTable() {
 }
 
 // 既存の経済統計テーブル描画（サンプル）
-function renderEconomyStatsTable() {
+function renderEconomyStatsTableDebug() {
   const el = document.getElementById("economyStatsTable");
   if (!el) return;
   const s = (typeof debugGetEconomyStats === "function") ? debugGetEconomyStats() : {
@@ -895,10 +895,10 @@ function initDebugStats() {
 if (typeof window !== "undefined") {
   window.initDebugStats = initDebugStats;
   window.renderDebugOverall = renderDebugOverall;
-  window.renderGatherStatsTable = renderGatherStatsTable;
-  window.renderCraftStatsTable = renderCraftStatsTable;
-  window.renderBattleStatsTable = renderBattleStatsTable;
-  window.renderEconomyStatsTable = renderEconomyStatsTable;
+  window.renderGatherStatsTableDebug = renderGatherStatsTableDebug;
+  window.renderCraftStatsTableDebug = renderCraftStatsTableDebug;
+  window.renderBattleStatsTableDebug = renderBattleStatsTableDebug;
+  window.renderEconomyStatsTableDebug = renderEconomyStatsTableDebug;
   window.renderGmDebugPanel = renderGmDebugPanel;
   window.renderTetoEvaluationPanel = renderTetoEvaluationPanel;
   window.renderTetoImpactPanel = renderTetoImpactPanel;

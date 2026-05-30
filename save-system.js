@@ -26,6 +26,7 @@ function makeSaveData() {
   let marketListingsSafe, marketBuyOrdersSafe, marketTradeLogsSafe, marketOrderIdSeqSafe, marketListingIdSeqSafe;
   let playerGuildIdSafe, guildFameSafe, guildQuestProgressSafe, combatGuildTreeUnlockedSafe, combatGuildSkillPointsSafe;
   let citizenshipUnlockedSafe, housingStateSafe;
+  let rareGatherItemsSafe; // ★追加: レア素材（星屑の結晶など）の専用在庫
 
   try {
     player = {
@@ -206,6 +207,15 @@ function makeSaveData() {
     throw e;
   }
 
+  // ★追加: レア素材（星屑の結晶など）の専用在庫をセーブ
+  try {
+    rareGatherItemsSafe = (typeof window !== "undefined" && window.rareGatherItems)
+      ? window.rareGatherItems
+      : {};
+  } catch (e) {
+    rareGatherItemsSafe = {};
+  }
+
   return {
     version: SAVE_VERSION,
 
@@ -235,6 +245,9 @@ function makeSaveData() {
     cookingMats:  cookingMatsSafe,
     lastGatherInfo: lastGatherInfoSafe,
     gatherStats: gatherStatsSafe,
+
+    // ★追加: レア素材（星屑の結晶など）
+    rareGatherItems: rareGatherItemsSafe,
 
     // --------------------------------
     // インベントリ・装備
@@ -596,6 +609,17 @@ function applySaveData(data) {
       Object.keys(data.gatherStats).forEach(k => {
         window.gatherStats[k] = data.gatherStats[k];
       });
+    }
+
+    // ★追加: レア素材在庫のロード（星屑の結晶など）
+    if (typeof window !== "undefined") {
+      window.rareGatherItems = window.rareGatherItems || {};
+      if (data.rareGatherItems && typeof data.rareGatherItems === "object") {
+        Object.keys(window.rareGatherItems).forEach(k => delete window.rareGatherItems[k]);
+        Object.keys(data.rareGatherItems).forEach(k => {
+          window.rareGatherItems[k] = data.rareGatherItems[k];
+        });
+      }
     }
   } catch (e) {
     throw e;

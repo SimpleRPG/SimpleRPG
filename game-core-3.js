@@ -625,17 +625,7 @@ function playerAttack() {
       doPetTurn();
     }
 
-    if (enemyHp <= 0) {
-      enemyHp = 0;
-
-      // ペットがトドメを刺した場合
-      if (typeof onEnemyKilledForGuild === "function") {
-        onEnemyKilledForGuild({ by: "pet", isBoss: !!isBossBattle });
-      }
-
-      winBattle(true, "pet");
-      return;
-    }
+    // ★修正: ペット撃破は doPetTurn 内で処理するため、ここでは再チェックしない
 
     enemyTurn();
     tickStatusesTurnEndForBoth();

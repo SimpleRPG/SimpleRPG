@@ -443,8 +443,18 @@ function castMagicFromUI() {
   if (typeof beforeActionPlayer === "function") {
     const pre = beforeActionPlayer();
     if (!pre || !pre.canAct) {
-      if (typeof updateEnemyStatusUI === "function") {
-        updateEnemyStatusUI();
+      // playerAttack と同様、行動不能でもターンは進める
+      if (currentEnemy) {
+        enemyTurn();
+        if (typeof tickStatusesTurnEndForBoth === "function") {
+          tickStatusesTurnEndForBoth();
+        }
+        if (typeof renderPlayerStatusIcons === "function") {
+          renderPlayerStatusIcons();
+        }
+        if (typeof updateEnemyStatusUI === "function") {
+          updateEnemyStatusUI();
+        }
       }
       if (typeof updateDisplay === "function") {
         updateDisplay();
@@ -658,8 +668,18 @@ function useSkillFromUI() {
   if (typeof beforeActionPlayer === "function") {
     const pre = beforeActionPlayer();
     if (!pre || !pre.canAct) {
-      if (typeof updateEnemyStatusUI === "function") {
-        updateEnemyStatusUI();
+      // playerAttack と同様、行動不能でもターンは進める
+      if (currentEnemy) {
+        enemyTurn();
+        if (typeof tickStatusesTurnEndForBoth === "function") {
+          tickStatusesTurnEndForBoth();
+        }
+        if (typeof renderPlayerStatusIcons === "function") {
+          renderPlayerStatusIcons();
+        }
+        if (typeof updateEnemyStatusUI === "function") {
+          updateEnemyStatusUI();
+        }
       }
       if (typeof updateDisplay === "function") {
         updateDisplay();

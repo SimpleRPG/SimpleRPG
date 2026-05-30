@@ -912,12 +912,13 @@ function gather(){
     }
   }
 
-  if (typeof currentHunger === "number" && typeof currentThirst === "number") {
+  // ★修正: currentHunger/currentThirst → hunger/thirst に統一
+  if (typeof hunger === "number" && typeof thirst === "number") {
     let failChance = 0;
-    if (currentHunger < 25 || currentThirst < 25) {
+    if (hunger < 25 || thirst < 25) {
       failChance = 0.20;
     }
-    if (currentHunger < 10 || currentThirst < 10) {
+    if (hunger < 10 || thirst < 10) {
       failChance = 0.50;
     }
 
@@ -967,10 +968,11 @@ function gather(){
 
   let bonusChance = getGatherBonusChance(target);
 
-  if (typeof currentHunger === "number" && typeof currentThirst === "number") {
-    if (currentHunger >= 80 && currentThirst >= 80) {
+  // ★修正: currentHunger/currentThirst → hunger/thirst に統一
+  if (typeof hunger === "number" && typeof thirst === "number") {
+    if (hunger >= 80 && thirst >= 80) {
       bonusChance += 0.20;
-    } else if (currentHunger <= 25 || currentThirst <= 25) {
+    } else if (hunger <= 25 || thirst <= 25) {
       bonusChance -= 0.20;
     }
   }
@@ -1031,19 +1033,8 @@ function gather(){
   }
 
   tryCompanionExtraGatherOnce(() => {
-    // ペット分は「そのフィールドで最も出やすい下位ティア」を1つ追加する扱いにする
-    // 元仕様では field3 ならT3, field2ならT2, それ以外T1だったので、
-    // それに近い挙動として「field3までは専用分岐、それ以降は maxTier を優先」
-    let addTier = 1;
-    if (field === "field3") {
-      addTier = 3;
-    } else if (field === "field2") {
-      addTier = 2;
-    } else {
-      const maxTier = getFieldMaxTier(field);
-      addTier = Math.min(1, maxTier);
-    }
-
+    // ペット分も通常採取と同じティアロールで1回分追加
+    const addTier = rollGatherTierForField(field);
     const idx = Math.max(1, Math.min(addTier, MAX_MAT_TIER)) - 1;
     tierCounts[idx] += 1;
 

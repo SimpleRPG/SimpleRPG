@@ -40,7 +40,7 @@ function renderHousingLandStatus() {
     const overdueBox = document.createElement("div");
     overdueBox.className = "status-block";
     overdueBox.style.marginBottom = "8px";
-    overdueBox.style.border = "1px solid #a33";
+    overdueBox.style.border = "1px solid "#a33";
 
     // 現在の拠点名（ギルド寮なら所属ギルド名で差し替え）
     let currentNameForDisplay = current.name;
@@ -749,6 +749,23 @@ function renderGatherMaterialsTable(root, prefix) {
 
   table.appendChild(tbody);
   box.appendChild(table);
+
+  // ★追加: 星屑の結晶などのレア素材表示
+  if (typeof RARE_GATHER_ITEM_ID === "string" &&
+      typeof getItemMeta === "function" &&
+      typeof getItemCountByMeta === "function") {
+
+    const meta = getItemMeta(RARE_GATHER_ITEM_ID);
+    const count = getItemCountByMeta(RARE_GATHER_ITEM_ID) || 0;
+
+    if (count > 0 && meta && meta.name) {
+      const rareBox = document.createElement("div");
+      rareBox.style.marginTop = "6px";
+      rareBox.style.fontSize = "12px";
+      rareBox.textContent = `${meta.name} x${count}`;
+      box.appendChild(rareBox);
+    }
+  }
 }
 
 // 中間素材テーブルを prefix付きID内に描画（縦=Tier, 横=素材）
