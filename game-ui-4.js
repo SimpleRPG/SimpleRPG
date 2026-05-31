@@ -40,7 +40,7 @@ function renderHousingLandStatus() {
     const overdueBox = document.createElement("div");
     overdueBox.className = "status-block";
     overdueBox.style.marginBottom = "8px";
-    overdueBox.style.border = "1px solid "#a33";
+    overdueBox.style.border = "1px solid #a33";
 
     // 現在の拠点名（ギルド寮なら所属ギルド名で差し替え）
     let currentNameForDisplay = current.name;
@@ -515,7 +515,7 @@ window.onFarmUIUpdated = function() {
   updateFarmAreaVisibility();
 };
 
-// 採取タブ用の素材詳細・クラフト素材詳細（詳細は表描画）
+// 採取タブ用の素材詳細（詳細は表描画）
 function updateGatherMatDetailText() {
   const label = document.getElementById("gatherMaterials");
   const area  = document.getElementById("gatherMatDetail");
@@ -559,119 +559,6 @@ function updateGatherMatDetailText() {
   if (typeof renderBasicMaterialTableInto === "function") {
     renderBasicMaterialTableInto(area);
   }
-}
-
-function updateCraftMatDetailText() {
-  const label = document.getElementById("craftMaterials");
-  const area  = document.getElementById("craftMatDetail");
-  if (!label || !area || typeof window.materials === "undefined") return;
-
-  const names = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
-
-  const cookingTabBtn = document.querySelector('#craftCategoryTabs .craft-cat-tab[data-cat="cooking"]');
-  const isCookingTabActive = cookingTabBtn && cookingTabBtn.classList.contains("active");
-
-  if (isCookingTabActive && typeof COOKING_MAT_NAMES !== "undefined") {
-    area.innerHTML = "";
-
-    const mats = window.cookingMats || {};
-    const table = document.createElement("table");
-    table.className = "mat-table";
-    const thead = document.createElement("thead");
-    const htr = document.createElement("tr");
-    const thName = document.createElement("th");
-    thName.textContent = "素材";
-    const thCount = document.createElement("th");
-    thCount.textContent = "個数";
-    htr.appendChild(thName);
-    htr.appendChild(thCount);
-    thead.appendChild(htr);
-    table.appendChild(thead);
-
-    const tbody = document.createElement("tbody");
-    Object.keys(COOKING_MAT_NAMES).forEach(id => {
-      const tr = document.createElement("tr");
-      const tdName = document.createElement("td");
-      const tdCount = document.createElement("td");
-      tdName.textContent = COOKING_MAT_NAMES[id];
-      tdCount.textContent = mats[id] || 0;
-      tr.appendChild(tdName);
-      tr.appendChild(tdCount);
-      tbody.appendChild(tr);
-    });
-    table.appendChild(tbody);
-    area.appendChild(table);
-
-    label.textContent = "所持素材：料理素材一覧";
-    return;
-  }
-
-  area.innerHTML = "";
-
-  const basicBox = document.createElement("div");
-  if (typeof renderBasicMaterialTableInto === "function") {
-    renderBasicMaterialTableInto(basicBox);
-  }
-  area.appendChild(basicBox);
-
-  if (typeof window.intermediateMats !== "undefined" &&
-      Array.isArray(window.INTERMEDIATE_MATERIALS)) {
-
-    const mats = window.intermediateMats || {};
-    const src  = window.INTERMEDIATE_MATERIALS;
-
-    const title = document.createElement("div");
-    title.textContent = "中間素材";
-    title.style.marginTop = "4px";
-    title.style.fontSize = "11px";
-    area.appendChild(title);
-
-    const table = document.createElement("table");
-    table.className = "mat-table";
-    const thead = document.createElement("thead");
-    const htr = document.createElement("tr");
-    const thName = document.createElement("th");
-    thName.textContent = "素材";
-    const thCount = document.createElement("th");
-    thCount.textContent = "個数";
-    htr.appendChild(thName);
-    htr.appendChild(thCount);
-    thead.appendChild(htr);
-    table.appendChild(thead);
-
-    const tbody = document.createElement("tbody");
-    src.forEach(m => {
-      const tr = document.createElement("tr");
-      const tdName = document.createElement("td");
-      const tdCount = document.createElement("td");
-      tdName.textContent = m.name;
-      tdCount.textContent = mats[m.id] || 0;
-      tr.appendChild(tdName);
-      tr.appendChild(tdCount);
-      tbody.appendChild(tr);
-    });
-    table.appendChild(tbody);
-    area.appendChild(table);
-  }
-
-  let labelText = "所持素材：-";
-
-  if (window.lastGatherInfo && window.lastGatherInfo.baseKey) {
-    const info    = window.lastGatherInfo;
-    const baseKey = info.baseKey;
-    const tiers   = info.tiers || {};
-    const t1 = tiers.t1 || 0;
-    const t2 = tiers.t2 || 0;
-    const t3 = tiers.t3 || 0;
-
-    let picked = "";
-    if (t3 > 0)      picked = `T3${names[baseKey]}`;
-    else if (t2 > 0) picked = `T2${names[baseKey]}`;
-    else if (t1 > 0) picked = `T1${names[baseKey]}`;
-    if (picked) labelText = `所持素材：${picked}`;
-  }
-
-  label.textContent = labelText;
 }
 
 // =======================
@@ -895,6 +782,7 @@ function renderCookingMaterialsTable(root, prefix) {
 
   const tbody = document.createElement("tbody");
 
+  // ★修正: total===0 でもスキップせず、全料理素材を1行ずつ表示
   Object.keys(COOKING_MAT_NAMES).forEach(id => {
     const name = COOKING_MAT_NAMES[id] || id;
 
@@ -903,7 +791,6 @@ function renderCookingMaterialsTable(root, prefix) {
     const silver = qArr[1] || 0;
     const gold   = qArr[2] || 0;
     const total  = normal + silver + gold;
-    if (total === 0) return;
 
     const tr = document.createElement("tr");
     const tdName   = document.createElement("td");

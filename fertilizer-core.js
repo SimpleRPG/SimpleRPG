@@ -267,6 +267,68 @@ function getFertilizerCraftCandidates() {
 }
 
 // =======================
+// 肥料クラフト: 自動モード用プレビュー
+// =======================
+//
+// craftFertilizerAuto と同じロジックで、
+// 「どの料理素材が何個減るか」とポイント状況だけを計算する。
+// 実際の cookingMats はここでは一切書き換えない。
+
+function getFertilizerCraftPreviewAuto(fertId) {
+  const info = FERTILIZERS[fertId];
+  if (!info) {
+    return { ok: false, reason: "noRecipe", costPoint: 0, totalPoint: 0, consumePlan: [] };
+  }
+
+  const costPoint = info.costPoint || 0;
+  if (costPoint <= 0) {
+    return { ok: false, reason: "noCost", costPoint, totalPoint: 0, consumePlan: [] };
+  }
+
+  if (typeof window.cookingMats !== "object") {
+    return { ok: false, reason: "noStock", costPoint, totalPoint: 0, consumePlan: [] };
+  }
+
+  const candidates = getFertilizerCraftCandidates();
+  if (!candidates.length) {
+    return { ok: false, reason: "noCandidate", costPoint, totalPoint: 0, consumePlan: [] };
+  }
+
+  // craftFertilizerAuto と同じ仕様: 手持ち個数が多い順に消費
+  candidates.sort((a, b) => (b.count - a.count));
+
+  let currentPoint = 0;
+  const consumePlan = [];
+
+  for (let i = 0; i < candidates.length && currentPoint < costPoint; i++) {
+    const c = candidates[i];
+    let use = 0;
+    while (use < c.count && currentPoint < costPoint) {
+      currentPoint += c.pointPerUnit;
+      use += 1;
+    }
+    if (use > 0) {
+      const meta = (typeof getItemMeta === "function") ? getItemMeta(c.id) : null;
+      const name = meta && meta.name ? meta.name : c.id;
+      consumePlan.push({
+        id: c.id,
+        name,
+        useCount: use,
+        pointPerUnit: c.pointPerUnit,
+        totalPointForItem: use * c.pointPerUnit
+      });
+    }
+  }
+
+  return {
+    ok: currentPoint >= costPoint,
+    costPoint,
+    totalPoint: currentPoint,
+    consumePlan
+  };
+}
+
+// =======================
 // 肥料クラフト: 自動モード
 // =======================
 //
@@ -378,6 +440,12 @@ function craftFertilizerAuto(fertId) {
 
   if (typeof updateDisplay === "function") updateDisplay();
   if (typeof updateFarmUI === "function") updateFarmUI();
+
+  // ★追加: 肥料クラフト直後に消費予定プレビューを更新
+  if (typeof refreshCurrentCraftCost === "function") {
+    refreshCurrentCraftCost();
+  }
+
   return true;
 }
 

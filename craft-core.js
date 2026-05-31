@@ -234,7 +234,7 @@ let craftSkillTreeBonus = {
 function refreshCraftSkillTreeBonus() {
   if (typeof getGlobalSkillTreeBonus === "function") {
     const b = getGlobalSkillTreeBonus() || {};
-    craftSkillTreeBonus.craftCostReduceRate = b.craftCostReduceRate || 0;
+    craftSkillTreeBonus.craftCostReduceRate = b.craftCraftCostReduceRate || b.craftCostReduceRate || 0;
   } else {
     craftSkillTreeBonus.craftCostReduceRate = 0;
   }
@@ -312,22 +312,135 @@ function refundMaterialsPartially(cost, rate) {
 }
 
 // =======================
+// 詳細テーブル生成ヘルパー
+// =======================
+
+// 通常クラフト用: ITEM_META.craft.cost ベース
+function buildNormalCraftDetailHtml(cost) {
+  if (!cost || typeof cost !== "object") return "";
+
+  const rows = [];
+  Object.keys(cost).forEach(id => {
+    const need = cost[id] || 0;
+    if (need <= 0) return;
+
+    const have = (typeof getItemCountByMeta === "function")
+      ? (getItemCountByMeta(id) || 0)
+      : 0;
+    const name = (typeof getItemName === "function")
+      ? (getItemName(id) || id)
+      : id;
+    const catLabel = (typeof getItemCategoryLabel === "function")
+      ? getItemCategoryLabel(id)
+      : "";
+
+    rows.push({ id, name, have, need, catLabel });
+  });
+
+  if (!rows.length) return "";
+
+  let html = `<table class="mat-table"><thead><tr>
+    <th>素材</th>
+    <th>所持/必要</th>
+    <th>カテゴリ</th>
+  </tr></thead><tbody>`;
+
+  rows.forEach(r => {
+    const ok = r.have >= r.need;
+    const trClass = ok ? "" : "lack";
+    html += `<tr class="${trClass}">
+      <td>${r.name}</td>
+      <td style="text-align:right;">${r.have} / ${r.need}</td>
+      <td>${r.catLabel}</td>
+    </tr>`;
+  });
+
+  html += `</tbody></table>`;
+  return html;
+}
+
+// 料理クラフト用: recipe.requires ベース
+function buildCookingCraftDetailHtml(recipe) {
+  if (!recipe || !Array.isArray(recipe.requires) || !recipe.requires.length) {
+    return "";
+  }
+
+  const rate = craftSkillTreeBonus.craftCostReduceRate || 0;
+  const rows = [];
+
+  recipe.requires.forEach(req => {
+    const rawNeed = req.amount | 0;
+    const id = req.id;
+    if (!rawNeed || !id) return;
+
+    let need = rawNeed;
+    if (rate > 0) {
+      need = Math.max(0, Math.floor(rawNeed * (1 - rate)));
+    }
+
+    const have = (typeof getItemCountByMeta === "function")
+      ? (getItemCountByMeta(id) || 0)
+      : 0;
+    const name = (typeof getItemName === "function")
+      ? (getItemName(id) || id)
+      : id;
+    const catLabel = (typeof getItemCategoryLabel === "function")
+      ? getItemCategoryLabel(id)
+      : "";
+
+    rows.push({ id, name, have, need, catLabel });
+  });
+
+  if (!rows.length) return "";
+
+  let html = `<table class="mat-table"><thead><tr>
+    <th>料理素材</th>
+    <th>所持/必要</th>
+    <th>カテゴリ</th>
+  </tr></thead><tbody>`;
+
+  rows.forEach(r => {
+    const ok = r.have >= r.need;
+    const trClass = ok ? "" : "lack";
+    html += `<tr class="${trClass}">
+      <td>${r.name}</td>
+      <td style="text-align:right;">${r.have} / ${r.need}</td>
+      <td>${r.catLabel}</td>
+    </tr>`;
+  });
+
+  html += `</tbody></table>`;
+  return html;
+}
+
+// =======================
 // 必要素材表示（メタ前提）
 // =======================
 
-// 必要素材表示（「必要/所持」を出す）
+// 必要素材表示（「必要/所持」を matsEl に出す）
 // 武器・防具・ポーション・道具 + 中間素材（material）+ 料理（cookingFood / cookingDrink）+ 肥料（fertilizer）に対応
 function updateCraftCostInfo(category, recipeId){
-  const infoEl = document.getElementById("craftCostInfo");
+  const infoEl   = document.getElementById("craftCostInfo");
+  const matsEl   = document.getElementById("craftMaterials");
+  const detailEl = document.getElementById("craftMatDetail");
   if (!infoEl) return;
 
-  // ★アクティブなクラフトカテゴリと違う呼び出しは UI 更新しない
+  // カテゴリ切替時に、前のカテゴリ（特に肥料）の詳細表示をクリア
+  if (matsEl)   matsEl.textContent = "-";
+  if (detailEl) detailEl.innerHTML = "";
+
+  // アクティブなクラフトカテゴリと違う呼び出しは UI 更新しない
   if (window.activeCraftCategory && window.activeCraftCategory !== category) {
     return;
   }
 
   // 表示時点でもスキルツリーボーナスが分かるようにリフレッシュ
   refreshCraftSkillTreeBonus();
+
+  // 肥料以外では infoEl は「必要ポイント」を使わないよう、毎回クリア
+  if (category !== "fertilizer") {
+    infoEl.textContent = "";
+  }
 
   let list = [];
   let recipe = null;
@@ -338,24 +451,27 @@ function updateCraftCostInfo(category, recipeId){
   } else if (category === "material") {
     // 中間素材は ITEM_META.craft.cost を優先
     if (typeof getItemMeta !== "function") {
-      infoEl.textContent = "必要素材：-";
+      if (matsEl)   matsEl.textContent = "必要素材：-";
+      if (detailEl) detailEl.innerHTML = "";
       return;
     }
     const meta = getItemMeta(recipeId);
     const craft = meta && meta.craft;
     if (!craft || !craft.cost) {
-      infoEl.textContent = "必要素材：-";
+      if (matsEl)   matsEl.textContent = "必要素材：-";
+      if (detailEl) detailEl.innerHTML = "";
       return;
     }
     const shownCost = applyCraftCostReduction(craft.cost) || {};
     if (typeof getItemCountByMeta !== "function") {
-      infoEl.textContent = "必要素材：-";
+      if (matsEl)   matsEl.textContent = "必要素材：-";
+      if (detailEl) detailEl.innerHTML = "";
       return;
     }
 
     Object.keys(shownCost).forEach(id => {
       const need = shownCost[id] || 0;
-      if (!need) return;
+      if (need <= 0) return;
       const have = getItemCountByMeta(id) || 0;
       let label = id;
       if (typeof getItemName === "function") {
@@ -364,11 +480,17 @@ function updateCraftCostInfo(category, recipeId){
       list.push(`${label} ${have}/${need}`);
     });
 
-    infoEl.textContent = "必要素材：" + (list.length ? list.join(" ") : "-");
+    if (matsEl) {
+      matsEl.textContent = "必要素材：" + (list.length ? list.join(" ") : "-");
+    }
+    if (detailEl) {
+      detailEl.innerHTML = buildNormalCraftDetailHtml(shownCost);
+    }
     return;
   } else if (category === "cookingFood" || category === "cookingDrink") {
     if (!COOKING_RECIPES) {
-      infoEl.textContent = "必要素材：-";
+      if (matsEl)   matsEl.textContent = "必要素材：-";
+      if (detailEl) detailEl.innerHTML = "";
       return;
     }
     const listSrc = (category === "cookingFood")
@@ -376,12 +498,14 @@ function updateCraftCostInfo(category, recipeId){
       : (COOKING_RECIPES.drink || []);
     recipe = listSrc.find(r => r.id === recipeId);
     if (!recipe || !Array.isArray(recipe.requires) || !recipe.requires.length) {
-      infoEl.textContent = "必要素材：-";
+      if (matsEl)   matsEl.textContent = "必要素材：-";
+      if (detailEl) detailEl.innerHTML = "";
       return;
     }
 
     if (typeof getItemCountByMeta !== "function") {
-      infoEl.textContent = "必要素材：-";
+      if (matsEl)   matsEl.textContent = "必要素材：-";
+      if (detailEl) detailEl.innerHTML = "";
       return;
     }
 
@@ -407,33 +531,118 @@ function updateCraftCostInfo(category, recipeId){
       return `${label} ${have}/${need}`;
     }).filter(Boolean);
 
-    infoEl.textContent = "必要素材：" + (list.length ? list.join(" ") : "-");
+    if (matsEl) {
+      matsEl.textContent = "必要素材：" + (list.length ? list.join(" ") : "-");
+    }
+    if (detailEl) {
+      detailEl.innerHTML = buildCookingCraftDetailHtml(recipe);
+    }
     return;
   } else if (category === "fertilizer") {
-    // 肥料は ITEM_META ではなく FERTILIZERS 定義を直接参照する
+    // 肥料は FERTILIZERS 定義＋料理素材ポイント制
     const fertTable = (typeof window !== "undefined" && window.FERTILIZERS)
       ? window.FERTILIZERS
       : (typeof FERTILIZERS !== "undefined" ? FERTILIZERS : null);
 
     if (!fertTable) {
-      infoEl.textContent = "必要素材：-";
+      infoEl.textContent = "必要ポイント：-";
+      if (matsEl)   matsEl.textContent = "消費予定：-";
+      if (detailEl) detailEl.innerHTML = "";
       return;
     }
 
     const fertInfo = fertTable[recipeId];
     if (!fertInfo || typeof fertInfo.costPoint !== "number") {
-      infoEl.textContent = "必要素材：-";
+      infoEl.textContent = "必要ポイント：-";
+      if (matsEl)   matsEl.textContent = "消費予定：-";
+      if (detailEl) detailEl.innerHTML = "";
       return;
     }
 
-    const pt = fertInfo.costPoint;
+    const basePoint = fertInfo.costPoint;
+
+    // プレビュー関数があれば、実際に減る素材まで表示する
+    if (typeof getFertilizerCraftPreviewAuto === "function") {
+      const preview = getFertilizerCraftPreviewAuto(recipeId);
+      const need = preview.costPoint || basePoint;
+      const have = preview.totalPoint || 0;
+
+      // 足りない場合
+      if (!preview.ok) {
+        infoEl.textContent =
+          `必要ポイント：${need}pt / 所持ポイント：${have}pt（不足しています）`;
+        if (matsEl) {
+          matsEl.textContent = "消費予定：料理素材ポイントが足りません。";
+        }
+        if (detailEl) {
+          detailEl.innerHTML = `
+            <p style="margin:2px 0; color:#ccc;">
+              肥料は料理素材ポイントの合計で作ります。<br>
+              品質: 通常=1pt / 銀=2pt / 金=3pt。<br>
+              料理素材（cookingMat）を集めるとクラフトできるようになります。
+            </p>
+          `;
+        }
+        return;
+      }
+
+      // 足りている場合: 消費プランを表示
+      const over = have - need;
+      const plan = preview.consumePlan || [];
+
+      infoEl.textContent =
+        `必要ポイント：${need}pt / 所持ポイント：${have}pt` +
+        (over > 0 ? `（うち${over}ptは余り）` : "");
+
+      if (matsEl) {
+        const summary = plan.map(p => `${p.name} x${p.useCount}`).join(" / ");
+        matsEl.textContent = summary
+          ? `消費予定：${summary}`
+          : "消費予定：-";
+      }
+
+      if (detailEl) {
+        let html = `<table class="mat-table">
+          <thead>
+            <tr>
+              <th>素材</th>
+              <th>消費数</th>
+              <th>1個あたりpt</th>
+              <th>合計pt</th>
+            </tr>
+          </thead>
+          <tbody>`;
+        plan.forEach(p => {
+          html += `<tr>
+            <td>${p.name}</td>
+            <td style="text-align:right;">${p.useCount}</td>
+            <td style="text-align:right;">${p.pointPerUnit}</td>
+            <td style="text-align:right;">${p.totalPointForItem}</td>
+          </tr>`;
+        });
+        html += `</tbody></table>`;
+        html += `<p style="margin-top:2px; color:#ccc;">
+          ※自動クラフトでは、手持ち数が多い料理素材から順に消費します。<br>
+          余ったポイントは破棄されます。品質: 通常=1pt / 銀=2pt / 金=3pt。
+        </p>`;
+        detailEl.innerHTML = html;
+      }
+
+      return;
+    }
+
+    // プレビュー関数がまだ無い場合は従来の簡易表示にフォールバック
     infoEl.textContent =
-      `必要ポイント：${pt}（料理素材ポイント合計。通常=1pt / 銀=2pt / 金=3pt）`;
+      `必要ポイント：${basePoint}pt（料理素材ポイント合計。通常=1pt / 銀=2pt / 金=3pt）`;
+    if (matsEl)   matsEl.textContent = "消費予定：-";
+    if (detailEl) detailEl.innerHTML = "";
     return;
   }
 
+  // ここまで来たら weapon/armor/potion/tool/furniture の通常クラフト
   if (!recipe || !recipe.cost) {
-    infoEl.textContent = "必要素材：-";
+    if (matsEl)   matsEl.textContent = "必要素材：-";
+    if (detailEl) detailEl.innerHTML = "";
     return;
   }
 
@@ -458,7 +667,12 @@ function updateCraftCostInfo(category, recipeId){
     list.push(`${label} ${have}/${need}`);
   });
 
-  infoEl.textContent = "必要素材：" + (list.length ? list.join(" ") : "-");
+  if (matsEl) {
+    matsEl.textContent = "必要素材：" + (list.length ? list.join(" ") : "-");
+  }
+  if (detailEl) {
+    detailEl.innerHTML = buildNormalCraftDetailHtml(shownCost);
+  }
 }
 
 // =======================

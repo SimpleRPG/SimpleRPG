@@ -41,6 +41,251 @@ function setupAutoRepeatButton(btn, action, intervalMs = 100) {
 }
 
 // ---------------------------------------
+// クラフト詳細テーブル再計算ヘルパー
+// （元の game-ui-4.js の仕様をベースに拡張）
+// ・料理＋肥料: 料理素材一覧（倉庫と同じ：素材/普通/銀/金/合計、ただし 0 個でも全部表示）
+// ・中間素材クラフト(material): 通常採取素材 Tier 表
+// ・その他: 中間素材の Tier×素材 一覧（倉庫と同じ形式）
+// ---------------------------------------
+function updateCraftMatDetailText() {
+  const label = document.getElementById("craftMaterials");
+  const area  = document.getElementById("craftMatDetail");
+  if (!label || !area) return;
+
+  const names = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
+
+  // いまのクラフトカテゴリ（ui-craft-and-farm.js 側で管理）
+  const cat = window.activeCraftCategory || "";
+
+  // 料理タブ or 肥料タブのときは「料理素材一覧テーブル」（倉庫と同じ形式）
+  const isCookingLike =
+    (cat === "cookingFood" || cat === "cookingDrink" || cat === "fertilizer");
+
+  if (isCookingLike && typeof COOKING_MAT_NAMES !== "undefined") {
+    area.innerHTML = "";
+
+    const mats  = window.cookingMats || {};
+    const quality = window.cookingMatsQuality || {}; // id -> [normal, silver, gold]
+
+    const table = document.createElement("table");
+    table.className = "mat-table";
+
+    const thead = document.createElement("thead");
+    const htr = document.createElement("tr");
+    ["素材","普通","銀","金","合計"].forEach(label => {
+      const th = document.createElement("th");
+      th.textContent = label;
+      htr.appendChild(th);
+    });
+    thead.appendChild(htr);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+
+    // ★ 0 個でも全部表示するために、if (total === 0) return; を削除
+    Object.keys(COOKING_MAT_NAMES).forEach(id => {
+      const name = COOKING_MAT_NAMES[id] || id;
+
+      const qArr = quality[id] || [0,0,0];
+      const normal = (mats[id] || 0) + (qArr[0] || 0);
+      const silver = qArr[1] || 0;
+      const gold   = qArr[2] || 0;
+      const total  = normal + silver + gold;
+      // 0 個でも表示するため、ここでの skip はしない
+
+      const tr = document.createElement("tr");
+      const tdName   = document.createElement("td");
+      const tdNormal = document.createElement("td");
+      const tdSilver = document.createElement("td");
+      const tdGold   = document.createElement("td");
+      const tdTotal  = document.createElement("td");
+      tdName.textContent   = name;
+      tdNormal.textContent = normal;
+      tdSilver.textContent = silver;
+      tdGold.textContent   = gold;
+      tdTotal.textContent  = total;
+
+      tr.appendChild(tdName);
+      tr.appendChild(tdNormal);
+      tr.appendChild(tdSilver);
+      tr.appendChild(tdGold);
+      tr.appendChild(tdTotal);
+      tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    area.appendChild(table);
+
+    label.textContent = "所持素材：料理素材一覧";
+    return;
+  }
+
+  // 中間素材クラフト（material）のときは通常採取素材 Tier 表
+  if (cat === "material") {
+    area.innerHTML = "";
+
+    if (!window.materials) {
+      label.textContent = "所持素材：-";
+      return;
+    }
+
+    const kinds = ["wood","ore","herb","cloth","leather","water"];
+
+    const maxTier = (typeof window.MATERIAL_MAX_T === "number" && window.MATERIAL_MAX_T > 0)
+      ? window.MATERIAL_MAX_T
+      : 3;
+
+    const table = document.createElement("table");
+    table.className = "mat-table";
+
+    const thead = document.createElement("thead");
+    const htr = document.createElement("tr");
+
+    const thEmpty = document.createElement("th");
+    thEmpty.textContent = "Tier";
+    htr.appendChild(thEmpty);
+
+    kinds.forEach(k => {
+      const th = document.createElement("th");
+      th.textContent = names[k] || k;
+      htr.appendChild(th);
+    });
+
+    thead.appendChild(htr);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+
+    for (let tierNum = 1; tierNum <= maxTier; tierNum++) {
+      const tr = document.createElement("tr");
+
+      const thTier = document.createElement("th");
+      thTier.textContent = "T" + tierNum;
+      tr.appendChild(thTier);
+
+      kinds.forEach(k => {
+        const td = document.createElement("td");
+        let val = 0;
+
+        if (typeof getMatTierCount === "function") {
+          val = getMatTierCount(k, tierNum);
+        } else {
+          const mArr = window.materials && window.materials[k];
+          const idx = tierNum - 1;
+          val = (mArr && mArr[idx]) || 0;
+        }
+
+        td.textContent = val;
+        tr.appendChild(td);
+      });
+
+      tbody.appendChild(tr);
+    }
+
+    table.appendChild(tbody);
+    area.appendChild(table);
+
+    label.textContent = "所持素材：採取素材一覧";
+    return;
+  }
+
+  // それ以外のカテゴリ: 中間素材 Tier 一覧（倉庫の中間素材表と同じ構造）
+  area.innerHTML = "";
+
+  if (!window.intermediateMats || !Array.isArray(window.INTERMEDIATE_MATERIALS)) {
+    // 中間素材がまだ無い場合は従来どおり「-」表示のまま
+    label.textContent = "所持素材：-";
+    return;
+  }
+
+  const mats = window.intermediateMats;
+  const src  = window.INTERMEDIATE_MATERIALS;
+
+  // 素材ごとの tier 別在庫を集計
+  // id 形式: T1_woodPlank / T2_woodPlank / ...
+  const groups = {}; // baseKey -> { name, tiers: { tierNum: count } }
+
+  src.forEach(m => {
+    const id = m.id;
+    if (!id) return;
+
+    const mTierMatch = id.match(/^T([0-9]+)_(.+)$/);
+    const tierNum = mTierMatch ? parseInt(mTierMatch[1], 10) : 1;
+    const baseKey = mTierMatch ? mTierMatch[2] : id;
+
+    if (!groups[baseKey]) {
+      // 表示名用: "木材板T1" みたいな名前から末尾の Tn を削る
+      const baseName = m.name.replace(/T[0-9]+$/, "").trim();
+      groups[baseKey] = {
+        name: baseName,
+        tiers: {}
+      };
+    }
+
+    const stock = mats[id] || 0;
+    if (!groups[baseKey].tiers[tierNum]) {
+      groups[baseKey].tiers[tierNum] = 0;
+    }
+    groups[baseKey].tiers[tierNum] += stock;
+  });
+
+  // Tier 行数は MATERIAL_MAX_T に追従
+  const maxTier = (typeof window.MATERIAL_MAX_T === "number" && window.MATERIAL_MAX_T > 0)
+    ? window.MATERIAL_MAX_T
+    : 3;
+
+  const table = document.createElement("table");
+  table.className = "mat-table";
+
+  const thead = document.createElement("thead");
+  const htr = document.createElement("tr");
+
+  // 左端: Tier
+  const thTier = document.createElement("th");
+  thTier.textContent = "Tier";
+  htr.appendChild(thTier);
+
+  // 右側: 各中間素材の列
+  const baseKeys = Object.keys(groups);
+  baseKeys.forEach(key => {
+    const g = groups[key];
+    const th = document.createElement("th");
+    th.textContent = g.name || key;
+    htr.appendChild(th);
+  });
+
+  thead.appendChild(htr);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+
+  // 行 = T1〜maxTier
+  for (let tierNum = 1; tierNum <= maxTier; tierNum++) {
+    const tr = document.createElement("tr");
+
+    const tdTier = document.createElement("th");
+    tdTier.textContent = "T" + tierNum;
+    tr.appendChild(tdTier);
+
+    baseKeys.forEach(key => {
+      const g = groups[key];
+      const tiers = g.tiers || {};
+      const td = document.createElement("td");
+      td.textContent = tiers[tierNum] || 0;
+      tr.appendChild(td);
+    });
+
+    tbody.appendChild(tr);
+  }
+
+  table.appendChild(tbody);
+  area.appendChild(table);
+
+  // ラベルは簡易表示のまま
+  label.textContent = "所持素材：中間素材一覧";
+}
+
+// ---------------------------------------
 // クラフトコスト再計算ヘルパー
 // ---------------------------------------
 function refreshCurrentCraftCost() {
@@ -325,6 +570,8 @@ window.addEventListener("DOMContentLoaded", () => {
     btn.addEventListener("click", () => {
       const cat = btn.dataset.cat || "weapon";
       setCraftCategory(cat);
+      // カテゴリ切替時に詳細も更新（在庫一覧仕様）
+      updateCraftMatDetailText?.();
     });
   });
 
@@ -373,6 +620,9 @@ window.addEventListener("DOMContentLoaded", () => {
             infoEl.textContent = "必要素材：-";
           }
         }
+
+        // 料理サブタブ切替時も詳細テーブル更新（料理/採取/中間）
+        updateCraftMatDetailText?.();
       });
     });
 
@@ -428,6 +678,9 @@ window.addEventListener("DOMContentLoaded", () => {
             infoEl.textContent = "必要素材：-";
           }
         }
+
+        // 生活サブタブ切替時も詳細テーブル更新
+        updateCraftMatDetailText?.();
       });
     });
 
@@ -552,6 +805,7 @@ window.addEventListener("DOMContentLoaded", () => {
     craftKindSelect.addEventListener("change", () => {
       refreshEquipSelects();
       refreshCurrentCraftCost();
+      updateCraftMatDetailText?.();
     });
   }
 
@@ -560,6 +814,7 @@ window.addEventListener("DOMContentLoaded", () => {
     craftTierSelect.addEventListener("change", () => {
       refreshEquipSelects();
       refreshCurrentCraftCost();
+      updateCraftMatDetailText?.();
     });
   }
 
@@ -568,6 +823,7 @@ window.addEventListener("DOMContentLoaded", () => {
     weaponSelect.addEventListener("change", e => {
       const id = e.target.value;
       if (id) updateCraftCostInfo("weapon", id);
+      updateCraftMatDetailText?.();
     });
   }
 
@@ -576,6 +832,7 @@ window.addEventListener("DOMContentLoaded", () => {
     armorSelect.addEventListener("change", e => {
       const id = e.target.value;
       if (id) updateCraftCostInfo("armor", id);
+      updateCraftMatDetailText?.();
     });
   }
 
@@ -584,6 +841,7 @@ window.addEventListener("DOMContentLoaded", () => {
     potionSelect.addEventListener("change", e => {
       const id = e.target.value;
       if (id) updateCraftCostInfo("potion", id);
+      updateCraftMatDetailText?.();
     });
   }
 
@@ -592,6 +850,7 @@ window.addEventListener("DOMContentLoaded", () => {
     toolSelect.addEventListener("change", e => {
       const id = e.target.value;
       if (id) updateCraftCostInfo("tool", id);
+      updateCraftMatDetailText?.();
     });
   }
 
@@ -600,6 +859,7 @@ window.addEventListener("DOMContentLoaded", () => {
     foodSelect.addEventListener("change", e => {
       const id = e.target.value;
       if (id) updateCraftCostInfo("cookingFood", id);
+      updateCraftMatDetailText?.();
     });
   }
 
@@ -608,6 +868,7 @@ window.addEventListener("DOMContentLoaded", () => {
     drinkSelect.addEventListener("change", e => {
       const id = e.target.value;
       if (id) updateCraftCostInfo("cookingDrink", id);
+      updateCraftMatDetailText?.();
     });
   }
 
@@ -619,6 +880,7 @@ window.addEventListener("DOMContentLoaded", () => {
       console.log("[fertSelect change] id =", id);
       window.activeCraftCategory = "fertilizer";
       if (id) updateCraftCostInfo("fertilizer", id);
+      updateCraftMatDetailText?.();
     });
   }
 
@@ -637,6 +899,20 @@ window.addEventListener("DOMContentLoaded", () => {
 
     // クリック1回ぶんの処理は setupAutoRepeatButton 内の action に一本化
     setupAutoRepeatButton(careFarmAllBtn, careOnce, 100);
+  }
+
+  // --------------------
+  // 農園 全収穫ボタン（1クリック1回実行）
+  // --------------------
+  const harvestFarmAllBtn = document.getElementById("harvestFarmAllBtn");
+  if (harvestFarmAllBtn && typeof harvestFarmAll === "function") {
+    harvestFarmAllBtn.addEventListener("click", () => {
+      if (window.isExploring || window.currentEnemy) {
+        appendLog("探索中は農園の収穫ができない！");
+        return;
+      }
+      harvestFarmAll();
+    });
   }
 
   // ★肥料セレクト初期化
