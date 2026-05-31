@@ -141,23 +141,40 @@ function useFarmFertilizerItem(fertId, slotIndex) {
 // farm-core.js の addFarmGrowthPoint / harvestFarmSlot / waterFarmAll から
 // slotIndex を渡して呼ぶ想定。
 
-// 成長ポイントに肥料ボーナスを乗せるヘルパ（使う場合）
+// 成長ポイントに肥料ボーナスを乗せるヘルパ
+// 性能はそのまま、切り捨てた小数部分を確率で +1
 function applyFarmFertilizerToGrowth(baseDelta, slotIndex) {
   const info = getFarmFertilizerInfoForSlot(slotIndex);
   if (!info || !info.growBonus) return baseDelta;
-  let d = Math.floor(baseDelta * (1 + info.growBonus));
+
+  const raw = baseDelta * (1 + info.growBonus);
+  const base = Math.floor(raw);
+  const frac = raw - base; // 小数部分（0〜1）
+
+  const extra = Math.random() < frac ? 1 : 0; // frac=0.2 なら 20% で +1[web:3][web:2]
+
+  let d = base + extra;
   if (d < 1) d = 1;
   return d;
 }
 
 // 収穫量に肥料ボーナスを乗せるヘルパ
+// 性能はそのまま、切り捨てた小数部分を確率で +1
 function applyFarmFertilizerToHarvest(baseAmount, slotIndex) {
   const info = getFarmFertilizerInfoForSlot(slotIndex);
   if (!info || !info.harvestBonus) return baseAmount;
-  return Math.max(1, Math.floor(baseAmount * (1 + info.harvestBonus)));
+
+  const raw = baseAmount * (1 + info.harvestBonus);
+  const base = Math.floor(raw);
+  const frac = raw - base;
+
+  const extra = Math.random() < frac ? 1 : 0; // frac=0.2 なら 20% で +1[web:3][web:2]
+
+  return Math.max(1, base + extra);
 }
 
 // 水やりコストに肥料ボーナスを乗せるヘルパ（使う場合）
+// ここはこれまで通り、切り上げのみで確率処理なし
 function applyFarmFertilizerToWaterCost(baseCost, slotIndex) {
   const info = getFarmFertilizerInfoForSlot(slotIndex);
   if (!info || !info.waterSaveRate) return baseCost;

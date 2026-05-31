@@ -452,7 +452,8 @@ input[type="text"] {
 }
 
 #gatherMaterials,
-#craftMaterials {
+#craftMaterials,
+#craftCostInfo {
   padding: 4px 6px;
   background: #171726;
   border-radius: 4px;

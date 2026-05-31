@@ -401,17 +401,13 @@ function buildAppLayout() {
                 </div>
               </div>
 
-              <!-- ★必要素材＋所持素材＋詳細を一つのブロックにまとめる（既存・共通） -->
-              <!-- ※家具クラフトでも同じ craftCostInfo / craftMaterials / craftMatDetail を使う -->
+              <!-- ★必要素材＋詳細を一つのブロックにまとめる（共通） -->
               <div id="craftCostBlock" style="font-size:11px; margin-top:4px; color:#ccc;">
-                <div id="craftCostInfo">
-                  必要素材：-
-                </div>
-
+                <!-- 下段左枠：必要素材テキスト -->
                 <div style="display:flex; align-items:center; gap:4px; margin-top:4px;">
-                  <p id="craftMaterials" style="flex:1;">
-                    所持素材：-
-                  </p>
+                  <div id="craftCostInfo" style="flex:1;">
+                    必要素材：-
+                  </div>
                   <button id="toggleMatDetailBtn2" style="font-size:11px; padding:2px 6px;">
                     詳細▼
                   </button>
