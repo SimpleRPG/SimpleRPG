@@ -23,6 +23,18 @@ window.guildQuestProgress = window.guildQuestProgress || {};
 // 市民権フラグ（どこか1ギルドの特別依頼をクリアしたら true）
 window.citizenshipUnlocked = window.citizenshipUnlocked || false;
 
+// ★職業解放フラグ（ギルド依頼の報酬で解放される職業）
+// 例: { warrior: [100, 101], mage: [102], ... }
+window.unlockedGuildJobs = window.unlockedGuildJobs || {};
+
+// ★転生タイプ別の汎用カウンタ（ギルド側）
+//   - 「依頼を受けたときから戦闘転生1回」などの判定用に使う。
+//   - game-core-2.js 側の rebirthCombatPt / rebirthGatherPt / rebirthCraftPt とは別に、
+//     ギルド全体での累計をここで持っておく。
+window.guildRebirthCombatPt = typeof window.guildRebirthCombatPt === "number" ? window.guildRebirthCombatPt : 0;
+window.guildRebirthGatherPt = typeof window.guildRebirthGatherPt === "number" ? window.guildRebirthGatherPt : 0;
+window.guildRebirthCraftPt  = typeof window.guildRebirthCraftPt  === "number" ? window.guildRebirthCraftPt  : 0;
+
 // =======================
 // ★ギルドデイリー状態（日付ベース）
 // =======================
@@ -406,6 +418,27 @@ function acceptGuildQuest(questId) {
 }
 
 // =======================
+// ★職業解放関連ヘルパー
+// =======================
+
+// ギルドに紐づく職業を解放（guild2.js の claimGuildQuestReward から呼ぶ想定）
+function unlockGuildJob(guildId, jobId) {
+  if (!guildId || typeof jobId !== "number") return;
+  if (!window.unlockedGuildJobs[guildId]) {
+    window.unlockedGuildJobs[guildId] = [];
+  }
+  if (!window.unlockedGuildJobs[guildId].includes(jobId)) {
+    window.unlockedGuildJobs[guildId].push(jobId);
+  }
+}
+
+// そのギルドで解放済みの職業一覧を取得（転職UIなどから参照）
+function getUnlockedGuildJobs(guildId) {
+  if (!guildId) return [];
+  return window.unlockedGuildJobs[guildId] || [];
+}
+
+// =======================
 // デイリー用 日付ヘルパーと生成・リセット
 // =======================
 
@@ -681,15 +714,33 @@ function onRebirthForGuild(params) {
   if (!params) return;
   const jobId = params.jobId;
 
-  let questId = null;
-  if (jobId === 0) {
-    questId = "warrior_rebirth_1";
-  } else if (jobId === 1) {
-    questId = "mage_rebirth_1";
-  } else if (jobId === 2) {
-    questId = "tamer_rebirth_1";
+  // プレイヤーが選んだ転生タイプ（combat / gather / craft）
+  const t = window.lastRebirthType || "combat";
+
+  // ★ギルド側の汎用転生カウンタを増やす
+  if (t === "combat") {
+    window.guildRebirthCombatPt++;
+  } else if (t === "gather") {
+    window.guildRebirthGatherPt++;
+  } else if (t === "craft") {
+    window.guildRebirthCraftPt++;
   }
 
+  let questId = null;
+
+  // 戦闘ギルドの転生依頼は「戦闘転生」のときだけ進行させる
+  if (t === "combat") {
+    if (jobId === 0) {
+      questId = "warrior_rebirth_1";
+    } else if (jobId === 1) {
+      questId = "mage_rebirth_1";
+    } else if (jobId === 2) {
+      questId = "tamer_rebirth_1";
+    }
+  }
+
+  // いまの仕様では、クラフト転生／採取転生に対応するギルド転生依頼は定義していないので、
+  // それ以外の組み合わせでは何もしない。
   if (!questId) return;
 
   updateQuestProgress(questId, 1, 1);

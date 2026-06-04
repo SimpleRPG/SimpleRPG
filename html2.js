@@ -295,7 +295,7 @@
           </div>
         </div>
 
-        <div id="guildMessage" style="margin-top:8px; padding:4px; border-top:1px solid #555; min-height:40px; font-size:0.9em;">
+        <div id="guildMessage" style="margin-top:8px; padding:4px; border-top:1px固 #555; min-height:40px; font-size:0.9em;">
           ギルドに所属して依頼をこなすことで、名声や特別な報酬を得られます。
         </div>
       </div>
@@ -458,8 +458,6 @@
   }
 
   // ----- モーダル群 -----
-  // 既に html1.js の appRoot.innerHTML 内でモーダルを出しているなら、ここは不要。
-  // もし index.html から削除している場合は、以下のように追加する。
 
   // 職業選択モーダル
   if (!document.getElementById("jobModal")) {
@@ -477,7 +475,6 @@
           <button id="jobWarriorBtn"  class="job-select-btn" data-job="0">戦士</button>
           <button id="jobMageBtn"     class="job-select-btn" data-job="1">魔法使い</button>
           <button id="jobTamerBtn"    class="job-select-btn" data-job="2">動物使い</button>
-          <button id="jobAlchemistBtn" class="job-select-btn" data-job="3">錬金術師</button>
         </div>
 
         <div id="jobDescArea"
@@ -487,9 +484,28 @@
         <div style="margin-top:12px; text-align:center;">
           <button id="jobConfirmBtn" disabled>世界に降り立つ</button>
         </div>
+
+        <div style="margin-top:8px; text-align:right; font-size:11px;">
+          <button id="jobDebugBtn" style="padding:2px 6px;">デバッグ開始</button>
+        </div>
       </div>
     `;
     document.body.appendChild(jobModal);
+
+    // デバッグボタン初期化
+    (function initJobDebugButton() {
+      const debugBtn = document.getElementById("jobDebugBtn");
+      if (!debugBtn) return;
+      debugBtn.addEventListener("click", () => {
+        if (typeof window.openJobDebugModal === "function") {
+          window.openJobDebugModal();
+        } else if (typeof appendLog === "function") {
+          appendLog("[デバッグ] jobDebugBtn が押されましたが openJobDebugModal が未定義です。");
+        } else {
+          console.warn("jobDebugBtn clicked, but openJobDebugModal is not defined.");
+        }
+      });
+    })();
   }
 
   // 転生確認モーダル（転生タイプ選択付き）
@@ -522,46 +538,43 @@
           <button id="rebirthCancelBtn" onclick="closeRebirthModal()">やめる</button>
           <button id="rebirthConfirmBtn" onclick="confirmRebirth()">転生する</button>
         </div>
-
-        <script>
-          (function() {
-            const container = document.getElementById("rebirthTypeButtons");
-            if (!container) return;
-            const buttons = container.querySelectorAll(".rebirth-type-btn");
-            if (!buttons.length) return;
-
-            function applySelected(type) {
-              buttons.forEach(btn => {
-                const t = btn.dataset.type;
-                if (t === type) {
-                  btn.classList.add("selected");
-                } else {
-                  btn.classList.remove("selected");
-                }
-              });
-            }
-
-            // 既存セーブ互換: lastRebirthType が window にあればそれを初期選択にする
-            let initialType = (window.lastRebirthType === "gather" || window.lastRebirthType === "craft")
-              ? window.lastRebirthType
-              : "combat";
-            applySelected(initialType);
-
-            buttons.forEach(btn => {
-              btn.addEventListener("click", () => {
-                const type = btn.dataset.type;
-                if (!type) return;
-                if (typeof window.setRebirthType === "function") {
-                  window.setRebirthType(type);
-                }
-                applySelected(type);
-              });
-            });
-          })();
-        </script>
       </div>
     `;
     document.body.appendChild(rebirthModal);
+
+    (function initRebirthTypeButtons() {
+      const container = document.getElementById("rebirthTypeButtons");
+      if (!container) return;
+      const buttons = container.querySelectorAll(".rebirth-type-btn");
+      if (!buttons.length) return;
+
+      function applySelected(type) {
+        buttons.forEach(btn => {
+          const t = btn.dataset.type;
+          if (t === type) {
+            btn.classList.add("selected");
+          } else {
+            btn.classList.remove("selected");
+          }
+        });
+      }
+
+      let initialType = (window.lastRebirthType === "gather" || window.lastRebirthType === "craft")
+        ? window.lastRebirthType
+        : "combat";
+      applySelected(initialType);
+
+      buttons.forEach(btn => {
+        btn.addEventListener("click", () => {
+          const type = btn.dataset.type;
+          if (!type) return;
+          if (typeof window.setRebirthType === "function") {
+            window.setRebirthType(type);
+          }
+          applySelected(type);
+        });
+      });
+    })();
   }
 
   // ペット成長タイプ変更モーダル
@@ -644,7 +657,6 @@
 
 // ★★★ 以下、テトちゃんUI用のグローバル関数を追加（既存仕様に影響なし） ★★★
 
-// UI から通常モード or バランス(=自動最適化)を起動
 function startTestChanFromUI() {
   const modeSelect = document.getElementById("testChanModeSelect");
   const minutesInput = document.getElementById("testChanMinutes");
@@ -666,7 +678,6 @@ function startTestChanFromUI() {
     return;
   }
   
-  // バランス(評価重視)だけは自動最適化ランナーをそのまま使う
   if (mode === "balancedMain") {
     if (typeof window.runTestChanAuto === "function") {
       if (typeof appendLog === "function") {
@@ -682,7 +693,6 @@ function startTestChanFromUI() {
     return;
   }
   
-  // それ以外のモードは従来どおり runTestChan を使用
   if (typeof window.runTestChan === "function") {
     if (typeof appendLog === "function") {
       appendLog(`[テトAI] モード=${mode}, 約${minutes}分のテストを開始します。`);
@@ -696,7 +706,6 @@ function startTestChanFromUI() {
   }
 }
 
-// UI から自動最適化を起動（既存の専用UIがある場合用）
 function startTestChanAutoFromUI() {
   const minutesInput = document.getElementById("testChanAutoMinutes");
   

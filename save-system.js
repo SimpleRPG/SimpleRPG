@@ -27,6 +27,7 @@ function makeSaveData() {
   let playerGuildIdSafe, guildFameSafe, guildQuestProgressSafe, combatGuildTreeUnlockedSafe, combatGuildSkillPointsSafe;
   let citizenshipUnlockedSafe, housingStateSafe;
   let rareGatherItemsSafe; // ★追加: レア素材（星屑の結晶など）の専用在庫
+  let unlockedGuildJobsSafe; // ★追加: 解放済みギルド職リスト
 
   try {
     player = {
@@ -216,6 +217,15 @@ function makeSaveData() {
     rareGatherItemsSafe = {};
   }
 
+  // ★追加: 解放済みギルド職リストをセーブ
+  try {
+    unlockedGuildJobsSafe = (typeof window !== "undefined" && window.unlockedGuildJobs)
+      ? window.unlockedGuildJobs
+      : {};
+  } catch (e) {
+    unlockedGuildJobsSafe = {};
+  }
+
   return {
     version: SAVE_VERSION,
 
@@ -333,6 +343,8 @@ function makeSaveData() {
     guildQuestProgress:     guildQuestProgressSafe,
     combatGuildTreeUnlocked: combatGuildTreeUnlockedSafe,
     combatGuildSkillPoints:  combatGuildSkillPointsSafe,
+    // ★追加: 解放済みギルド職
+    unlockedGuildJobs: unlockedGuildJobsSafe,
 
     // --------------------------------
     // 市民権・ハウジング
@@ -889,6 +901,15 @@ function applySaveData(data) {
           (typeof data.housingState.lastGuildId !== "undefined")
             ? data.housingState.lastGuildId
             : null;
+      }
+
+      // ★追加: 解放済みギルド職のロード
+      if (data.unlockedGuildJobs && typeof data.unlockedGuildJobs === "object") {
+        window.unlockedGuildJobs = window.unlockedGuildJobs || {};
+        Object.keys(window.unlockedGuildJobs).forEach(k => delete window.unlockedGuildJobs[k]);
+        Object.keys(data.unlockedGuildJobs).forEach(k => {
+          window.unlockedGuildJobs[k] = data.unlockedGuildJobs[k];
+        });
       }
     }
   } catch (e) {

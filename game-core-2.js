@@ -57,8 +57,12 @@ function applyLevelUpGrowth() {
   } else if (growthType === 3) {
     // LUK型
     pool.push("LUK","LUK","LUK","DEX_","STR","VIT","INT_");
+  } else if (growthType === 5) {
+    // DEX型（新規）
+    // 既存の傾向に合わせて「DEX 多め + STR/VIT/INT/LUK も少し出る」構成
+    pool.push("DEX_","DEX_","DEX_","STR","VIT","INT_","LUK");
   } else {
-    // バランス型（4）
+    // バランス型（4 それ以外）
     pool.push("STR","VIT","INT_","DEX_","LUK");
   }
   const pick = pool[Math.floor(Math.random() * pool.length)];
@@ -355,7 +359,7 @@ function applyRebirthBonus() {
     }
   }
   // ★ 普通の改行に修正
-  return "転生ボーナス:\\n" + msgList.join("\\n");
+  return "転生ボーナス:\n" + msgList.join("\n");
 }
 
 function applyPetRebirthBonus() {
@@ -469,7 +473,8 @@ function doRebirth() {
     window.rebirthCombatPt = rebirthCombatPt;
 
     // 転生ごとにランダムな成長タイプ、職業変更を促す一因に
-    growthType = Math.floor(Math.random() * 5); // 0〜4の成長タイプに再ロール
+    // ★ 0〜5 (STR/VIT/INT/LUK/バランス/DEX) から再ロール
+    growthType = Math.floor(Math.random() * 6);
   }
 
   // ★ 戦闘用転生ボーナスは「戦闘転生が一度以上行われているときだけ」適用
@@ -477,7 +482,7 @@ function doRebirth() {
   if (rebirthCombatPt > 0) {
     bonusMsg = applyRebirthBonus();
   } else {
-    bonusMsg = "転生ボーナス:\\n(戦闘転生なし)";
+    bonusMsg = "転生ボーナス:\n(戦闘転生なし)";
   }
 
   // ペット転生ボーナスは、仕様に合わせてここでは「全転生共通」で付与を維持
@@ -537,14 +542,14 @@ function doRebirth() {
 
   // ★ ログも普通の改行に統一
   appendLog(
-    `転生した！ 転生回数: ${rebirthCount}\\n` +
+    `転生した！ 転生回数: ${rebirthCount}\n` +
     `転生タイプ: ${
       lastRebirthType === "gather" ? "採取" :
       lastRebirthType === "craft"  ? "クラフト" :
       "戦闘"
-    }\\n` +
-    `成長タイプ: ${getGrowthTypeName()}\\n` +
-    `${bonusMsg}\\n` +
+    }\n` +
+    `成長タイプ: ${getGrowthTypeName()}\n` +
+    `${bonusMsg}\n` +
     `ペット転生回数: ${petRebirthCount}（基礎ATKとHPが強化された）`
   );
 
@@ -724,8 +729,8 @@ function applyInitialStatsForJob(selectedJobId) {
       DEX_ = 3;
       LUK_ = 2;
       break;
-    case 3: // 錬金術師（器用貧乏）
-    default:
+    // それ以外（上位職・ギルド職など）は、旧 case 3 相当の器用貧乏ステータスを適用
+    default: // 錬金術師（器用貧乏）と同じ
       STR  = 1;
       VIT  = 1;
       INT_ = 2;
@@ -795,12 +800,13 @@ function applyJobChange(newJobId) {
     applyInitialStatsForJob(newJobId);
   }
 
-  // ★ 転生前の初回のみ、職業に応じて成長タイプを自動設定（既存仕様＋錬金術師追加）
+  // ★ 転生前の初回のみ、基本 3 職（戦士・魔法使い・動物使い）だけ成長タイプを自動設定
+  //   ギルド職などは自動設定せず、既存の成長タイプ（デフォルトはバランス型）を維持
   if (!rebirthCount) {
-    if      (newJobId === 0) growthType = 0; // 戦士: STR型
-    else if (newJobId === 1) growthType = 2; // 魔法使い: INT型
-    else if (newJobId === 2) growthType = 4; // 動物使い: バランス型
-    else if (newJobId === 3) growthType = 2; // 錬金術師: INT型（魔法寄り）
+    if      (newJobId === 0)   growthType = 0; // 戦士: STR型
+    else if (newJobId === 1)   growthType = 2; // 魔法使い: INT型
+    else if (newJobId === 2)   growthType = 4; // 動物使い: バランス型
+    // それ以外（錬金術師など）は自動設定せずバランス型のまま
   }
 
   if (jobId === 2) {
@@ -813,7 +819,7 @@ function applyJobChange(newJobId) {
 
     // ★ここだけ追加:
     // 「最初に動物使いになったときだけペット選択モーダルを開く」
-    // 条件: まだ companionTypeId が決まっていない（初回だけ）
+    // 条件：まだ companionTypeId が決まっていない（初回だけ）
     if (!window.companionTypeId && typeof openCompanionModalIfNeeded === "function") {
       // 職業モーダルを閉じてからペット選択モーダルを開く
       closeJobModal();
@@ -867,7 +873,7 @@ function changePetGrowthType() {
 
 // ★職業ヘルパ
 function isAlchemist() {
-  return jobId === 3;
+  return jobId === 202;
 }
 
 function isBeastTamer() {
@@ -882,7 +888,7 @@ function updatePetMiniStatus() {
   const hpMaxEl = document.getElementById("petHpMaxMini");
   if (!lvEl || !hpEl || !hpMaxEl) return;
 
-  // 名前: アクティブペットがいるときだけ petName を表示、それ以外は "-"
+  // 名前：アクティブペットがいるときだけ petName を表示、それ以外は "-"
   if (nameEl) {
     const hasPet = (jobId === 2) && !!window.companionTypeId;
     if (hasPet && typeof petName === "string" && petName.length > 0) {
@@ -896,53 +902,4 @@ function updatePetMiniStatus() {
   lvEl.textContent    = (typeof petLevel === "number") ? petLevel : "-";
   hpEl.textContent    = (typeof petHp === "number")    ? petHp    : "-";
   hpMaxEl.textContent = (typeof petHpMax === "number") ? petHpMax : "-";
-}
-
-// =======================
-// 初回ジョブモーダル用 UI ハンドラ
-// =======================
-
-// 「世界に降り立つ」ボタンとジョブ説明は HTML 側に追加済み。
-// ここでは selectedJobTemp をローカルで持ち、applyJobChange に渡すだけで
-// 既存の職業変更仕様（初回無料・以降100G消費など）をそのまま使う。
-let selectedJobTemp = null;
-
-// 職業説明テキスト
-const JOB_DESCS = {
-  0: "前衛で戦う近接職。HPと防御が高く、安定して戦いやすい。",
-  1: "魔法で遠距離から攻撃する職。火力は高いが、打たれ弱い。",
-  2: "ペットと共に戦う職。成長するとペットが火力・盾役として活躍する。",
-  3: "アイテムやポーションに長けた職。準備したアイテムで戦いを有利にする。"
-};
-
-// ★ DOMが構築されたあと（buildStatusPage/buildAppLayout 後）に手動で呼ぶ
-//   initJobPetRebirthUI 内から呼び出す想定。
-function setupJobSelectUI() {
-  const jobButtons    = document.querySelectorAll(".job-select-btn");
-  const jobDescArea   = document.getElementById("jobDescArea");
-  const jobConfirmBtn = document.getElementById("jobConfirmBtn");
-
-  if (!jobButtons.length || !jobDescArea || !jobConfirmBtn) return;
-
-  jobButtons.forEach(btn => {
-    btn.addEventListener("click", () => {
-      const id = parseInt(btn.dataset.job, 10);
-      if (Number.isNaN(id)) return;
-      selectedJobTemp = id;
-
-      // 見た目の選択状態
-      jobButtons.forEach(b => b.classList.toggle("selected", b === btn));
-
-      // 説明表示
-      jobDescArea.textContent = JOB_DESCS[id] || "";
-
-      // 決定ボタン有効化
-      jobConfirmBtn.disabled = false;
-    });
-  });
-
-  jobConfirmBtn.addEventListener("click", () => {
-    if (selectedJobTemp == null) return;
-    applyJobChange(selectedJobTemp);
-  });
 }

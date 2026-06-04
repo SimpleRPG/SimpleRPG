@@ -166,6 +166,97 @@ function getGuildQuestProg(id) {
   };
 }
 
+// =======================
+// 職業選択モーダル（jobReward が配列のとき用）
+// =======================
+
+function openJobSelectModal(guildId, questDef, jobIdList, onSelected) {
+  // 既存モーダルがあれば消す
+  const old = document.getElementById("guildJobSelectModal");
+  if (old && old.parentNode) {
+    old.parentNode.removeChild(old);
+  }
+
+  const overlay = document.createElement("div");
+  overlay.id = "guildJobSelectModal";
+  overlay.style.position = "fixed";
+  overlay.style.left = "0";
+  overlay.style.top = "0";
+  overlay.style.right = "0";
+  overlay.style.bottom = "0";
+  overlay.style.backgroundColor = "rgba(0,0,0,0.7)";
+  overlay.style.zIndex = "9999";
+  overlay.style.display = "flex";
+  overlay.style.alignItems = "center";
+  overlay.style.justifyContent = "center";
+
+  const panel = document.createElement("div");
+  panel.style.background = "#202020";
+  panel.style.border = "1px solid #888";
+  panel.style.borderRadius = "4px";
+  panel.style.padding = "8px";
+  panel.style.minWidth = "260px";
+  panel.style.maxWidth = "360px";
+  panel.style.color = "#fff";
+  panel.style.fontSize = "12px";
+
+  const title = document.createElement("div");
+  title.textContent = `${GUILDS[guildId].name}：解放する職業を選んでください`;
+  title.style.fontWeight = "bold";
+  title.style.marginBottom = "4px";
+  panel.appendChild(title);
+
+  const desc = document.createElement("div");
+  desc.textContent = questDef ? questDef.name : "職業解放";
+  desc.style.marginBottom = "4px";
+  panel.appendChild(desc);
+
+  const list = document.createElement("div");
+  list.style.margin = "4px 0";
+
+  jobIdList.forEach(jobId => {
+    const jobDef = typeof getJobDefById === "function" ? getJobDefById(jobId) : null;
+    const jobName = jobDef && jobDef.name ? jobDef.name : `職業ID:${jobId}`;
+
+    const btn = document.createElement("button");
+    btn.textContent = jobName;
+    btn.style.display = "block";
+    btn.style.width = "100%";
+    btn.style.marginBottom = "4px";
+    btn.style.fontSize = "12px";
+    btn.addEventListener("click", () => {
+      if (typeof onSelected === "function") {
+        onSelected(jobId);
+      }
+      if (overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
+      }
+    });
+
+    list.appendChild(btn);
+  });
+
+  panel.appendChild(list);
+
+  const cancelRow = document.createElement("div");
+  cancelRow.style.textAlign = "right";
+
+  const cancelBtn = document.createElement("button");
+  cancelBtn.textContent = "やめる";
+  cancelBtn.style.fontSize = "11px";
+  cancelBtn.addEventListener("click", () => {
+    if (overlay.parentNode) {
+      overlay.parentNode.removeChild(overlay);
+    }
+  });
+
+  cancelRow.appendChild(cancelBtn);
+  panel.appendChild(cancelRow);
+
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+}
+
 // 名声報酬受取処理（依頼タブから呼ぶ）
 function claimGuildQuestReward(guildId, questDef, isSpecial) {
   if (!guildId || !questDef) return;
@@ -220,15 +311,63 @@ function claimGuildQuestReward(guildId, questDef, isSpecial) {
     return;
   }
 
-  // 通常依頼
+  // ★職業解放クエストかどうかを判定（type: "job_unlock"）
+  const isJobUnlockQuest = questDef.type === "job_unlock";
+
+  // 通常の名声報酬（職業解放クエストでも fameReward があれば加算される）
   if (questDef.fameReward && questDef.fameReward > 0) {
     addGuildFame(guildId, questDef.fameReward);
   }
 
-  if (guildId === "warrior" || guildId === "mage" || guildId === "tamer") {
+  // 戦闘ギルド用のスキルポイント（既存仕様）
+  if (!isJobUnlockQuest && (guildId === "warrior" || guildId === "mage" || guildId === "tamer")) {
     window.combatGuildSkillPoints = (window.combatGuildSkillPoints || 0) + 1;
     if (typeof appendLog === "function") {
       appendLog("戦闘ギルドスキルポイントを1獲得した！");
+    }
+  }
+
+  // ★職業解放クエストの場合のみ、職業を解放する
+  if (isJobUnlockQuest && typeof unlockGuildJob === "function") {
+    const jr = questDef.jobReward;
+
+    // 単一 ID（従来仕様）: そのまま解放
+    if (typeof jr === "number") {
+      unlockGuildJob(guildId, jr);
+      if (typeof appendLog === "function") {
+        appendLog(`${GUILDS[guildId].name} の特別訓練「${questDef.name}」を達成し、新しい職業が解放された！`);
+      }
+    }
+    // 配列なら選択式
+    else if (Array.isArray(jr) && jr.length > 0) {
+      openJobSelectModal(guildId, questDef, jr, function(selectedJobId) {
+        unlockGuildJob(guildId, selectedJobId);
+        if (typeof appendLog === "function") {
+          const jobName = (typeof getJobNameFromId === "function")
+            ? getJobNameFromId(selectedJobId)
+            : "新しい職業";
+          appendLog(`${GUILDS[guildId].name} の特別訓練「${questDef.name}」を達成し、「${jobName}」が解放された！`);
+        }
+
+        // 進捗保存と再描画は選択完了時に行う
+        const stored2 = window.guildQuestProgress[id] || {};
+        stored2.rewardTaken = true;
+        stored2.accepted = true;
+        window.guildQuestProgress[id] = stored2;
+
+        renderGuildQuests();
+        if (typeof renderGuildRewards === "function") {
+          renderGuildRewards();
+        }
+      });
+
+      // モーダルを出した場合、この場では return して二重処理を避ける
+      return;
+    }
+  } else {
+    // 従来どおりのログ（職業解放でない通常依頼）
+    if (typeof appendLog === "function") {
+      appendLog(`${GUILDS[guildId].name} の依頼「${questDef.name}」を達成し、名声を${questDef.fameReward || 0}獲得した！`);
     }
   }
 
@@ -236,10 +375,6 @@ function claimGuildQuestReward(guildId, questDef, isSpecial) {
   stored.rewardTaken = true;
   stored.accepted = true;
   window.guildQuestProgress[id] = stored;
-
-  if (typeof appendLog === "function") {
-    appendLog(`${GUILDS[guildId].name} の依頼「${questDef.name}」を達成し、名声を${questDef.fameReward}獲得した！`);
-  }
 
   renderGuildQuests();
 
@@ -413,10 +548,15 @@ function renderGuildQuests() {
     desc.style.fontSize = "11px";
     box.appendChild(desc);
 
+    // ★職業解放クエストかどうかで報酬表示を変える
     const fameLine = document.createElement("div");
-    fameLine.textContent = `報酬: 名声 +${q.fameReward}`;
     fameLine.style.fontSize = "11px";
     fameLine.style.color = "#ccc";
+    if (q.type === "job_unlock") {
+      fameLine.textContent = "報酬: 新しい職業（名声報酬は 0）";
+    } else {
+      fameLine.textContent = `報酬: 名声 +${q.fameReward}`;
+    }
     box.appendChild(fameLine);
 
     if (q.hint) {
@@ -719,6 +859,7 @@ function renderGuildQuests() {
         rewardBtn.textContent = "未達成";
         rewardBtn.disabled = true;
       } else {
+        // 通常依頼／職業解放依頼ともに同じボタン文言
         rewardBtn.textContent = "報酬を受け取る";
         rewardBtn.disabled = false;
         rewardBtn.addEventListener("click", () => {
@@ -734,7 +875,7 @@ function renderGuildQuests() {
     listEl.appendChild(box);
   });
 
-  // 特別依頼（市民権クエスト）
+  // 特別依頼
   if (window.citizenshipUnlocked) return;
 
   const specialDefs = window.GUILD_SPECIAL_QUESTS || {};
@@ -751,7 +892,7 @@ function renderGuildQuests() {
   const prog = getGuildQuestProg(specialDef.id);
 
   const specialHeader = document.createElement("div");
-  specialHeader.textContent = "特別依頼（市民権クエスト）";
+  specialHeader.textContent = "特別依頼";
   specialHeader.style.fontWeight = "bold";
   specialHeader.style.margin = "8px 0 4px 0";
   specialHeader.style.color = "#ffda6a";

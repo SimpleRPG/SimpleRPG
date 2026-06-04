@@ -6,7 +6,6 @@
 // ・戦闘中・探索中は使用不可
 // ・UI 側は game-ui.js から refreshRepairUI / execRepairSelected を叩く
 
-console.log("repair-core.js loaded");
 
 // =======================
 // 修理対象の列挙

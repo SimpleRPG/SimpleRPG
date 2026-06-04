@@ -72,9 +72,9 @@ function updateCraftMatDetailText() {
 
     const thead = document.createElement("thead");
     const htr = document.createElement("tr");
-    ["素材","普通","銀","金","合計"].forEach(label => {
+    ["素材","普通","銀","金","合計"].forEach(labelText => {
       const th = document.createElement("th");
-      th.textContent = label;
+      th.textContent = labelText;
       htr.appendChild(th);
     });
     thead.appendChild(htr);
@@ -116,7 +116,8 @@ function updateCraftMatDetailText() {
     table.appendChild(tbody);
     area.appendChild(table);
 
-    label.textContent = "所持素材：料理素材一覧";
+    // ★変更: 「所持素材：料理素材一覧」を出さず、ラベルは空のままにする
+    label.textContent = "";
     return;
   }
 
@@ -125,7 +126,8 @@ function updateCraftMatDetailText() {
     area.innerHTML = "";
 
     if (!window.materials) {
-      label.textContent = "所持素材：-";
+      // ★変更: ここも「所持素材：-」を出さず空にする
+      label.textContent = "";
       return;
     }
 
@@ -185,7 +187,8 @@ function updateCraftMatDetailText() {
     table.appendChild(tbody);
     area.appendChild(table);
 
-    label.textContent = "所持素材：採取素材一覧";
+    // ★変更: 「所持素材：採取素材一覧」を出さず空
+    label.textContent = "";
     return;
   }
 
@@ -193,8 +196,8 @@ function updateCraftMatDetailText() {
   area.innerHTML = "";
 
   if (!window.intermediateMats || !Array.isArray(window.INTERMEDIATE_MATERIALS)) {
-    // 中間素材がまだ無い場合は従来どおり「-」表示のまま
-    label.textContent = "所持素材：-";
+    // 中間素材がまだ無い場合も「所持素材：-」を出さず空
+    label.textContent = "";
     return;
   }
 
@@ -230,20 +233,20 @@ function updateCraftMatDetailText() {
   });
 
   // Tier 行数は MATERIAL_MAX_T に追従
-  const maxTier = (typeof window.MATERIAL_MAX_T === "number" && window.MATERIAL_MAX_T > 0)
+  const maxTier2 = (typeof window.MATERIAL_MAX_T === "number" && window.MATERIAL_MAX_T > 0)
     ? window.MATERIAL_MAX_T
     : 3;
 
-  const table = document.createElement("table");
-  table.className = "mat-table";
+  const table2 = document.createElement("table");
+  table2.className = "mat-table";
 
-  const thead = document.createElement("thead");
-  const htr = document.createElement("tr");
+  const thead2 = document.createElement("thead");
+  const htr2 = document.createElement("tr");
 
   // 左端: Tier
-  const thTier = document.createElement("th");
-  thTier.textContent = "Tier";
-  htr.appendChild(thTier);
+  const thTier2 = document.createElement("th");
+  thTier2.textContent = "Tier";
+  htr2.appendChild(thTier2);
 
   // 右側: 各中間素材の列
   const baseKeys = Object.keys(groups);
@@ -251,16 +254,16 @@ function updateCraftMatDetailText() {
     const g = groups[key];
     const th = document.createElement("th");
     th.textContent = g.name || key;
-    htr.appendChild(th);
+    htr2.appendChild(th);
   });
 
-  thead.appendChild(htr);
-  table.appendChild(thead);
+  thead2.appendChild(htr2);
+  table2.appendChild(thead2);
 
-  const tbody = document.createElement("tbody");
+  const tbody2 = document.createElement("tbody");
 
   // 行 = T1〜maxTier
-  for (let tierNum = 1; tierNum <= maxTier; tierNum++) {
+  for (let tierNum = 1; tierNum <= maxTier2; tierNum++) {
     const tr = document.createElement("tr");
 
     const tdTier = document.createElement("th");
@@ -275,14 +278,14 @@ function updateCraftMatDetailText() {
       tr.appendChild(td);
     });
 
-    tbody.appendChild(tr);
+    tbody2.appendChild(tr);
   }
 
-  table.appendChild(tbody);
-  area.appendChild(table);
+  table2.appendChild(tbody2);
+  area.appendChild(table2);
 
-  // ラベルは簡易表示のまま
-  label.textContent = "所持素材：中間素材一覧";
+  // ★変更: 「所持素材：中間素材一覧」を出さず空
+  label.textContent = "";
 }
 
 // ---------------------------------------

@@ -5,13 +5,13 @@
 // 定数
 // =======================
 
-// レベルアップ用経験値ベース（Lvごとの必要値は addExp/doRebirth 側で利用）
+// レベルアップ用経験値ベース（Lv ごとの必要値は addExp/doRebirth 側で利用）
 let BASE_EXP_PER_LEVEL = 100;
 
 // ★ 装備耐久（武器・防具共通）
 let MAX_DURABILITY = 100;
 
-// ★ ステータス→HP/MP/SP 変換係数（VIT3でHP+1, INT3でMP+1, DEX3でSP+1）
+// ★ ステータス→HP/MP/SP 変換係数（VIT3 で HP+1, INT3 で MP+1, DEX3 で SP+1）
 const HP_PER_VIT_POINT = 1 / 3;
 const MP_PER_INT_POINT = 1 / 3;
 const SP_PER_DEX_POINT = 1 / 3;
@@ -30,9 +30,9 @@ let exp = 0;
 let expToNext = BASE_EXP_PER_LEVEL;
 
 let rebirthCount = 0;
-let growthType = 4; // 0:STR,1:VIT,2:INT,3:LUK,4:バランス
+let growthType = 4; // 0:STR,1:VIT,2:INT,3:LUK,4:バランス,5:DEX
 
-// 能力値（ロード直後は従来どおり全部1。
+// 能力値（ロード直後は従来どおり全部 1。
 // 最初の職業決定時に applyInitialStatsForJob で上書きする想定）
 let STR = 1;
 let VIT = 1;
@@ -45,7 +45,7 @@ let hpMaxBase = 30;
 let mpMaxBase = 10;
 let spMaxBase = 10;
 
-// ★ 初期は Lv1 の最大HP＝30 に合わせる
+// ★ 初期は Lv1 の最大 HP＝30 に合わせる
 let hpMax = 30;
 let mpMax = mpMaxBase;
 let spMax = spMaxBase;
@@ -59,7 +59,10 @@ let atkTotal = 0;
 let defTotal = 0;
 
 // 職業
-let jobId = null;  // 0:戦士,1:魔法使い,2:動物使い,3:錬金術師
+// jobId の正史は jobs.js の JOB_DEFS を参照。
+// 0:戦士，1:魔法使い，2:動物使い，100:大盾兵，101:呪術師，102:獣群使い，
+// 200:鍛冶職人，201:武具使い，202:錬金術師，203:道具使い，204:料理人，205:貪食家
+let jobId = null;
 let jobChangedOnce = false;
 let everBeastTamer = false;
 
@@ -71,7 +74,7 @@ let petRebirthCount = 0;
 
 let petHpBase = 10;
 let petAtkBase = 4;
-let petDefBase = 2; // ★追加: ペット基礎防御
+let petDefBase = 2; // ★追加：ペット基礎防御
 
 let petHpMax = 10;
 let petHp = 10;
@@ -111,7 +114,7 @@ let weaponCounts = {};
 let armorCounts  = {};
 let potionCounts = {};
 
-// ★ 1本ごとのインスタンス（品質/強化/耐久を持たせる）
+// ★ 1 本ごとのインスタンス（品質/強化/耐久を持たせる）
 // location: "warehouse" | "carry" | "equipped"
 let weaponInstances = []; // { id, quality, enhance, durability, location, options }
 let armorInstances  = [];
@@ -124,7 +127,7 @@ window.armorInstances  = Array.isArray(window.armorInstances)  ? window.armorIns
 weaponInstances = window.weaponInstances;
 armorInstances  = window.armorInstances;
 
-// ★ どのインスタンスを装備しているか（indexで保持）
+// ★ どのインスタンスを装備しているか（index で保持）
 window.equippedWeaponIndex = (typeof window.equippedWeaponIndex === "number") ? window.equippedWeaponIndex : null;
 window.equippedArmorIndex  = (typeof window.equippedArmorIndex  === "number") ? window.equippedArmorIndex  : null;
 
@@ -183,20 +186,25 @@ let areaBossCleared = {
 
 function getGrowthTypeName() {
   switch (growthType) {
-    case 0: return "STR型";
-    case 1: return "VIT型";
-    case 2: return "INT型";
-    case 3: return "LUK型";
-    case 4: default: return "バランス型";
+    case 0: return "STR 型";
+    case 1: return "VIT 型";
+    case 2: return "INT 型";
+    case 3: return "LUK 型";
+    case 4: return "バランス型";
+    case 5: default: return "DEX 型";
   }
 }
 
+/**
+ * 職業名を返す。
+ * jobs.js 側の getJobNameFromId を使う（フォールバックなし）。
+ * jobs.js は必ず先に読み込まれる想定。
+ */
 function getJobName() {
-  if (jobId === 0) return "戦士";
-  if (jobId === 1) return "魔法使い";
-  if (jobId === 2) return "動物使い";
-  if (jobId === 3) return "錬金術師"; // ★ 追加
-  return "未設定";
+  // ★職業未選択（null/undefined）の場合は「未選択」と表示する
+  //   これにより、初期起動時に「未知の職業」と出るのを防ぐ。
+  if (jobId == null) return "未選択";
+  return getJobNameFromId(jobId);
 }
 
 // =======================
@@ -212,16 +220,16 @@ function recalcStats() {
     equippedArmorIndex = window.equippedArmorIndex;
   }
 
-  // ★スキルツリーボーナスを取得（なければ0扱い）
+  // ★スキルツリーボーナスを取得（なければ 0 扱い）
   let skillBonus = null;
   if (typeof getGlobalSkillTreeBonus === "function") {
     skillBonus = getGlobalSkillTreeBonus() || {};
   } else {
     skillBonus = {};
   }
-  const hpMaxRate   = skillBonus.hpMaxRate   || 0; // 最大HP+%
-  const mpMaxRate   = skillBonus.mpMaxRate   || 0; // 最大MP+%
-  const spMaxRate   = skillBonus.spMaxRate   || 0; // 最大SP+%
+  const hpMaxRate   = skillBonus.hpMaxRate   || 0; // 最大 HP+%
+  const mpMaxRate   = skillBonus.mpMaxRate   || 0; // 最大 MP+%
+  const spMaxRate   = skillBonus.spMaxRate   || 0; // 最大 SP+%
   const atkRate     = skillBonus.atkRate     || 0; // 物理攻撃+%
   const defRate     = skillBonus.defRate     || 0; // 防御+%
 
@@ -242,7 +250,7 @@ function recalcStats() {
     spPct:  0
   };
 
-  // オプション1つ分を prefixMods に合算するヘルパー
+  // オプション 1 つ分を prefixMods に合算するヘルパー
   function addOptionToMods(opt, mods) {
     if (!opt || !mods) return;
     Object.keys(opt).forEach(k => {
@@ -281,7 +289,7 @@ function recalcStats() {
   // ここで一旦、装備 options から prefixMods を集計するために、
   // 武器・防具インスタンスを先に見る（装備性能計算と並行して行う）。
 
-  // 基本攻撃・防御（補正後ステで再計算するため、ここでは0で初期化して後で上書き）
+  // 基本攻撃・防御（補正後ステで再計算するため、ここでは 0 で初期化して後で上書き）
   let baseAtk = 0;
   let baseDef = 0;
 
@@ -289,7 +297,7 @@ function recalcStats() {
   let weaponScaleStr = 0;
   let weaponScaleInt = 0;
   let weaponEnhance = 0;
-  let weaponQuality = 0;   // 品質（0:通常,1:良品,2:傑作）
+  let weaponQuality = 0;   // 品質（0:通常，1:良品，2:傑作）
 
   let armorDef = 0;
   let armorScaleVit = 0;
@@ -374,11 +382,11 @@ function recalcStats() {
   baseAtk = effSTR + Math.floor(level * 0.5);
   baseDef = effVIT + Math.floor(level * 0.5);
 
-  // 強化補正（1段階あたり+5%想定）
+  // 強化補正（1 段階あたり +5% 想定）
   let WEAPON_ENH_RATE   = 0.05;
   let ARMOR_ENH_RATE    = 0.05;
 
-  // 品質補正（良品10% / 傑作20%）
+  // 品質補正（良品 10% / 傑作 20%）
   let QUALITY_GOOD_RATE = 0.10; // quality=1
   let QUALITY_EX_RATE   = 0.20; // quality=2
 
@@ -420,7 +428,7 @@ function recalcStats() {
     defFromArmorVit = Math.floor(defFromArmorVit * thirstDefDexLukRate);
   }
 
-  // ===== ステータス→最大HP/MP/SP への追加分を反映（補正後ステを使用） =====
+  // ===== ステータス→最大 HP/MP/SP への追加分を反映（補正後ステを使用） =====
   const hpFromVit = Math.floor(effVIT * HP_PER_VIT_POINT);
   const mpFromInt = Math.floor(effINT * MP_PER_INT_POINT);
   const spFromDex = Math.floor(effDEX * SP_PER_DEX_POINT);
@@ -451,7 +459,7 @@ function recalcStats() {
     baseSpMax = Math.floor(baseSpMax * (1 + prefixMods.spPct));
   }
 
-  // ===== 空腹・水分デバフ反映（最大HP/MP/SP） =====
+  // ===== 空腹・水分デバフ反映（最大 HP/MP/SP） =====
   if (typeof hungerHpRate === "number") {
     hpMax = Math.floor(baseHpMax * hungerHpRate);
   } else {
@@ -509,7 +517,7 @@ function recalcStats() {
   atkTotal = rawAtkTotal;
   defTotal = rawDefTotal;
 
-  // ★ここからペットの最大HP再計算（特性補正込み）
+  // ★ここからペットの最大 HP 再計算（特性補正込み）
   // petHpBase / petRebirthCount を元に毎回再計算する想定
   if (typeof applyCompanionPetRates === "function") {
     const r = applyCompanionPetRates(petHpBase, petAtkBase, petDefBase);
@@ -519,13 +527,13 @@ function recalcStats() {
   }
   if (petHpMax < 1) petHpMax = 1;
 
-  // 現在のペットHPが未初期化（0以下）の場合のみ、最大値に合わせておく
+  // 現在のペット HP が未初期化（0 以下）の場合のみ、最大値に合わせておく
   if (petHp <= 0) {
     petHp = petHpMax;
   } else {
     petHp = Math.min(petHp, petHpMax);
   }
-  // ★ここまでペットHP計算
+  // ★ここまでペット HP 計算
 
   if (typeof updateDisplay === "function") {
     updateDisplay();
@@ -596,7 +604,12 @@ function initGame() {
 
   expToNext = BASE_EXP_PER_LEVEL;
 
-  // ★ペット最大HPを再計算したあと、初期ゲーム開始時だけHPを最大にしておく
+  // ★ jobId が JOB_DEFS に存在しない場合は、安全な職に補正（例：戦士）
+  if (typeof getJobDefById === "function" && jobId != null && !getJobDefById(jobId)) {
+    jobId = 0;
+  }
+
+  // ★ペット最大 HP を再計算したあと、初期ゲーム開始時だけ HP を最大にしておく
   recalcStats();
   petHp = petHpMax;
 }
@@ -614,7 +627,7 @@ function updateMaterialDetailTexts() {
 // =======================
 
 function updateDisplay() {
-  // HP/MP/SPバー
+  // HP/MP/SP バー
   let hpBarFill = document.getElementById("hpBarFill");
   let hpBarText = document.getElementById("hpBarText");
   let mpBarFill = document.getElementById("mpBarFill");
@@ -733,13 +746,13 @@ function updateDisplay() {
   if (petHpEl)    petHpEl.textContent    = petHp;
   if (petHpMaxEl) petHpMaxEl.textContent = petHpMax;
 
-  // 上部簡易ステータスバー用 ペットLv/HP 表示（旧仕様保持）
+  // 上部簡易ステータスバー用 ペット Lv/HP 表示（旧仕様保持）
   let headerPetLevelEl = document.getElementById("headerPetLevel");
   let headerPetHpEl    = document.getElementById("headerPetHp");
   if (headerPetLevelEl) headerPetLevelEl.textContent = petLevel;
   if (headerPetHpEl)    headerPetHpEl.textContent    = `${petHp} / ${petHpMax}`;
 
-  // 新UI: 上部の簡易ペットステータス（petInfoMini）も更新
+  // 新 UI: 上部の簡易ペットステータス（petInfoMini）も更新
   if (typeof updatePetMiniStatus === "function") {
     updatePetMiniStatus();
   }
@@ -756,23 +769,23 @@ function updateDisplay() {
   let stPetAtkBaseEl = document.getElementById("stPetAtkBase");
   let stPetAtkNowEl  = document.getElementById("stPetAtkNow");
   let stPetDefEl     = document.getElementById("stPetDef");
-  // ★追加: 種類表示用
+  // ★追加：種類表示用
   let stPetTypeEl    = document.getElementById("stPetType");
 
   if (stPetName)  stPetName.textContent  = petName;
 
-  // ★種類: COMPANION_TYPES / companionTypeId から名前を表示
+  // ★種類：COMPANION_TYPES / companionTypeId から名前を表示
   if (stPetTypeEl && typeof getCurrentCompanionType === "function") {
     const t = getCurrentCompanionType();
     stPetTypeEl.textContent = t ? t.name : "未選択";
   }
 
   if (stPetLevel) stPetLevel.textContent = petLevel;
-  if (stPetExp)   stPetExp.textContent   = petExp;
-  if (stPetExpTo) stPetExpTo.textContent = petExpToNext;
+  if (stPetExp)   stPetExp.textContent   = exp;
+  if (stPetExpTo) stPetExpTo.textContent = expToNext;
   if (stPetReb)   stPetReb.textContent   = petRebirthCount;
   if (stPetGrow) {
-    stPetGrow.textContent =
+    stPetGrow.text内容 =
       petGrowthType === PET_GROWTH_TANK ? "タンク型" :
       petGrowthType === PET_GROWTH_DPS  ? "アタッカー型" :
       "バランス型";
@@ -794,7 +807,7 @@ function updateDisplay() {
 
   const hasPet = (jobId === 2) && !!window.companionTypeId;
 
-  // h3見出しは「動物使い」なら表示、ステータスブロック類はペット選択済みの時だけ表示
+  // h3 見出しは「動物使い」なら表示、ステータスブロック類はペット選択済みの時だけ表示
   let petOnlyEls = document.querySelectorAll(".pet-only");
   petOnlyEls.forEach(el => {
     if (el.tagName === "H3") {
@@ -871,7 +884,7 @@ function updateDisplay() {
   if (skCraftCooking  && craftSkills.cooking)   skCraftCooking.textContent   = craftSkills.cooking.lv;
   if (skCraftFurniture && craftSkills.furniture) skCraftFurniture.textContent = craftSkills.furniture.lv;
 
-  // ★追加: ペットタブの表示を最新化（倉庫タブ / 拠点タブ共用）
+  // ★追加：ペットタブの表示を最新化（倉庫タブ / 拠点タブ共用）
   if (typeof renderPetList === "function" && typeof renderPetCareBox === "function") {
     const whRoot = document.getElementById("warehousePagePet");
     if (whRoot) {
@@ -885,7 +898,7 @@ function updateDisplay() {
     }
   }
 
-  // ★追加: 倉庫UIの更新（料理・装備などを最新にする）
+  // ★追加：倉庫 UI の更新（料理・装備などを最新にする）
   if (typeof refreshWarehouseUI === "function") {
     refreshWarehouseUI();
   }

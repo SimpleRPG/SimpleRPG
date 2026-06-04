@@ -12,7 +12,7 @@ const SKILL_TYPE_PHYS  = "phys";
 const SKILL_TYPE_BUFF  = "buff";
 const SKILL_TYPE_PET   = "pet";
 
-// jobId: 0=戦士, 1=魔法使い, 2=動物使い, 3=錬金術師
+// jobId: 0=戦士, 1=魔法使い, 2=動物使い, 202=錬金術師（ギルド職）
 const JOB_SKILLS = {
   0: { // 戦士
     phys: [
@@ -34,7 +34,7 @@ const JOB_SKILLS = {
         type: SKILL_TYPE_BUFF,
         spCost: 5
       },
-      // ★ 戦士ギルド専用: ガードインパクト（所属中のみUI表示＆使用可）
+      // ★ 戦士ギルド専用: ガードインパクト（所属中のみ UI 表示＆使用可）
       {
         id: "guardImpact",
         name: "ガードインパクト",
@@ -65,7 +65,7 @@ const JOB_SKILLS = {
         type: SKILL_TYPE_MAGIC,
         mpCost: 8
       },
-      // ★ 魔法ギルド専用: マナバースト（所属中のみUI表示＆使用可）
+      // ★ 魔法ギルド専用: マナバースト（所属中のみ UI 表示＆使用可）
       {
         id: "manaBurst",
         name: "マナバースト",
@@ -88,7 +88,7 @@ const JOB_SKILLS = {
         type: SKILL_TYPE_PET,
         spCost: 4
       },
-      // ★ 動物使いギルド専用: ビーストロア（所属中のみUI表示＆使用可）
+      // ★ 動物使いギルド専用: ビーストロア（所属中のみ UI 表示＆使用可）
       {
         id: "beastRoar",
         name: "ビーストロア",
@@ -105,7 +105,7 @@ const JOB_SKILLS = {
       }
     ]
   },
-  3: { // 錬金術師
+  202: { // 錬金術師（ギルド職）
     phys: [
       {
         id: "itemBoost",
@@ -126,7 +126,7 @@ const JOB_SKILLS = {
 };
 
 // =======================
-// 共通: スキルUI更新
+// 共通: スキル UI 更新
 // =======================
 
 function refreshSkillUIs() {
@@ -188,14 +188,14 @@ function refreshSkillUIs() {
 // =======================
 
 let braveChargeTurnRemain = 0;
-let braveChargeRate       = 0.3;  // 攻撃+30%
+let braveChargeRate       = 0.3;  // 攻撃 +30%
 
 let petBuffTurnRemain = 0;
 // petBuffRate は game-core 側で宣言済み
 
 // 錬金術師用: アイテムブースト
 let itemBoostTurnRemain = 0;
-let itemBoostRate       = 0.5;   // アイテム効果さらに+50%
+let itemBoostRate       = 0.5;   // アイテム効果さらに +50%
 
 function getCurrentAtkForSkill() {
   let base = atkTotal;
@@ -214,7 +214,7 @@ function getCurrentAtkForSkill() {
   return base;
 }
 
-// ★ 修正: 接頭語などで補正済みの effINT があればそれを優先して使う
+// ★ 修正：接頭語などで補正済みの effINT があればそれを優先して使う
 function getEffectiveIntForMagic() {
   let base;
   if (typeof window !== "undefined" && typeof window.effINT === "number") {
@@ -333,7 +333,7 @@ function doPetTurn() {
     } else if (s && s.id === "selfHeal") {
       const heal = Math.floor(petHpMax * (s.healRate || 0.3)) + 3;
       petHp = Math.min(petHp + heal, petHpMax);
-      appendLog(`${petName}の${s.name}！ HPが${heal}回復した！`);
+      appendLog(`${petName}の${s.name}！ HP が${heal}回復した！`);
       usedSkill = true;
     }
   }
@@ -341,14 +341,14 @@ function doPetTurn() {
   if (!usedSkill) {
     let dmg = calcPetDamage();
 
-    // ★ ここだけ調整: クリティカル率にステータスバフを反映（ベース20%は維持）
+    // ★ ここだけ調整: クリティカル率にステータスバフを反映（ベース 20% は維持）
     let critRate = 0.2;
     if (typeof modifyCritRateForPlayer === "function") {
       critRate = modifyCritRateForPlayer(critRate);
     }
 
     if (Math.random() < critRate) {
-      // ★ プレイヤーと同じクリダメ倍率ロジックを適用（LUK＋バフ＋減衰＋3.0倍上限）
+      // ★ プレイヤーと同じクリダメ倍率ロジックを適用（LUK＋バフ＋減衰＋3.0 倍上限）
       let critMult = 1.5;
       if (typeof getBaseCritMultFromLuk === "function") {
         critMult = getBaseCritMultFromLuk();
@@ -404,11 +404,11 @@ function doPetTurn() {
 }
 
 // =======================
-// 魔法発動（UIセレクト版）
+// 魔法発動（UI セレクト版）
 // =======================
 
 function castMagicFromUI() {
-  if (jobId !== 1 && jobId !== 2 && jobId !== 3) {
+  if (jobId !== 1 && jobId !== 2 && jobId !== 202) {
     appendLog("魔法を扱える職業ではない");
     return;
   }
@@ -465,7 +465,7 @@ function castMagicFromUI() {
 
   const mpCost = skill.mpCost || 0;
   if (mp < mpCost) {
-    appendLog("MPが足りない");
+    appendLog("MP が足りない");
     return;
   }
   mp -= mpCost;
@@ -537,7 +537,7 @@ function castMagicFromUI() {
       currentBattleMaxMagic = Math.max(currentBattleMaxMagic, dmg);
     }
 
-    appendLog(`マナバースト！ ${currentEnemy.name} に${dmg}ダメージ（反動でMPを${extra}消費）`);
+    appendLog(`マナバースト！ ${currentEnemy.name} に${dmg}ダメージ（反動で MP を${extra}消費）`);
     didDamage = true;
   } else if (skillId === "beastHeal") {
     if (jobId !== 2) {
@@ -545,11 +545,11 @@ function castMagicFromUI() {
     } else {
       const heal = Math.floor(petHpMax * 0.4) + 5;
       petHp = Math.min(petHp + heal, petHpMax);
-      appendLog(`ビーストヒール！ ${petName}のHPが${heal}回復した`);
+      appendLog(`ビーストヒール！ ${petName}の HP が${heal}回復した`);
     }
   } else if (skillId === "safeBrew") {
     // 錬金術師用：INT/DEX/LUK 複合回復
-    if (jobId !== 3) {
+    if (jobId !== 202) {
       appendLog("セーフブリューは錬金術師専用だ");
     } else {
       const baseInt = getEffectiveIntForMagic();
@@ -559,13 +559,13 @@ function castMagicFromUI() {
       const before = hp;
       hp = Math.min(hpMax, hp + heal);
       const actual = hp - before;
-      appendLog(`セーフブリュー！ HPが${actual}回復した`);
+      appendLog(`セーフブリュー！ HP が${actual}回復した`);
     }
   }
 
   // ここからターン進行
   if (!currentEnemy) {
-    // 非戦闘時: セーフブリューやビーストヒールだけして終了（敵・ペットターンは進めない）
+    // 非戦闘時：セーフブリューやビーストヒールだけして終了（敵・ペットターンは進めない）
     if (typeof updateDisplay === "function") {
       updateDisplay();
     }
@@ -621,11 +621,11 @@ function castMagicFromUI() {
 }
 
 // =======================
-// 物理スキル発動（UIセレクト版）
+// 物理スキル発動（UI セレクト版）
 // =======================
 
 function useSkillFromUI() {
-  if (jobId !== 0 && jobId !== 2 && jobId !== 3) {
+  if (jobId !== 0 && jobId !== 2 && jobId !== 202) {
     appendLog("スキルを扱える職業ではない");
     return;
   }
@@ -690,7 +690,7 @@ function useSkillFromUI() {
 
   const spCost = skill.spCost || 0;
   if (sp < spCost) {
-    appendLog("SPが足りない");
+    appendLog("SP が足りない");
     return;
   }
   sp -= spCost;
@@ -776,8 +776,8 @@ function useSkillFromUI() {
       appendLog(`ビーストロア！ ${petName}の力がみなぎった`);
     }
   } else if (skillId === "itemBoost") {
-    // 錬金術師専用：アイテム強化バフ（SP消費）
-    if (jobId !== 3) {
+    // 錬金術師専用：アイテム強化バフ（SP 消費）
+    if (jobId !== 202) {
       appendLog("アイテムブーストは錬金術師専用だ");
     } else {
       itemBoostTurnRemain = 3;
@@ -851,7 +851,7 @@ function useSelectedSkill() {
 }
 
 // =======================
-// 職業ごとのスキルUI表示切り替え
+// 職業ごとのスキル UI 表示切り替え
 // =======================
 
 function updateBattleSkillUIByJob() {
@@ -871,7 +871,7 @@ function updateBattleSkillUIByJob() {
     magicBtn.style.display   = "";
     skillBlock.style.display = "none";
     skillBtn.style.display   = "none";
-  } else if (jobId === 2 || jobId === 3) {
+  } else if (jobId === 2 || jobId === 202) {
     magicBlock.style.display = "";
     magicBtn.style.display   = "";
     skillBlock.style.display = "";
@@ -889,10 +889,10 @@ function updateSkillButtonsByJob() {
   const skillBlock = document.getElementById("skillBlock");
 
   if (magicBlock) {
-    magicBlock.style.display = (jobId === 1 || jobId === 2 || jobId === 3) ? "" : "none";
+    magicBlock.style.display = (jobId === 1 || jobId === 2 || jobId === 202) ? "" : "none";
   }
 
   if (skillBlock) {
-    skillBlock.style.display = (jobId === 0 || jobId === 2 || jobId === 3) ? "" : "none";
+    skillBlock.style.display = (jobId === 0 || jobId === 2 || jobId === 202) ? "" : "none";
   }
 }

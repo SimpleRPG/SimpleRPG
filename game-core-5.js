@@ -3,28 +3,108 @@
 //
 
 // =======================
+// 探索エリアマスタ（T1〜T10想定）
+// ※既存4エリアの仕様は維持しつつ、後からエリアを追加しやすくするためのマスタ定義
+// =======================
+
+const EXPLORE_AREA_MASTER = {
+  // 既存エリア（文言はそのまま）
+  field: {
+    id: "field",
+    name: "草原（0転生レベル100でボス目安）",
+    // 初期から解放
+    unlock: null
+  },
+  forest: {
+    id: "forest",
+    name: "森（10転生目安）",
+    // 草原ボス撃破で解放（従来仕様と同じ）
+    unlock: { type: "bossCleared", area: "field" }
+  },
+  cave: {
+    id: "cave",
+    name: "洞窟（20転生目安）",
+    // 森ボス撃破で解放
+    unlock: { type: "bossCleared", area: "forest" }
+  },
+  mine: {
+    id: "mine",
+    name: "廃鉱山（40転生目安）",
+    // 洞窟ボス撃破で解放
+    unlock: { type: "bossCleared", area: "cave" }
+  },
+
+  // ここから先はT5〜T10用の追加エリア想定（実際に使うときは enemy-data.js 側も合わせて定義する）
+  // 仕様を変えないため、デフォルトでは選択肢に出ても動作は既存ロジックに従うだけ。
+  desert: {
+    id: "desert",
+    name: "灼熱の砂漠（T5想定）",
+    unlock: { type: "bossCleared", area: "mine" }
+  },
+  swamp: {
+    id: "swamp",
+    name: "毒沼（T6想定）",
+    unlock: { type: "bossCleared", area: "desert" }
+  },
+  ruin: {
+    id: "ruin",
+    name: "古代遺跡（T7想定）",
+    unlock: { type: "bossCleared", area: "swamp" }
+  },
+  sky: {
+    id: "sky",
+    name: "浮遊島（T8想定）",
+    unlock: { type: "bossCleared", area: "ruin" }
+  },
+  ice: {
+    id: "ice",
+    name: "氷の塔（T9想定）",
+    unlock: { type: "bossCleared", area: "sky" }
+  },
+  hell: {
+  id: "hell",
+  name: "地獄の門（T10想定）",
+  unlock: { type: "bossCleared", area: "ice" }
+}
+};
+
+// エリアごとの状態マップをマスタから生成
+function createAreaStateMap(initialValue) {
+  const map = {};
+  Object.keys(EXPLORE_AREA_MASTER).forEach(areaId => {
+    map[areaId] = initialValue;
+  });
+  return map;
+}
+
+// エリア解放判定（既存の areaBossCleared との互換を保ちつつ拡張可能に）
+function isAreaUnlocked(areaId) {
+  const def = EXPLORE_AREA_MASTER[areaId];
+  if (!def) return false;
+
+  const cond = def.unlock;
+  if (!cond) return true;
+
+  if (cond.type === "bossCleared") {
+    // 既存の areaBossCleared をそのまま利用
+    if (typeof areaBossCleared === "undefined") return true;
+    return !!areaBossCleared[cond.area];
+  }
+
+  // 将来: レベル条件やギルド名声などを追加する余地
+  // if (cond.type === "level") { ... }
+  // if (cond.type === "guildFame") { ... }
+
+  return true;
+}
+
+// =======================
 // グローバル状態（探索・ボス）
 // =======================
 
-let areaBossAvailable = {
-  field:  false,
-  forest: false,
-  cave:   false,
-  mine:   false
-};
-
-let consecutiveExplores = {
-  field: 0,
-  forest: 0,
-  cave:   0,
-  mine:   0
-};
-let lastExploreSuccess = {
-  field: true,
-  forest: true,
-  cave:   true,
-  mine:   true
-};
+let areaBossAvailable   = createAreaStateMap(false);
+let consecutiveExplores = createAreaStateMap(0);
+let lastExploreSuccess  = createAreaStateMap(true);
 
 window.isExploring   = false;
 window.exploringArea = "field";
@@ -76,33 +156,21 @@ function refreshExploreAreaSelect() {
   const prev = sel.value;
   sel.innerHTML = "";
 
-  {
-    const opt = document.createElement("option");
-    opt.value = "field";
-    opt.textContent = "草原（0転生レベル100でボス目安）";
-    sel.appendChild(opt);
-  }
+  // 既存仕様を維持しつつ、マスタ定義に基づいてエリアを列挙
+  Object.keys(EXPLORE_AREA_MASTER).forEach(areaId => {
+    const def = EXPLORE_AREA_MASTER[areaId];
+    if (!def) return;
 
-  if (typeof areaBossCleared === "undefined" || areaBossCleared.field) {
-    const opt = document.createElement("option");
-    opt.value = "forest";
-    opt.textContent = "森（10転生目安）";
-    sel.appendChild(opt);
-  }
+    // 解放済みエリアのみ表示（従来の areaBossCleared チェックを一般化）
+    if (!isAreaUnlocked(areaId)) {
+      return;
+    }
 
-  if (typeof areaBossCleared === "undefined" || areaBossCleared.forest) {
     const opt = document.createElement("option");
-    opt.value = "cave";
-    opt.textContent = "洞窟（20転生目安）";
+    opt.value = areaId;
+    opt.textContent = def.name;
     sel.appendChild(opt);
-  }
-
-  if (typeof areaBossCleared === "undefined" || areaBossCleared.cave) {
-    const opt = document.createElement("option");
-    opt.value = "mine";
-    opt.textContent = "廃鉱山（40転生目安）";
-    sel.appendChild(opt);
-  }
+  });
 
   const exists = Array.from(sel.options).some(o => o.value === prev);
   sel.value = exists ? prev : (sel.options[0]?.value || "field");
@@ -226,7 +294,7 @@ function startRandomEncounter() {
 // =======================
 
 function resetConsecutiveForArea(areaId) {
-  if (!consecutiveExplores[areaId] && consecutiveExplores[areaId] !== 0) return;
+  if (!consecutiveExplores.hasOwnProperty(areaId)) return;
   consecutiveExplores[areaId] = 0;
   lastExploreSuccess[areaId] = false;
 }
@@ -239,6 +307,7 @@ function resetConsecutiveAll() {
 }
 
 function markExploreSuccess(areaId) {
+  if (!lastExploreSuccess.hasOwnProperty(areaId)) return;
   lastExploreSuccess[areaId] = true;
 }
 
@@ -250,6 +319,7 @@ function tryFindBossOnExplore() {
   const area = window.isExploring
     ? (window.exploringArea || getCurrentArea())
     : getCurrentArea();
+  if (!areaBossAvailable.hasOwnProperty(area)) return;
   if (areaBossAvailable[area]) return;
 
   if (!lastExploreSuccess[area]) {
@@ -561,6 +631,18 @@ function doExploreRandomEvent(area) {
       goldMin = 20;  goldMax = 30;
     } else if (area === "mine") {
       goldMin = 30;  goldMax = 40;
+    } else if (area === "desert") {
+      goldMin = 40;  goldMax = 60;
+    } else if (area === "swamp") {
+      goldMin = 50;  goldMax = 80;
+    } else if (area === "ruin") {
+      goldMin = 70;  goldMax = 100;
+    } else if (area === "sky") {
+      goldMin = 90;  goldMax = 130;
+    } else if (area === "ice") {
+      goldMin = 110; goldMax = 160;
+    } else if (area === "hell") {
+      goldMin = 130; goldMax = 200;
     }
 
     // ★経済ログ用: 宝箱前後の所持金
@@ -583,23 +665,65 @@ function doExploreRandomEvent(area) {
     for (let i = 0; i < dropCount; i++) {
       const matKey = baseKeys[Math.floor(Math.random() * baseKeys.length)];
 
-      // ティア決定
+      // ティア決定（T10 エリアまで拡張）
       let tierNum = 1;
+
       if (area === "field") {
+        // T1〜T2（T1中心）
         tierNum = (Math.random() < 0.9) ? 1 : 2;
       } else if (area === "forest") {
+        // T1〜T3（T2メイン）
         const r = Math.random();
         if      (r < 0.1) tierNum = 1;
         else if (r < 0.9) tierNum = 2;
         else              tierNum = 3;
       } else if (area === "cave") {
+        // T2〜T3
         const r = Math.random();
-        if      (r < 0.1) tierNum = 2;
+        if      (r < 0.3) tierNum = 2;
         else              tierNum = 3;
       } else if (area === "mine") {
+        // T2〜T4（T3メイン）
         const r = Math.random();
         if      (r < 0.2) tierNum = 2;
-        else              tierNum = 3;
+        else if (r < 0.8) tierNum = 3;
+        else              tierNum = 4;
+      } else if (area === "desert") {
+        // T3〜T5（T4メイン）
+        const r = Math.random();
+        if      (r < 0.2) tierNum = 3;
+        else if (r < 0.8) tierNum = 4;
+        else              tierNum = 5;
+      } else if (area === "swamp") {
+        // T4〜T6（T5メイン）
+        const r = Math.random();
+        if      (r < 0.2) tierNum = 4;
+        else if (r < 0.8) tierNum = 5;
+        else              tierNum = 6;
+      } else if (area === "ruin") {
+        // T5〜T7（T6メイン）
+        const r = Math.random();
+        if      (r < 0.2) tierNum = 5;
+        else if (r < 0.8) tierNum = 6;
+        else              tierNum = 7;
+      } else if (area === "sky") {
+        // T6〜T8（T7メイン）
+        const r = Math.random();
+        if      (r < 0.2) tierNum = 6;
+        else if (r < 0.8) tierNum = 7;
+        else              tierNum = 8;
+      } else if (area === "ice") {
+        // T7〜T9（T8メイン）
+        const r = Math.random();
+        if      (r < 0.2) tierNum = 7;
+        else if (r < 0.8) tierNum = 8;
+        else              tierNum = 9;
+      } else if (area === "hell") {
+        // T8〜T10（最大 T10）
+        const r = Math.random();
+        if      (r < 0.2) tierNum = 8;
+        else if (r < 0.7) tierNum = 9;
+        else              tierNum = 10;
       }
 
       // 在庫追加: materials-core 経由 or メタ経由
@@ -653,7 +777,9 @@ function startBossBattleForArea(areaId) {
     return;
   }
 
-  areaBossAvailable[areaId] = false;
+  if (areaBossAvailable.hasOwnProperty(areaId)) {
+    areaBossAvailable[areaId] = false;
+  }
   if (typeof updateBossButtonUI === "function") {
     updateBossButtonUI();
   }
