@@ -667,20 +667,13 @@ let lastPetFeedTime = window.lastPetFeedTime;
 
 /**
  * 今「動物使い」かどうか判定するヘルパ。
- * game-core 側の isBeastTamer があればそれを優先して使う。
+ * jobs.js 側の isBeastTamer() を使う。
  */
 function isCurrentJobBeastTamer() {
-  try {
-    if (typeof window.isBeastTamer === "function") {
-      return window.isBeastTamer();
-    }
-    if (typeof window.jobId === "number") {
-      return window.jobId === 2;
-    }
-  } catch (e) {
-    // noop
+  if (typeof window.isBeastTamer !== "function") {
+    return false;
   }
-  return false;
+  return window.isBeastTamer();
 }
 
 /**

@@ -35,6 +35,22 @@ function applyAlchemistDotBonus(dmg) {
   return dmg;
 }
 
+// ★カウンター用: 「防御前の生ダメージ」を一時保存しておく場所
+//   ・敵がプレイヤーに攻撃するとき、ダメージ計算の最初で
+//     setLastRawEnemyDamage(raw) を呼ぶ想定。
+//   ・防御バフや被ダメ軽減をかける前の値を入れておく。
+let lastRawEnemyDamage = 0;
+function setLastRawEnemyDamage(raw) {
+  if (typeof raw === "number" && raw > 0) {
+    lastRawEnemyDamage = raw;
+  } else {
+    lastRawEnemyDamage = 0;
+  }
+}
+function getLastRawEnemyDamage() {
+  return lastRawEnemyDamage;
+}
+
 // =======================
 // 状態定義テーブル
 // =======================
@@ -201,79 +217,118 @@ const STATUS_EFFECTS = {
     }
   },
 
+  // ★大盾兵用: カウンターステータス（1 回だけ発動）
+  //   ・付与されている間、敵からダメージを受けたときにカウンターを返す
+  //   ・反撃ダメージ = 「防御前の生ダメージ」×「職業ごとの倍率」
+  //   ・倍率は getCounterDamageRateForJob(jobId) に委譲（大盾兵のみ 1.5 倍）[jobs.js 由来の jobId=100 に対して調整想定][web:333]
+  //   ・1 回発動したら即座に state を解除（remain = 0）
+  counter: {
+    id: "counter",
+    name: "カウンター",
+    baseDuration: 1, // ターン経過での解除より「1回発動で消える」のが主目的
+    onDamaged(targetCtx, inst) {
+      // 防御などをかける前に、攻撃側で setLastRawEnemyDamage が呼ばれている前提
+      const raw = getLastRawEnemyDamage();
+      if (!raw || raw <= 0) {
+        // 生ダメージが分からない場合は何もしない（ステートは残す）
+        return;
+      }
+
+      // 職業ごとのカウンター倍率（大盾兵なら 1.5、他は 1.0 想定）
+      let rate = 1.0;
+      if (typeof getCounterDamageRateForJob === "function" && typeof jobId === "number") {
+        const r = getCounterDamageRateForJob(jobId);
+        if (typeof r === "number" && r > 0) {
+          rate = r;
+        }
+      }
+
+      const dmg = Math.max(1, Math.floor(raw * rate));
+
+      if (typeof onCounterDamageToEnemy === "function") {
+        onCounterDamageToEnemy(dmg);
+      }
+
+      appendLog(`${targetCtx.name}のカウンター！${dmg}ダメージを与えた！`);
+
+      // 1 回発動したら解除
+      inst.remain = 0;
+    }
+  },
+
   // =======================
-  // ポーションバフ（料理とは別ID）
+  // ポーションバフ（料理とは別 ID）
   // =======================
 
   potion_atk_up_T1: {
     id: "potion_atk_up_T1",
-    name: "ポーション:攻撃アップT1",
+    name: "ポーション:攻撃アップ T1",
     baseDuration: 3,
     modifyAttack(mult) {
-      return mult * 1.12; // 料理T1(1.10)より+0.02
+      return mult * 1.12; // 料理 T1(1.10) より +0.02
     }
   },
   potion_atk_up_T2: {
     id: "potion_atk_up_T2",
-    name: "ポーション:攻撃アップT2",
+    name: "ポーション:攻撃アップ T2",
     baseDuration: 3,
     modifyAttack(mult) {
-      return mult * 1.20; // 料理T2(1.18)より+0.02
+      return mult * 1.20; // 料理 T2(1.18) より +0.02
     }
   },
   potion_atk_up_T3: {
     id: "potion_atk_up_T3",
-    name: "ポーション:攻撃アップT3",
+    name: "ポーション:攻撃アップ T3",
     baseDuration: 3,
     modifyAttack(mult) {
-      return mult * 1.32; // 料理T3系(1.25〜1.30)より+0.02程度
+      return mult * 1.32; // 料理 T3 系 (1.25〜1.30) より +0.02 程度
     }
   },
 
   // 守護ポーション（防御アップポーション）
   potion_def_up_T1: {
     id: "potion_def_up_T1",
-    name: "ポーション:防御アップT1",
+    name: "ポーション:防御アップ T1",
     baseDuration: 3,
     modifyDefense(mult) {
-      // 被ダメージ×0.70（30%カット）
+      // 被ダメージ×0.70（30% カット）
       return mult * 0.70;
     }
   },
   potion_def_up_T2: {
     id: "potion_def_up_T2",
-    name: "ポーション:防御アップT2",
+    name: "ポーション:防御アップ T2",
     baseDuration: 3,
     modifyDefense(mult) {
-      return mult * 0.60; // 料理T2(0.82)より-0.02
+      return mult * 0.60; // 料理 T2(0.82) より -0.02
     }
   },
   potion_def_up_T3: {
     id: "potion_def_up_T3",
-    name: "ポーション:防御アップT3",
+    name: "ポーション:防御アップ T3",
     baseDuration: 3,
     modifyDefense(mult) {
-      return mult * 0.50; // 料理T3系(0.70〜0.75)より-0.02程度
+      return mult * 0.50; // 料理 T3 系 (0.70〜0.75) より -0.02 程度
     }
   },
 
   // コンディションポーション用リジェネ
   potion_regen_T1: {
     id: "potion_regen_T1",
-    name: "ポーション:リジェネT1",
+    name: "ポーション:リジェネ T1",
     baseDuration: 3,
     onTurnEnd(targetCtx) {
       const hpMax = targetCtx.hpMax();
       const applyHp = targetCtx.applyHp;
       const name = targetCtx.name;
-      const heal = Math.max(1, Math.floor(hpMax * 0.05)); // 通常リジェネ(0.04)より+1%
+      const heal = Math.max(1, Math.floor(hpMax * 0.05)); // 通常リジェネ (0.04) より +1%
       applyHp(heal);
       appendLog(`${name}はポーションの効果で${heal}回復した！`);
     }
   },
   potion_regen_T2: {
     id: "potion_regen_T2",
-    name: "ポーション:リジェネT2",
+    name: "ポーション:リジェネ T2",
     baseDuration: 3,
     onTurnEnd(targetCtx) {
       const hpMax = targetCtx.hpMax();
@@ -286,7 +341,7 @@ const STATUS_EFFECTS = {
   },
   potion_regen_T3: {
     id: "potion_regen_T3",
-    name: "ポーション:リジェネT3",
+    name: "ポーション:リジェネ T3",
     baseDuration: 3,
     onTurnEnd(targetCtx) {
       const hpMax = targetCtx.hpMax();
@@ -302,10 +357,10 @@ const STATUS_EFFECTS = {
   // 料理バフ（肉＝物理・魚＝魔法）
   // =======================
 
-  // 肉系: 物理攻撃アップ（STR/物理与ダメ）
+  // 肉系：物理攻撃アップ（STR/物理与ダメ）
   food_meat_atk_T1: {
     id: "food_meat_atk_T1",
-    name: "料理:物理攻撃アップT1",
+    name: "料理:物理攻撃アップ T1",
     baseDuration: 30,
     modifyAttack(mult) {
       return mult * 1.10;
@@ -313,7 +368,7 @@ const STATUS_EFFECTS = {
   },
   food_meat_atk_T2: {
     id: "food_meat_atk_T2",
-    name: "料理:物理攻撃アップT2",
+    name: "料理:物理攻撃アップ T2",
     baseDuration: 45,
     modifyAttack(mult) {
       return mult * 1.18;
@@ -321,7 +376,7 @@ const STATUS_EFFECTS = {
   },
   food_meat_atk_T3: {
     id: "food_meat_atk_T3",
-    name: "料理:物理攻撃アップT3",
+    name: "料理:物理攻撃アップ T3",
     baseDuration: 60,
     modifyAttack(mult) {
       return mult * 1.25;
@@ -329,7 +384,7 @@ const STATUS_EFFECTS = {
   },
   food_meat_atk_steak_T2: {
     id: "food_meat_atk_steak_T2",
-    name: "料理:物理攻撃アップ(ステーキT2)",
+    name: "料理:物理攻撃アップ (ステーキ T2)",
     baseDuration: 45,
     modifyAttack(mult) {
       return mult * 1.22;
@@ -337,7 +392,7 @@ const STATUS_EFFECTS = {
   },
   food_meat_atk_steak_T3: {
     id: "food_meat_atk_steak_T3",
-    name: "料理:物理攻撃アップ(ステーキT3)",
+    name: "料理:物理攻撃アップ (ステーキ T3)",
     baseDuration: 60,
     modifyAttack(mult) {
       return mult * 1.30;
@@ -345,17 +400,17 @@ const STATUS_EFFECTS = {
   },
   food_meat_atk_roast_T3: {
     id: "food_meat_atk_roast_T3",
-    name: "料理:物理攻撃アップ(ローストT3)",
+    name: "料理:物理攻撃アップ (ロースト T3)",
     baseDuration: 60,
     modifyAttack(mult) {
       return mult * 1.28;
     }
   },
 
-  // 野菜スープ系: 防御アップ
+  // 野菜スープ系：防御アップ
   food_veg_def_T1: {
     id: "food_veg_def_T1",
-    name: "料理:防御アップT1",
+    name: "料理:防御アップ T1",
     baseDuration: 30,
     modifyDefense(mult) {
       return mult * 0.90;
@@ -363,7 +418,7 @@ const STATUS_EFFECTS = {
   },
   food_veg_def_T2: {
     id: "food_veg_def_T2",
-    name: "料理:防御アップT2",
+    name: "料理:防御アップ T2",
     baseDuration: 45,
     modifyDefense(mult) {
       return mult * 0.82;
@@ -371,7 +426,7 @@ const STATUS_EFFECTS = {
   },
   food_veg_def_T3: {
     id: "food_veg_def_T3",
-    name: "料理:防御アップT3",
+    name: "料理:防御アップ T3",
     baseDuration: 60,
     modifyDefense(mult) {
       return mult * 0.75;
@@ -379,7 +434,7 @@ const STATUS_EFFECTS = {
   },
   food_veg_def_stew_T2: {
     id: "food_veg_def_stew_T2",
-    name: "料理:防御アップ(シチューT2)",
+    name: "料理:防御アップ (シチュー T2)",
     baseDuration: 45,
     modifyDefense(mult) {
       return mult * 0.78;
@@ -387,7 +442,7 @@ const STATUS_EFFECTS = {
   },
   food_veg_def_stew_T3: {
     id: "food_veg_def_stew_T3",
-    name: "料理:防御アップ(シチューT3)",
+    name: "料理:防御アップ (シチュー T3)",
     baseDuration: 60,
     modifyDefense(mult) {
       return mult * 0.70;
@@ -395,7 +450,7 @@ const STATUS_EFFECTS = {
   },
   food_veg_def_potage_T3: {
     id: "food_veg_def_potage_T3",
-    name: "料理:防御アップ(ポタージュT3)",
+    name: "料理:防御アップ (ポタージュ T3)",
     baseDuration: 60,
     modifyDefense(mult) {
       return mult * 0.72;
@@ -403,7 +458,7 @@ const STATUS_EFFECTS = {
   },
   food_veg_t2: {
     id: "food_veg_t2",
-    name: "料理:防御アップ(汎用T2)",
+    name: "料理:防御アップ (汎用 T2)",
     baseDuration: 45,
     modifyDefense(mult) {
       return mult * 0.80;
@@ -411,17 +466,17 @@ const STATUS_EFFECTS = {
   },
   food_veg_t3: {
     id: "food_veg_t3",
-    name: "料理:防御アップ(汎用T3)",
+    name: "料理:防御アップ (汎用 T3)",
     baseDuration: 60,
     modifyDefense(mult) {
       return mult * 0.72;
     }
   },
 
-  // 魚スープ系: 魔法攻撃アップ（INT/魔法与ダメ）
+  // 魚スープ系：魔法攻撃アップ（INT/魔法与ダメ）
   food_fish_int_T1: {
     id: "food_fish_int_T1",
-    name: "料理:魔法攻撃アップT1",
+    name: "料理:魔法攻撃アップ T1",
     baseDuration: 30,
     modifyMagicAttack(mult) {
       return mult * 1.10;
@@ -429,7 +484,7 @@ const STATUS_EFFECTS = {
   },
   food_fish_int_T2: {
     id: "food_fish_int_T2",
-    name: "料理:魔法攻撃アップT2",
+    name: "料理:魔法攻撃アップ T2",
     baseDuration: 45,
     modifyMagicAttack(mult) {
       return mult * 1.18;
@@ -437,7 +492,7 @@ const STATUS_EFFECTS = {
   },
   food_fish_int_T3: {
     id: "food_fish_int_T3",
-    name: "料理:魔法攻撃アップT3",
+    name: "料理:魔法攻撃アップ T3",
     baseDuration: 60,
     modifyMagicAttack(mult) {
       return mult * 1.25;
@@ -447,7 +502,7 @@ const STATUS_EFFECTS = {
   // 飲み物バフ
   drink_mp_regen_T1: {
     id: "drink_mp_regen_T1",
-    name: "飲み物:回復T1",
+    name: "飲み物:回復 T1",
     baseDuration: 30,
     onTurnEnd(targetCtx) {
       const mpMax = targetCtx.mpMax();
@@ -455,12 +510,12 @@ const STATUS_EFFECTS = {
       const name = targetCtx.name;
       const heal = Math.max(1, Math.floor(mpMax * 0.04)); // 4%
       applyMp(heal);
-      appendLog(`${name}はハーブティーの効果でMPが${heal}回復した…`);
+      appendLog(`${name}はハーブティーの効果で MP が${heal}回復した…`);
     }
   },
   drink_mp_regen_T2: {
     id: "drink_mp_regen_T2",
-    name: "飲み物:回復T2",
+    name: "飲み物:回復 T2",
     baseDuration: 45,
     onTurnEnd(targetCtx) {
       const mpMax = targetCtx.mpMax();
@@ -468,12 +523,12 @@ const STATUS_EFFECTS = {
       const name = targetCtx.name;
       const heal = Math.max(1, Math.floor(mpMax * 0.06)); // 6%
       applyMp(heal);
-      appendLog(`${name}は濃縮ハーブティーの効果でMPが${heal}回復している…`);
+      appendLog(`${name}は濃縮ハーブティーの効果で MP が${heal}回復している…`);
     }
   },
   drink_mp_regen_T3: {
     id: "drink_mp_regen_T3",
-    name: "飲み物:回復T3",
+    name: "飲み物:回復 T3",
     baseDuration: 60,
     onTurnEnd(targetCtx) {
       const mpMax = targetCtx.mpMax();
@@ -481,12 +536,12 @@ const STATUS_EFFECTS = {
       const name = targetCtx.name;
       const heal = Math.max(1, Math.floor(mpMax * 0.08)); // 8%
       applyMp(heal);
-      appendLog(`${name}は祝福のハーブティーの効果でMPが${heal}回復している…`);
+      appendLog(`${name}は祝福のハーブティーの効果で MP が${heal}回復している…`);
     }
   },
   drink_sp_buff_T1: {
     id: "drink_sp_buff_T1",
-    name: "飲み物:活力T1",
+    name: "飲み物:活力 T1",
     baseDuration: 30,
     modifyAccuracy(acc) {
       return acc + 0.05;
@@ -497,7 +552,7 @@ const STATUS_EFFECTS = {
   },
   drink_sp_buff_T2: {
     id: "drink_sp_buff_T2",
-    name: "飲み物:活力T2",
+    name: "飲み物:活力 T2",
     baseDuration: 45,
     modifyAccuracy(acc) {
       return acc + 0.08;
@@ -508,7 +563,7 @@ const STATUS_EFFECTS = {
   },
   drink_sp_buff_T3: {
     id: "drink_sp_buff_T3",
-    name: "飲み物:活力T3",
+    name: "飲み物:活力 T3",
     baseDuration: 60,
     modifyAccuracy(acc) {
       return acc + 0.10;
@@ -534,7 +589,7 @@ function makePlayerCtx() {
     applyHp: delta => {
       hp = Math.max(0, Math.min(hpMax, hp + delta));
     },
-    // ★ MP 系（飲み物MPリジェネ用）
+    // ★ MP 系（飲み物 MP リジェネ用）
     mp: () => (typeof mp === "number" ? mp : 0),
     mpMax: () => (typeof mpMax === "number" ? mpMax : 0),
     applyMp: delta => {
@@ -577,7 +632,7 @@ function addStatusToEnemy(id) {
 
   let baseDur = def.baseDuration || 0;
 
-  // ★錬金術師なら状態異常ターン+25%
+  // ★錬金術師なら状態異常ターン +25%
   if (typeof isAlchemist === "function" && isAlchemist()) {
     baseDur = Math.max(1, Math.floor(baseDur * 1.25));
   }
@@ -771,7 +826,7 @@ function modifyAccuracyForEnemy(acc) {
 }
 
 // ★クリティカル率補正（プレイヤー）
-//   → バフでどれだけ積んでも最後に最大70%で頭打ちにする
+//   → バフでどれだけ積んでも最後に最大 70% で頭打ちにする
 function modifyCritRateForPlayer(baseRate) {
   let r = baseRate;
   for (const inst of playerStatuses) {

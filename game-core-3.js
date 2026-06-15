@@ -687,7 +687,14 @@ function enemyTurn() {
     let baseAtk = (currentEnemy.atk || 3);
     baseAtk = applyAttackBuffsForEnemy(baseAtk);
 
-    let dmg = Math.max(1, baseAtk - defTotal);
+    // ★追加: 防御前の「生ダメージ」を計算してカウンター用に保存
+    let raw = Math.max(1, baseAtk - defTotal);
+    if (typeof setLastRawEnemyDamage === "function") {
+      setLastRawEnemyDamage(raw);
+    }
+
+    // ここから先は従来どおり、防御バフや軽減を通した最終ダメージ
+    let dmg = raw;
     dmg = applyDefenseBuffsForPlayer(dmg);
 
     if (shieldBlowGuardTurnRemain > 0) {
@@ -709,6 +716,7 @@ function enemyTurn() {
       currentBattleMaxTaken = dmg;
     }
 
+    // ★ここでカウンター状態があれば onDamaged が呼ばれる
     onPlayerDamagedByEnemy();
     appendLog(`${currentEnemy.name}の攻撃！ あなたに${dmg}ダメージ`);
 

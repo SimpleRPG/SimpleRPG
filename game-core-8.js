@@ -123,8 +123,18 @@ function applyPotionEffect(p, inBattle) {
   function applyItemBoost(baseVal) {
     let val = baseVal;
 
+    // ★錬金術師ボーナス: jobs.js 側の動的ヘルパーを参照
     if (typeof isAlchemist === "function" && isAlchemist()) {
-      val = Math.floor(val * 1.3);
+      let rate = 1.0;
+      if (typeof getAlcPotionRate === "function") {
+        rate = getAlcPotionRate();
+      } else if (typeof ALC_POTION_RATE === "number") {
+        // 旧セーブ互換・古い実装が残っている場合のフォールバック
+        rate = ALC_POTION_RATE;
+      } else {
+        rate = 1.3;
+      }
+      val = Math.floor(val * rate);
     }
 
     if (typeof itemBoostTurnRemain === "number" &&
@@ -582,12 +592,29 @@ function useBattleItem() {
     } else {
       let dmg = BOMB_DAMAGE_TABLE[id] || 5;
 
+      // ★錬金術師ボーナス（爆弾・道具ダメージ + itemBoost 補正）
       if (typeof isAlchemist === "function" && isAlchemist()) {
-        dmg = Math.floor(dmg * 2);
+        let baseRate = 1.0;
+        if (typeof getAlcToolDamageRate === "function") {
+          baseRate = getAlcToolDamageRate();
+        } else if (typeof ALC_TOOL_DMG_RATE === "number") {
+          baseRate = ALC_TOOL_DMG_RATE;
+        } else {
+          baseRate = 2.0;
+        }
+        dmg = Math.floor(dmg * baseRate);
 
         if (typeof itemBoostTurnRemain === "number" &&
             itemBoostTurnRemain > 0) {
-          dmg = Math.floor(dmg * 1.5);
+          let boostRate = 1.0;
+          if (typeof getAlcToolBoostRate === "function") {
+            boostRate = getAlcToolBoostRate();
+          } else if (typeof ALC_TOOL_BOOST_RATE === "number") {
+            boostRate = ALC_TOOL_BOOST_RATE;
+          } else {
+            boostRate = 1.5;
+          }
+          dmg = Math.floor(dmg * boostRate);
         }
       }
 
@@ -598,7 +625,15 @@ function useBattleItem() {
       function rollStatusApply(baseRate) {
         let rate = baseRate;
         if (typeof isAlchemist === "function" && isAlchemist()) {
-          rate = Math.min(1, rate + 0.3);
+          let add = 0.0;
+          if (typeof getAlcStatusAdd === "function") {
+            add = getAlcStatusAdd();
+          } else if (typeof ALC_STATUS_ADD === "number") {
+            add = ALC_STATUS_ADD;
+          } else {
+            add = 0.3;
+          }
+          rate = Math.min(1, rate + add);
         }
         return Math.random() < rate;
       }

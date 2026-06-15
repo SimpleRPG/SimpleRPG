@@ -131,6 +131,39 @@ h1 {
 }
 
 /* ======================
+   「今日の日替わりボーナス」バー
+   ====================== */
+
+#dailyBonusRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  margin-bottom: 4px;
+  background: linear-gradient(135deg, #181824, #101018);
+  border-radius: 6px;
+  border: 1px solid rgba(140,130,210,0.6);
+  font-size: 11px;
+}
+
+#dailyBonusLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text-sub);
+  cursor: pointer;
+}
+
+#toggleDailyBonusDetailBtn {
+  flex: 0 0 auto;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #262639;
+  border: 1px solid rgba(160,150,230,0.7);
+  white-space: nowrap;
+}
+
+/* ======================
    ステータスバー（HP/MP/SPバー＋所持金）
    ====================== */
 

@@ -12,7 +12,7 @@ const SKILL_TYPE_PHYS  = "phys";
 const SKILL_TYPE_BUFF  = "buff";
 const SKILL_TYPE_PET   = "pet";
 
-// jobId: 0=戦士, 1=魔法使い, 2=動物使い, 202=錬金術師（ギルド職）
+// jobId: 0=戦士, 1=魔法使い, 2=動物使い, 100=大盾兵, 202=錬金術師（ギルド職）[web:333]
 const JOB_SKILLS = {
   0: { // 戦士
     phys: [
@@ -105,6 +105,19 @@ const JOB_SKILLS = {
       }
     ]
   },
+  100: { // 大盾兵（戦士ギルドの戦闘ギルド職）[web:333]
+    phys: [
+      // ここでは例としてカウンタースタンスのみ追加。
+      // 既存の他スキルがあるなら同様にここへ並べる。
+      {
+        id: "greatshieldCounter",
+        name: "カウンタースタンス",
+        type: SKILL_TYPE_BUFF,
+        spCost: 4
+      }
+    ],
+    magic: [] // 大盾兵は魔法なし（jobs.js の canUseMagic:false に対応）[web:333]
+  },
   202: { // 錬金術師（ギルド職）
     phys: [
       {
@@ -172,6 +185,8 @@ function refreshSkillUIs() {
         if (s.id === "guardImpact" && guildId !== "warrior") return false;
         // ビーストロアは動物使いギルド所属中のみ表示
         if (s.id === "beastRoar" && guildId !== "tamer") return false;
+        // 大盾兵のカウンタースタンスは戦士ギルド所属中のみ表示（任意だが戦士系なので揃える）
+        if (s.id === "greatshieldCounter" && guildId !== "warrior") return false;
         return true;
       })
       .forEach(s => {
@@ -303,7 +318,11 @@ function calcPetDamage() {
 
 function doPetTurn() {
   // ★ 動物使い以外・敵不在・ペット不在/戦闘不能なら何もしない
-  if (jobId !== 2) return;
+  if (typeof jobHasPetTurn === "function") {
+    if (!jobHasPetTurn()) return;
+  } else {
+    if (jobId !== 2) return;
+  }
   if (!currentEnemy) return;
   if (typeof hasCompanion === "function" && !hasCompanion()) return;
   if (petHp <= 0) return;
@@ -408,10 +427,19 @@ function doPetTurn() {
 // =======================
 
 function castMagicFromUI() {
-  if (jobId !== 1 && jobId !== 2 && jobId !== 202) {
-    appendLog("魔法を扱える職業ではない");
-    return;
+  // 魔法使用可能職：魔法使い(1)、動物使い(2)、錬金術師(202)
+  if (typeof jobCanUseMagic === "function") {
+    if (!jobCanUseMagic()) {
+      appendLog("魔法を扱える職業ではない");
+      return;
+    }
+  } else {
+    if (jobId !== 1 && jobId !== 2 && jobId !== 202) {
+      appendLog("魔法を扱える職業ではない");
+      return;
+    }
   }
+
   const sel = document.getElementById("magicSelect");
   if (!sel) return;
   const skillId = sel.value;
@@ -625,10 +653,19 @@ function castMagicFromUI() {
 // =======================
 
 function useSkillFromUI() {
-  if (jobId !== 0 && jobId !== 2 && jobId !== 202) {
-    appendLog("スキルを扱える職業ではない");
-    return;
+  // 物理スキル使用可能職：戦士(0)、動物使い(2)、大盾兵(100)、錬金術師(202) など[web:333]
+  if (typeof jobCanUsePhysSkill === "function") {
+    if (!jobCanUsePhysSkill()) {
+      appendLog("スキルを扱える職業ではない");
+      return;
+    }
+  } else {
+    if (jobId !== 0 && jobId !== 2 && jobId !== 100 && jobId !== 202) {
+      appendLog("スキルを扱える職業ではない");
+      return;
+    }
   }
+
   const sel = document.getElementById("skillSelect");
   if (!sel) return;
   const skillId = sel.value;
@@ -654,12 +691,18 @@ function useSkillFromUI() {
     appendLog("このスキルは今は使えない（対応するギルドに所属していない）");
     return;
   }
+  // ★ 大盾兵カウンタースタンスは戦士ギルド所属中のみ使用可能
+  if (skillId === "greatshieldCounter" && guildId !== "warrior") {
+    appendLog("このスキルは今は使えない（対応するギルドに所属していない）");
+    return;
+  }
 
   // アイテムブーストは敵がいなくても使える（自己バフ）
   if (!currentEnemy &&
       skillId !== "animalLink" &&
       skillId !== "beastRoar" &&
-      skillId !== "itemBoost") {
+      skillId !== "itemBoost" &&
+      skillId !== "greatshieldCounter") {
     appendLog("敵がいない");
     return;
   }
@@ -783,9 +826,25 @@ function useSkillFromUI() {
       itemBoostTurnRemain = 3;
       appendLog("アイテムブースト！ しばらくポーションと道具の効果がさらに高まった");
     }
+  } else if (skillId === "greatshieldCounter") {
+    // ★ 大盾兵専用：カウンタースタンス（防御前生ダメージ×職倍率で1回だけ反撃）
+    if (jobId !== 100) {
+      appendLog("カウンタースタンスは大盾兵専用だ");
+    } else {
+      if (typeof addSkillStatusToPlayer === "function") {
+        // 状態側の counter が getCounterDamageRateForJob(jobId) から倍率を読む前提で、
+        // ここではターン数だけ指定（例: 2ターンの間、最初の被弾で1回だけ発動）
+        addSkillStatusToPlayer("counter", 2);
+      }
+      appendLog("カウンタースタンス！ 次の被ダメージに対して反撃の構えを取った");
+    }
   }
 
-  if (skillId === "animalLink" || skillId === "braveCharge" || skillId === "beastRoar" || skillId === "itemBoost") {
+  if (skillId === "animalLink" ||
+      skillId === "braveCharge" ||
+      skillId === "beastRoar" ||
+      skillId === "itemBoost" ||
+      skillId === "greatshieldCounter") {
     // 純バフ系スキルもターンを消費して敵ターンへ
     if (currentEnemy) {
       enemyTurn();
@@ -861,38 +920,30 @@ function updateBattleSkillUIByJob() {
   const skillBtn   = document.getElementById("useSkillBtn");
   if (!magicBlock || !skillBlock || !magicBtn || !skillBtn) return;
 
-  if (jobId === 0) {
-    magicBlock.style.display = "none";
-    magicBtn.style.display   = "none";
-    skillBlock.style.display = "";
-    skillBtn.style.display   = "";
-  } else if (jobId === 1) {
-    magicBlock.style.display = "";
-    magicBtn.style.display   = "";
-    skillBlock.style.display = "none";
-    skillBtn.style.display   = "none";
-  } else if (jobId === 2 || jobId === 202) {
-    magicBlock.style.display = "";
-    magicBtn.style.display   = "";
-    skillBlock.style.display = "";
-    skillBtn.style.display   = "";
-  } else {
-    magicBlock.style.display = "";
-    magicBtn.style.display   = "";
-    skillBlock.style.display = "";
-    skillBtn.style.display   = "";
-  }
+  const hasMagic = (typeof jobCanUseMagic === "function")
+    ? jobCanUseMagic()
+    : (jobId === 1 || jobId === 2 || jobId === 202);
+  const hasPhys  = (typeof jobCanUsePhysSkill === "function")
+    ? jobCanUsePhysSkill()
+    : (jobId === 0 || jobId === 2 || jobId === 100 || jobId === 202);
+
+  magicBlock.style.display = hasMagic ? "" : "none";
+  magicBtn.style.display   = hasMagic ? "" : "none";
+  skillBlock.style.display = hasPhys  ? "" : "none";
+  skillBtn.style.display   = hasPhys  ? "" : "none";
 }
 
 function updateSkillButtonsByJob() {
   const magicBlock = document.getElementById("magicBlock");
   const skillBlock = document.getElementById("skillBlock");
 
-  if (magicBlock) {
-    magicBlock.style.display = (jobId === 1 || jobId === 2 || jobId === 202) ? "" : "none";
-  }
+  const hasMagic = (typeof jobCanUseMagic === "function")
+    ? jobCanUseMagic()
+    : (jobId === 1 || jobId === 2 || jobId === 202);
+  const hasPhys  = (typeof jobCanUsePhysSkill === "function")
+    ? jobCanUsePhysSkill()
+    : (jobId === 0 || jobId === 2 || jobId === 100 || jobId === 202);
 
-  if (skillBlock) {
-    skillBlock.style.display = (jobId === 0 || jobId === 2 || jobId === 202) ? "" : "none";
-  }
+  if (magicBlock) magicBlock.style.display = hasMagic ? "" : "none";
+  if (skillBlock) skillBlock.style.display = hasPhys  ? "" : "none";
 }

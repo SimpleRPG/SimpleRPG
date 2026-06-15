@@ -4,7 +4,7 @@
 console.log("guild.js start (core)");
 
 // =======================
-// プレイヤー側のギルド状態
+// プレイヤャー側のギルド状態
 // =======================
 
 // 所属ギルドID（1つだけ）：null / "warrior" / "mage" / ...
@@ -277,7 +277,7 @@ function getGuildRankInfo(fame) {
 }
 
 function getNextRankInfo(fame) {
-  for (const r of GUILD_RANK_THRESHOLDS) {
+  for (const r of GUILD_R_THRESHOLDS) {
     if (fame < r.fame) return r;
   }
   return null;
@@ -741,9 +741,24 @@ function onRebirthForGuild(params) {
 
   // いまの仕様では、クラフト転生／採取転生に対応するギルド転生依頼は定義していないので、
   // それ以外の組み合わせでは何もしない。
-  if (!questId) return;
+  if (questId) {
+    updateQuestProgress(questId, 1, 1);
+  }
 
-  updateQuestProgress(questId, 1, 1);
+  // ★ 職業解放クエスト（転生タイプ × 所属ギルドで判定）
+  const gid = window.playerGuildId;
+  if (t === "combat") {
+    if (gid === "warrior") updateQuestProgress("warrior_job_unlock_1", 1, 1);
+    if (gid === "mage")    updateQuestProgress("mage_job_unlock_1",    1, 1);
+    if (gid === "tamer")   updateQuestProgress("tamer_job_unlock_1",   1, 1);
+  } else if (t === "craft") {
+    if (gid === "smith")     updateQuestProgress("smith_job_unlock_1",   1, 1);
+    if (gid === "alchemist") updateQuestProgress("alch_job_unlock_1",    1, 1);
+    if (gid === "cooking")   updateQuestProgress("cooking_job_unlock_1", 1, 1);
+  } else if (t === "gather") {
+    if (gid === "gather") updateQuestProgress("gather_job_unlock_1", 1, 1);
+    if (gid === "food")   updateQuestProgress("food_job_unlock_1",   1, 1);
+  }
 
   checkCitizenshipUnlocked();
 

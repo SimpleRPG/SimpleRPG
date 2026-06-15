@@ -28,7 +28,7 @@ function buildAppLayout() {
       <div id="dailyBonusRow">
         <span id="dailyBonusLabel" class="clickable"></span>
         <!-- 日替わりボーナス用 詳細ボタン（小さめ） -->
-        <button id="toggleDailyBonusDetailBtn" style="font-size:11px; padding:2px 6px;">
+        <button id="toggleDailyBonusDetailBtn">
           ▼ボーナス詳細
         </button>
       </div>

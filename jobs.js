@@ -1,10 +1,16 @@
 // jobs.js
-// 職業定義・職業ヘルパーまとめ
+// 職業定義・職業ヘルパーまとめ＋ギルド職転職モーダル対応
 //
-// - 既存の jobId=0〜3（戦士・魔法使い・動物使い・錬金術師）と
-//   新職業（大盾兵・呪術師・獣群使い・製作系ギルド職）をここで一括管理。
+// - 既存の jobId=0〜2（戦士・魔法使い・動物使い）と
+//   新職業（大盾兵・呪術師・獣群使い・製作系ギルド職・採取ギルド職）をここで一括管理。
 // - game-core-1.js / game-core-2.js 側は jobId のみ持ち、名称はここから参照する前提。
 // - 職業ボーナスは「定義だけ」持ち、実際の適用は今後の実装で使う想定。
+//
+// - 追加実装：
+//   - window.jobCandidateIds で「転職モーダルから選べる候補リスト」を管理
+//   - addCandidateJobsByGuildId(guildId) でギルド職を候補に追加
+//   - setupJobSelectUI() は候補リストに含まれる jobId だけをボタン化
+//   - 転職自体は game-core-2.js の applyJobChange() 経由のみ（仕様変更なし）
 
 /**
  * 職業定義テーブル
@@ -17,16 +23,20 @@
  *            初期職業・基本職業は null。
  * desc:      職業の説明
  * bonuses:   職業ボーナス（枠だけ用意。数値は後でチューニング）
+ * initialStats: レベル 1 時点の初期ステータス（STR/VIT/INT_/DEX_/LUK_）
+ * canUseMagic:     魔法スキルを使えるかどうか（現 magicJobs と同じ仕様）
+ * canUsePhysSkill: 物理スキルを使えるかどうか（現 physJobs と同じ仕様）
+ * hasPetTurn:      ペットターンを持つかどうか（現 petJobs と同じ仕様）
  *
  * 初期職業（guildId: null, type: "basic"）
  *   0: 戦士
  *   1: 魔法使い
  *   2: 動物使い
  *
- * 戦闘ギルド上位職（type: "combat"）
- *   100: 大盾兵     (warrior)
- *   101: 呪術師     (mage)
- *   102: 獣群使い   (tamer)
+ * 戦闘系ギルド職（type: "combat"）
+ *   100: 大盾兵     (warrior 系タンク職)
+ *   101: 呪術師     (mage 系デバフ職)
+ *   102: 獣群使い   (tamer 系ペット特化職)
  *
  * 製作系ギルド職（type: "craft", guildId: smith/alchemist/cooking）
  *   200: 鍛冶職人   (smith)
@@ -42,6 +52,9 @@
  *   400: 狩猟師     (food)
  *   401: 漁師       (food)
  *   402: 農夫       (food)
+ *
+ * ※職業はすべて横並びで強さは同等。
+ *   ギルドやタイプごとに「得意分野（役割・個性）」が異なるだけ。
  */
 
 const JOB_DEFS = [
@@ -53,6 +66,10 @@ const JOB_DEFS = [
     type: "basic",
     guildId: null,
     desc: "前衛を担う基本職業。物理攻撃と耐久に優れる。",
+    initialStats: { STR: 2, VIT: 3, INT_: 1, DEX_: 1, LUK_: 1 },
+    canUseMagic: false,
+    canUsePhysSkill: true,  // 旧 physJobs に含まれていた
+    hasPetTurn: false,
     bonuses: {
       atkRate: 0.0,
       defRate: 0.0,
@@ -66,6 +83,10 @@ const JOB_DEFS = [
     type: "basic",
     guildId: null,
     desc: "魔法攻撃を専門にする基本職業。MP と魔法攻撃力が高い。",
+    initialStats: { STR: 1, VIT: 1, INT_: 3, DEX_: 2, LUK_: 1 },
+    canUseMagic: true,       // 旧 magicJobs に含まれていた
+    canUsePhysSkill: false,
+    hasPetTurn: false,
     bonuses: {
       mpMaxRate: 0.05,
       magicAtkRate: 0.0
@@ -78,24 +99,34 @@ const JOB_DEFS = [
     type: "basic",
     guildId: null,
     desc: "ペットを戦力にする基本職業。ペットの性能が少し向上する。",
+    initialStats: { STR: 1, VIT: 1, INT_: 1, DEX_: 3, LUK_: 2 },
+    canUseMagic: true,       // 旧 magicJobs
+    canUsePhysSkill: true,   // 旧 physJobs
+    hasPetTurn: true,        // 旧 petJobs
     bonuses: {
       petAtkRate: 0.0,
       petHpMaxRate: 0.0
     }
   },
 
-  // ========== 戦闘ギルド上位職（type: "combat"） ==========
+  // ========== 戦闘系ギルド職（type: "combat"） ==========
   {
     id: 100,
     key: "greatshield",
     name: "大盾兵",
     type: "combat",
     guildId: "warrior",
-    desc: "大盾を構えたタンク職。被ダメージを減らし、味方を守る。",
+    desc: "大盾を構えたタンク職。被ダメージを減らし味方を守る、防御寄りの戦闘スタイルを持つ。",
+    initialStats: { STR: 1, VIT: 2, INT_: 1, DEX_: 2, LUK_: 2 },
+    canUseMagic: false,
+    canUsePhysSkill: true,   // 旧 physJobs
+    hasPetTurn: false,
     bonuses: {
-      defRate: 0.0,
-      guardRate: 0.0,
-      hpMaxRate: 0.0
+      defRate: 0.12,
+      guardRate: 0.15,
+      hpMaxRate: 0.10,
+      greatshieldGuardRateAdd: 0.05,
+      greatshieldGuardDamageReduceRate: 0.10
     }
   },
   {
@@ -104,7 +135,11 @@ const JOB_DEFS = [
     name: "呪術師",
     type: "combat",
     guildId: "mage",
-    desc: "呪い・デバフに特化した魔法職。敵の能力を低下させる。",
+    desc: "呪い・デバフに特化した魔法職。敵の能力を低下させることに長けた、支援寄りの戦闘スタイル。",
+    initialStats: { STR: 1, VIT: 1, INT_: 3, DEX_: 2, LUK_: 2 },
+    canUseMagic: true,       // 旧 magicJobs
+    canUsePhysSkill: false,
+    hasPetTurn: false,
     bonuses: {
       magicAtkRate: 0.0,
       debuffSuccessRate: 0.0
@@ -116,7 +151,11 @@ const JOB_DEFS = [
     name: "獣群使い",
     type: "combat",
     guildId: "tamer",
-    desc: "複数のペットを同時に扱える上級職。ペット群で攻める。",
+    desc: "複数のペットを同時に扱うペット特化職。ペット群で攻める戦闘スタイル。",
+    initialStats: { STR: 1, VIT: 1, INT_: 1, DEX_: 3, LUK_: 2 },
+    canUseMagic: true,       // 旧 magicJobs
+    canUsePhysSkill: true,   // 旧 physJobs
+    hasPetTurn: true,        // 旧 petJobs
     bonuses: {
       petAtkRate: 0.0,
       petHpMaxRate: 0.0,
@@ -133,8 +172,11 @@ const JOB_DEFS = [
     name: "鍛冶職人",
     type: "craft",
     guildId: "smith",
-    desc:
-      "武器・防具作りに特化した職。高品質な装備を作りやすく、クラフト成功率・品質が向上する。",
+    desc: "武器・防具作りに特化した職。高品質な装備を作りやすく、クラフト成功率・品質が向上する製作特化の役割を持つ。",
+    initialStats: { STR: 1, VIT: 2, INT_: 2, DEX_: 2, LUK_: 1 },
+    canUseMagic: false,
+    canUsePhysSkill: false,
+    hasPetTurn: false,
     bonuses: {
       craftBonus: 0.08,
       craftCostReduceRate: 0.05,
@@ -147,8 +189,11 @@ const JOB_DEFS = [
     name: "武具使い",
     type: "craft",
     guildId: "smith",
-    desc:
-      "武器・防具の性能を最大限に活かす戦闘職。装備の攻撃力・防御力が少し向上し、強化効果も増幅される。",
+    desc: "武器・防具の性能を最大限に活かす職。装備の攻撃力・防御力が少し向上し、強化効果も増幅される装備運用特化の職業。",
+    initialStats: { STR: 2, VIT: 2, INT_: 1, DEX_: 2, LUK_: 2 },
+    canUseMagic: false,
+    canUsePhysSkill: false,
+    hasPetTurn: false,
     bonuses: {
       atkRate: 0.02,
       defRate: 0.02,
@@ -164,12 +209,18 @@ const JOB_DEFS = [
     name: "錬金術師",
     type: "craft",
     guildId: "alchemist",
-    desc:
-      "ポーション・薬系に特化した錬金職。調合成績と薬品効果が向上し、クラフト効率も上がる。",
+    desc: "ポーション・薬系に特化した錬金職。調合成績と薬品効果が向上し、クラフト効率も上がるサポート寄りの役割を持つ。",
+    initialStats: { STR: 1, VIT: 1, INT_: 2, DEX_: 2, LUK_: 2 },
+    canUseMagic: true,       // 旧 magicJobs
+    canUsePhysSkill: true,   // 旧 physJobs
+    hasPetTurn: false,
     bonuses: {
       craftBonus: 0.08,
       craftCostReduceRate: 0.05,
-      potionEffectRate: 0.10
+      potionEffectRate: 1.3,
+      toolDamageRate: 2.0,
+      toolItemBoostRate: 1.5,
+      statusApplyRateAdd: 0.3
     }
   },
   {
@@ -178,8 +229,11 @@ const JOB_DEFS = [
     name: "道具使い",
     type: "craft",
     guildId: "alchemist",
-    desc:
-      "爆弾・ツール系に特化した錬金職。道具の威力・効果範囲が向上し、戦闘での活用法が広がる。",
+    desc: "爆弾・ツール系に特化した錬金職。道具の威力・効果範囲が向上し、戦闘での活用法が広がる、道具運用特化の職業。",
+    initialStats: { STR: 1, VIT: 1, INT_: 2, DEX_: 2, LUK_: 2 },
+    canUseMagic: false,
+    canUsePhysSkill: false,
+    hasPetTurn: false,
     bonuses: {
       craftBonus: 0.08,
       craftCostReduceRate: 0.05,
@@ -194,8 +248,11 @@ const JOB_DEFS = [
     name: "料理人",
     type: "craft",
     guildId: "cooking",
-    desc:
-      "料理・飲み物クラフトに特化した職。高品質な食事を作りやすく、クラフト成功率・品質が向上する。",
+    desc: "料理・飲み物クラフトに特化した職。高品質な食事を作りやすく、クラフト成功率・品質が向上する支援寄りの役割を持つ。",
+    initialStats: { STR: 1, VIT: 1, INT_: 2, DEX_: 2, LUK_: 2 },
+    canUseMagic: false,
+    canUsePhysSkill: false,
+    hasPetTurn: false,
     bonuses: {
       craftBonus: 0.08,
       craftCostReduceRate: 0.05,
@@ -208,8 +265,11 @@ const JOB_DEFS = [
     name: "貪食家",
     type: "craft",
     guildId: "cooking",
-    desc:
-      "食事・飲み物の効果を利用する特化職。バフ効果量・持続時間が向上し、食べることで強くなる。",
+    desc: "食事・飲み物の効果を利用する特化職。バフ効果量・持続時間が向上し、食べることで強くなる、自己強化重視の職業。",
+    initialStats: { STR: 1, VIT: 2, INT_: 1, DEX_: 2, LUK_: 3 },
+    canUseMagic: false,
+    canUsePhysSkill: false,
+    hasPetTurn: false,
     bonuses: {
       foodBuffEffectRate: 0.10,
       foodBuffDurationRate: 0.20,
@@ -226,8 +286,11 @@ const JOB_DEFS = [
     name: "採集士",
     type: "gather",
     guildId: "gather",
-    desc:
-      "木・鉱石・草・布・皮・水など、あらゆる基礎素材を満遍なく集める職。通常採取での採取量と+1 個ボーナスがわずかに増える。",
+    desc: "木・鉱石・草・布・皮・水など、あらゆる基礎素材を満遍なく集める職。通常採取での採取量と +1 個ボーナスがわずかに増える、汎用型の採取職。",
+    initialStats: { STR: 1, VIT: 1, INT_: 2, DEX_: 3, LUK_: 2 },
+    canUseMagic: false,
+    canUsePhysSkill: false,
+    hasPetTurn: false,
     bonuses: {
       gatherAmountBonusRate: 0.05,
       gatherExtraChanceAdd:  0.02
@@ -239,8 +302,11 @@ const JOB_DEFS = [
     name: "採取監督官",
     type: "gather",
     guildId: "gather",
-    desc:
-      "各地の採取拠点の運営に優れた職。拠点から自動的に集まる素材量がわずかに増える。",
+    desc: "各地の採取拠点の運営に優れた職。拠点から自動的に集まる素材量がわずかに増える、基盤運用特化の採取職。",
+    initialStats: { STR: 1, VIT: 2, INT_: 2, DEX_: 2, LUK_: 2 },
+    canUseMagic: false,
+    canUsePhysSkill: false,
+    hasPetTurn: false,
     bonuses: {
       gatherBaseT1BonusRate: 0.10,
       gatherBaseT2BonusRate: 0.05
@@ -254,8 +320,11 @@ const JOB_DEFS = [
     name: "狩猟師",
     type: "gather",
     guildId: "food",
-    desc:
-      "狩猟で得られる肉・皮などの食材調達に特化した職。狩猟食材の入手量がわずかに増え、レア食材もやや見つかりやすくなる。",
+    desc: "狩猟で得られる肉・皮などの食材調達に特化した職。狩猟食材の入手量がわずかと増え、レア食材もやや見つかりやすくなる狩猟特化の採取職。",
+    initialStats: { STR: 2, VIT: 2, INT_: 1, DEX_: 3, LUK_: 2 },
+    canUseMagic: false,
+    canUsePhysSkill: false,
+    hasPetTurn: false,
     bonuses: {
       foodHuntAmountBonusRate: 0.10,
       foodHuntRareChanceAdd:   0.03
@@ -267,8 +336,11 @@ const JOB_DEFS = [
     name: "漁師",
     type: "gather",
     guildId: "food",
-    desc:
-      "釣りで得られる魚系食材の調達に特化した職。釣り食材の入手量がわずかに増え、ハズレを引きにくくなる。",
+    desc: "釣りで得られる魚系食材の調達に特化した職。釣り食材の入手量がわずかに増え、ハズレを引きにくくなる漁業特化の採取職。",
+    initialStats: { STR: 1, VIT: 2, INT_: 1, DEX_: 3, LUK_: 3 },
+    canUseMagic: false,
+    canUsePhysSkill: false,
+    hasPetTurn: false,
     bonuses: {
       foodFishAmountBonusRate: 0.10,
       foodFishJunkReduceRate:  0.05
@@ -280,14 +352,69 @@ const JOB_DEFS = [
     name: "農夫",
     type: "gather",
     guildId: "food",
-    desc:
-      "農園で得られる穀物・野菜などの食材調達に特化した職。農園の収穫量がわずかに増え、育成サイクルもわずかに短くなる。",
+    desc: "農園で得られる穀物・野菜などの食材調達に特化した職。農園の収穫量がわずかに増え、育成サイクルもわずかに短くなる農業特化の採取職。",
+    initialStats: { STR: 1, VIT: 2, INT_: 2, DEX_: 2, LUK_: 2 },
+    canUseMagic: false,
+    canUsePhysSkill: false,
+    hasPetTurn: false,
     bonuses: {
       foodFarmAmountBonusRate: 0.10,
       foodFarmCycleReduceRate: 0.05
     }
   }
 ];
+
+// ========== 候補リスト（転職モーダルから選べる職業） ==========
+
+/**
+ * 候補リスト管理（初期値）
+ *
+ * window.jobCandidateIds:
+ *   - 転職モーダルから選べる jobId のリスト
+ *   - 初期は基本職 [0,1,2] のみ
+ *   - ギルド UI から addCandidateJobsByGuildId(guildId) で追加
+ */
+if (typeof window.jobCandidateIds === "undefined") {
+  window.jobCandidateIds = [0, 1, 2];
+}
+
+/**
+ * ギルド ID に属する職業を候補リストに追加
+ *
+ * - 既存の候補と重複しない jobId のみを追加
+ * - 転職モーダル経由でのみ変更（仕様変更なし）
+ */
+function addCandidateJobsByGuildId(guildId) {
+  if (!guildId) return;
+  const jobs = getJobsByGuildId(guildId);
+  if (!jobs || jobs.length === 0) return;
+
+  const candidateIds = window.jobCandidateIds || [0, 1, 2];
+
+  jobs.forEach(function (job) {
+    const jobId = job.id;
+    // 重複チェック
+    let exists = false;
+    for (let i = 0; i < candidateIds.length; i++) {
+      if (candidateIds[i] === jobId) {
+        exists = true;
+        break;
+      }
+    }
+    if (!exists) {
+      candidateIds.push(jobId);
+    }
+  });
+
+  window.jobCandidateIds = candidateIds;
+}
+
+/**
+ * 候補リストを基本職 [0,1,2] に戻す（初期状態）
+ */
+function resetCandidateJobsToBasic() {
+  window.jobCandidateIds = [0, 1, 2];
+}
 
 // ========== ヘルパー関数 ==========
 
@@ -319,26 +446,33 @@ function getJobBonuses(jobId) {
   const def = getJobDefById(jobId);
   if (!def) {
     return {
-      atkRate: 0, defRate: 0, hpMaxRate: 0, mpMaxRate: 0,
-      craftBonus: 0, craftCostReduceRate: 0, potionEffectRate: 0, toolDamageRate: 0,
+      atkRate: 0, defRate: 0, guardRate: 0, hpMaxRate: 0, mpMaxRate: 0,
+      craftBonus: 0, craftCostReduceRate: 0,
+      potionEffectRate: 0, toolDamageRate: 0,
+      toolItemBoostRate: 0, statusApplyRateAdd: 0,
       foodBuffEffectRate: 0, foodBuffDurationRate: 0,
       gatherAmountBonusRate: 0, gatherExtraChanceAdd: 0,
       gatherBaseT1BonusRate: 0, gatherBaseT2BonusRate: 0,
       foodHuntAmountBonusRate: 0, foodHuntRareChanceAdd: 0,
       foodFishAmountBonusRate: 0, foodFishJunkReduceRate: 0,
-      foodFarmAmountBonusRate: 0, foodFarmCycleReduceRate: 0
+      foodFarmAmountBonusRate: 0, foodFarmCycleReduceRate: 0,
+      greatshieldGuardRateAdd: 0,
+      greatshieldGuardDamageReduceRate: 0
     };
   }
   const b = def.bonuses || {};
   return {
     atkRate: b.atkRate || 0,
     defRate: b.defRate || 0,
+    guardRate: b.guardRate || 0,
     hpMaxRate: b.hpMaxRate || 0,
     mpMaxRate: b.mpMaxRate || 0,
     craftBonus: b.craftBonus || 0,
     craftCostReduceRate: b.craftCostReduceRate || 0,
     potionEffectRate: b.potionEffectRate || 0,
     toolDamageRate: b.toolDamageRate || 0,
+    toolItemBoostRate: b.toolItemBoostRate || 0,
+    statusApplyRateAdd: b.statusApplyRateAdd || 0,
     foodBuffEffectRate: b.foodBuffEffectRate || 0,
     foodBuffDurationRate: b.foodBuffDurationRate || 0,
     gatherAmountBonusRate: b.gatherAmountBonusRate || 0,
@@ -350,8 +484,135 @@ function getJobBonuses(jobId) {
     foodFishAmountBonusRate: b.foodFishAmountBonusRate || 0,
     foodFishJunkReduceRate: b.foodFishJunkReduceRate || 0,
     foodFarmAmountBonusRate: b.foodFarmAmountBonusRate || 0,
-    foodFarmCycleReduceRate: b.foodFarmCycleReduceRate || 0
+    foodFarmCycleReduceRate: b.foodFarmCycleReduceRate || 0,
+    greatshieldGuardRateAdd: b.greatshieldGuardRateAdd || 0,
+    greatshieldGuardDamageReduceRate: b.greatshieldGuardDamageReduceRate || 0
   };
+}
+
+// ★修正 throw を削除してエラーログ出力＋デフォルト値を返す
+function getJobInitialStats(jobId) {
+  const def = getJobDefById(jobId);
+  if (!def || !def.initialStats) {
+    console.warn("initialStats not defined for jobId=", jobId);
+    if (typeof appendLog === "function") {
+      appendLog(`[エラー] 職業 jobId=${jobId} の初期ステータスが定義されていません。戦士のステータスで代用します。`);
+    }
+    // 戦士の初期ステータスをデフォルトで返す
+    return { STR: 2, VIT: 3, INT_: 1, DEX_: 1, LUK_: 1 };
+  }
+  return def.initialStats;
+}
+
+// =======================
+// 職判定ヘルパー（jobs.js 側に集約）
+// =======================
+
+// ★修正：window.jobId か window.player.jobId から取る
+function isAlchemist() {
+  const jobId = window.player?.jobId ?? window.jobId;
+  if (!jobId && jobId !== 0) return false;
+  const def = getJobDefById(jobId);
+  if (!def) return false;
+  return def.id === 202 || def.key === "alchemist_pro";
+}
+
+// ★修正：window.jobId か window.player.jobId から取る
+function isBeastTamer() {
+  const jobId = window.player?.jobId ?? window.jobId;
+  if (!jobId && jobId !== 0) return false;
+  const def = getJobDefById(jobId);
+  if (!def) return false;
+  return def.id === 2 || def.key === "beast_tamer";
+}
+
+// =======================
+// ボーナス取得ヘルパー（汎用＋錬金術師）
+// =======================
+
+// ★修正：window.jobId か window.player.jobId から取る
+function getJobBonus(key, fallback) {
+  const jobId = window.player?.jobId ?? window.jobId;
+  if (jobId == null) return fallback;
+  const def = getJobDefById(jobId);
+  if (!def || !def.bonuses) {
+    return fallback;
+  }
+  const val = def.bonuses[key];
+  return (typeof val === "number") ? val : fallback;
+}
+
+function getAlchemistBonus(key, fallback) {
+  if (!isAlchemist()) {
+    return fallback;
+  }
+  return getJobBonus(key, fallback);
+}
+
+// =======================
+// 錬金術師用ボーナスヘルパー（動的計算版）
+// =======================
+
+function getAlcPotionRate() {
+  // 非錬金職は 1.0 倍（=ボーナスなし）
+  return getAlchemistBonus("potionEffectRate", 1.0);
+}
+
+function getAlcToolDamageRate() {
+  return getAlchemistBonus("toolDamageRate", 1.0);
+}
+
+function getAlcToolBoostRate() {
+  return getAlchemistBonus("toolItemBoostRate", 1.0);
+}
+
+function getAlcStatusAdd() {
+  return getAlchemistBonus("statusApplyRateAdd", 0.0);
+}
+
+// =======================
+// ジョブ能力クエリ層（スキル・ペット周り）
+// =======================
+
+// ★修正：window.jobId か window.player.jobId から取る
+function jobCanUseMagic() {
+  const jobId = window.player?.jobId ?? window.jobId;
+  if (jobId == null) return false;
+  const def = getJobDefById(jobId);
+  if (!def) return false;
+  return !!def.canUseMagic;
+}
+
+// ★修正：window.jobId か window.player.jobId から取る
+function jobCanUsePhysSkill() {
+  const jobId = window.player?.jobId ?? window.jobId;
+  if (jobId == null) return false;
+  const def = getJobDefById(jobId);
+  if (!def) return false;
+  return !!def.canUsePhysSkill;
+}
+
+// ★修正：window.jobId か window.player.jobId から取る
+function jobHasPetTurn() {
+  const jobId = window.player?.jobId ?? window.jobId;
+  if (jobId == null) return false;
+  const def = getJobDefById(jobId);
+  if (!def) return false;
+  return !!def.hasPetTurn;
+}
+
+// ペット UI を表示する職（現状はペットターン職と同一）
+function jobShowsPetUI() {
+  return jobHasPetTurn();
+}
+
+// 現在職のボーナスをまとめて返すショートハンド
+function jobBonuses() {
+  const jobId = window.player?.jobId ?? window.jobId;
+  if (jobId == null) {
+    return getJobBonuses(-1);
+  }
+  return getJobBonuses(jobId);
 }
 
 // ========== 初期職選択 UI（jobModal 用） ==========
@@ -362,37 +623,76 @@ function getBasicJobs() {
   });
 }
 
+/**
+ * 候補リストに含まれる jobId を取得
+ *
+ * - window.jobCandidateIds を使う
+ * - 未定義なら基本職 [0,1,2] を返す
+ */
+function getCandidateJobIds() {
+  const candidateIds = window.jobCandidateIds;
+  if (!candidateIds || candidateIds.length === 0) {
+    return [0, 1, 2];
+  }
+  return candidateIds.slice();
+}
+
+/**
+ * 転職モーダル UI: 候補リストを含めた職業ボタンを生成
+ *
+ * - 基本職ボタンは従来と同じ（0,1,2）
+ * - ギルド職も同じボタン枠に追加表示
+ * - 転職自体は applyJobChange() 経由のみ（仕様変更なし）
+ *
+ * 修正点:
+ * - initDone フラグを廃止し、毎回ボタンとリスナーを作り直す
+ * - confirmBtn は cloneNode(true) で差し替え、過去のリスナーをすべて除去 [web:222]
+ * - モーダルを閉じるのは applyJobChange 側に任せ、この関数からは閉じない
+ */
 function setupJobSelectUI() {
-  const jobModal    = document.getElementById("jobModal");
-  const btnBox      = document.getElementById("jobButtons");
-  const descArea    = document.getElementById("jobDescArea");
-  const confirmBtn  = document.getElementById("jobConfirmBtn");
+  const jobModal   = document.getElementById("jobModal");
+  const btnBox     = document.getElementById("jobButtons");
+  const descArea   = document.getElementById("jobDescArea");
+  let   confirmBtn = document.getElementById("jobConfirmBtn");
 
   if (!jobModal || !btnBox || !confirmBtn) return;
 
-  if (btnBox.dataset.initDone === "1") {
-    return;
+  // confirmBtn の既存リスナーをすべて削除するため cloneNode で差し替え [web:222]
+  const confirmParent = confirmBtn.parentNode;
+  if (confirmParent) {
+    const newConfirm = confirmBtn.cloneNode(true);
+    confirmParent.replaceChild(newConfirm, confirmBtn);
+    confirmBtn = newConfirm;
   }
-  btnBox.dataset.initDone = "1";
 
-  const basicJobs = getBasicJobs();
+  const candidateJobIds = getCandidateJobIds();
+  const candidateJobs = candidateJobIds
+    .map(function (jobId) { return getJobDefById(jobId); })
+    .filter(function (def) { return def != null; });
+
+  // ボタンをクリア（既存のボタンは削除）
+  btnBox.innerHTML = "";
+
+  candidateJobs.forEach(function (def) {
+    const btn = document.createElement("button");
+    btn.className = "job-select-btn";
+    btn.dataset.job = String(def.id);
+    btn.textContent = def.name;
+    btnBox.appendChild(btn);
+  });
+
+  // 毎回ボタンにリスナーを付け直す
   const buttons = btnBox.querySelectorAll(".job-select-btn");
 
-  btnBox._jobButtons = buttons;
-
-  let selectedJobIdTemp = null;
-
-  buttons.forEach(btn => {
-    const jobIdStr = btn.dataset.job;
-    const jobId = parseInt(jobIdStr, 10);
-    const def = getJobDefById(jobId);
+  buttons.forEach(function (btn) {
+    const jobIdVal = parseInt(btn.dataset.job, 10);
+    const def = getJobDefById(jobIdVal);
     if (!def) return;
 
-    btn.addEventListener("click", () => {
-      selectedJobIdTemp = jobId;
-      btnBox.dataset.selectedJobId = String(jobId);
+    btn.addEventListener("click", function () {
+      btnBox.dataset.selectedJobId = String(jobIdVal);
 
-      buttons.forEach(b => b.classList.remove("selected"));
+      buttons.forEach(function (b) { b.classList.remove("selected"); });
       btn.classList.add("selected");
 
       if (descArea) {
@@ -403,40 +703,47 @@ function setupJobSelectUI() {
     });
   });
 
-  if (descArea && basicJobs.length > 0) {
-    descArea.textContent = basicJobs[0].desc || "";
-  }
+  // ★ここだけ仕様を変えずに追加：
+  //   クリック時点での jobChangedOnce を記録し、初回だけ showHelpPage を呼ぶ
+  confirmBtn.addEventListener("click", function () {
+    const selId = btnBox.dataset.selectedJobId
+      ? parseInt(btnBox.dataset.selectedJobId, 10)
+      : null;
+    if (selId == null) return;
 
-  confirmBtn.addEventListener("click", () => {
-    if (selectedJobIdTemp == null && btnBox.dataset.selectedJobId) {
-      selectedJobIdTemp = parseInt(btnBox.dataset.selectedJobId, 10);
-    }
-    if (selectedJobIdTemp == null) return;
+    // クリック前の「初回かどうか」を保持
+    const wasJobChangedOnce = !!window.jobChangedOnce;
 
     if (typeof applyJobChange === "function") {
-      applyJobChange(selectedJobIdTemp);
+      applyJobChange(selId);
     } else {
-      window.jobId = selectedJobIdTemp;
-
-      if (typeof recalcStats === "function") {
-        recalcStats();
-      }
-      if (typeof updateDisplay === "function") {
-        updateDisplay();
-      }
-
+      // フォールバック（旧仕様互換）
+      window.jobId = selId;
+      if (typeof recalcStats   === "function") recalcStats();
+      if (typeof updateDisplay === "function") updateDisplay();
       const stJobName = document.getElementById("stJobName");
-      if (stJobName) {
-        stJobName.textContent = getJobNameFromId(selectedJobIdTemp);
-      }
-
+      if (stJobName) stJobName.textContent = getJobNameFromId(selId);
       jobModal.classList.add("hidden");
     }
 
-    jobModal.classList.add("hidden");
+    // 初回だけ「あそびかた」タブを開く
+    if (!wasJobChangedOnce && typeof window.showHelpPage === "function") {
+      setTimeout(() => {
+        window.showHelpPage();
+      }, 0); // 0〜数十 ms で OK [web:213]
+    }
+    // モーダルを閉じる責務は applyJobChange (→ closeJobModal) に任せるため、
+    // ここでは hidden を付けない
   });
 
+  // モーダルを開くたびに選択状態をリセット
+  delete btnBox.dataset.selectedJobId;
+  buttons.forEach(function (b) { b.classList.remove("selected"); });
   confirmBtn.disabled = true;
+
+  if (descArea && candidateJobs.length > 0) {
+    descArea.textContent = candidateJobs[0].desc || "";
+  }
 }
 
 // ========== デバッグ用職業一覧 UI（openJobDebugModal） ==========
@@ -495,19 +802,18 @@ function openJobDebugModal() {
 
   listContainer.innerHTML = "";
 
-  // ★ job.type を 4 値（basic / combat / craft / gather）にする
   const groups = [
-    { label: "基本職",     type: "basic" },
-    { label: "戦闘ギルド", type: "combat" },
-    { label: "製作ギルド", type: "craft" },
-    { label: "採取ギルド", type: "gather" }
+    { label: "基本職",       type: "basic" },
+    { label: "戦闘ギルド職", type: "combat" },
+    { label: "製作ギルド職", type: "craft" },
+    { label: "採取ギルド職", type: "gather" }
   ];
 
   const buttons = btnBox.querySelectorAll(".job-select-btn");
 
   groups.forEach(group => {
     const header = document.createElement("div");
-    header.textContent = `【${group.label}】`;
+    header.textContent = `[${group.label}]`;
     header.style.marginTop = "4px";
     header.style.marginBottom = "2px";
     header.style.color = "#c0bedf";
@@ -546,11 +852,13 @@ function openJobDebugModal() {
           if (descArea) {
             descArea.textContent = job.desc || "";
           }
-          confirmBtn.disabled = false;
-
           const stJobName = document.getElementById("stJobName");
           if (stJobName) {
             stJobName.textContent = job.name;
+          }
+          // デバッグ経由ではそのまま確定できるように有効化
+          if (confirmBtn) {
+            confirmBtn.disabled = false;
           }
         }
 
@@ -583,6 +891,33 @@ if (typeof window.getJobsByGuildId === "undefined") {
 if (typeof window.getJobBonuses === "undefined") {
   window.getJobBonuses = getJobBonuses;
 }
+if (typeof window.getJobInitialStats === "undefined") {
+  window.getJobInitialStats = getJobInitialStats;
+}
+if (typeof window.isAlchemist === "undefined") {
+  window.isAlchemist = isAlchemist;
+}
+if (typeof window.isBeastTamer === "undefined") {
+  window.isBeastTamer = isBeastTamer;
+}
+if (typeof window.getJobBonus === "undefined") {
+  window.getJobBonus = getJobBonus;
+}
+if (typeof window.getAlchemistBonus === "undefined") {
+  window.getAlchemistBonus = getAlchemistBonus;
+}
+if (typeof window.getAlcPotionRate === "undefined") {
+  window.getAlcPotionRate = getAlcPotionRate;
+}
+if (typeof window.getAlcToolDamageRate === "undefined") {
+  window.getAlcToolDamageRate = getAlcToolDamageRate;
+}
+if (typeof window.getAlcToolBoostRate === "undefined") {
+  window.getAlcToolBoostRate = getAlcToolBoostRate;
+}
+if (typeof window.getAlcStatusAdd === "undefined") {
+  window.getAlcStatusAdd = getAlcStatusAdd;
+}
 if (typeof window.setupJobSelectUI === "undefined") {
   window.setupJobSelectUI = setupJobSelectUI;
 }
@@ -591,4 +926,32 @@ if (typeof window.openJobDebugModal === "undefined") {
 }
 if (typeof window.getBasicJobs === "undefined") {
   window.getBasicJobs = getBasicJobs;
+}
+if (typeof window.jobCanUseMagic === "undefined") {
+  window.jobCanUseMagic = jobCanUseMagic;
+}
+if (typeof window.jobCanUsePhysSkill === "undefined") {
+  window.jobCanUsePhysSkill = jobCanUsePhysSkill;
+}
+if (typeof window.jobHasPetTurn === "undefined") {
+  window.jobHasPetTurn = jobHasPetTurn;
+}
+if (typeof window.jobShowsPetUI === "undefined") {
+  window.jobShowsPetUI = jobShowsPetUI;
+}
+if (typeof window.jobBonuses === "undefined") {
+  window.jobBonuses = jobBonuses;
+}
+
+// ========== 候補リスト管理（グローバル公開） ==========
+
+// 追加：candidateJobs 管理関数をグローバル公開
+if (typeof window.addCandidateJobsByGuildId === "undefined") {
+  window.addCandidateJobsByGuildId = addCandidateJobsByGuildId;
+}
+if (typeof window.resetCandidateJobsToBasic === "undefined") {
+  window.resetCandidateJobsToBasic = resetCandidateJobsToBasic;
+}
+if (typeof window.getCandidateJobIds === "undefined") {
+  window.getCandidateJobIds = getCandidateJobIds;
 }

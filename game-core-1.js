@@ -66,7 +66,10 @@ let jobId = null;
 let jobChangedOnce = false;
 let everBeastTamer = false;
 
-// ペット関連（動物使い用）
+// ★修正：jobId をグローバルに同步（jobs.js のヘルパーが参照できるよう に）
+window.jobId = jobId;
+
+// ペット関連
 let petLevel = 1;
 let petExp = 0;
 let petExpToNext = 5;
@@ -232,6 +235,21 @@ function recalcStats() {
   const spMaxRate   = skillBonus.spMaxRate   || 0; // 最大 SP+%
   const atkRate     = skillBonus.atkRate     || 0; // 物理攻撃+%
   const defRate     = skillBonus.defRate     || 0; // 防御+%
+
+  // ★ 職業ボーナスを取得（なければ 0 扱い）
+  // ★修正：jobId == null の時も安全に処理（throw しない）
+  let jobBonus = {};
+  if (typeof getJobBonuses === "function") {
+    if (jobId != null) {
+      jobBonus = getJobBonuses(jobId) || {};
+    }
+    // else: jobId == null の場合は職業未選択 → ボーナス 0
+  }
+  const jobHpMaxRate = jobBonus.hpMaxRate || 0;
+  const jobMpMaxRate = jobBonus.mpMaxRate || 0;
+  const jobAtkRate   = jobBonus.atkRate   || 0;
+  const jobDefRate   = jobBonus.defRate   || 0;
+  // （将来 magicAtkRate などを使うならここで拾う）
 
   // ★ 接頭語・その他オプション由来の補正をまとめるオブジェクト
   const prefixMods = {
@@ -448,6 +466,15 @@ function recalcStats() {
     baseSpMax = Math.floor(baseSpMax * (1 + spMaxRate));
   }
 
+  // ★ 職業ボーナスの最大値ボーナスを反映
+  if (jobHpMaxRate !== 0) {
+    baseHpMax = Math.floor(baseHpMax * (1 + jobHpMaxRate));
+  }
+  if (jobMpMaxRate !== 0) {
+    baseMpMax = Math.floor(baseMpMax * (1 + jobMpMaxRate));
+  }
+  // （SP に対するジョブボーナスが必要になったらここに追加）
+
   // ===== 接頭語による最大値ボーナス（hpPct/mpPct/spPct） =====
   if (prefixMods.hpPct) {
     baseHpMax = Math.floor(baseHpMax * (1 + prefixMods.hpPct));
@@ -512,6 +539,14 @@ function recalcStats() {
   }
   if (defRate !== 0) {
     rawDefTotal = Math.floor(rawDefTotal * (1 + defRate));
+  }
+
+  // ★ 職業ボーナスの攻撃・防御ボーナス反映
+  if (jobAtkRate !== 0) {
+    rawAtkTotal = Math.floor(rawAtkTotal * (1 + jobAtkRate));
+  }
+  if (jobDefRate !== 0) {
+    rawDefTotal = Math.floor(rawDefTotal * (1 + jobDefRate));
   }
 
   atkTotal = rawAtkTotal;
@@ -607,6 +642,8 @@ function initGame() {
   // ★ jobId が JOB_DEFS に存在しない場合は、安全な職に補正（例：戦士）
   if (typeof getJobDefById === "function" && jobId != null && !getJobDefById(jobId)) {
     jobId = 0;
+    // ★修正：同步も更新
+    window.jobId = jobId;
   }
 
   // ★ペット最大 HP を再計算したあと、初期ゲーム開始時だけ HP を最大にしておく
@@ -738,9 +775,25 @@ function updateDisplay() {
   let petHpEl    = document.getElementById("petHp");
   let petHpMaxEl = document.getElementById("petHpMax");
 
+  // ★修正：ペット UI 判定を 1 箇所に統一（shouldShowPetUI）
+  function shouldShowPetUI() {
+    if (typeof jobShowsPetUI === "function") {
+      return jobShowsPetUI() && !!window.companionTypeId;
+    }
+    if (typeof jobHasPetTurn === "function") {
+      return jobHasPetTurn() && !!window.companionTypeId;
+    }
+    if (typeof isBeastTamer === "function") {
+      return isBeastTamer() && !!window.companionTypeId;
+    }
+    return (jobId === 2) && !!window.companionTypeId;
+  }
+
+  const hasPet = shouldShowPetUI();
+  const isPetJob = shouldShowPetUI();
+
   if (petInfoBox) {
-    let show = (jobId === 2);
-    petInfoBox.style.display = show ? "" : "none";
+    petInfoBox.style.display = hasPet ? "" : "none";
   }
   if (petLevelEl) petLevelEl.textContent = petLevel;
   if (petHpEl)    petHpEl.textContent    = petHp;
@@ -785,7 +838,7 @@ function updateDisplay() {
   if (stPetExpTo) stPetExpTo.textContent = expToNext;
   if (stPetReb)   stPetReb.textContent   = petRebirthCount;
   if (stPetGrow) {
-    stPetGrow.text内容 =
+    stPetGrow.textContent =
       petGrowthType === PET_GROWTH_TANK ? "タンク型" :
       petGrowthType === PET_GROWTH_DPS  ? "アタッカー型" :
       "バランス型";
@@ -805,22 +858,20 @@ function updateDisplay() {
     if (stPetDefEl) stPetDefEl.textContent = defVal;
   }
 
-  const hasPet = (jobId === 2) && !!window.companionTypeId;
-
-  // h3 見出しは「動物使い」なら表示、ステータスブロック類はペット選択済みの時だけ表示
+  // h3 見出しは「ペット職」なら表示、ステータスブロック類はペット選択済みの時だけ表示
   let petOnlyEls = document.querySelectorAll(".pet-only");
   petOnlyEls.forEach(el => {
     if (el.tagName === "H3") {
-      el.style.display = (jobId === 2) ? "" : "none";
+      el.style.display = isPetJob ? "" : "none";
     } else {
       el.style.display = hasPet ? "" : "none";
     }
   });
 
-  // 「ペットがいない…」メッセージ（動物使いでペット未選択の時だけ表示）
+  // 「ペットがいない…」メッセージ（ペット職でペット未選択の時だけ表示）
   const noPetMsgEl = document.getElementById("noPetMsg");
   if (noPetMsgEl) {
-    noPetMsgEl.style.display = (jobId === 2 && !window.companionTypeId) ? "" : "none";
+    noPetMsgEl.style.display = (isPetJob && !window.companionTypeId) ? "" : "none";
   }
 
   // 空腹・水分バー

@@ -1,5 +1,5 @@
 // game-core-2.js
-// レベル・転生・職業・ペット ＋ 空腹・水分・EXPボーナス
+// レベル・転生・職業・ペット ＋ 空腹・水分・EXP ボーナス
 
 // =======================
 // レベル・転生
@@ -32,7 +32,7 @@ let rebirthCraftPt  = window.rebirthCraftPt;  // クラフト転生に振った�
 window.lastRebirthType = window.lastRebirthType || "combat";
 let lastRebirthType = window.lastRebirthType;
 
-// ★ レベルに応じた最大HP加算量を返す関数
+// ★ レベルに応じた最大 HP 加算量を返す関数
 // Lv1 は +0、Lv2 以降は +2ずつ伸ばす（Lv2: +2, Lv3: +4, ...）。
 function getHpLevelBonus() {
   if (level <= 1) {
@@ -115,7 +115,7 @@ function getNonBattleExpPerAction(source) {
 }
 
 // =======================
-// EXP加算本体
+// EXP 加算本体
 // =======================
 
 function addExp(amount, source) {
@@ -154,7 +154,7 @@ function addExp(amount, source) {
   // ★ レベルアップ中に増えたステータスを集計する
   let totalUp = { STR: 0, VIT: 0, INT: 0, DEX: 0, LUK: 0 };
 
-  // ★ レベルアップ前のベース最大HPを保持（ログ用）
+  // ★ レベルアップ前のベース最大 HP を保持（ログ用）
   const hpMaxBaseBefore = hpMaxBase;
 
   // ★ レベルが上限に達するまでレベルアップ
@@ -163,7 +163,7 @@ function addExp(amount, source) {
     level++;
     leveled = true;
 
-    // ★ ベース成長: レベルアップごとに最大HP基礎値を +2 ずつ伸ばす（Lv2以降）。
+    // ★ ベース成長: レベルアップごとに最大 HP 基礎値を +2 ずつ伸ばす（Lv2 以降）。
     //   例: Lv1→2 で +2, Lv2→3 でさらに +2 ...
     if (level >= 2) {
       hpMaxBase += 2;
@@ -182,7 +182,7 @@ function addExp(amount, source) {
     expToNext = BASE_EXP_PER_LEVEL;
   }
 
-  // ★ Lv100 到達後にさらにEXPがある場合は、そのまま保持するが、
+  // ★ Lv100 到達後にさらに EXP がある場合は、そのまま保持するが、
   //    これ以上は while の条件でレベルアップしない（仕様として打ち止め）。
 
   if (leveled) {
@@ -199,7 +199,7 @@ function addExp(amount, source) {
       appendLog("成長ステータス: " + parts.join(", "));
     }
 
-    // ★ レベルアップ後に攻撃力・防御力・最大HPなどを再計算
+    // ★ レベルアップ後に攻撃力・防御力・最大 HP などを再計算
     if (typeof recalcStats === "function") {
       recalcStats();
       // レベルアップ時は HP/MP/SP を最大まで回復（元の仕様を維持する意図）。
@@ -208,8 +208,8 @@ function addExp(amount, source) {
       sp = spMax;
     }
 
-    // ★追加: レベルアップの統計ログ（テトAI・デバッグ用）
-    // 仕様は変えず、「ログを1行追加するだけ」
+    // ★追加: レベルアップの統計ログ（テト AI・デバッグ用）
+    // 仕様は変えず、「ログを 1 行追加するだけ」
     if (typeof window.debugRecordLevelUp === "function") {
       try {
         window.debugRecordLevelUp({
@@ -249,7 +249,7 @@ function renamePet(newName) {
   updateDisplay();
 }
 
-// プロンプト付きの簡易UI（必要な場合にボタン等から呼ぶ）
+// プロンプト付きの簡易 UI（必要な場合にボタン等から呼ぶ）
 function promptRenamePet() {
   const newName = window.prompt("ペットの新しい名前を入力してください", petName);
   if (newName != null) {
@@ -257,11 +257,11 @@ function promptRenamePet() {
   }
 }
 
-// ★ ペット経験値：プレイヤーと同じ 100 固定＆LvUpでHP再計算
+// ★ ペット経験値：プレイヤーと同じ 100 固定＆LvUp で HP 再計算
 function addPetExp(amount) {
   if (jobId !== 2) return;
 
-  // ★複数ペット対応: 処理前に現在のアクティブペット状態を petList に保存しておく
+  // ★複数ペット対応：処理前に現在のアクティブペット状態を petList に保存しておく
   if (typeof window.saveActivePetFromGlobals === "function") {
     window.saveActivePetFromGlobals();
   }
@@ -296,7 +296,7 @@ function addPetExp(amount) {
     }
 
     // ★ ペット転生ボーナス適用済みの petHpBase/petAtkBase/petDefBase に対して
-    //    特性補正を掛けたうえで最大HPを再計算して全回復
+    //    特性補正を掛けたうえで最大 HP を再計算して全回復
     let baseHpForMax = petHpBase;
     if (typeof applyCompanionPetRates === "function") {
       const r = applyCompanionPetRates(petHpBase, petAtkBase, petDefBase);
@@ -314,7 +314,7 @@ function addPetExp(amount) {
     appendLog(`${petName}のレベルが上がった！ Lv${petLevel}`);
   }
 
-  // ★複数ペット対応: レベルアップ後の最新ステータスを petList のアクティブペットに反映
+  // ★複数ペット対応：レベルアップ後の最新ステータスを petList のアクティブペットに反映
   if (typeof window.saveActivePetFromGlobals === "function") {
     window.saveActivePetFromGlobals();
   }
@@ -334,13 +334,13 @@ function applyRebirthBonus() {
     const pick = choices[Math.floor(Math.random() * choices.length)];
     if (pick === "HP") {
       hpMaxBase += 3;
-      msgList.push("最大HP +3");
+      msgList.push("最大 HP +3");
     } else if (pick === "MP") {
       mpMaxBase += 2;
-      msgList.push("最大MP +2");
+      msgList.push("最大 MP +2");
     } else if (pick === "SP") {
       spMaxBase += 2;
-      msgList.push("最大SP +2");
+      msgList.push("最大 SP +2");
     } else if (pick === "STR") {
       STR += 1;
       msgList.push("STR +1");
@@ -402,7 +402,7 @@ function openRebirthModal() {
   if (!modal || !msgEl) return;
 
   msgEl.innerHTML =
-    "転生を行うと、レベルは1に戻り、必要経験値もリセットされます。<br>" +
+    "転生を行うと、レベルは 1 に戻り、必要経験値もリセットされます。<br>" +
     "ステータスは初期値に戻りますが、これまでの転生回数に応じた<br>" +
     "恒久ボーナス（転生回数×3）とペットの強化は蓄積されます。<br>" +
     "レベルアップで得られるステータスポイントが転生回数分上乗せされます。<br>" +
@@ -422,7 +422,7 @@ function closeRebirthModal() {
 function confirmRebirth() {
   // レベル条件チェック：条件未達なら説明だけ見せて終了
   if (level < REBIRTH_LEVEL_REQ) {
-    appendLog(`転生にはLv${REBIRTH_LEVEL_REQ}以上が必要です`);
+    appendLog(`転生には Lv${REBIRTH_LEVEL_REQ}以上が必要です`);
     closeRebirthModal();
     return;
   }
@@ -436,8 +436,8 @@ function confirmRebirth() {
 }
 
 // ★ Teto AI からの自動転生用エントリ
-//   - UIモーダルは開かず、レベル条件と lastRebirthType だけ確認して doRebirth を呼ぶ
-//   - 仕様は人間操作と同じ（レベル100以上必須）
+//   - UI モーダルは開かず、レベル条件と lastRebirthType だけ確認して doRebirth を呼ぶ
+//   - 仕様は人間操作と同じ（レベル 100 以上必須）
 window.tryRebirth = function() {
   if (level < REBIRTH_LEVEL_REQ) {
     return false;
@@ -459,12 +459,12 @@ function doRebirth() {
 
   // ★ 転生タイプ別に処理を分岐
   if (lastRebirthType === "gather") {
-    // 採取転生: 戦闘用ボーナスは付けない
+    // 採取転生：戦闘用ボーナスは付けない
     rebirthGatherPt++;
     window.rebirthGatherPt = rebirthGatherPt;
     // 成長タイプはそのまま維持（もしくはランダムロールしてもよいが、ここでは既存仕様を崩さないために変更しない）
   } else if (lastRebirthType === "craft") {
-    // クラフト転生: 戦闘用ボーナスは付けない
+    // クラフト転生：戦闘用ボーナスは付けない
     rebirthCraftPt++;
     window.rebirthCraftPt = rebirthCraftPt;
   } else {
@@ -508,7 +508,7 @@ function doRebirth() {
     sp    = spMax;
   }
 
-  // ペットリセット（レベル・EXPだけリセットし、転生ボーナスと特性込みでHP再計算）
+  // ペットリセット（レベル・EXP だけリセットし、転生ボーナスと特性込みで HP 再計算）
   petLevel     = 1;
   petExp       = 0;
   petExpToNext = BASE_EXP_PER_LEVEL;
@@ -523,7 +523,7 @@ function doRebirth() {
   petHpMax = baseHpForMax + petRebirthCount * 3;
   petHp    = petHpMax;
 
-  // ★複数ペット対応: 転生後のペット状態を petList のアクティブレコードに保存
+  // ★複数ペット対応：転生後のペット状態を petList のアクティブレコードに保存
   if (typeof window.saveActivePetFromGlobals === "function") {
     window.saveActivePetFromGlobals();
   }
@@ -542,15 +542,15 @@ function doRebirth() {
 
   // ★ ログも普通の改行に統一
   appendLog(
-    `転生した！ 転生回数: ${rebirthCount}\n` +
-    `転生タイプ: ${
+    `転生した！ 転生回数：${rebirthCount}\n` +
+    `転生タイプ：${
       lastRebirthType === "gather" ? "採取" :
       lastRebirthType === "craft"  ? "クラフト" :
       "戦闘"
     }\n` +
-    `成長タイプ: ${getGrowthTypeName()}\n` +
+    `成長タイプ：${getGrowthTypeName()}\n` +
     `${bonusMsg}\n` +
-    `ペット転生回数: ${petRebirthCount}（基礎ATKとHPが強化された）`
+    `ペット転生回数：${petRebirthCount}（基礎 ATK と HP が強化された）`
   );
 
   if (typeof refreshEquipSelects === "function") {
@@ -559,26 +559,26 @@ function doRebirth() {
   updateDisplay();
   updateSkillButtonsByJob();
 
-  // ★追加: 転生直後に転生ポイント表示も更新（UI側のステータス行）
+  // ★追加: 転生直後に転生ポイント表示も更新（UI 側のステータス行）
   if (typeof updateRebirthPointStatus === "function") {
     updateRebirthPointStatus();
   }
 }
 
 // =======================
-// 空腹・水分・EXPボーナス
+// 空腹・水分・EXP ボーナス
 // =======================
 
 // 0〜100。初期は満タン
 let hunger = 100;
 let thirst = 100;
 
-// 100になった瞬間から20分間は減らさないためのタイムスタンプ(ms)
+// 100 になった瞬間から 20 分間は減らさないためのタイムスタンプ (ms)
 let wellFedUntil = 0;
 
 // ★ 空腹・水分による最大値＆ステ補正用係数
-let hungerHpRate        = 1.0; // 0〜1（最大HP用）
-let thirstMpSpRate      = 1.0; // 0〜1（最大MP/SP用）
+let hungerHpRate        = 1.0; // 0〜1（最大 HP 用）
+let thirstMpSpRate      = 1.0; // 0〜1（最大 MP/SP 用）
 let hungerAtkIntRate    = 1.0; // 0〜1（STR, INT 用）
 let thirstDefDexLukRate = 1.0; // 0〜1（VIT, DEX, LUK 用）
 
@@ -607,7 +607,7 @@ function updateHungerThirstEffects() {
   if (hungerRatio < 0.5) {
     hungerHpRate = hungerRatio / 0.5;
     if (!hungerBelow50Logged) {
-      appendLog("お腹が減ってきた… 最大HPが下がり始めている。");
+      appendLog("お腹が減ってきた… 最大 HP が下がり始めている。");
       hungerBelow50Logged = true;
     }
   } else {
@@ -618,7 +618,7 @@ function updateHungerThirstEffects() {
   if (thirstRatio < 0.5) {
     thirstMpSpRate = thirstRatio / 0.5;
     if (!thirstBelow50Logged) {
-      appendLog("喉の渇きを感じる… 最大MPとSPが下がり始めている。");
+      appendLog("喉の渇きを感じる… 最大 MP と SP が下がり始めている。");
       thirstBelow50Logged = true;
     }
   } else {
@@ -660,7 +660,7 @@ function restoreHungerThirst(addHunger, addThirst) {
   hunger = Math.min(100, hunger + (addHunger || 0));
   thirst = Math.min(100, thirst + (addThirst || 0));
 
-  // 満腹ボーナス: hunger/thirst 両方が 100 のときのみ付与
+  // 満腹ボーナス：hunger/thirst 両方が 100 のときのみ付与
   if (hunger === 100 && thirst === 100) {
     wellFedUntil = Date.now() + 20 * 60 * 1000;
   }
@@ -676,7 +676,7 @@ function handleHungerThirstOnAction(actionType) {
     return;
   }
 
-  // 行動1回ごとに hunger/thirst を 1 減らす
+  // 行動 1 回ごとに hunger/thirst を 1 減らす
   hunger = Math.max(0, hunger - 1);
   thirst = Math.max(0, thirst - 1);
 
@@ -684,7 +684,7 @@ function handleHungerThirstOnAction(actionType) {
   updateDisplay();
 }
 
-// UI側から現在値を引くためのヘルパー
+// UI 側から現在値を引くためのヘルパー
 function getHungerValue() {
   return hunger;
 }
@@ -699,45 +699,26 @@ function getThirstValue() {
 
 // ★ジョブ別初期ステのヘルパー
 //   - window.initialJobStatsApplied を共有する前提。
-//   - 正本はこのファイル側で管理し、game-core-1.js には重複定義しない。
+//   - 正本は jobs.js の initialStats に一本化する。
+//   - フォールバック（switch）は削除。
 function applyInitialStatsForJob(selectedJobId) {
   // すでに初期ジョブステを適用済みなら何もしない
   if (window.initialJobStatsApplied) {
     return;
   }
 
-  // 職業ごとのレベル1初期ステ（指定どおり）
-  switch (selectedJobId) {
-    case 0: // 戦士（物理寄りタンク）
-      STR  = 2;
-      VIT  = 3;
-      INT_ = 1;
-      DEX_ = 1;
-      LUK_ = 1;
-      break;
-    case 1: // 魔法使い（紙装甲火力）
-      STR  = 1;
-      VIT  = 1;
-      INT_ = 3;
-      DEX_ = 2;
-      LUK_ = 1;
-      break;
-    case 2: // 動物使い（ペット寄りバランス）
-      STR  = 1;
-      VIT  = 1;
-      INT_ = 1;
-      DEX_ = 3;
-      LUK_ = 2;
-      break;
-    // それ以外（上位職・ギルド職など）は、旧 case 3 相当の器用貧乏ステータスを適用
-    default: // 錬金術師（器用貧乏）と同じ
-      STR  = 1;
-      VIT  = 1;
-      INT_ = 2;
-      DEX_ = 2;
-      LUK_ = 2;
-      break;
+  // jobs.js が正史。ここで失敗したらバグなので throw してよい。
+  if (typeof getJobInitialStats !== "function") {
+    throw new Error("getJobInitialStats is not defined (jobs.js not loaded?)");
   }
+
+  var s = getJobInitialStats(selectedJobId);
+
+  STR  = s.STR;
+  VIT  = s.VIT;
+  INT_ = s.INT_;
+  DEX_ = s.DEX_;
+  LUK_ = s.LUK_;
 
   window.initialJobStatsApplied = true;
 
@@ -754,13 +735,18 @@ function openJobModal() {
 
   if (!jobChangedOnce && jobId === null) {
     titleEl.textContent = "最初に職業を選択";
-    msgEl.innerHTML = "最初に職業を1つ選んでください（変更は後から100Gで可能）。<br>※選ぶまでゲームは開始されません。";
+    msgEl.innerHTML = "最初に職業を 1 つ選んでください（変更は後から 100G で可能）。<br>※選ぶまでゲームは開始されません。";
   } else {
     titleEl.textContent = "職業を選択";
-    msgEl.innerHTML = "職業を1つ選んでください。<br>変更は100Gで可能です。";
+    msgEl.innerHTML = "職業を 1 つ選んでください。<br>変更は 100G で可能です。";
   }
 
   modal.classList.remove("hidden");
+
+  // ★追加: モーダルを開くたびに職業選択 UI を初期化（イベントリスナー登録）
+  if (typeof window.setupJobSelectUI === "function") {
+    window.setupJobSelectUI();
+  }
 }
 
 function closeJobModal() {
@@ -780,7 +766,7 @@ function applyJobChange(newJobId) {
 
   if (jobChangedOnce) {
     if (money < 100) {
-      appendLog("職業変更には100G必要です");
+      appendLog("職業変更には 100G 必要です");
       closeJobModal();
       return;
     }
@@ -790,6 +776,9 @@ function applyJobChange(newJobId) {
   }
 
   jobId = newJobId;
+  // ★追加: jobs.js 側ヘルパーとの一貫性のため window.jobId も同期
+  window.jobId = newJobId;
+
   if (newJobId === 2) everBeastTamer = true;
 
   // ★ 初回の職業決定時のみ、職業ごとの初期ステータスを適用する
@@ -803,9 +792,9 @@ function applyJobChange(newJobId) {
   // ★ 転生前の初回のみ、基本 3 職（戦士・魔法使い・動物使い）だけ成長タイプを自動設定
   //   ギルド職などは自動設定せず、既存の成長タイプ（デフォルトはバランス型）を維持
   if (!rebirthCount) {
-    if      (newJobId === 0)   growthType = 0; // 戦士: STR型
-    else if (newJobId === 1)   growthType = 2; // 魔法使い: INT型
-    else if (newJobId === 2)   growthType = 4; // 動物使い: バランス型
+    if      (newJobId === 0)   growthType = 0; // 戦士: STR 型
+    else if (newJobId === 1)   growthType = 2; // 魔法使い：INT 型
+    else if (newJobId === 2)   growthType = 4; // 動物使い：バランス型
     // それ以外（錬金術師など）は自動設定せずバランス型のまま
   }
 
@@ -871,12 +860,20 @@ function changePetGrowthType() {
   }
 }
 
-// ★職業ヘルパ
+// ★職業ヘルパ：jobs.js 側で定義した isAlchemist / isBeastTamer を使う
 function isAlchemist() {
+  if (typeof window.isAlchemist === "function") {
+    return window.isAlchemist();
+  }
+  // jobs.js 未ロード用フォールバック
   return jobId === 202;
 }
 
 function isBeastTamer() {
+  if (typeof window.isBeastTamer === "function") {
+    return window.isBeastTamer();
+  }
+  // jobs.js 未ロード用フォールバック
   return jobId === 2;
 }
 
