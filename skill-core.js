@@ -12,7 +12,7 @@ const SKILL_TYPE_PHYS  = "phys";
 const SKILL_TYPE_BUFF  = "buff";
 const SKILL_TYPE_PET   = "pet";
 
-// jobId: 0=戦士, 1=魔法使い, 2=動物使い, 100=大盾兵, 202=錬金術師（ギルド職）[web:333]
+// jobId: 0=戦士, 1=魔法使い, 2=動物使い, 100=大盾兵, 202=錬金術師（ギルド職）[web:165]
 const JOB_SKILLS = {
   0: { // 戦士
     phys: [
@@ -105,18 +105,38 @@ const JOB_SKILLS = {
       }
     ]
   },
-  100: { // 大盾兵（戦士ギルドの戦闘ギルド職）[web:333]
+  100: { // 大盾兵（戦士ギルドの戦闘ギルド職）[web:165]
     phys: [
-      // ここでは例としてカウンタースタンスのみ追加。
-      // 既存の他スキルがあるなら同様にここへ並べる。
+      // 既存：カウンタースタンス
       {
         id: "greatshieldCounter",
         name: "カウンタースタンス",
         type: SKILL_TYPE_BUFF,
         spCost: 4
+      },
+      // ★ 追加 1：防御力依存の攻撃「大盾砕き」
+      {
+        id: "greatshieldSmash",
+        name: "大盾砕き",
+        type: SKILL_TYPE_PHYS,
+        spCost: 5
+      },
+      // ★ 追加 2：防御力アップバフ「堅固の大盾」（5ターン）
+      {
+        id: "greatshieldFortify",
+        name: "堅固の大盾",
+        type: SKILL_TYPE_BUFF,
+        spCost: 6
+      },
+      // ★ 追加 3：護りスタンス「護の構え」
+      {
+        id: "greatshieldGuardStance",
+        name: "護の構え",
+        type: SKILL_TYPE_BUFF,
+        spCost: 6
       }
     ],
-    magic: [] // 大盾兵は魔法なし（jobs.js の canUseMagic:false に対応）[web:333]
+    magic: [] // 大盾兵は魔法なし（jobs.js の canUseMagic:false に対応）[web:165]
   },
   202: { // 錬金術師（ギルド職）
     phys: [
@@ -212,6 +232,17 @@ let petBuffTurnRemain = 0;
 let itemBoostTurnRemain = 0;
 let itemBoostRate       = 0.5;   // アイテム効果さらに +50%
 
+// ★ 大盾兵用: 防御バフ（堅固の大盾）
+let greatshieldFortifyTurnRemain = 0;
+let greatshieldFortifyRate       = 0.2;  // 防御 +20%（バランス調整用）[web:167]
+
+// ★ 大盾兵用: 護りスタンス（護の構え）
+//   - ガード率 +30%（ベース）
+//   - ガード時ダメージさらに 15% 軽減
+let greatshieldGuardStanceTurnRemain = 0;
+let greatshieldGuardStanceGuardRate  = 0.3;
+let greatshieldGuardStanceReduceRate = 0.15;
+
 function getCurrentAtkForSkill() {
   let base = atkTotal;
   if (braveChargeTurnRemain > 0) {
@@ -265,6 +296,12 @@ function tickSkillBuffTurns() {
   }
   if (itemBoostTurnRemain > 0) {
     itemBoostTurnRemain--;
+  }
+  if (greatshieldFortifyTurnRemain > 0) {
+    greatshieldFortifyTurnRemain--;
+  }
+  if (greatshieldGuardStanceTurnRemain > 0) {
+    greatshieldGuardStanceTurnRemain--;
   }
 }
 
@@ -653,7 +690,7 @@ function castMagicFromUI() {
 // =======================
 
 function useSkillFromUI() {
-  // 物理スキル使用可能職：戦士(0)、動物使い(2)、大盾兵(100)、錬金術師(202) など[web:333]
+  // 物理スキル使用可能職：戦士(0)、動物使い(2)、大盾兵(100)、錬金術師(202) など[web:165]
   if (typeof jobCanUsePhysSkill === "function") {
     if (!jobCanUsePhysSkill()) {
       appendLog("スキルを扱える職業ではない");
@@ -702,7 +739,9 @@ function useSkillFromUI() {
       skillId !== "animalLink" &&
       skillId !== "beastRoar" &&
       skillId !== "itemBoost" &&
-      skillId !== "greatshieldCounter") {
+      skillId !== "greatshieldCounter" &&
+      skillId !== "greatshieldFortify" &&
+      skillId !== "greatshieldGuardStance") {
     appendLog("敵がいない");
     return;
   }
@@ -838,13 +877,56 @@ function useSkillFromUI() {
       }
       appendLog("カウンタースタンス！ 次の被ダメージに対して反撃の構えを取った");
     }
+  } else if (skillId === "greatshieldSmash") {
+    // ★ 大盾砕き：防御力依存の攻撃
+    if (jobId !== 100) {
+      appendLog("大盾砕きは大盾兵専用だ");
+    } else if (!currentEnemy) {
+      appendLog("敵がいない");
+    } else {
+      const defBase = typeof defTotal === "number" ? defTotal : 0;
+      // 防御 80% ＋ 固定値 10（バランスは後で調整）
+      let dmg = Math.floor(defBase * 0.8) + 10;
+      if (dmg < 1) dmg = 1;
+
+      enemyHp = Math.max(0, enemyHp - dmg);
+
+      // 戦闘統計（物理扱い）
+      if (typeof currentBattleMaxDamage === "number") {
+        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+      }
+      if (typeof currentBattleMaxPhys === "number") {
+        currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
+      }
+
+      appendLog(`大盾砕き！ ${currentEnemy.name} に${dmg}ダメージ（防御力を活かした一撃）`);
+      didDamage = true;
+    }
+  } else if (skillId === "greatshieldFortify") {
+    // ★ 堅固の大盾：防御アップ 5 ターン
+    if (jobId !== 100) {
+      appendLog("堅固の大盾は大盾兵専用だ");
+    } else {
+      greatshieldFortifyTurnRemain = 5;
+      appendLog("堅固の大盾！ しばらく防御力が上がった");
+    }
+  } else if (skillId === "greatshieldGuardStance") {
+    // ★ 護の構え：ガード率・軽減アップ
+    if (jobId !== 100) {
+      appendLog("護の構えは大盾兵専用だ");
+    } else {
+      greatshieldGuardStanceTurnRemain = 3;
+      appendLog("護の構え！ 大盾を構え直し、敵の攻撃をしのぐ体勢を取った");
+    }
   }
 
   if (skillId === "animalLink" ||
       skillId === "braveCharge" ||
       skillId === "beastRoar" ||
       skillId === "itemBoost" ||
-      skillId === "greatshieldCounter") {
+      skillId === "greatshieldCounter" ||
+      skillId === "greatshieldFortify" ||
+      skillId === "greatshieldGuardStance") {
     // 純バフ系スキルもターンを消費して敵ターンへ
     if (currentEnemy) {
       enemyTurn();

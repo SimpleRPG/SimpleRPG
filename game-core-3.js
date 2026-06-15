@@ -687,8 +687,17 @@ function enemyTurn() {
     let baseAtk = (currentEnemy.atk || 3);
     baseAtk = applyAttackBuffsForEnemy(baseAtk);
 
+    // ★堅固の大盾などの防御バフを反映した「実効防御値」を作る
+    let effectiveDefTotal = defTotal;
+    if (typeof greatshieldFortifyTurnRemain === "number" && greatshieldFortifyTurnRemain > 0) {
+      const rate = (typeof greatshieldFortifyRate === "number") ? greatshieldFortifyRate : 0;
+      if (rate > 0) {
+        effectiveDefTotal = Math.floor(effectiveDefTotal * (1 + rate));
+      }
+    }
+
     // ★追加: 防御前の「生ダメージ」を計算してカウンター用に保存
-    let raw = Math.max(1, baseAtk - defTotal);
+    let raw = Math.max(1, baseAtk - effectiveDefTotal);
     if (typeof setLastRawEnemyDamage === "function") {
       setLastRawEnemyDamage(raw);
     }
@@ -696,6 +705,25 @@ function enemyTurn() {
     // ここから先は従来どおり、防御バフや軽減を通した最終ダメージ
     let dmg = raw;
     dmg = applyDefenseBuffsForPlayer(dmg);
+
+    // ★修正箇所: ガード処理を「ジョブ＋装備」の判定ごと jobs.js に委譲
+    let didGuard = false;
+    if (typeof getGuardBonusForCurrentJob === "function") {
+      const gb = getGuardBonusForCurrentJob() || {
+        guardRate: 0,
+        greatshieldGuardRateAdd: 0,
+        greatshieldGuardDamageReduceRate: 0
+      };
+      const totalGuardRate =
+        (gb.guardRate || 0) + (gb.greatshieldGuardRateAdd || 0);
+      const reduceRate = gb.greatshieldGuardDamageReduceRate || 0;
+
+      if (totalGuardRate > 0 && Math.random() < totalGuardRate) {
+        didGuard = true;
+        const r = Math.max(0, Math.min(0.9, reduceRate));
+        dmg = Math.max(1, Math.floor(dmg * (1 - r)));
+      }
+    }
 
     if (shieldBlowGuardTurnRemain > 0) {
       dmg = Math.floor(dmg * 0.5);
@@ -718,7 +746,12 @@ function enemyTurn() {
 
     // ★ここでカウンター状態があれば onDamaged が呼ばれる
     onPlayerDamagedByEnemy();
-    appendLog(`${currentEnemy.name}の攻撃！ あなたに${dmg}ダメージ`);
+
+    if (didGuard) {
+      appendLog(`${currentEnemy.name}の攻撃！ 大盾でガードし、あなたは${dmg}ダメージを受けた！`);
+    } else {
+      appendLog(`${currentEnemy.name}の攻撃！ あなたに${dmg}ダメージ`);
+    }
 
     if (hp <= 0) {
       hp = 0;

@@ -446,7 +446,8 @@ function getJobBonuses(jobId) {
   const def = getJobDefById(jobId);
   if (!def) {
     return {
-      atkRate: 0, defRate: 0, guardRate: 0, hpMaxRate: 0, mpMaxRate: 0,
+      atkRate: 0, defRate: 0, guardRate: 0,
+      hpMaxRate: 0, mpMaxRate: 0,
       craftBonus: 0, craftCostReduceRate: 0,
       potionEffectRate: 0, toolDamageRate: 0,
       toolItemBoostRate: 0, statusApplyRateAdd: 0,
@@ -615,6 +616,109 @@ function jobBonuses() {
   return getJobBonuses(jobId);
 }
 
+// =======================
+// ★2 関数に分割：
+//  1) 今何を装備してるか見る関数
+//  2) 大盾兵で大盾の時にボーナスを返す関数
+// =======================
+
+/**
+ * 1) 今プレイヤーが装備している武器の ID を返す関数
+ *
+ * - 装備してない場合は null を返す
+ * - weaponInstances / equippedWeaponIndex が前提
+ */
+function getCurrentEquippedWeaponId() {
+  if (typeof equippedWeaponIndex !== "number" ||
+      !Array.isArray(window.weaponInstances)) {
+    return null;
+  }
+
+  const inst = window.weaponInstances[equippedWeaponIndex];
+  if (!inst || typeof inst.id !== "string") {
+    return null;
+  }
+
+  return inst.id;
+}
+
+/**
+ * 2) 大盾兵で大盾装備の時にだけガードボーナスを返す関数
+ *
+ * - 現在職が大盾兵（id:100 / key:"greatshield"）且つ装備が T*_greatShield の時だけボーナス
+ * - 護の構え中なら、その分をジョブボーナスに加算
+ * - 他はすべて 0 を返す
+ */
+function getGuardBonusForGreatshieldJob() {
+  const jobId = window.player?.jobId ?? window.jobId;
+  const def = (jobId != null) ? getJobDefById(jobId) : null;
+
+  const zero = {
+    guardRate: 0,
+    greatshieldGuardRateAdd: 0,
+    greatshieldGuardDamageReduceRate: 0
+  };
+
+  if (!def) return zero;
+
+  // 大盾兵以外は 0
+  if (def.id !== 100 && def.key !== "greatshield") {
+    return zero;
+  }
+
+  // 今装備してる武器 ID を見る
+  const weaponId = getCurrentEquippedWeaponId();
+  if (!weaponId) {
+    return zero;
+  }
+
+  // T*_greatShield なら大盾装備とみなす
+  const isGreatShieldEquipped = /^T\d+_greatShield$/.test(weaponId);
+  if (!isGreatShieldEquipped) {
+    return zero;
+  }
+
+  const b = def.bonuses || {};
+
+  // ベースはジョブ定義のボーナス
+  let guardRate = b.guardRate || 0;
+  let rateAdd   = b.greatshieldGuardRateAdd || 0;
+  let reduceAdd = b.greatshieldGuardDamageReduceRate || 0;
+
+  // ★追加：護の構え中なら一時ボーナスを加算
+  if (typeof greatshieldGuardStanceTurnRemain === "number" &&
+      greatshieldGuardStanceTurnRemain > 0) {
+    const stanceRate = (typeof greatshieldGuardStanceGuardRate === "number")
+      ? greatshieldGuardStanceGuardRate
+      : 0;
+    const stanceReduce = (typeof greatshieldGuardStanceReduceRate === "number")
+      ? greatshieldGuardStanceReduceRate
+      : 0;
+
+    if (stanceRate > 0) {
+      rateAdd += stanceRate;
+    }
+    if (stanceReduce > 0) {
+      reduceAdd += stanceReduce;
+    }
+  }
+
+  return {
+    guardRate: guardRate,
+    greatshieldGuardRateAdd: rateAdd,
+    greatshieldGuardDamageReduceRate: reduceAdd
+  };
+}
+
+// =======================
+// 古い 1 関数形（互換用）：
+//   getGuardBonusForCurrentJob() は getGuardBonusForGreatshieldJob() を使う
+// =======================
+
+function getGuardBonusForCurrentJob() {
+  return getGuardBonusForGreatshieldJob();
+}
+
 // ========== 初期職選択 UI（jobModal 用） ==========
 
 function getBasicJobs() {
@@ -646,7 +750,7 @@ function getCandidateJobIds() {
  *
  * 修正点:
  * - initDone フラグを廃止し、毎回ボタンとリスナーを作り直す
- * - confirmBtn は cloneNode(true) で差し替え、過去のリスナーをすべて除去 [web:222]
+ * - confirmBtn は cloneNode(true) で差し替え、過去のリスナーをすべて除去
  * - モーダルを閉じるのは applyJobChange 側に任せ、この関数からは閉じない
  */
 function setupJobSelectUI() {
@@ -657,7 +761,6 @@ function setupJobSelectUI() {
 
   if (!jobModal || !btnBox || !confirmBtn) return;
 
-  // confirmBtn の既存リスナーをすべて削除するため cloneNode で差し替え [web:222]
   const confirmParent = confirmBtn.parentNode;
   if (confirmParent) {
     const newConfirm = confirmBtn.cloneNode(true);
@@ -670,7 +773,6 @@ function setupJobSelectUI() {
     .map(function (jobId) { return getJobDefById(jobId); })
     .filter(function (def) { return def != null; });
 
-  // ボタンをクリア（既存のボタンは削除）
   btnBox.innerHTML = "";
 
   candidateJobs.forEach(function (def) {
@@ -681,7 +783,6 @@ function setupJobSelectUI() {
     btnBox.appendChild(btn);
   });
 
-  // 毎回ボタンにリスナーを付け直す
   const buttons = btnBox.querySelectorAll(".job-select-btn");
 
   buttons.forEach(function (btn) {
@@ -703,21 +804,17 @@ function setupJobSelectUI() {
     });
   });
 
-  // ★ここだけ仕様を変えずに追加：
-  //   クリック時点での jobChangedOnce を記録し、初回だけ showHelpPage を呼ぶ
   confirmBtn.addEventListener("click", function () {
     const selId = btnBox.dataset.selectedJobId
       ? parseInt(btnBox.dataset.selectedJobId, 10)
       : null;
     if (selId == null) return;
 
-    // クリック前の「初回かどうか」を保持
     const wasJobChangedOnce = !!window.jobChangedOnce;
 
     if (typeof applyJobChange === "function") {
       applyJobChange(selId);
     } else {
-      // フォールバック（旧仕様互換）
       window.jobId = selId;
       if (typeof recalcStats   === "function") recalcStats();
       if (typeof updateDisplay === "function") updateDisplay();
@@ -726,17 +823,13 @@ function setupJobSelectUI() {
       jobModal.classList.add("hidden");
     }
 
-    // 初回だけ「あそびかた」タブを開く
     if (!wasJobChangedOnce && typeof window.showHelpPage === "function") {
       setTimeout(() => {
         window.showHelpPage();
-      }, 0); // 0〜数十 ms で OK [web:213]
+      }, 0);
     }
-    // モーダルを閉じる責務は applyJobChange (→ closeJobModal) に任せるため、
-    // ここでは hidden を付けない
   });
 
-  // モーダルを開くたびに選択状態をリセット
   delete btnBox.dataset.selectedJobId;
   buttons.forEach(function (b) { b.classList.remove("selected"); });
   confirmBtn.disabled = true;
@@ -856,7 +949,6 @@ function openJobDebugModal() {
           if (stJobName) {
             stJobName.textContent = job.name;
           }
-          // デバッグ経由ではそのまま確定できるように有効化
           if (confirmBtn) {
             confirmBtn.disabled = false;
           }
@@ -943,9 +1035,21 @@ if (typeof window.jobBonuses === "undefined") {
   window.jobBonuses = jobBonuses;
 }
 
+// ★2 関数形をグローバル公開
+if (typeof window.getCurrentEquippedWeaponId === "undefined") {
+  window.getCurrentEquippedWeaponId = getCurrentEquippedWeaponId;
+}
+if (typeof window.getGuardBonusForGreatshieldJob === "undefined") {
+  window.getGuardBonusForGreatshieldJob = getGuardBonusForGreatshieldJob;
+}
+
+// 古い 1 関数名も一応残す（互換用）
+if (typeof window.getGuardBonusForCurrentJob === "undefined") {
+  window.getGuardBonusForCurrentJob = getGuardBonusForCurrentJob;
+}
+
 // ========== 候補リスト管理（グローバル公開） ==========
 
-// 追加：candidateJobs 管理関数をグローバル公開
 if (typeof window.addCandidateJobsByGuildId === "undefined") {
   window.addCandidateJobsByGuildId = addCandidateJobsByGuildId;
 }
