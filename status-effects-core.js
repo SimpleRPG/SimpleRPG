@@ -147,6 +147,14 @@ const STATUS_EFFECTS = {
       return mult * 0.75;
     }
   },
+  slow: {
+    id: "slow",
+    name: "鈍化",
+    baseDuration: 3,
+    modifyAttack(mult) {
+      return mult * 0.75;
+    }
+  },
   def_down: {
     id: "def_down",
     name: "防御ダウン",
@@ -217,10 +225,42 @@ const STATUS_EFFECTS = {
     }
   },
 
+  // ★クリティカルポーション用バフ（副産物ポーション）
+  // 料理・飲み物と同様に、T1〜T3 で効果量だけ変える。
+  // Tier が上がるほどクリティカル率上昇量を増やすが、
+  // modifyCritRateForPlayer 側で 70% 上限にクランプする仕様は維持する。
+  potion_crit_up_T1: {
+    id: "potion_crit_up_T1",
+    name: "ポーション:クリティカルアップ T1",
+    baseDuration: 3,
+    modifyCritRate(rate) {
+      // ベース crit_up( +0.20 ) より控えめな +0.10
+      return rate + 0.10;
+    }
+  },
+  potion_crit_up_T2: {
+    id: "potion_crit_up_T2",
+    name: "ポーション:クリティカルアップ T2",
+    baseDuration: 3,
+    modifyCritRate(rate) {
+      // T2 は +0.15
+      return rate + 0.15;
+    }
+  },
+  potion_crit_up_T3: {
+    id: "potion_crit_up_T3",
+    name: "ポーション:クリティカルアップ T3",
+    baseDuration: 3,
+    modifyCritRate(rate) {
+      // T3 は +0.20（既存 crit_up と同程度）
+      return rate + 0.20;
+    }
+  },
+
   // ★大盾兵用: カウンターステータス（1 回だけ発動）
   //   ・付与されている間、敵からダメージを受けたときにカウンターを返す
   //   ・反撃ダメージ = 「防御前の生ダメージ」×「職業ごとの倍率」
-  //   ・倍率は getCounterDamageRateForJob(jobId) に委譲（大盾兵のみ 1.5 倍）[jobs.js 由来の jobId=100 に対して調整想定][web:333]
+  //   ・倍率は getCounterDamageRateForJob(jobId) に委譲（大盾兵のみ 1.5 倍）[jobs.js 由来の jobId=100 に対して調整想定]
   //   ・1 回発動したら即座に state を解除（remain = 0）
   counter: {
     id: "counter",
@@ -350,6 +390,36 @@ const STATUS_EFFECTS = {
       const heal = Math.max(1, Math.floor(hpMax * 0.07));
       applyHp(heal);
       appendLog(`${name}はポーションの効果で${heal}回復した！`);
+    }
+  },
+
+  // =======================
+  // 魔力薬バフ（essence副産物ポーション）
+  // 料理魔法ATKバフ(T1:1.10/T2:1.18/T3:1.25)より弱い3ターン版
+  // =======================
+
+  potion_magic_up_T1: {
+    id: "potion_magic_up_T1",
+    name: "ポーション:魔法攻撃アップ T1",
+    baseDuration: 3,
+    modifyMagicAttack(mult) {
+      return mult * 1.08; // 料理T1(1.10)より -0.02
+    }
+  },
+  potion_magic_up_T2: {
+    id: "potion_magic_up_T2",
+    name: "ポーション:魔法攻撃アップ T2",
+    baseDuration: 3,
+    modifyMagicAttack(mult) {
+      return mult * 1.15; // 料理T2(1.18)より -0.03
+    }
+  },
+  potion_magic_up_T3: {
+    id: "potion_magic_up_T3",
+    name: "ポーション:魔法攻撃アップ T3",
+    baseDuration: 3,
+    modifyMagicAttack(mult) {
+      return mult * 1.22; // 料理T3(1.25)より -0.03
     }
   },
 

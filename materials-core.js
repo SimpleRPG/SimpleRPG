@@ -35,6 +35,16 @@ window.rareGatherItems = window.rareGatherItems || {};
 // { [itemId: string]: number }
 
 // =======================
+// 副産物素材専用在庫
+// =======================
+//
+// gather() の副産物ドロップで得られる Tier付き素材（resin/crystal/essence/thread/boneChip/sand）。
+// ID形式: "T<tier>_<baseId>"  例: "T3_resin"
+// parseTieredId で解析可能なので intermediate と同じ構造で管理する。
+window.byproductMats = window.byproductMats || {};
+// { [id: string]: number }  例: { "T3_resin": 5, "T1_crystal": 2 }
+
+// =======================
 // 在庫本体（一次素材）
 // =======================
 //
@@ -312,6 +322,33 @@ if (typeof window.registerStorageImpl === "function") {
 }
 
 // =======================
+// ITEM_META連携ストレージ（副産物素材）
+// =======================
+//
+// storageKind: "byproduct" 向けに、byproductMats を操作する実装。
+// ID形式は "T3_resin" など parseTieredId 対応の Tier付きID。
+
+if (typeof window.registerStorageImpl === "function") {
+  window.registerStorageImpl("byproduct", {
+    getCount(id) {
+      return (window.byproductMats && window.byproductMats[id]) || 0;
+    },
+    add(id, amount) {
+      amount = amount | 0;
+      if (!amount) return;
+      window.byproductMats = window.byproductMats || {};
+      window.byproductMats[id] = Math.max(0, (window.byproductMats[id] || 0) + amount);
+    },
+    remove(id, amount) {
+      amount = amount | 0;
+      if (!amount) return;
+      window.byproductMats = window.byproductMats || {};
+      window.byproductMats[id] = Math.max(0, (window.byproductMats[id] || 0) - amount);
+    }
+  });
+}
+
+// =======================
 // ITEM_META連携ストレージ（料理素材）
 // =======================
 //
@@ -491,6 +528,31 @@ if (typeof window.registerStorageImpl === "function") {
       storageKind: "materials"
     };
   }
+
+  // 副産物素材（T1〜T10）
+  // gather() のドロップで得られる。storageKind: "byproduct" で管理。
+  const BYPRODUCT_DEFS = [
+    { baseId: "resin",    baseName: "樹脂",   sourceKey: "wood"    },
+    { baseId: "crystal",  baseName: "水晶",   sourceKey: "ore"     },
+    { baseId: "essence",  baseName: "精油",   sourceKey: "herb"    },
+    { baseId: "thread",   baseName: "金糸",   sourceKey: "cloth"   },
+    { baseId: "boneChip", baseName: "骨片",   sourceKey: "leather" },
+    { baseId: "sand",     baseName: "砂",     sourceKey: "water"   }
+  ];
+  BYPRODUCT_DEFS.forEach(bp => {
+    for (let tier = 1; tier <= (window.MATERIAL_MAX_T || 10); tier++) {
+      const id = `T${tier}_${bp.baseId}`;
+      defs[id] = {
+        name: `T${tier}${bp.baseName}`,
+        category: "byproduct",
+        storageKind: "byproduct",
+        storageTab: "materials",
+        tier: tier,
+        tags: ["byproduct", bp.sourceKey]
+      };
+    }
+  });
+  window.BYPRODUCT_DEFS = BYPRODUCT_DEFS;
 
   // ITEM_META に登録
   if (typeof registerItemDefs === "function") {

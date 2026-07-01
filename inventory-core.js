@@ -198,10 +198,10 @@ function addItemToInventory(itemId, amount) {
     return;
   }
 
-  // 3. ポーション
-  if (typeof potionCounts !== "undefined" && Array.isArray(potions)) {
-    const p = potions.find(x => x.id === itemId);
-    if (p) {
+  // 3. ポーション（ITEM_META優先、なければpotions配列フォールバック）
+  if (typeof potionCounts !== "undefined") {
+    if ((meta && meta.category === "potion") ||
+        (Array.isArray(potions) && potions.some(x => x.id === itemId))) {
       potionCounts[itemId] = (potionCounts[itemId] || 0) + amount;
       return;
     }
@@ -255,12 +255,11 @@ function addItemToInventory(itemId, amount) {
     }
   }
 
-  // 6. 道具
-  if (typeof toolCounts !== "undefined" &&
-      typeof TOOLS_INIT !== "undefined" &&
-      Array.isArray(TOOLS_INIT)) {
-    const t = TOOLS_INIT.find(x => x.id === itemId);
-    if (t) {
+  // 6. 道具（ITEM_META優先、なければTOOLS_INIT配列フォールバック）
+  if (typeof toolCounts !== "undefined") {
+    if ((meta && meta.category === "tool") ||
+        (typeof TOOLS_INIT !== "undefined" && Array.isArray(TOOLS_INIT) &&
+         TOOLS_INIT.some(x => x.id === itemId))) {
       toolCounts[itemId] = (toolCounts[itemId] || 0) + amount;
       return;
     }

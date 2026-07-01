@@ -1,5 +1,5 @@
 // fertilizer-core.js
-// 畑・菜園用 肥料システム（T1〜T10）
+// 農園用 肥料システム（T1〜T10）
 // 前提: farm-core.js / itemCounts / appendLog / updateDisplay / updateFarmUI などが存在
 
 // =======================

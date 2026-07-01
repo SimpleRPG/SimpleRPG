@@ -446,15 +446,10 @@ function generateToolTiers(tpl) {
 
 const TOOLS_INIT = TOOL_TEMPLATES.flatMap(generateToolTiers);
 
-TOOLS_INIT.push({
-  id: "T1_bomb",
-  name: "T1爆弾",
-  type: "damage",
-  power: 7,
-  flat: 0,
-  cost: { T1_ironIngot: 2, T1_mixHerb: 1 },
-  rate: 0.7
-});
+// 旧仕様の T1_bomb を残していたダブり定義は削除し、
+// 代わりに TOOL_TEMPLATES / generateToolTiers 由来の
+// T1_bomb をそのまま使う。
+// （ここにあった TOOLS_INIT.push({ id: "T1_bomb", ... }) は削除済み）
 
 window.tools = TOOLS_INIT;
 
@@ -597,6 +592,144 @@ function rollQualityBySkillLv(skillLv) {
       }
     };
   });
-window.INTERMEDIATE_MATERIALS = INTERMEDIATE_MATERIALS;
+
+  // 中間素材一覧も外部から参照できるように公開
+  window.INTERMEDIATE_MATERIALS = INTERMEDIATE_MATERIALS;
+
+  // ========================================
+  // 副産物クラフト品
+  // ポーション3種（集中薬/魔力薬/繊維包帯）T1〜T3
+  // 道具3種（粘着罠/骨粉爆弾/煙幕瓶）T1〜T3
+  // ========================================
+
+  // --- 副産物ポーション ---
+  // ドロップ率・コストは既存buffポーションに準拠
+  // baseRate: 0.65(T1)→0.55(T2)→0.45(T3)
+
+  const BYPRODUCT_POTION_DEFS = [
+    {
+      // 集中薬: crystal → クリティカル率UP 3ターン
+      baseId: "critPotion",
+      baseName: "集中薬",
+      tiers: [
+        { tier: 1, cost: { T1_crystal: 2, T1_mixHerb: 1 },           baseRate: 0.65 },
+        { tier: 2, cost: { T2_crystal: 2, T2_mixHerb: 2 },           baseRate: 0.55 },
+        { tier: 3, cost: { T3_crystal: 3, T3_mixHerb: 2 },           baseRate: 0.45 }
+      ],
+      statusPrefix: "potion_crit_up" // status-effects-core.js 側の potion_crit_up_T1〜3 に対応
+    },
+    {
+      // 魔力薬: essence → MP回復 + 魔法攻撃バフ 3ターン
+      baseId: "magicPotion",
+      baseName: "魔力薬",
+      tiers: [
+        { tier: 1, cost: { T1_essence: 2, T1_distilledWater: 1 },    baseRate: 0.65 },
+        { tier: 2, cost: { T2_essence: 2, T2_distilledWater: 2 },    baseRate: 0.55 },
+        { tier: 3, cost: { T3_essence: 3, T3_distilledWater: 2 },    baseRate: 0.45 }
+      ],
+      statusPrefix: "potion_magic_up"
+    },
+    {
+      // 繊維包帯: thread → リジェネ（HPターン回復）3ターン
+      baseId: "bandage",
+      baseName: "繊維包帯",
+      tiers: [
+        { tier: 1, cost: { T1_thread: 2, T1_toughLeather: 1 },       baseRate: 0.65 },
+        { tier: 2, cost: { T2_thread: 2, T2_toughLeather: 2 },       baseRate: 0.55 },
+        { tier: 3, cost: { T3_thread: 3, T3_toughLeather: 2 },       baseRate: 0.45 }
+      ],
+      statusPrefix: "potion_regen"
+    }
+  ];
+
+  BYPRODUCT_POTION_DEFS.forEach(tpl => {
+    tpl.tiers.forEach(t => {
+      const id = `T${t.tier}_${tpl.baseId}`;
+      defs[id] = {
+        id,
+        name: `T${t.tier}${tpl.baseName}`,
+        category: "potion",
+        tier: t.tier,
+        tags: ["craft", "potion", "byproduct"],
+        potionType: POTION_TYPE_BOTH,
+        statusId: `${tpl.statusPrefix}_T${t.tier}`,
+        craft: {
+          enabled: true,
+          category: "potion",
+          tier: t.tier,
+          kind: "normal",
+          baseRate: t.baseRate,
+          cost: t.cost
+        }
+      };
+    });
+  });
+
+  // --- 副産物道具 ---
+  // T1〜T3、コストは道具テンプレートと同じ感覚
+
+  const BYPRODUCT_TOOL_DEFS = [
+    {
+      // 粘着罠: resin → 敵スロウ
+      baseId: "stickyTrap",
+      baseName: "粘着罠",
+      type: "status",
+      tiers: [
+        { tier: 1, power: 0, cost: { T1_resin: 2, T1_toughLeather: 1 },     baseRate: 0.70 },
+        { tier: 2, power: 0, cost: { T2_resin: 2, T2_toughLeather: 2 },     baseRate: 0.60 },
+        { tier: 3, power: 0, cost: { T3_resin: 3, T3_toughLeather: 2 },     baseRate: 0.50 }
+      ]
+    },
+    {
+      // 骨粉爆弾: boneChip → 敵DEFダウン
+      baseId: "boneBomb",
+      baseName: "骨粉爆弾",
+      type: "status",
+      tiers: [
+        { tier: 1, power: 0, cost: { T1_boneChip: 2, T1_ironIngot: 1 },     baseRate: 0.70 },
+        { tier: 2, power: 0, cost: { T2_boneChip: 2, T2_ironIngot: 2 },     baseRate: 0.60 },
+        { tier: 3, power: 0, cost: { T3_boneChip: 3, T3_ironIngot: 2 },     baseRate: 0.50 }
+      ]
+    },
+    {
+      // 煙幕瓶: sand → 敵命中率ダウン
+      baseId: "smokeBomb",
+      baseName: "煙幕瓶",
+      type: "status",
+      tiers: [
+        { tier: 1, power: 0, cost: { T1_sand: 2, T1_distilledWater: 1 },    baseRate: 0.70 },
+        { tier: 2, power: 0, cost: { T2_sand: 2, T2_distilledWater: 2 },    baseRate: 0.60 },
+        { tier: 3, power: 0, cost: { T3_sand: 3, T3_distilledWater: 2 },    baseRate: 0.50 }
+      ]
+    }
+  ];
+
+  BYPRODUCT_TOOL_DEFS.forEach(tpl => {
+    tpl.tiers.forEach(t => {
+      const id = `T${t.tier}_${tpl.baseId}`;
+      defs[id] = {
+        id,
+        name: `T${t.tier}${tpl.baseName}`,
+        category: "tool",
+        tier: t.tier,
+        tags: ["craft", "tool", "byproduct"],
+        toolType: tpl.type,
+        toolPower: t.power,
+        toolFlat: 0,
+        craft: {
+          enabled: true,
+          category: "tool",
+          tier: t.tier,
+          kind: "normal",
+          baseRate: t.baseRate,
+          cost: t.cost
+        }
+      };
+    });
+  });
+
+  window.BYPRODUCT_POTION_DEFS = BYPRODUCT_POTION_DEFS;
+  window.BYPRODUCT_TOOL_DEFS   = BYPRODUCT_TOOL_DEFS;
+
   registerItemDefs(defs);
 })();

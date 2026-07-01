@@ -27,6 +27,7 @@ function makeSaveData() {
   let playerGuildIdSafe, guildFameSafe, guildQuestProgressSafe, combatGuildTreeUnlockedSafe, combatGuildSkillPointsSafe;
   let citizenshipUnlockedSafe, housingStateSafe;
   let rareGatherItemsSafe; // ★追加: レア素材（星屑の結晶など）の専用在庫
+  let byproductMatsSafe;   // ★追加: 副産物素材の専用在庫
   let unlockedGuildJobsSafe; // ★追加: 解放済みギルド職リスト
 
   try {
@@ -217,6 +218,15 @@ function makeSaveData() {
     rareGatherItemsSafe = {};
   }
 
+  // ★追加: 副産物素材の専用在庫をセーブ
+  try {
+    byproductMatsSafe = (typeof window !== "undefined" && window.byproductMats)
+      ? window.byproductMats
+      : {};
+  } catch (e) {
+    byproductMatsSafe = {};
+  }
+
   // ★追加: 解放済みギルド職リストをセーブ
   try {
     unlockedGuildJobsSafe = (typeof window !== "undefined" && window.unlockedGuildJobs)
@@ -258,6 +268,9 @@ function makeSaveData() {
 
     // ★追加: レア素材（星屑の結晶など）
     rareGatherItems: rareGatherItemsSafe,
+
+    // ★追加: 副産物素材
+    byproductMats: byproductMatsSafe,
 
     // --------------------------------
     // インベントリ・装備
@@ -630,6 +643,17 @@ function applySaveData(data) {
         Object.keys(window.rareGatherItems).forEach(k => delete window.rareGatherItems[k]);
         Object.keys(data.rareGatherItems).forEach(k => {
           window.rareGatherItems[k] = data.rareGatherItems[k];
+        });
+      }
+    }
+
+    // ★追加: 副産物素材在庫のロード
+    if (typeof window !== "undefined") {
+      window.byproductMats = window.byproductMats || {};
+      if (data.byproductMats && typeof data.byproductMats === "object") {
+        Object.keys(window.byproductMats).forEach(k => delete window.byproductMats[k]);
+        Object.keys(data.byproductMats).forEach(k => {
+          window.byproductMats[k] = data.byproductMats[k];
         });
       }
     }

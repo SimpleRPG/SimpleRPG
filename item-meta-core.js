@@ -477,6 +477,15 @@
     impl.remove(id, amount);
   }
 
+  // 在庫確認してから消費。成功: true / 不足: false
+  function consumeItemByMeta(id, amount) {
+    amount = amount || 1;
+    const have = getItemCountByMeta(id) || 0;
+    if (have < amount) return false;
+    removeItemByMeta(id, amount);
+    return true;
+  }
+
   // -------------------------
   // 外部公開
   // -------------------------
@@ -507,5 +516,6 @@
   global.getItemCountByMeta        = getItemCountByMeta;
   global.addItemByMeta             = addItemByMeta;
   global.removeItemByMeta          = removeItemByMeta;
+  global.consumeItemByMeta         = consumeItemByMeta;
 
 })(window);

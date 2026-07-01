@@ -635,8 +635,8 @@ function doEnhanceWeapon(target, inst, base, useStarShard, matKey, matIndex) {
   }
 
   // ★ smithデイリー: 武器/防具を一回強化
-  if (typeof onSmithEnhanceCompletedForGuild === "function") {
-    onSmithEnhanceCompletedForGuild(inst.id);
+  if (typeof onEquipEnhancedForGuild === "function") {
+    onEquipEnhancedForGuild(inst.id);
   }
 
   refreshEquipSelects();
@@ -793,8 +793,8 @@ function doEnhanceArmor(target, inst, base, useStarShard, matKey, matIndex) {
   }
 
   // ★ smithデイリー: 武器/防具を一回強化
-  if (typeof onSmithEnhanceCompletedForGuild === "function") {
-    onSmithEnhanceCompletedForGuild(inst.id);
+  if (typeof onEquipEnhancedForGuild === "function") {
+    onEquipEnhancedForGuild(inst.id);
   }
 
   refreshEquipSelects();

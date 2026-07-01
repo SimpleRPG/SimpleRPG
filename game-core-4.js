@@ -1063,11 +1063,12 @@ function gather(){
     leather: "皮",
     water: "水"
   };
-  if (t1 > 0) appendLog(`T1${names[target]}を${t1}つ採取した！`);
-  if (t2 > 0) appendLog(`T2${names[target]}を${t2}つ採取した！`);
-  if (t3 > 0) appendLog(`T3${names[target]}を${t3}つ採取した！`);
 
-  // T4以上もログ出したければここに追加で appendLog を書ける
+  for (let tier = 1; tier <= MAX_MAT_TIER; tier++) {
+    const cnt = tierCounts[tier - 1] || 0;
+    if (cnt <= 0) continue;
+    appendLog(`T${tier}${names[target]}を${cnt}つ採取した！`);
+  }
 
   if (typeof onGatherCompletedForGuild === "function") {
     onGatherCompletedForGuild({
@@ -1094,6 +1095,41 @@ function gather(){
           kind: "gather_stardust",
           amount: 1
         });
+      }
+    }
+  }
+
+  // ── 副産物ドロップ ──────────────────────────────
+  // 採取カテゴリに対応する副産物を低確率でドロップ。
+  // ドロップTierは同フィールドの採取Tier分布でロールする。
+  // ドロップ率: 5%
+  {
+    const BYPRODUCT_RATE = 0.05; // ★修正: 6% → 5%
+    const BYPRODUCT_MAP = {
+      wood:    "resin",
+      ore:     "crystal",
+      herb:    "essence",
+      cloth:   "thread",
+      leather: "boneChip",
+      water:   "sand"
+    };
+    const BYPRODUCT_NAMES = {
+      resin: "樹脂", crystal: "水晶", essence: "精油",
+      thread: "金糸", boneChip: "骨片", sand: "砂"
+    };
+
+    const bpBaseId = BYPRODUCT_MAP[target];
+    if (bpBaseId) {
+      // ★修正: 1回固定ロールではなく、採取個数ぶんロールして tierCounts 相当の回数分ドロップ抽選
+      const totalRolls = gainedTotal; // 採取成功数に比例させる
+      for (let i = 0; i < totalRolls; i++) {
+        if (Math.random() >= BYPRODUCT_RATE) continue;
+        const bpTier = rollGatherTierForField(field);
+        const bpId   = "T" + bpTier + "_" + bpBaseId;
+        if (typeof addItemByMeta === "function") {
+          addItemByMeta(bpId, 1);
+        }
+        appendLog("✦ T" + bpTier + (BYPRODUCT_NAMES[bpBaseId] || bpBaseId) + "を入手した！");
       }
     }
   }
