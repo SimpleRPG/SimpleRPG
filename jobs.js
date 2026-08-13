@@ -719,6 +719,14 @@ function getGuardBonusForCurrentJob() {
   return getGuardBonusForGreatshieldJob();
 }
 
+// ★修正: status-effects-core.js の counter ステータスから参照される想定だったが
+//   未定義だったため、カウンタースタンスの職業別倍率が常に 1.0 扱いになっていたバグを修正。
+//   大盾兵（jobId: 100）のみ 1.5 倍、それ以外は 1.0 倍。
+function getCounterDamageRateForJob(jobId) {
+  if (jobId === 100) return 1.5;
+  return 1.0;
+}
+
 // ========== 初期職選択 UI（jobModal 用） ==========
 
 function getBasicJobs() {

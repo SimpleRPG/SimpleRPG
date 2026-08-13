@@ -51,6 +51,27 @@ function getLastRawEnemyDamage() {
   return lastRawEnemyDamage;
 }
 
+// ★修正: counter ステータス（大盾兵のカウンタースタンス）から呼ばれる想定だったが
+//   未定義だったため、ログにダメージ数値は出るのに enemyHp が一切減らないバグが
+//   あった。ここで実際に enemyHp を減算し、戦闘統計・UI も更新する。
+//   ※敵の撃破判定（HP0になった後の勝利処理）は、この関数の呼び出し元である
+//     enemyTurn() 側（game-core-3.js）で、ログ出力や player 側の生死判定が
+//     終わったあとに行う（currentEnemy を早期に null にすると直後の
+//     appendLog が壊れるため）。
+function onCounterDamageToEnemy(dmg) {
+  if (typeof dmg !== "number" || dmg <= 0) return;
+  if (typeof enemyHp !== "number") return;
+
+  enemyHp = Math.max(0, enemyHp - dmg);
+
+  if (typeof currentBattleMaxDamage === "number") {
+    currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+  }
+  if (typeof currentBattleMaxPhys === "number") {
+    currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
+  }
+}
+
 // =======================
 // 状態定義テーブル
 // =======================
@@ -256,6 +277,48 @@ const STATUS_EFFECTS = {
       return rate + 0.20;
     }
   },
+  potion_crit_up_T4: {
+    id: "potion_crit_up_T4",
+    name: "ポーション:クリティカルアップ T4",
+    baseDuration: 3,
+    modifyCritRate(rate) { return rate + 0.175; }
+  },
+  potion_crit_up_T5: {
+    id: "potion_crit_up_T5",
+    name: "ポーション:クリティカルアップ T5",
+    baseDuration: 3,
+    modifyCritRate(rate) { return rate + 0.2; }
+  },
+  potion_crit_up_T6: {
+    id: "potion_crit_up_T6",
+    name: "ポーション:クリティカルアップ T6",
+    baseDuration: 3,
+    modifyCritRate(rate) { return rate + 0.225; }
+  },
+  potion_crit_up_T7: {
+    id: "potion_crit_up_T7",
+    name: "ポーション:クリティカルアップ T7",
+    baseDuration: 3,
+    modifyCritRate(rate) { return rate + 0.25; }
+  },
+  potion_crit_up_T8: {
+    id: "potion_crit_up_T8",
+    name: "ポーション:クリティカルアップ T8",
+    baseDuration: 3,
+    modifyCritRate(rate) { return rate + 0.275; }
+  },
+  potion_crit_up_T9: {
+    id: "potion_crit_up_T9",
+    name: "ポーション:クリティカルアップ T9",
+    baseDuration: 3,
+    modifyCritRate(rate) { return rate + 0.3; }
+  },
+  potion_crit_up_T10: {
+    id: "potion_crit_up_T10",
+    name: "ポーション:クリティカルアップ T10",
+    baseDuration: 3,
+    modifyCritRate(rate) { return rate + 0.325; }
+  },
 
   // ★大盾兵用: カウンターステータス（1 回だけ発動）
   //   ・付与されている間、敵からダメージを受けたときにカウンターを返す
@@ -324,6 +387,48 @@ const STATUS_EFFECTS = {
       return mult * 1.32; // 料理 T3 系 (1.25〜1.30) より +0.02 程度
     }
   },
+  potion_atk_up_T4: {
+    id: "potion_atk_up_T4",
+    name: "ポーション:攻撃アップ T4",
+    baseDuration: 3,
+    modifyAttack(mult) { return mult * 1.36; }
+  },
+  potion_atk_up_T5: {
+    id: "potion_atk_up_T5",
+    name: "ポーション:攻撃アップ T5",
+    baseDuration: 3,
+    modifyAttack(mult) { return mult * 1.44; }
+  },
+  potion_atk_up_T6: {
+    id: "potion_atk_up_T6",
+    name: "ポーション:攻撃アップ T6",
+    baseDuration: 3,
+    modifyAttack(mult) { return mult * 1.52; }
+  },
+  potion_atk_up_T7: {
+    id: "potion_atk_up_T7",
+    name: "ポーション:攻撃アップ T7",
+    baseDuration: 3,
+    modifyAttack(mult) { return mult * 1.6; }
+  },
+  potion_atk_up_T8: {
+    id: "potion_atk_up_T8",
+    name: "ポーション:攻撃アップ T8",
+    baseDuration: 3,
+    modifyAttack(mult) { return mult * 1.68; }
+  },
+  potion_atk_up_T9: {
+    id: "potion_atk_up_T9",
+    name: "ポーション:攻撃アップ T9",
+    baseDuration: 3,
+    modifyAttack(mult) { return mult * 1.76; }
+  },
+  potion_atk_up_T10: {
+    id: "potion_atk_up_T10",
+    name: "ポーション:攻撃アップ T10",
+    baseDuration: 3,
+    modifyAttack(mult) { return mult * 1.84; }
+  },
 
   // 守護ポーション（防御アップポーション）
   potion_def_up_T1: {
@@ -350,6 +455,48 @@ const STATUS_EFFECTS = {
     modifyDefense(mult) {
       return mult * 0.50; // 料理 T3 系 (0.70〜0.75) より -0.02 程度
     }
+  },
+  potion_def_up_T4: {
+    id: "potion_def_up_T4",
+    name: "ポーション:防御アップ T4",
+    baseDuration: 3,
+    modifyDefense(mult) { return mult * 0.58; }
+  },
+  potion_def_up_T5: {
+    id: "potion_def_up_T5",
+    name: "ポーション:防御アップ T5",
+    baseDuration: 3,
+    modifyDefense(mult) { return mult * 0.54; }
+  },
+  potion_def_up_T6: {
+    id: "potion_def_up_T6",
+    name: "ポーション:防御アップ T6",
+    baseDuration: 3,
+    modifyDefense(mult) { return mult * 0.5; }
+  },
+  potion_def_up_T7: {
+    id: "potion_def_up_T7",
+    name: "ポーション:防御アップ T7",
+    baseDuration: 3,
+    modifyDefense(mult) { return mult * 0.46; }
+  },
+  potion_def_up_T8: {
+    id: "potion_def_up_T8",
+    name: "ポーション:防御アップ T8",
+    baseDuration: 3,
+    modifyDefense(mult) { return mult * 0.42; }
+  },
+  potion_def_up_T9: {
+    id: "potion_def_up_T9",
+    name: "ポーション:防御アップ T9",
+    baseDuration: 3,
+    modifyDefense(mult) { return mult * 0.38; }
+  },
+  potion_def_up_T10: {
+    id: "potion_def_up_T10",
+    name: "ポーション:防御アップ T10",
+    baseDuration: 3,
+    modifyDefense(mult) { return mult * 0.34; }
   },
 
   // コンディションポーション用リジェネ
@@ -392,6 +539,48 @@ const STATUS_EFFECTS = {
       appendLog(`${name}はポーションの効果で${heal}回復した！`);
     }
   },
+  potion_regen_T4: {
+    id: "potion_regen_T4",
+    name: "ポーション:リジェネ T4",
+    baseDuration: 3,
+    onTurnEnd(targetCtx) { const heal = Math.max(1, Math.floor(targetCtx.hpMax() * 0.08)); targetCtx.applyHp(heal); appendLog(`${targetCtx.name}はポーションの効果で${heal}回復した！`); }
+  },
+  potion_regen_T5: {
+    id: "potion_regen_T5",
+    name: "ポーション:リジェネ T5",
+    baseDuration: 3,
+    onTurnEnd(targetCtx) { const heal = Math.max(1, Math.floor(targetCtx.hpMax() * 0.09)); targetCtx.applyHp(heal); appendLog(`${targetCtx.name}はポーションの効果で${heal}回復した！`); }
+  },
+  potion_regen_T6: {
+    id: "potion_regen_T6",
+    name: "ポーション:リジェネ T6",
+    baseDuration: 3,
+    onTurnEnd(targetCtx) { const heal = Math.max(1, Math.floor(targetCtx.hpMax() * 0.1)); targetCtx.applyHp(heal); appendLog(`${targetCtx.name}はポーションの効果で${heal}回復した！`); }
+  },
+  potion_regen_T7: {
+    id: "potion_regen_T7",
+    name: "ポーション:リジェネ T7",
+    baseDuration: 3,
+    onTurnEnd(targetCtx) { const heal = Math.max(1, Math.floor(targetCtx.hpMax() * 0.11)); targetCtx.applyHp(heal); appendLog(`${targetCtx.name}はポーションの効果で${heal}回復した！`); }
+  },
+  potion_regen_T8: {
+    id: "potion_regen_T8",
+    name: "ポーション:リジェネ T8",
+    baseDuration: 3,
+    onTurnEnd(targetCtx) { const heal = Math.max(1, Math.floor(targetCtx.hpMax() * 0.12)); targetCtx.applyHp(heal); appendLog(`${targetCtx.name}はポーションの効果で${heal}回復した！`); }
+  },
+  potion_regen_T9: {
+    id: "potion_regen_T9",
+    name: "ポーション:リジェネ T9",
+    baseDuration: 3,
+    onTurnEnd(targetCtx) { const heal = Math.max(1, Math.floor(targetCtx.hpMax() * 0.13)); targetCtx.applyHp(heal); appendLog(`${targetCtx.name}はポーションの効果で${heal}回復した！`); }
+  },
+  potion_regen_T10: {
+    id: "potion_regen_T10",
+    name: "ポーション:リジェネ T10",
+    baseDuration: 3,
+    onTurnEnd(targetCtx) { const heal = Math.max(1, Math.floor(targetCtx.hpMax() * 0.14)); targetCtx.applyHp(heal); appendLog(`${targetCtx.name}はポーションの効果で${heal}回復した！`); }
+  },
 
   // =======================
   // 魔力薬バフ（essence副産物ポーション）
@@ -421,6 +610,48 @@ const STATUS_EFFECTS = {
     modifyMagicAttack(mult) {
       return mult * 1.22; // 料理T3(1.25)より -0.03
     }
+  },
+  potion_magic_up_T4: {
+    id: "potion_magic_up_T4",
+    name: "ポーション:魔法攻撃アップ T4",
+    baseDuration: 3,
+    modifyMagicAttack(mult) { return mult * 1.29; }
+  },
+  potion_magic_up_T5: {
+    id: "potion_magic_up_T5",
+    name: "ポーション:魔法攻撃アップ T5",
+    baseDuration: 3,
+    modifyMagicAttack(mult) { return mult * 1.36; }
+  },
+  potion_magic_up_T6: {
+    id: "potion_magic_up_T6",
+    name: "ポーション:魔法攻撃アップ T6",
+    baseDuration: 3,
+    modifyMagicAttack(mult) { return mult * 1.43; }
+  },
+  potion_magic_up_T7: {
+    id: "potion_magic_up_T7",
+    name: "ポーション:魔法攻撃アップ T7",
+    baseDuration: 3,
+    modifyMagicAttack(mult) { return mult * 1.5; }
+  },
+  potion_magic_up_T8: {
+    id: "potion_magic_up_T8",
+    name: "ポーション:魔法攻撃アップ T8",
+    baseDuration: 3,
+    modifyMagicAttack(mult) { return mult * 1.57; }
+  },
+  potion_magic_up_T9: {
+    id: "potion_magic_up_T9",
+    name: "ポーション:魔法攻撃アップ T9",
+    baseDuration: 3,
+    modifyMagicAttack(mult) { return mult * 1.64; }
+  },
+  potion_magic_up_T10: {
+    id: "potion_magic_up_T10",
+    name: "ポーション:魔法攻撃アップ T10",
+    baseDuration: 3,
+    modifyMagicAttack(mult) { return mult * 1.71; }
   },
 
   // =======================

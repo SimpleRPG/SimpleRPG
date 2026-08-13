@@ -58,17 +58,17 @@ function useBattleItem() {
       appendLog(`戦闘中に ${p.name} を使用した（HP ${prevHp} → ${hp}、+${healedHp} / MP ${prevMp} → ${mp}、+${healedMp}）`);
     }
 
-    if (p.id === "buffAtk_T1" || p.id === "buffAtk_T2" || p.id === "buffAtk_T3") {
+    if (p.id && p.id.startsWith("buffAtk_T")) {
       appendLog("身体に力が満ち、攻撃がずしりと重くなった！");
-    } else if (p.id === "buffDef_T1" || p.id === "buffDef_T2" || p.id === "buffDef_T3") {
+    } else if (p.id && p.id.startsWith("buffDef_T")) {
       appendLog("体が軽くなり、敵の攻撃をいなしやすくなった！");
-    } else if (p.id === "cleanse_T1" || p.id === "cleanse_T2" || p.id === "cleanse_T3") {
-      appendLog("澄んだ薬が体内を巡り、毒素が洗い流された！");
-    } else if (p.id === "T1_magicPotion" || p.id === "T2_magicPotion" || p.id === "T3_magicPotion") {
+    } else if (p.id && p.id.startsWith("cleanse_T")) {
+      // ログはapplyPotionEffect側で出力するためここでは何もしない
+    } else if (p.id && p.id.endsWith("_magicPotion")) {
       appendLog("魔力が漲り、魔法攻撃が鋭くなった！");
-    } else if (p.id === "T1_critPotion" || p.id === "T2_critPotion" || p.id === "T3_critPotion") {
+    } else if (p.id && p.id.endsWith("_critPotion")) {
       appendLog("集中力が高まり、急所を狙いやすくなった！");
-    } else if (p.id === "T1_bandage" || p.id === "T2_bandage" || p.id === "T3_bandage") {
+    } else if (p.id && p.id.endsWith("_bandage")) {
       appendLog("包帯が傷を保護し、少しずつ回復していく…");
     }
 

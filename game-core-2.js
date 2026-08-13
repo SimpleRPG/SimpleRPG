@@ -860,22 +860,9 @@ function changePetGrowthType() {
   }
 }
 
-// ★職業ヘルパ：jobs.js 側で定義した isAlchemist / isBeastTamer を使う
-function isAlchemist() {
-  if (typeof window.isAlchemist === "function") {
-    return window.isAlchemist();
-  }
-  // jobs.js 未ロード用フォールバック
-  return jobId === 202;
-}
-
-function isBeastTamer() {
-  if (typeof window.isBeastTamer === "function") {
-    return window.isBeastTamer();
-  }
-  // jobs.js 未ロード用フォールバック
-  return jobId === 2;
-}
+// ★職業ヘルパ：isAlchemist / isBeastTamer は jobs.js 側で定義済みのものを使う
+//   （ここで再定義すると window.isAlchemist を自分自身で上書きしてしまい、
+//    フォールバック分岐が window.isAlchemist() → 自分自身 → ... と無限再帰してスタックオーバーフローする不具合があったため削除）
 
 // ペット簡易ステータス（上部バー下のミニ表示）更新
 function updatePetMiniStatus() {

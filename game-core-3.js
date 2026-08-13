@@ -758,6 +758,20 @@ function enemyTurn() {
       // 敵攻撃による戦闘死
       handlePlayerDeathCommon("enemy");
     } else {
+      // ★修正: カウンターで敵の HP が 0 になっていたら、ここで撃破処理をする
+      //   （onCounterDamageToEnemy は enemyHp を減らすだけで、currentEnemy を
+      //    その場で null にすると直前の appendLog が壊れるため、ここまで遅延させている）
+      if (currentEnemy && enemyHp <= 0) {
+        enemyHp = 0;
+        if (typeof onEnemyKilledForGuild === "function") {
+          onEnemyKilledForGuild({ by: "phys", isBoss: !!isBossBattle });
+        }
+        winBattle(true, "phys");
+        updateEnemyStatusUI();
+        updateDisplay();
+        return;
+      }
+
       tickSkillBuffTurns();
       renderPlayerStatusIcons();
       updateEnemyStatusUI();

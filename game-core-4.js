@@ -1176,34 +1176,7 @@ function gather(){
 // =======================
 // 採取拠点の自動採取（tick）
 // =======================
-
-function tickGatherBasesOnce() {
-  if (typeof getGatherBaseStatus !== "function") return;
-
-  const bases = getGatherBaseStatus();
-  if (!bases) return;
-
-  Object.keys(bases).forEach(key => {
-    const base = bases[key];
-    if (!base || base.level <= 0) return;
-
-    if (typeof calcGatherBaseTickAmount !== "function") return;
-
-    const result = calcGatherBaseTickAmount(key, base);
-    const t1Amount = result.t1 || 0;
-    const t2Amount = result.t2 || 0;
-
-    if (typeof window.addMatTierCount === "function") {
-      if (t1Amount > 0) window.addMatTierCount(key, 1, t1Amount);
-      if (t2Amount > 0) window.addMatTierCount(key, 2, t2Amount);
-    } else if (typeof addItemByMeta === "function") {
-      if (t1Amount > 0) addItemByMeta(`${key}_T1`, t1Amount);
-      if (t2Amount > 0) addItemByMeta(`${key}_T2`, t2Amount);
-    }
-
-    if (typeof addGatherStat === "function") {
-      const gained = (t1Amount || 0) + (t2Amount || 0);
-      if (gained > 0) addGatherStat(key, gained);
-    }
-  });
-}
+// tickGatherBasesOnce は実体を gather-base.js 側に一本化。
+// ここにあった旧実装は getGatherBaseStatus / calcGatherBaseTickAmount という
+// プロジェクト内に定義が存在しない関数に依存しており、常に即returnして
+// 何もしない死んだコードだったため削除。

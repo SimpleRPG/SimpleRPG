@@ -323,6 +323,11 @@ function recalcStats() {
   let armorEnhance = 0;
   let armorQuality = 0;
 
+  // ★ 固定値%（武器・防具）用の変数
+  let weaponAtkFixedPct = 0;
+  let armorDefFixedPct  = 0;
+  let armorHpFixedPct   = 0;
+
   // ★ 武器は「装備中インスタンス」を見る
   if (equippedWeaponIndex != null && Array.isArray(weaponInstances)) {
     let inst = weaponInstances[equippedWeaponIndex];
@@ -334,6 +339,10 @@ function recalcStats() {
         weaponScaleInt  = w.scaleInt || 0;
         weaponEnhance   = (inst.enhance != null ? inst.enhance : (w.enhance || 0));
         weaponQuality   = inst.quality || 0;
+
+        // ★追加: 武器メタから固定ATK%を取得（なくても0）
+        weaponAtkFixedPct = (typeof w.atkPctFixed === "number") ? w.atkPctFixed : 0;
+
         // 接頭語オプションを集計
         applyInstanceOptions(inst, prefixMods);
       }
@@ -351,6 +360,11 @@ function recalcStats() {
         armorBonusDex  = a.bonusDex || 0;
         armorEnhance   = (inst.enhance != null ? inst.enhance : (a.enhance || 0));
         armorQuality   = inst.quality || 0;
+
+        // ★追加: 防具メタから固定DEF%/固定HP%を取得（なくても0）
+        armorDefFixedPct = (typeof a.defPctFixed === "number") ? a.defPctFixed : 0;
+        armorHpFixedPct  = (typeof a.hpPctFixed  === "number") ? a.hpPctFixed  : 0;
+
         // 接頭語オプションを集計
         applyInstanceOptions(inst, prefixMods);
       }
@@ -419,6 +433,7 @@ function recalcStats() {
   if (armorQuality === 1) armorQualityRate += QUALITY_GOOD_RATE;
   else if (armorQuality === 2) armorQualityRate += QUALITY_EX_RATE;
 
+  // ★品質・強化まで反映した武器・防具の基礎値
   let enhancedWeaponAtk = Math.floor(weaponAtk * weaponEnhRate * weaponQualityRate);
   let enhancedArmorDef  = Math.floor(armorDef * armorEnhRate  * armorQualityRate);
 
@@ -486,6 +501,11 @@ function recalcStats() {
     baseSpMax = Math.floor(baseSpMax * (1 + prefixMods.spPct));
   }
 
+  // ★ 防具固有の固定HP%（必要ならここでまとめて反映）
+  if (armorHpFixedPct) {
+    baseHpMax = Math.floor(baseHpMax * (1 + armorHpFixedPct));
+  }
+
   // ===== 空腹・水分デバフ反映（最大 HP/MP/SP） =====
   if (typeof hungerHpRate === "number") {
     hpMax = Math.floor(baseHpMax * hungerHpRate);
@@ -510,7 +530,9 @@ function recalcStats() {
   sp = Math.min(sp, spMax);
 
   // ==== 最終攻撃・防御値を計算 ====
-  let rawAtkTotal =
+
+  // 品質・強化・ステ・スケールまで反映した「乗算前の基礎ATK/DEF」
+  let rawAtkBase =
     baseAtk +
     enhancedWeaponAtk +
     atkFromStr +
@@ -518,35 +540,53 @@ function recalcStats() {
     atkFromWeaponStr +
     atkFromWeaponInt;
 
-  let rawDefTotal =
+  let rawDefBase =
     baseDef +
     enhancedArmorDef +
     defFromVit +
     defFromDex +
     defFromArmorVit;
 
-  // 接頭語による最終攻撃・防御ボーナス
+  // ★ ATK%枠の合算（武器固定%＋接頭語%＋スキルツリー%＋職業%）
+  let atkPctTotal = 0;
+
+  if (weaponAtkFixedPct) {
+    atkPctTotal += weaponAtkFixedPct;
+  }
   if (prefixMods.atkPct) {
-    rawAtkTotal = Math.floor(rawAtkTotal * (1 + prefixMods.atkPct));
+    atkPctTotal += prefixMods.atkPct;
+  }
+  if (atkRate) {
+    atkPctTotal += atkRate;
+  }
+  if (jobAtkRate) {
+    atkPctTotal += jobAtkRate;
+  }
+
+  let rawAtkTotal = rawAtkBase;
+  if (atkPctTotal !== 0) {
+    rawAtkTotal = Math.floor(rawAtkBase * (1 + atkPctTotal));
+  }
+
+  // ★ DEF%枠の合算（防具固定%＋接頭語%＋スキルツリー%＋職業%）
+  let defPctTotal = 0;
+
+  if (armorDefFixedPct) {
+    defPctTotal += armorDefFixedPct;
   }
   if (prefixMods.defPct) {
-    rawDefTotal = Math.floor(rawDefTotal * (1 + prefixMods.defPct));
+    defPctTotal += prefixMods.defPct;
+  }
+  if (defRate) {
+    defPctTotal += defRate;
+  }
+  if (jobDefRate) {
+    defPctTotal += jobDefRate;
   }
 
-  // スキルツリーの攻撃・防御ボーナス反映
-  if (atkRate !== 0) {
-    rawAtkTotal = Math.floor(rawAtkTotal * (1 + atkRate));
-  }
-  if (defRate !== 0) {
-    rawDefTotal = Math.floor(rawDefTotal * (1 + defRate));
-  }
-
-  // ★ 職業ボーナスの攻撃・防御ボーナス反映
-  if (jobAtkRate !== 0) {
-    rawAtkTotal = Math.floor(rawAtkTotal * (1 + jobAtkRate));
-  }
-  if (jobDefRate !== 0) {
-    rawDefTotal = Math.floor(rawDefTotal * (1 + jobDefRate));
+  let rawDefTotal = rawDefBase;
+  if (defPctTotal !== 0) {
+    rawDefTotal = Math.floor(rawDefBase * (1 + defPctTotal));
   }
 
   atkTotal = rawAtkTotal;
@@ -738,7 +778,7 @@ function updateDisplay() {
   let eqWpnName = document.getElementById("equippedWeaponName");
   let eqArmName = document.getElementById("equippedArmorName");
   let atkTotalEl= document.getElementById("atkTotal");
-  let defTotalEl= document.getElementById("defTotal");
+  let defTotalEl= document.getElementById("defTotal");  // ★ここを修正
 
   if (jobNameEl) jobNameEl.textContent = getJobName();
 

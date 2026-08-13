@@ -430,6 +430,12 @@ function unlockGuildJob(guildId, jobId) {
   if (!window.unlockedGuildJobs[guildId].includes(jobId)) {
     window.unlockedGuildJobs[guildId].push(jobId);
   }
+  // ★修正: 解放されたギルド職を転職モーダルの候補リストにも反映する
+  //   （addCandidateJobsByGuildId が定義されているだけで呼び出されておらず、
+  //    クエスト達成後も転職候補に出てこないバグがあったため、ここで連携する）
+  if (typeof addCandidateJobsByGuildId === "function") {
+    addCandidateJobsByGuildId(guildId);
+  }
 }
 
 // そのギルドで解放済みの職業一覧を取得（転職UIなどから参照）

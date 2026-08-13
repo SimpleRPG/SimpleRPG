@@ -147,119 +147,59 @@ function findPotionOrByproduct(id) {
 function applyPotionEffect(p, inBattle) {
   if (!p) return;
 
-  function applyItemBoost(baseVal) {
-    let val = baseVal;
-
-    // ★錬金術師ボーナス: jobs.js 側の動的ヘルパーを参照
+  // 錬金術師・アイテムブーストを加味した回復量補正
+  function applyItemBoost(val) {
     if (typeof isAlchemist === "function" && isAlchemist()) {
-      let rate = 1.0;
-      if (typeof getAlcPotionRate === "function") {
-        rate = getAlcPotionRate();
-      } else if (typeof ALC_POTION_RATE === "number") {
-        // 旧セーブ互換・古い実装が残っている場合のフォールバック
-        rate = ALC_POTION_RATE;
-      } else {
-        rate = 1.3;
-      }
+      const rate = typeof getAlcPotionRate === "function" ? getAlcPotionRate()
+                 : typeof ALC_POTION_RATE  === "number"  ? ALC_POTION_RATE
+                 : 1.3;
       val = Math.floor(val * rate);
     }
-
-    if (typeof itemBoostTurnRemain === "number" &&
-        itemBoostTurnRemain > 0 &&
-        typeof itemBoostRate === "number" &&
-        itemBoostRate > 0) {
+    if (typeof itemBoostTurnRemain === "number" && itemBoostTurnRemain > 0 &&
+        typeof itemBoostRate       === "number" && itemBoostRate > 0) {
       val = Math.floor(val * (1 + itemBoostRate));
     }
-
     return val;
   }
 
+  // HP回復
   if ((p.type === POTION_TYPE_HP || p.type === POTION_TYPE_BOTH) && typeof hp !== "undefined") {
     const max = typeof hpMax === "number" ? hpMax : hp;
-    let val = Math.floor((max * (p.power || 0)) + (p.flat || 0));
-
-    val = applyItemBoost(val);
-
-    if (val > 0) {
-      hp = Math.max(0, Math.min(max, hp + val));
-    }
+    const val = applyItemBoost(Math.floor((max * (p.power || 0)) + (p.flat || 0)));
+    if (val > 0) hp = Math.max(0, Math.min(max, hp + val));
   }
 
+  // MP回復
   if ((p.type === POTION_TYPE_MP || p.type === POTION_TYPE_BOTH) && typeof mp !== "undefined") {
     const max = typeof mpMax === "number" ? mpMax : mp;
-    let val = Math.floor((max * (p.power || 0)) + (p.flat || 0));
-
-    val = applyItemBoost(val);
-
-    if (val > 0) {
-      mp = Math.max(0, Math.min(max, mp + val));
-    }
+    const val = applyItemBoost(Math.floor((max * (p.power || 0)) + (p.flat || 0)));
+    if (val > 0) mp = Math.max(0, Math.min(max, mp + val));
   }
 
-  if (inBattle && typeof addPotionStatusToPlayer === "function") {
-    if (p.id === "buffAtk_T1") {
-      addPotionStatusToPlayer("potion_atk_up_T1", 3);
-    } else if (p.id === "buffAtk_T2") {
-      addPotionStatusToPlayer("potion_atk_up_T2", 3);
-    } else if (p.id === "buffAtk_T3") {
-      addPotionStatusToPlayer("potion_atk_up_T3", 3);
+  {
+    const meta = typeof getItemMeta === "function" ? getItemMeta(p.id) : null;
+
+    // バフ付与（戦闘中のみ有効）
+    if (inBattle && meta && meta.statusId && typeof addPotionStatusToPlayer === "function") {
+      addPotionStatusToPlayer(meta.statusId, 3);
     }
 
-    if (p.id === "buffDef_T1") {
-      addPotionStatusToPlayer("potion_def_up_T1", 3);
-    } else if (p.id === "buffDef_T2") {
-      addPotionStatusToPlayer("potion_def_up_T2", 3);
-    } else if (p.id === "buffDef_T3") {
-      addPotionStatusToPlayer("potion_def_up_T3", 3);
-    }
-
-    if (p.id === "cleanse_T1" || p.id === "cleanse_T2" || p.id === "cleanse_T3") {
-      // 状態異常（毒・麻痺・暗闇・沈黙）を即時解除
+    // cleanse → 状態異常即時解除（戦闘内外どちらでも有効）
+    if (meta && meta.specialEffect === "cleanse") {
       const CLEANSE_TARGETS = ["poison", "paralyze", "blind", "silence"];
       const before = playerStatuses.length;
       playerStatuses = playerStatuses.filter(s => !CLEANSE_TARGETS.includes(s.id));
-      const removed = before - playerStatuses.length;
-      if (removed > 0) {
-        appendLog("状態異常が解除された！");
-      } else {
-        appendLog("解除すべき状態異常はなかった。");
-      }
+      appendLog(before > playerStatuses.length ? "状態異常が解除された！" : "解除すべき状態異常はなかった。");
     }
 
-    // 魔力薬（essence副産物）: MP回復 + 魔法攻撃バフ
-    if (p.id === "T1_magicPotion" || p.id === "T2_magicPotion" || p.id === "T3_magicPotion") {
-      const tierNum = parseInt(p.id.replace("T", "").replace("_magicPotion", ""), 10);
-      const mpMax = typeof window.mpMax === "number" ? window.mpMax : 0;
-      const mpHeal = Math.max(1, Math.floor(mpMax * (0.15 + (tierNum - 1) * 0.10)));
-      if (typeof mp !== "undefined") {
-        mp = Math.min(mpMax, mp + mpHeal);
-        appendLog("MPが" + mpHeal + "回復した！");
-      }
-      addPotionStatusToPlayer("potion_magic_up_T" + tierNum, 3);
-    }
-
-    // 集中薬（crystal副産物）: クリティカル率UP（Tier差あり）
-    if (p.id === "T1_critPotion" || p.id === "T2_critPotion" || p.id === "T3_critPotion") {
-      const tierNum = parseInt(p.id.replace("T", "").replace("_critPotion", ""), 10);
-      addPotionStatusToPlayer("potion_crit_up_T" + tierNum, 3);
-    }
-
-    // 繊維包帯（thread副産物）: リジェネ
-    if (p.id === "T1_bandage" || p.id === "T2_bandage" || p.id === "T3_bandage") {
-      const tierNum = parseInt(p.id.replace("T", "").replace("_bandage", ""), 10);
-      addPotionStatusToPlayer("potion_regen_T" + Math.min(tierNum, 3), 3);
-    }
-  }
-
-  if (p.type === POTION_TYPE_DAMAGE && inBattle && currentEnemy) {
-    const dmg = typeof p.damage === "number" ? p.damage : (p.value || 0);
-    if (dmg > 0) {
-      const beforeHp = enemyHp;
-      enemyHp = Math.max(0, enemyHp - dmg);
-      appendLog(`${p.name} を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
-      if (enemyHp <= 0) {
-        enemyHp = 0;
-        winBattle(true, "item");
+    // 敵へのダメージポーション（戦闘中のみ）
+    if (inBattle && p.type === POTION_TYPE_DAMAGE && currentEnemy) {
+      const dmg = typeof p.damage === "number" ? p.damage : (p.value || 0);
+      if (dmg > 0) {
+        const beforeHp = enemyHp;
+        enemyHp = Math.max(0, enemyHp - dmg);
+        appendLog(`${p.name} を投げつけた！ ${currentEnemy.name}に${dmg}ダメージ！（HP ${beforeHp} → ${enemyHp}）`);
+        if (enemyHp <= 0) { enemyHp = 0; winBattle(true, "item"); }
       }
     }
   }
@@ -484,6 +424,7 @@ function usePotionOutsideBattle() {
   const mpFull = (typeof mpMax === "number") ? (mp >= mpMax) : true;
   let willHaveEffect = false;
 
+  const metaForEffect = typeof getItemMeta === "function" ? getItemMeta(id) : null;
   if (p.type === POTION_TYPE_HP && !hpFull) {
     willHaveEffect = true;
   } else if (p.type === POTION_TYPE_MP && !mpFull) {
@@ -492,6 +433,10 @@ function usePotionOutsideBattle() {
     willHaveEffect = true;
   } else if (p.type === POTION_TYPE_DAMAGE) {
     willHaveEffect = false;
+  } else if (metaForEffect && metaForEffect.statusId) {
+    willHaveEffect = true;
+  } else if (metaForEffect && metaForEffect.specialEffect === "cleanse") {
+    willHaveEffect = true;
   }
 
   if (!willHaveEffect) {

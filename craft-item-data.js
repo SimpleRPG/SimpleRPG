@@ -545,6 +545,16 @@ function rollQualityBySkillLv(skillLv) {
     const m = p.id.match(/^T(\d+)_/);
     const tierNum = m ? parseInt(m[1], 10) : null;
 
+    // IDからstatusId/specialEffectを解決
+    let statusId = null;
+    let specialEffect = null;
+    if (tierNum) {
+      const base = p.id.replace(/^T\d+_/, "");
+      if (base === "buffAtk") statusId = `potion_atk_up_T${tierNum}`;
+      if (base === "buffDef") statusId = `potion_def_up_T${tierNum}`;
+      if (base === "cleanse") specialEffect = "cleanse";
+    }
+
     defs[p.id] = {
       id: p.id,
       name: p.name,
@@ -555,6 +565,8 @@ function rollQualityBySkillLv(skillLv) {
       potionType: p.type,
       potionPower: p.power,
       potionFlat: p.flat,
+      ...(statusId      ? { statusId }      : {}),
+      ...(specialEffect ? { specialEffect } : {}),
 
       craft: {
         enabled: true,
@@ -608,35 +620,50 @@ function rollQualityBySkillLv(skillLv) {
 
   const BYPRODUCT_POTION_DEFS = [
     {
-      // 集中薬: crystal → クリティカル率UP 3ターン
-      baseId: "critPotion",
-      baseName: "集中薬",
+      baseId: "critPotion", baseName: "集中薬",
       tiers: [
-        { tier: 1, cost: { T1_crystal: 2, T1_mixHerb: 1 },           baseRate: 0.65 },
-        { tier: 2, cost: { T2_crystal: 2, T2_mixHerb: 2 },           baseRate: 0.55 },
-        { tier: 3, cost: { T3_crystal: 3, T3_mixHerb: 2 },           baseRate: 0.45 }
+        { tier:  1, cost: { T1_crystal: 1, T1_mixHerb: 1 }, baseRate: 0.65 },
+        { tier:  2, cost: { T2_crystal: 2, T2_mixHerb: 2 }, baseRate: 0.615 },
+        { tier:  3, cost: { T3_crystal: 3, T3_mixHerb: 3 }, baseRate: 0.58 },
+        { tier:  4, cost: { T4_crystal: 3, T4_mixHerb: 3 }, baseRate: 0.545 },
+        { tier:  5, cost: { T5_crystal: 3, T5_mixHerb: 3 }, baseRate: 0.51 },
+        { tier:  6, cost: { T6_crystal: 3, T6_mixHerb: 3 }, baseRate: 0.475 },
+        { tier:  7, cost: { T7_crystal: 3, T7_mixHerb: 3 }, baseRate: 0.44 },
+        { tier:  8, cost: { T8_crystal: 3, T8_mixHerb: 3 }, baseRate: 0.405 },
+        { tier:  9, cost: { T9_crystal: 3, T9_mixHerb: 3 }, baseRate: 0.37 },
+        { tier: 10, cost: { T10_crystal: 3, T10_mixHerb: 3 }, baseRate: 0.335 }
       ],
-      statusPrefix: "potion_crit_up" // status-effects-core.js 側の potion_crit_up_T1〜3 に対応
+      statusPrefix: "potion_crit_up"
     },
     {
-      // 魔力薬: essence → MP回復 + 魔法攻撃バフ 3ターン
-      baseId: "magicPotion",
-      baseName: "魔力薬",
+      baseId: "magicPotion", baseName: "魔力薬",
       tiers: [
-        { tier: 1, cost: { T1_essence: 2, T1_distilledWater: 1 },    baseRate: 0.65 },
-        { tier: 2, cost: { T2_essence: 2, T2_distilledWater: 2 },    baseRate: 0.55 },
-        { tier: 3, cost: { T3_essence: 3, T3_distilledWater: 2 },    baseRate: 0.45 }
+        { tier:  1, cost: { T1_essence: 1, T1_distilledWater: 1 }, baseRate: 0.65 },
+        { tier:  2, cost: { T2_essence: 2, T2_distilledWater: 2 }, baseRate: 0.615 },
+        { tier:  3, cost: { T3_essence: 3, T3_distilledWater: 3 }, baseRate: 0.58 },
+        { tier:  4, cost: { T4_essence: 3, T4_distilledWater: 3 }, baseRate: 0.545 },
+        { tier:  5, cost: { T5_essence: 3, T5_distilledWater: 3 }, baseRate: 0.51 },
+        { tier:  6, cost: { T6_essence: 3, T6_distilledWater: 3 }, baseRate: 0.475 },
+        { tier:  7, cost: { T7_essence: 3, T7_distilledWater: 3 }, baseRate: 0.44 },
+        { tier:  8, cost: { T8_essence: 3, T8_distilledWater: 3 }, baseRate: 0.405 },
+        { tier:  9, cost: { T9_essence: 3, T9_distilledWater: 3 }, baseRate: 0.37 },
+        { tier: 10, cost: { T10_essence: 3, T10_distilledWater: 3 }, baseRate: 0.335 }
       ],
       statusPrefix: "potion_magic_up"
     },
     {
-      // 繊維包帯: thread → リジェネ（HPターン回復）3ターン
-      baseId: "bandage",
-      baseName: "繊維包帯",
+      baseId: "bandage", baseName: "繊維包帯",
       tiers: [
-        { tier: 1, cost: { T1_thread: 2, T1_toughLeather: 1 },       baseRate: 0.65 },
-        { tier: 2, cost: { T2_thread: 2, T2_toughLeather: 2 },       baseRate: 0.55 },
-        { tier: 3, cost: { T3_thread: 3, T3_toughLeather: 2 },       baseRate: 0.45 }
+        { tier:  1, cost: { T1_thread: 1, T1_toughLeather: 1 }, baseRate: 0.65 },
+        { tier:  2, cost: { T2_thread: 2, T2_toughLeather: 2 }, baseRate: 0.615 },
+        { tier:  3, cost: { T3_thread: 3, T3_toughLeather: 3 }, baseRate: 0.58 },
+        { tier:  4, cost: { T4_thread: 3, T4_toughLeather: 3 }, baseRate: 0.545 },
+        { tier:  5, cost: { T5_thread: 3, T5_toughLeather: 3 }, baseRate: 0.51 },
+        { tier:  6, cost: { T6_thread: 3, T6_toughLeather: 3 }, baseRate: 0.475 },
+        { tier:  7, cost: { T7_thread: 3, T7_toughLeather: 3 }, baseRate: 0.44 },
+        { tier:  8, cost: { T8_thread: 3, T8_toughLeather: 3 }, baseRate: 0.405 },
+        { tier:  9, cost: { T9_thread: 3, T9_toughLeather: 3 }, baseRate: 0.37 },
+        { tier: 10, cost: { T10_thread: 3, T10_toughLeather: 3 }, baseRate: 0.335 }
       ],
       statusPrefix: "potion_regen"
     }
@@ -645,13 +672,23 @@ function rollQualityBySkillLv(skillLv) {
   BYPRODUCT_POTION_DEFS.forEach(tpl => {
     tpl.tiers.forEach(t => {
       const id = `T${t.tier}_${tpl.baseId}`;
+
+      // potionPower: magicPotionはMP回復あり（T1:15%〜T10:60%）、他は0
+      const potionPower = tpl.baseId === "magicPotion"
+        ? Math.min(0.15 + (t.tier - 1) * 0.05, 0.60)
+        : 0;
+      // potionType: magicPotionはMP回復、他はバフのみなのでHP/MP回復なし扱い
+      const potionType = tpl.baseId === "magicPotion" ? POTION_TYPE_MP : POTION_TYPE_BOTH;
+
       defs[id] = {
         id,
         name: `T${t.tier}${tpl.baseName}`,
         category: "potion",
         tier: t.tier,
         tags: ["craft", "potion", "byproduct"],
-        potionType: POTION_TYPE_BOTH,
+        potionType,
+        potionPower,
+        potionFlat: 0,
         statusId: `${tpl.statusPrefix}_T${t.tier}`,
         craft: {
           enabled: true,
@@ -670,36 +707,48 @@ function rollQualityBySkillLv(skillLv) {
 
   const BYPRODUCT_TOOL_DEFS = [
     {
-      // 粘着罠: resin → 敵スロウ
-      baseId: "stickyTrap",
-      baseName: "粘着罠",
-      type: "status",
+      baseId: "stickyTrap", baseName: "粘着罠", type: "status",
       tiers: [
-        { tier: 1, power: 0, cost: { T1_resin: 2, T1_toughLeather: 1 },     baseRate: 0.70 },
-        { tier: 2, power: 0, cost: { T2_resin: 2, T2_toughLeather: 2 },     baseRate: 0.60 },
-        { tier: 3, power: 0, cost: { T3_resin: 3, T3_toughLeather: 2 },     baseRate: 0.50 }
+        { tier:  1, power: 0, cost: { T1_resin: 1, T1_toughLeather: 1 }, baseRate: 0.7 },
+        { tier:  2, power: 0, cost: { T2_resin: 2, T2_toughLeather: 2 }, baseRate: 0.655 },
+        { tier:  3, power: 0, cost: { T3_resin: 3, T3_toughLeather: 3 }, baseRate: 0.61 },
+        { tier:  4, power: 0, cost: { T4_resin: 3, T4_toughLeather: 3 }, baseRate: 0.565 },
+        { tier:  5, power: 0, cost: { T5_resin: 3, T5_toughLeather: 3 }, baseRate: 0.52 },
+        { tier:  6, power: 0, cost: { T6_resin: 3, T6_toughLeather: 3 }, baseRate: 0.475 },
+        { tier:  7, power: 0, cost: { T7_resin: 3, T7_toughLeather: 3 }, baseRate: 0.43 },
+        { tier:  8, power: 0, cost: { T8_resin: 3, T8_toughLeather: 3 }, baseRate: 0.385 },
+        { tier:  9, power: 0, cost: { T9_resin: 3, T9_toughLeather: 3 }, baseRate: 0.34 },
+        { tier: 10, power: 0, cost: { T10_resin: 3, T10_toughLeather: 3 }, baseRate: 0.295 }
       ]
     },
     {
-      // 骨粉爆弾: boneChip → 敵DEFダウン
-      baseId: "boneBomb",
-      baseName: "骨粉爆弾",
-      type: "status",
+      baseId: "boneBomb", baseName: "骨粉爆弾", type: "status",
       tiers: [
-        { tier: 1, power: 0, cost: { T1_boneChip: 2, T1_ironIngot: 1 },     baseRate: 0.70 },
-        { tier: 2, power: 0, cost: { T2_boneChip: 2, T2_ironIngot: 2 },     baseRate: 0.60 },
-        { tier: 3, power: 0, cost: { T3_boneChip: 3, T3_ironIngot: 2 },     baseRate: 0.50 }
+        { tier:  1, power: 0, cost: { T1_boneChip: 1, T1_ironIngot: 1 }, baseRate: 0.7 },
+        { tier:  2, power: 0, cost: { T2_boneChip: 2, T2_ironIngot: 2 }, baseRate: 0.655 },
+        { tier:  3, power: 0, cost: { T3_boneChip: 3, T3_ironIngot: 3 }, baseRate: 0.61 },
+        { tier:  4, power: 0, cost: { T4_boneChip: 3, T4_ironIngot: 3 }, baseRate: 0.565 },
+        { tier:  5, power: 0, cost: { T5_boneChip: 3, T5_ironIngot: 3 }, baseRate: 0.52 },
+        { tier:  6, power: 0, cost: { T6_boneChip: 3, T6_ironIngot: 3 }, baseRate: 0.475 },
+        { tier:  7, power: 0, cost: { T7_boneChip: 3, T7_ironIngot: 3 }, baseRate: 0.43 },
+        { tier:  8, power: 0, cost: { T8_boneChip: 3, T8_ironIngot: 3 }, baseRate: 0.385 },
+        { tier:  9, power: 0, cost: { T9_boneChip: 3, T9_ironIngot: 3 }, baseRate: 0.34 },
+        { tier: 10, power: 0, cost: { T10_boneChip: 3, T10_ironIngot: 3 }, baseRate: 0.295 }
       ]
     },
     {
-      // 煙幕瓶: sand → 敵命中率ダウン
-      baseId: "smokeBomb",
-      baseName: "煙幕瓶",
-      type: "status",
+      baseId: "smokeBomb", baseName: "煙幕瓶", type: "status",
       tiers: [
-        { tier: 1, power: 0, cost: { T1_sand: 2, T1_distilledWater: 1 },    baseRate: 0.70 },
-        { tier: 2, power: 0, cost: { T2_sand: 2, T2_distilledWater: 2 },    baseRate: 0.60 },
-        { tier: 3, power: 0, cost: { T3_sand: 3, T3_distilledWater: 2 },    baseRate: 0.50 }
+        { tier:  1, power: 0, cost: { T1_sand: 1, T1_distilledWater: 1 }, baseRate: 0.7 },
+        { tier:  2, power: 0, cost: { T2_sand: 2, T2_distilledWater: 2 }, baseRate: 0.655 },
+        { tier:  3, power: 0, cost: { T3_sand: 3, T3_distilledWater: 3 }, baseRate: 0.61 },
+        { tier:  4, power: 0, cost: { T4_sand: 3, T4_distilledWater: 3 }, baseRate: 0.565 },
+        { tier:  5, power: 0, cost: { T5_sand: 3, T5_distilledWater: 3 }, baseRate: 0.52 },
+        { tier:  6, power: 0, cost: { T6_sand: 3, T6_distilledWater: 3 }, baseRate: 0.475 },
+        { tier:  7, power: 0, cost: { T7_sand: 3, T7_distilledWater: 3 }, baseRate: 0.43 },
+        { tier:  8, power: 0, cost: { T8_sand: 3, T8_distilledWater: 3 }, baseRate: 0.385 },
+        { tier:  9, power: 0, cost: { T9_sand: 3, T9_distilledWater: 3 }, baseRate: 0.34 },
+        { tier: 10, power: 0, cost: { T10_sand: 3, T10_distilledWater: 3 }, baseRate: 0.295 }
       ]
     }
   ];

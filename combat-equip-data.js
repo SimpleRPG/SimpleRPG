@@ -223,23 +223,61 @@ const ARMOR_TEMPLATES = [
 ];
 
 // =======================
+// ティアごとの固定%（武器・防具用）
+// =======================
+//
+// 仕様追加部分：固定ATK% / 固定DEF% / 固定HP% をティアから決める。
+// 既存仕様を壊さないよう「なければ0」「ティアで小さく伸びるだけ」にしている。
+
+function getFixedAtkPctForTier(tier) {
+  if (tier >= 9) return 0.08;
+  if (tier >= 7) return 0.05;
+  if (tier >= 4) return 0.03;
+  return 0.0;
+}
+
+function getFixedDefPctForTier(tier) {
+  if (tier >= 9) return 0.08;
+  if (tier >= 7) return 0.05;
+  if (tier >= 4) return 0.03;
+  return 0.0;
+}
+
+function getFixedHpPctForArmorTier(tier) {
+  if (tier >= 9) return 0.06;
+  if (tier >= 7) return 0.04;
+  if (tier >= 4) return 0.02;
+  return 0.0;
+}
+
+// =======================
 // テンプレートから T1〜T10 を生成
 // =======================
 
 function generateWeaponTiers(tpl) {
   const list = [];
   for (let tier = 1; tier <= MAX_TIER; tier++) {
+    const atk       = tpl.baseAtk + tpl.atkPerTier * (tier - 1);
+    const scaleStr  = +(tpl.baseScaleStr + tpl.scaleStrPerTier * (tier - 1)).toFixed(2);
+    const scaleInt  = +(tpl.baseScaleInt + tpl.scaleIntPerTier * (tier - 1)).toFixed(2);
+    const rate      = tpl.baseRate + tpl.ratePerTier * (tier - 1);
+    const cost      = tpl.costPattern(tier);
+    const atkPctFix = getFixedAtkPctForTier(tier); // 新規：ティアから固定ATK%
+
     list.push({
       id: `T${tier}_${tpl.baseId}`,
       name: `T${tier}${tpl.baseName}`,
-      atk: tpl.baseAtk + tpl.atkPerTier * (tier - 1),
-      scaleStr: +(tpl.baseScaleStr + tpl.scaleStrPerTier * (tier - 1)).toFixed(2),
-      scaleInt: +(tpl.baseScaleInt + tpl.scaleIntPerTier * (tier - 1)).toFixed(2),
-      cost: tpl.costPattern(tier),
-      rate: tpl.baseRate + tpl.ratePerTier * (tier - 1),
+      atk,
+      scaleStr,
+      scaleInt,
+      cost,
+      rate,
       enhance: 0,
       enhanceStep: tpl.enhanceStep,
-      durability: BASE_DURABILITY
+      durability: BASE_DURABILITY,
+
+      // 追加：武器用固定ATK%
+      atkPctFixed: atkPctFix
     });
   }
   return list;
@@ -248,17 +286,29 @@ function generateWeaponTiers(tpl) {
 function generateArmorTiers(tpl) {
   const list = [];
   for (let tier = 1; tier <= MAX_TIER; tier++) {
+    const def        = tpl.baseDef + tpl.defPerTier * (tier - 1);
+    const scaleVit   = +(tpl.baseScaleVit + tpl.scaleVitPerTier * (tier - 1)).toFixed(2);
+    const bonusDex   = tpl.baseBonusDex + tpl.bonusDexPerTier * (tier - 1);
+    const rate       = tpl.baseRate + tpl.ratePerTier * (tier - 1);
+    const cost       = tpl.costPattern(tier);
+    const defPctFix  = getFixedDefPctForTier(tier);      // 新規：ティアから固定DEF%
+    const hpPctFix   = getFixedHpPctForArmorTier(tier);  // 新規：ティアから固定HP%
+
     list.push({
       id: `T${tier}_${tpl.baseId}`,
       name: `T${tier}${tpl.baseName}`,
-      def: tpl.baseDef + tpl.defPerTier * (tier - 1),
-      scaleVit: +(tpl.baseScaleVit + tpl.scaleVitPerTier * (tier - 1)).toFixed(2),
-      bonusDex: tpl.baseBonusDex + tpl.bonusDexPerTier * (tier - 1),
-      cost: tpl.costPattern(tier),
-      rate: tpl.baseRate + tpl.ratePerTier * (tier - 1),
+      def,
+      scaleVit,
+      bonusDex,
+      cost,
+      rate,
       enhance: 0,
       enhanceStep: tpl.enhanceStep,
-      durability: BASE_DURABILITY
+      durability: BASE_DURABILITY,
+
+      // 追加：防具用固定DEF%と固定HP%
+      defPctFixed: defPctFix,
+      hpPctFixed:  hpPctFix
     });
   }
   return list;
@@ -319,6 +369,9 @@ armorInstances.forEach(inst => {
 // =======================
 // ITEM_META への登録（戦闘用武器・防具＋クラフト情報）
 // =======================
+//
+// ここで atkPctFixed / defPctFixed / hpPctFixed を ITEM_META に流し込み、
+// game-core-1.js 側から参照できるようにする。
 
 if (typeof registerItemDefs === "function") {
   // 戦闘用武器
@@ -341,6 +394,9 @@ if (typeof registerItemDefs === "function") {
         scaleInt: w.scaleInt,
         baseDurability: w.durability || BASE_DURABILITY,
         enhanceStep: w.enhanceStep || 1,
+
+        // ★追加：武器の固定ATK%
+        atkPctFixed: w.atkPctFixed || 0,
 
         craft: {
           enabled: true,
@@ -375,6 +431,10 @@ if (typeof registerItemDefs === "function") {
         bonusDex: a.bonusDex || 0,
         baseDurability: a.durability || BASE_DURABILITY,
         enhanceStep: a.enhanceStep || 1,
+
+        // ★追加：防具の固定DEF%と固定HP%
+        defPctFixed: a.defPctFixed || 0,
+        hpPctFixed:  a.hpPctFixed  || 0,
 
         craft: {
           enabled: true,
