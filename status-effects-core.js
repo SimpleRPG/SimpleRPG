@@ -28,9 +28,10 @@ let playerStatuses = [];
 let enemyStatuses  = [];
 
 // ★錬金術師用: 状態異常ダメージボーナス
+// ★修正: ハードコードされていた ×1.5 を、jobs.js の dotDamageRate 経由に変更
 function applyAlchemistDotBonus(dmg) {
-  if (typeof isAlchemist === "function" && isAlchemist()) {
-    return Math.max(1, Math.floor(dmg * 1.5)); // +50%
+  if (typeof getAlcDotDamageRate === "function") {
+    return Math.max(1, Math.floor(dmg * getAlcDotDamageRate()));
   }
   return dmg;
 }
@@ -129,6 +130,26 @@ const STATUS_EFFECTS = {
 
       applyHp(-dmg);
       appendLog(`${name}は出血で${dmg}ダメージを受けた！`);
+    }
+  },
+  curseWither: {
+    id: "curseWither",
+    name: "呪い",
+    baseDuration: 3,
+    onTurnEnd(targetCtx) {
+      const hpMax = targetCtx.hpMax();
+      const applyHp = targetCtx.applyHp;
+      const name = targetCtx.name;
+
+      // ★呪術師スキル「衰弱の呪詛」用のDOT。HP割合＋術者のINTで伸びる継続ダメージ。
+      const baseInt = (typeof getEffectiveIntForMagic === "function") ? getEffectiveIntForMagic() : 0;
+      let dmg = Math.max(1, Math.floor(hpMax * 0.03) + Math.floor(baseInt * 0.4));
+
+      // ★錬金術師なら状態異常ダメージ+50%（他のDOTと同じ経路。呪術師自身には無関係）
+      dmg = applyAlchemistDotBonus(dmg);
+
+      applyHp(-dmg);
+      appendLog(`${name}は呪いに蝕まれ${dmg}ダメージを受けた！`);
     }
   },
   regen: {
@@ -927,15 +948,27 @@ function addStatusToPlayer(id) {
   }
 }
 
-function addStatusToEnemy(id) {
+function addStatusToEnemy(id, opts) {
   const def = STATUS_EFFECTS[id];
   if (!def || !currentEnemy) return;
 
+  const fromCurseSkill = !!(opts && opts.fromCurseSkill);
+
   let baseDur = def.baseDuration || 0;
 
-  // ★錬金術師なら状態異常ターン +25%
-  if (typeof isAlchemist === "function" && isAlchemist()) {
-    baseDur = Math.max(1, Math.floor(baseDur * 1.25));
+  // ★修正: ハードコードされていた ×1.25 を、jobs.js の statusDurationRate 経由に変更
+  if (typeof getAlcStatusDurationRate === "function") {
+    baseDur = Math.max(1, Math.floor(baseDur * getAlcStatusDurationRate()));
+  }
+
+  // ★呪術師: 自分がかけた状態異常の効果ターン+1（加算式。錬金術師の倍率とは別軸で足す）
+  //   ★修正: 以前はここで職業判定のみ行っていたため、呪術師がアイテム
+  //   （battle-items-use.js 側の毒瓶・爆弾など）で敵に状態異常を付与した
+  //   場合にも+1ターンが乗ってしまっていた。仕様上は「呪術師スキルで
+  //   自分がかけたもの」限定のボーナスなので、呼び出し元が明示的に
+  //   fromCurseSkill: true を渡した場合だけ加算するようにする。
+  if (fromCurseSkill && typeof getCurseDebuffDurationAdd === "function") {
+    baseDur = baseDur + getCurseDebuffDurationAdd();
   }
 
   const ex = enemyStatuses.find(s => s.id === id);

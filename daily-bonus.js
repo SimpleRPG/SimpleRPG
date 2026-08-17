@@ -366,7 +366,7 @@
   // 戦闘向けボーナス定義
   //
   // 引数:
-  //   jobId: 0=戦士,1=魔法使い,2=動物使い,3=錬金術師
+  //   jobId: 0=戦士,1=魔法使い,2=動物使い,202=錬金術師
   //
   // 戻り値:
   //   { goldRate: number, dropRate: number }
@@ -388,7 +388,9 @@
       goldRate += 0.10;
       dropRate += 0.10;
     }
-    if (jobId === 3 && isDailyBonusActive("battle_alchemist")) {
+    // ★修正: 錬金術師の実際の jobId は 202（旧番号の 3 のまま放置されていて、
+    //   この分岐が永久に発火しないバグだった）
+    if (jobId === 202 && isDailyBonusActive("battle_alchemist")) {
       goldRate += 0.10;
       dropRate += 0.10;
     }

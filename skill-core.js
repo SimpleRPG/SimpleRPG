@@ -138,6 +138,35 @@ const JOB_SKILLS = {
     ],
     magic: [] // 大盾兵は魔法なし（jobs.js の canUseMagic:false に対応）[web:165]
   },
+  101: { // 呪術師（魔法ギルドの戦闘ギルド職）
+    phys: [], // 呪術師は物理スキルなし（jobs.js の canUsePhysSkill:false に対応）
+    magic: [
+      {
+        id: "curseStrike",
+        name: "呪いの一撃",
+        type: SKILL_TYPE_MAGIC,
+        mpCost: 4
+      },
+      {
+        id: "witherHex",
+        name: "衰弱の呪詛",
+        type: SKILL_TYPE_MAGIC,
+        mpCost: 5
+      },
+      {
+        id: "darkVeil",
+        name: "闇のヴェール",
+        type: SKILL_TYPE_MAGIC,
+        mpCost: 6
+      },
+      {
+        id: "ruinCurse",
+        name: "破滅の呪詛",
+        type: SKILL_TYPE_MAGIC,
+        mpCost: 9
+      }
+    ]
+  },
   202: { // 錬金術師（ギルド職）
     phys: [
       {
@@ -257,7 +286,40 @@ function getCurrentAtkForSkill() {
     }
   }
 
+  // ★修正: スキルツリー物理スキル倍率＋ジョブ物理スキル倍率
+  //   （physSkillRate はスキルツリー側に既に存在したが、これまでどの
+  //    ダメージ式にも掛かっておらず、UI表示だけの死んだボーナスだった）
+  base = Math.floor(base * (1 + getPhysSkillRateMultiplier()));
+
   return base;
+}
+
+// ★新規: スキルツリー＋ジョブの物理スキル倍率を合算して返す
+function getPhysSkillRateMultiplier() {
+  let rate = 0;
+  if (typeof getGlobalSkillTreeBonus === "function") {
+    const t = getGlobalSkillTreeBonus();
+    if (t && typeof t.physSkillRate === "number") rate += t.physSkillRate;
+  }
+  if (typeof getJobBonuses === "function" && typeof jobId !== "undefined") {
+    const j = getJobBonuses(jobId);
+    if (j && typeof j.physSkillRate === "number") rate += j.physSkillRate;
+  }
+  return rate;
+}
+
+// ★新規: スキルツリー＋ジョブの魔法スキル倍率を合算して返す
+function getMagicSkillRateMultiplier() {
+  let rate = 0;
+  if (typeof getGlobalSkillTreeBonus === "function") {
+    const t = getGlobalSkillTreeBonus();
+    if (t && typeof t.magicSkillRate === "number") rate += t.magicSkillRate;
+  }
+  if (typeof getJobBonuses === "function" && typeof jobId !== "undefined") {
+    const j = getJobBonuses(jobId);
+    if (j && typeof j.magicSkillRate === "number") rate += j.magicSkillRate;
+  }
+  return rate;
 }
 
 // ★ 修正：接頭語などで補正済みの effINT があればそれを優先して使う
@@ -281,7 +343,26 @@ function getEffectiveIntForMagic() {
     }
   }
 
+  // ★修正: スキルツリー魔法スキル倍率＋ジョブ魔法スキル倍率
+  //   （魔法スキルは atkTotal を経由せず baseInt から直接ダメージを出すため、
+  //    ここに掛けないと物理側だけ恩恵を受ける非対称な状態になっていた）
+  base = Math.floor(base * (1 + getMagicSkillRateMultiplier()));
+
   return base;
+}
+
+// ★呪術師スキル専用の状態異常成功率判定。
+//   アイテム側の rollStatusApply()（battle-items-use.js, isAlchemist() 判定）とは完全に別経路。
+function rollStatusApplyForCurrentJob(baseRate) {
+  let rate = baseRate;
+  if (typeof isCurseMage === "function" && isCurseMage()) {
+    let add = 0.0;
+    if (typeof getCurseStatusApplyRateAdd === "function") {
+      add = getCurseStatusApplyRateAdd();
+    }
+    rate = Math.min(1, rate + add);
+  }
+  return Math.random() < rate;
 }
 
 function tickSkillBuffTurns() {
@@ -347,6 +428,20 @@ function calcPetDamage() {
       base = base * (1 + bonus.pet);
     }
   }
+
+  // ★修正: スキルツリー petAtkRate ＋ ジョブ petAtkRate
+  //   （どちらも UI・集計上は存在したが、実際のペットダメージ計算には
+  //    一度も掛かっておらず死んでいたボーナス）
+  let petAtkRate = 0;
+  if (typeof getGlobalSkillTreeBonus === "function") {
+    const t = getGlobalSkillTreeBonus();
+    if (t && typeof t.petAtkRate === "number") petAtkRate += t.petAtkRate;
+  }
+  if (typeof getJobBonuses === "function" && typeof jobId !== "undefined") {
+    const j = getJobBonuses(jobId);
+    if (j && typeof j.petAtkRate === "number") petAtkRate += j.petAtkRate;
+  }
+  base = base * (1 + petAtkRate);
 
   const variance = Math.floor(base * 0.2);
   const roll = base + (Math.floor(Math.random() * (variance * 2 + 1)) - variance);
@@ -604,6 +699,105 @@ function castMagicFromUI() {
 
     appendLog(`マナバースト！ ${currentEnemy.name} に${dmg}ダメージ（反動で MP を${extra}消費）`);
     didDamage = true;
+  } else if (skillId === "curseStrike") {
+    // 呪術師専用：呪いの一撃（確定ダメージ＋60%で防御ダウン）
+    if (jobId !== 101) {
+      appendLog("呪いの一撃は呪術師専用だ");
+    } else {
+      const baseInt = getEffectiveIntForMagic();
+      const dmg = 6 + Math.floor(baseInt * 1.4);
+      enemyHp = Math.max(0, enemyHp - dmg);
+
+      if (typeof currentBattleMaxDamage === "number") {
+        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+      }
+      if (typeof currentBattleMaxMagic === "number") {
+        currentBattleMaxMagic = Math.max(currentBattleMaxMagic, dmg);
+      }
+
+      appendLog(`呪いの一撃！ ${currentEnemy.name} に${dmg}ダメージ`);
+
+      if (typeof addStatusToEnemy === "function") {
+        if (rollStatusApplyForCurrentJob(0.6)) {
+          addStatusToEnemy("def_down", { fromCurseSkill: true });
+          appendLog(`${currentEnemy.name}の防御が下がった！`);
+        } else {
+          appendLog("しかし呪いはうまく浸透しなかった…");
+        }
+      }
+      didDamage = true;
+    }
+  } else if (skillId === "witherHex") {
+    // 呪術師専用：衰弱の呪詛（純デバフ、ダメージなし。80%で「呪い」＝継続ダメージを付与）
+    if (jobId !== 101) {
+      appendLog("衰弱の呪詛は呪術師専用だ");
+    } else {
+      if (typeof addStatusToEnemy === "function") {
+        if (rollStatusApplyForCurrentJob(0.8)) {
+          addStatusToEnemy("curseWither", { fromCurseSkill: true });
+          appendLog(`衰弱の呪詛！ ${currentEnemy.name}に呪いをかけた（継続ダメージ）`);
+        } else {
+          appendLog("衰弱の呪詛！ しかし呪いはうまく浸透しなかった…");
+        }
+      }
+      // ダメージを与えないスキルなので didDamage は false のまま
+    }
+  } else if (skillId === "darkVeil") {
+    // 呪術師専用：闇のヴェール（小ダメージ＋75%で暗闇＝命中-30%）
+    if (jobId !== 101) {
+      appendLog("闇のヴェールは呪術師専用だ");
+    } else {
+      const baseInt = getEffectiveIntForMagic();
+      const dmg = 4 + Math.floor(baseInt * 0.8);
+      enemyHp = Math.max(0, enemyHp - dmg);
+
+      if (typeof currentBattleMaxDamage === "number") {
+        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+      }
+      if (typeof currentBattleMaxMagic === "number") {
+        currentBattleMaxMagic = Math.max(currentBattleMaxMagic, dmg);
+      }
+
+      appendLog(`闇のヴェール！ ${currentEnemy.name} に${dmg}ダメージ`);
+
+      if (typeof addStatusToEnemy === "function") {
+        if (rollStatusApplyForCurrentJob(0.75)) {
+          addStatusToEnemy("blind", { fromCurseSkill: true });
+          appendLog(`${currentEnemy.name}は闇に包まれ視界を失った！`);
+        } else {
+          appendLog("しかし闇はうまく纏わりつかなかった…");
+        }
+      }
+      didDamage = true;
+    }
+  } else if (skillId === "ruinCurse") {
+    // 呪術師専用：破滅の呪詛（フィニッシャー。大ダメージ＋50%で麻痺）
+    if (jobId !== 101) {
+      appendLog("破滅の呪詛は呪術師専用だ");
+    } else {
+      const baseInt = getEffectiveIntForMagic();
+      const dmg = 12 + Math.floor(baseInt * 2.2);
+      enemyHp = Math.max(0, enemyHp - dmg);
+
+      if (typeof currentBattleMaxDamage === "number") {
+        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+      }
+      if (typeof currentBattleMaxMagic === "number") {
+        currentBattleMaxMagic = Math.max(currentBattleMaxMagic, dmg);
+      }
+
+      appendLog(`破滅の呪詛！ ${currentEnemy.name} に${dmg}ダメージ`);
+
+      if (typeof addStatusToEnemy === "function") {
+        if (rollStatusApplyForCurrentJob(0.5)) {
+          addStatusToEnemy("paralyze", { fromCurseSkill: true });
+          appendLog(`${currentEnemy.name}は麻痺して動けなくなった！`);
+        } else {
+          appendLog("しかし麻痺はうまく効かなかった…");
+        }
+      }
+      didDamage = true;
+    }
   } else if (skillId === "beastHeal") {
     if (jobId !== 2) {
       appendLog("この魔法は動物使い専用だ");
@@ -887,6 +1081,8 @@ function useSkillFromUI() {
       const defBase = typeof defTotal === "number" ? defTotal : 0;
       // 防御 80% ＋ 固定値 10（バランスは後で調整）
       let dmg = Math.floor(defBase * 0.8) + 10;
+      // ★修正: 物理スキル扱いなので physSkillRate（スキルツリー＋ジョブ）も適用
+      dmg = Math.floor(dmg * (1 + getPhysSkillRateMultiplier()));
       if (dmg < 1) dmg = 1;
 
       enemyHp = Math.max(0, enemyHp - dmg);

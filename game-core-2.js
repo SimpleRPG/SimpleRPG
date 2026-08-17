@@ -305,6 +305,10 @@ function addPetExp(amount) {
       }
     }
     petHpMax = baseHpForMax + petRebirthCount * 3;
+    // ★修正: 死んでいた job.petHpMaxRate を接続
+    if (typeof getPetHpMaxRateMultiplier === "function") {
+      petHpMax = Math.floor(petHpMax * (1 + getPetHpMaxRateMultiplier()));
+    }
     petHp    = petHpMax;
 
     // ★ 必要経験値はプレイヤーと同じく 100 固定
@@ -521,6 +525,10 @@ function doRebirth() {
     }
   }
   petHpMax = baseHpForMax + petRebirthCount * 3;
+  // ★修正: 死んでいた job.petHpMaxRate を接続
+  if (typeof getPetHpMaxRateMultiplier === "function") {
+    petHpMax = Math.floor(petHpMax * (1 + getPetHpMaxRateMultiplier()));
+  }
   petHp    = petHpMax;
 
   // ★複数ペット対応：転生後のペット状態を petList のアクティブレコードに保存

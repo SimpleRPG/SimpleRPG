@@ -600,6 +600,10 @@ function recalcStats() {
   } else {
     petHpMax = petHpBase + petRebirthCount * 3;
   }
+  // ★修正: 死んでいた job.petHpMaxRate を接続
+  if (typeof getPetHpMaxRateMultiplier === "function") {
+    petHpMax = Math.floor(petHpMax * (1 + getPetHpMaxRateMultiplier()));
+  }
   if (petHpMax < 1) petHpMax = 1;
 
   // 現在のペット HP が未初期化（0 以下）の場合のみ、最大値に合わせておく

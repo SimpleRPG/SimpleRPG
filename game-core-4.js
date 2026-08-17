@@ -892,17 +892,10 @@ function gather(){
   addGatherSkillExp(target);
   let added = calcGatherAmount(target);
 
-  let jobBonus = 0;
-  if (jobId === 0 && (target === "ore" || target === "leather")) {
-    jobBonus = Math.random() < 0.2 ? 1 : 0;
-  } else if (jobId === 1 && (target === "herb" || target === "water")) {
-    jobBonus = Math.random() < 0.2 ? 1 : 0;
-  } else if (jobId === 2 && (target === "cloth" || target === "leather")) {
-    jobBonus = Math.random() < 0.2 ? 1 : 0;
-  }
-
+  // ★修正: jobs.js の外に隠れていたジョブ限定採取ボーナス（戦士/魔法使い/動物使い）を削除。
+  //   今後 gatherExtraChanceAdd 等、既存の job ボーナス経路で必要なら正式に追加する。
   const lukBonus = (Math.random() < LUK_ * 0.01) ? 1 : 0;
-  added += jobBonus + lukBonus;
+  added += lukBonus;
   if (added < 0) added = 0;
 
   if (typeof getDailyGatherBonus === "function") {

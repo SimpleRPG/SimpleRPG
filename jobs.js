@@ -89,7 +89,7 @@ const JOB_DEFS = [
     hasPetTurn: false,
     bonuses: {
       mpMaxRate: 0.05,
-      magicAtkRate: 0.0
+      magicSkillRate: 0.05  // ★修正: 死んでいた magicAtkRate から、実際に魔法スキルへ効く magicSkillRate に差し替え
     }
   },
   {
@@ -104,8 +104,8 @@ const JOB_DEFS = [
     canUsePhysSkill: true,   // 旧 physJobs
     hasPetTurn: true,        // 旧 petJobs
     bonuses: {
-      petAtkRate: 0.0,
-      petHpMaxRate: 0.0
+      petAtkRate: 0.15,    // ★修正: 死んでいたキーを、実際に pet.js の計算へ繋いだ上で本来の値に
+      petHpMaxRate: 0.15
     }
   },
 
@@ -141,8 +141,10 @@ const JOB_DEFS = [
     canUsePhysSkill: false,
     hasPetTurn: false,
     bonuses: {
-      magicAtkRate: 0.0,
-      debuffSuccessRate: 0.0
+      magicSkillRate: 0.08,        // ★修正: atkRate は魔法スキルのダメージ式（baseInt直参照）に一切効かないため magicSkillRate に変更
+      statusApplyRateAdd: 0.15,    // 状態異常成功率 +15%（自分のスキル発動時のみ）
+      mpMaxRate: 0.15,             // デバフ連打前提でMP+15%
+      curseDebuffDurationAdd: 1    // 自分がかけた状態異常の効果ターン+1
     }
   },
   {
@@ -157,9 +159,8 @@ const JOB_DEFS = [
     canUsePhysSkill: true,   // 旧 physJobs
     hasPetTurn: true,        // 旧 petJobs
     bonuses: {
-      petAtkRate: 0.0,
-      petHpMaxRate: 0.0,
-      petCountBonus: 0.0
+      // TODO: 設計段階のため一旦空。ペット強化系ボーナスは pet.js 側の
+      // 実ダメージ計算に job ボーナスを繋いでから正式に追加する。
     }
   },
 
@@ -179,8 +180,9 @@ const JOB_DEFS = [
     hasPetTurn: false,
     bonuses: {
       craftBonus: 0.08,
-      craftCostReduceRate: 0.05,
-      enhanceSuccessRateAdd: 0.05
+      craftCostReduceRate: 0.05
+      // TODO: 設計段階。強化成功率系ボーナスは getJobBonuses() に
+      // キーを追加してから正式実装する（enhanceSuccessRateAdd は削除）。
     }
   },
   {
@@ -196,9 +198,10 @@ const JOB_DEFS = [
     hasPetTurn: false,
     bonuses: {
       atkRate: 0.02,
-      defRate: 0.02,
-      enhanceBonusRate: 0.05,
-      guardReductionRate: 0.02
+      defRate: 0.02
+      // TODO: 設計段階。enhanceBonusRate（強化効果増幅）と
+      // guardReductionRate（被ダメ軽減）は getJobBonuses() に
+      // キーを追加してから正式実装する。
     }
   },
 
@@ -220,7 +223,9 @@ const JOB_DEFS = [
       potionEffectRate: 1.3,
       toolDamageRate: 2.0,
       toolItemBoostRate: 1.5,
-      statusApplyRateAdd: 0.3
+      statusApplyRateAdd: 0.3,
+      dotDamageRate: 1.5,       // ★修正: status-effects-core.js にハードコードされていた+50%を吸収
+      statusDurationRate: 1.25  // ★修正: 同じくハードコードされていた+25%を吸収
     }
   },
   {
@@ -255,8 +260,9 @@ const JOB_DEFS = [
     hasPetTurn: false,
     bonuses: {
       craftBonus: 0.08,
-      craftCostReduceRate: 0.05,
-      cookingVarietyBonus: 0.05
+      craftCostReduceRate: 0.05
+      // TODO: 設計段階。cookingVarietyBonus は getJobBonuses() に
+      // キーを追加してから正式実装する。
     }
   },
   {
@@ -272,8 +278,9 @@ const JOB_DEFS = [
     hasPetTurn: false,
     bonuses: {
       foodBuffEffectRate: 0.10,
-      foodBuffDurationRate: 0.20,
-      hpRecoverRateAdd: 0.05
+      foodBuffDurationRate: 0.20
+      // TODO: 設計段階。hpRecoverRateAdd は getJobBonuses() に
+      // キーを追加してから正式実装する。
     }
   },
 
@@ -458,7 +465,14 @@ function getJobBonuses(jobId) {
       foodFishAmountBonusRate: 0, foodFishJunkReduceRate: 0,
       foodFarmAmountBonusRate: 0, foodFarmCycleReduceRate: 0,
       greatshieldGuardRateAdd: 0,
-      greatshieldGuardDamageReduceRate: 0
+      greatshieldGuardDamageReduceRate: 0,
+      curseDebuffDurationAdd: 0,
+      magicSkillRate: 0,
+      physSkillRate: 0,
+      petAtkRate: 0,
+      petHpMaxRate: 0,
+      dotDamageRate: 0,
+      statusDurationRate: 0
     };
   }
   const b = def.bonuses || {};
@@ -487,7 +501,14 @@ function getJobBonuses(jobId) {
     foodFarmAmountBonusRate: b.foodFarmAmountBonusRate || 0,
     foodFarmCycleReduceRate: b.foodFarmCycleReduceRate || 0,
     greatshieldGuardRateAdd: b.greatshieldGuardRateAdd || 0,
-    greatshieldGuardDamageReduceRate: b.greatshieldGuardDamageReduceRate || 0
+    greatshieldGuardDamageReduceRate: b.greatshieldGuardDamageReduceRate || 0,
+    curseDebuffDurationAdd: b.curseDebuffDurationAdd || 0,
+    magicSkillRate: b.magicSkillRate || 0,
+    physSkillRate: b.physSkillRate || 0,
+    petAtkRate: b.petAtkRate || 0,
+    petHpMaxRate: b.petHpMaxRate || 0,
+    dotDamageRate: b.dotDamageRate || 0,
+    statusDurationRate: b.statusDurationRate || 0
   };
 }
 
@@ -525,6 +546,16 @@ function isBeastTamer() {
   const def = getJobDefById(jobId);
   if (!def) return false;
   return def.id === 2 || def.key === "beast_tamer";
+}
+
+// 呪術師専用スキルのデバフ成功率／持続ターン加算を判定するためのヘルパー。
+// アイテム側の rollStatusApply()（isAlchemist() 判定）とは完全に別経路にする。
+function isCurseMage() {
+  const jobId = window.player?.jobId ?? window.jobId;
+  if (!jobId && jobId !== 0) return false;
+  const def = getJobDefById(jobId);
+  if (!def) return false;
+  return def.id === 101 || def.key === "curse_mage";
 }
 
 // =======================
@@ -569,6 +600,46 @@ function getAlcToolBoostRate() {
 
 function getAlcStatusAdd() {
   return getAlchemistBonus("statusApplyRateAdd", 0.0);
+}
+
+// ★修正: status-effects-core.js にハードコードされていた錬金術師専用倍率を
+//   ジョブボーナス経由に統一。非錬金職は 1.0（=ボーナスなし）。
+function getAlcDotDamageRate() {
+  return getAlchemistBonus("dotDamageRate", 1.0);
+}
+
+function getAlcStatusDurationRate() {
+  return getAlchemistBonus("statusDurationRate", 1.0);
+}
+
+// =======================
+// 呪術師用ボーナスヘルパー（動的計算版）
+// ※アイテム側の getAlchemistBonus 経由ロジックとは完全に別経路にする。
+// =======================
+
+function getCurseMageBonus(key, fallback) {
+  if (!isCurseMage()) {
+    return fallback;
+  }
+  return getJobBonus(key, fallback);
+}
+
+// 呪術師スキルの状態異常成功率加算（加算式。錬金術師の getAlcStatusAdd とは別軸）
+function getCurseStatusApplyRateAdd() {
+  return getCurseMageBonus("statusApplyRateAdd", 0.0);
+}
+
+// 呪術師が自分でかけた状態異常の効果ターン加算（加算式。錬金術師の statusDurationRate は倍率式なので別軸）
+function getCurseDebuffDurationAdd() {
+  return getCurseMageBonus("curseDebuffDurationAdd", 0);
+}
+
+// ★新規: ペット最大HPへのジョブボーナス倍率（スキルツリー側に同種の項目はまだ無いので job のみ合算）
+function getPetHpMaxRateMultiplier() {
+  const jobId = window.player?.jobId ?? window.jobId;
+  if (typeof getJobBonuses !== "function" || (!jobId && jobId !== 0)) return 0;
+  const b = getJobBonuses(jobId);
+  return (b && typeof b.petHpMaxRate === "number") ? b.petHpMaxRate : 0;
 }
 
 // =======================

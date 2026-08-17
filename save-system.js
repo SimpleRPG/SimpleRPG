@@ -935,6 +935,22 @@ function applySaveData(data) {
           window.unlockedGuildJobs[k] = data.unlockedGuildJobs[k];
         });
       }
+
+      // ★修正: unlockedGuildJobs だけロードしても転職モーダルの候補リスト
+      //   （window.jobCandidateIds）は基本職 [0,1,2] のままになってしまい、
+      //   セーブ＆ロード後に解放済みのギルド職（呪術師など）が転職候補から
+      //   消えるバグがあったため、ロード済みの unlockedGuildJobs から
+      //   candidateIds を再構築する。
+      if (typeof resetCandidateJobsToBasic === "function") {
+        resetCandidateJobsToBasic();
+      } else {
+        window.jobCandidateIds = [0, 1, 2];
+      }
+      if (window.unlockedGuildJobs && typeof addCandidateJobsByGuildId === "function") {
+        Object.keys(window.unlockedGuildJobs).forEach(guildId => {
+          addCandidateJobsByGuildId(guildId);
+        });
+      }
     }
   } catch (e) {
     throw e;
