@@ -6,7 +6,7 @@ const ENEMIES = {
   slime: {
     id: "slime",
     name: "スライム",
-    hp: 12,   // ほんの少しだけ増やす
+    hp: 158,  // 【調整】討伐1.8T目安に変更
     atk: 4,   // HP30に対して8発前後
     def: 0,
     money: 3,
@@ -15,7 +15,7 @@ const ENEMIES = {
   wolf: {
     id: "wolf",
     name: "オオカミ",
-    hp: 22,   // 4〜6発くらい
+    hp: 157,  // 【調整】討伐1.8T目安に変更
     atk: 6,   // ちょっとだけ痛い
     def: 1,
     money: 5,
@@ -26,7 +26,7 @@ const ENEMIES = {
   forestWolf: {
     id: "forestWolf",
     name: "森のオオカミ",
-    hp: 140,     // 素STR/VITに対して10ターン程度想定で増やす
+    hp: 1030,    // 【調整】討伐1.8T目安に変更
     atk: 55,     // 10転生VIT96前後に対してそこそこ痛い
     def: 27,
     money: 12,
@@ -35,7 +35,7 @@ const ENEMIES = {
   goblin: {
     id: "goblin",
     name: "ゴブリン",
-    hp: 170,
+    hp: 1020,   // 【調整】討伐1.8T目安に変更
     atk: 60,
     def: 30,
     money: 14,
@@ -46,7 +46,7 @@ const ENEMIES = {
   caveGoblin: {
     id: "caveGoblin",
     name: "洞窟ゴブリン",
-    hp: 260,
+    hp: 2170,   // 【調整】討伐1.8T目安に変更
     atk: 85,
     def: 46,
     money: 24,
@@ -55,7 +55,7 @@ const ENEMIES = {
   goblinMage: {
     id: "goblinMage",
     name: "ゴブリンマジシャン",
-    hp: 300,
+    hp: 2170,   // 【調整】討伐1.8T目安に変更
     atk: 95,
     def: 48,
     money: 30,
@@ -64,7 +64,7 @@ const ENEMIES = {
   goblinTamer: {
     id: "goblinTamer",
     name: "ゴブリンテイマー",
-    hp: 340,
+    hp: 2160,   // 【調整】討伐1.8T目安に変更
     atk: 105,
     def: 52,
     money: 36,
@@ -73,7 +73,7 @@ const ENEMIES = {
   ogre: {
     id: "ogre",
     name: "オーガ",
-    hp: 420,
+    hp: 2150,   // 【調整】討伐1.8T目安に変更
     atk: 120,
     def: 60,
     money: 60,
@@ -84,7 +84,7 @@ const ENEMIES = {
   ogreBrute: {
     id: "ogreBrute",
     name: "オーガブルート",
-    hp: 650,
+    hp: 5010,   // 【調整】討伐1.8T目安に変更
     atk: 155,
     def: 85,
     money: 70,
@@ -93,7 +93,7 @@ const ENEMIES = {
   ogreGuard: {
     id: "ogreGuard",
     name: "オーガガード",
-    hp: 720,
+    hp: 5000,   // 【調整】討伐1.8T目安に変更
     atk: 165,
     def: 94,
     money: 82,
@@ -102,7 +102,7 @@ const ENEMIES = {
   ogreShaman: {
     id: "ogreShaman",
     name: "オーガシャーマン",
-    hp: 680,
+    hp: 5030,   // 【調整】討伐1.8T目安に変更
     atk: 175,
     def: 74,
     money: 90,
@@ -119,7 +119,7 @@ const ENEMIES = {
   desertScorpion: {
     id: "desertScorpion",
     name: "砂漠サソリ",
-    hp: 1470,
+    hp: 4810,   // 【調整】討伐1.8T目安に変更
     atk: 597,
     def: 210,
     money: 110,
@@ -128,7 +128,7 @@ const ENEMIES = {
   desertBandit: {
     id: "desertBandit",
     name: "砂漠の盗賊",
-    hp: 1580,
+    hp: 4790,   // 【調整】討伐1.8T目安に変更
     atk: 642,
     def: 225,
     money: 120,
@@ -137,7 +137,7 @@ const ENEMIES = {
   desertWorm: {
     id: "desertWorm",
     name: "サンドワーム",
-    hp: 1706,
+    hp: 4760,   // 【調整】討伐1.8T目安に変更
     atk: 693,
     def: 243,
     money: 130,
@@ -148,7 +148,7 @@ const ENEMIES = {
   swampSlime: {
     id: "swampSlime",
     name: "毒沼スライム",
-    hp: 2427,
+    hp: 7850,   // 【調整】討伐1.8T目安に変更
     atk: 887,
     def: 339,
     money: 150,
@@ -157,7 +157,7 @@ const ENEMIES = {
   poisonFrog: {
     id: "poisonFrog",
     name: "ポイズンフロッグ",
-    hp: 2610,
+    hp: 7810,   // 【調整】討伐1.8T目安に変更
     atk: 954,
     def: 364,
     money: 160,
@@ -166,7 +166,7 @@ const ENEMIES = {
   swampSpecter: {
     id: "swampSpecter",
     name: "沼の亡霊",
-    hp: 2819,
+    hp: 7770,   // 【調整】討伐1.8T目安に変更
     atk: 1030,
     def: 393,
     money: 170,
@@ -177,7 +177,7 @@ const ENEMIES = {
   ruinGuardian: {
     id: "ruinGuardian",
     name: "遺跡ガーディアン",
-    hp: 3934,
+    hp: 12810,   // 【調整】討伐1.8T目安に変更
     atk: 1338,
     def: 536,
     money: 190,
@@ -186,7 +186,7 @@ const ENEMIES = {
   ruinMummy: {
     id: "ruinMummy",
     name: "ミイラ戦士",
-    hp: 4230,
+    hp: 12750,   // 【調整】討伐1.8T目安に変更
     atk: 1439,
     def: 576,
     money: 200,
@@ -195,7 +195,7 @@ const ENEMIES = {
   ruinMagus: {
     id: "ruinMagus",
     name: "古代魔導師",
-    hp: 4568,
+    hp: 12680,   // 【調整】討伐1.8T目安に変更
     atk: 1554,
     def: 622,
     money: 210,
@@ -206,7 +206,7 @@ const ENEMIES = {
   skyHarpy: {
     id: "skyHarpy",
     name: "ハーピー",
-    hp: 6250,
+    hp: 19920,   // 【調整】討伐1.8T目安に変更
     atk: 2015,
     def: 794,
     money: 230,
@@ -215,7 +215,7 @@ const ENEMIES = {
   skyKnight: {
     id: "skyKnight",
     name: "空の騎士",
-    hp: 6720,
+    hp: 19820,   // 【調整】討伐1.8T目安に変更
     atk: 2167,
     def: 854,
     money: 245,
@@ -224,7 +224,7 @@ const ENEMIES = {
   skyElemental: {
     id: "skyElemental",
     name: "風のエレメンタル",
-    hp: 7258,
+    hp: 19720,   // 【調整】討伐1.8T目安に変更
     atk: 2340,
     def: 922,
     money: 260,
@@ -235,7 +235,7 @@ const ENEMIES = {
   iceWolf: {
     id: "iceWolf",
     name: "アイスウルフ",
-    hp: 9291,
+    hp: 29910,   // 【調整】討伐1.8T目安に変更
     atk: 2889,
     def: 1134,
     money: 290,
@@ -244,7 +244,7 @@ const ENEMIES = {
   iceGolem: {
     id: "iceGolem",
     name: "アイスゴーレム",
-    hp: 9990,
+    hp: 29780,   // 【調整】討伐1.8T目安に変更
     atk: 3106,
     def: 1219,
     money: 310,
@@ -253,7 +253,7 @@ const ENEMIES = {
   frostMage: {
     id: "frostMage",
     name: "フロストメイジ",
-    hp: 10789,
+    hp: 29620,   // 【調整】討伐1.8T目安に変更
     atk: 3355,
     def: 1317,
     money: 320,
@@ -264,7 +264,7 @@ const ENEMIES = {
   hellHound: {
     id: "hellHound",
     name: "ヘルハウンド",
-    hp: 13290,
+    hp: 43000,   // 【調整】討伐1.8T目安に変更
     atk: 4033,
     def: 1559,
     money: 360,
@@ -273,7 +273,7 @@ const ENEMIES = {
   darkKnight: {
     id: "darkKnight",
     name: "ダークナイト",
-    hp: 14290,
+    hp: 42810,   // 【調整】討伐1.8T目安に変更
     atk: 4337,
     def: 1676,
     money: 380,
@@ -282,7 +282,7 @@ const ENEMIES = {
   abyssDemon: {
     id: "abyssDemon",
     name: "アビスデーモン",
-    hp: 15433,
+    hp: 42600,   // 【調整】討伐1.8T目安に変更
     atk: 4684,
     def: 1810,
     money: 400,
