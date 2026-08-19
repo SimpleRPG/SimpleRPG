@@ -468,9 +468,23 @@ function doExploreEvent(area) {
 }
 
 function doExploreRandomEvent(area) {
+  // ★動物使い/獣群使いは、最初の草原限定で野生動物と遭遇できる。
+  //   罠・宝箱・回復泉と同列の抽選対象にする（4分岐時のみ枠が増える）。
+  const canPetEncounter = (area === "field" &&
+      typeof jobHasPetTurn === "function" && jobHasPetTurn() &&
+      typeof getActivePetSlotLimit === "function" &&
+      Array.isArray(window.petList) &&
+      window.petList.length < getActivePetSlotLimit());
+
   const roll = Math.random();
 
-  if (roll < 0.34) {
+  // 野生動物と出会えない場合は従来どおり罠34%/宝箱33%/泉33%。
+  // 出会える場合は罠25%/宝箱25%/泉25%/野生動物25%に均等化する。
+  const trapMax   = canPetEncounter ? 0.25 : 0.34;
+  const chestMax  = canPetEncounter ? 0.50 : 0.67;
+  const springMax = canPetEncounter ? 0.75 : 1.0;
+
+  if (roll < trapMax) {
     // 罠ダメージ
     const maxHp = hpMax || 1;
     const damage = Math.max(1, Math.floor(maxHp * 0.05));
@@ -618,7 +632,7 @@ function doExploreRandomEvent(area) {
 
     updateDisplay();
     return;
-  } else if (roll < 0.67) {
+  } else if (roll < chestMax) {
     // 宝箱
     let goldMin = 5;
     let goldMax = 15;
@@ -741,7 +755,7 @@ function doExploreRandomEvent(area) {
 
     updateDisplay();
     return;
-  } else {
+  } else if (roll < springMax) {
     // 回復泉
     const maxHp = hpMax || 1;
     const heal = Math.max(1, Math.floor(maxHp * 0.1));
@@ -757,7 +771,54 @@ function doExploreRandomEvent(area) {
 
     updateDisplay();
     return;
+  } else {
+    // ここに到達するのは canPetEncounter === true の場合のみ
+    doExplorePetEncounter();
+    return;
   }
+}
+
+// =======================
+// 草原の野生動物イベント（動物使い／獣群使い専用）
+// =======================
+
+function doExplorePetEncounter() {
+  // 草原で捕まえられるのは羊・鹿の2種
+  const candidates = ["hitsuji", "shika"];
+  const typeId = candidates[Math.floor(Math.random() * candidates.length)];
+  const comp = (typeof COMPANION_TYPES !== "undefined")
+    ? COMPANION_TYPES.find(c => c.id === typeId)
+    : null;
+  const compName = comp ? comp.name : typeId;
+
+  // 捕獲率（仮値。バランス調整はここを変えるだけでOK）
+  const CAPTURE_RATE = 0.6;
+
+  appendLog(`草むらの奥に${compName}がいるのに気づいた…`);
+
+  const wantsToCatch = window.confirm(`${compName}を見つけた！捕まえますか？`);
+  if (!wantsToCatch) {
+    appendLog(`そっとしておくことにした。${compName}は草原の奥へ去っていった。`);
+    updateDisplay();
+    return;
+  }
+
+  const captureRoll = Math.random();
+  if (captureRoll >= CAPTURE_RATE) {
+    appendLog(`${compName}に逃げられてしまった…`);
+    updateDisplay();
+    return;
+  }
+
+  if (typeof recruitAdditionalPet === "function") {
+    const newId = recruitAdditionalPet(typeId);
+    if (!newId) {
+      appendLog(`${compName}と目が合ったが、これ以上は連れて歩けないようだ…`);
+    }
+    // 成功時のログ（「新しい仲間「◯◯」が加わった！」）は recruitAdditionalPet 内で出力される
+  }
+
+  updateDisplay();
 }
 
 // =======================

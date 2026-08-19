@@ -104,8 +104,10 @@ const JOB_DEFS = [
     canUsePhysSkill: true,   // 旧 physJobs
     hasPetTurn: true,        // 旧 petJobs
     bonuses: {
-      petAtkRate: 0.15,    // ★修正: 死んでいたキーを、実際に pet.js の計算へ繋いだ上で本来の値に
-      petHpMaxRate: 0.15
+      // ★獣群使い（複数ペット運用職）とのバランス調整：
+      //   1人と一体で大暴れする動物使いの持ち味を活かすため、単体ペットへの倍率ボーナスを引き上げ
+      petAtkRate: 0.5,
+      petHpMaxRate: 0.5
     }
   },
 
@@ -159,8 +161,9 @@ const JOB_DEFS = [
     canUsePhysSkill: true,   // 旧 physJobs
     hasPetTurn: true,        // 旧 petJobs
     bonuses: {
-      // TODO: 設計段階のため一旦空。ペット強化系ボーナスは pet.js 側の
-      // 実ダメージ計算に job ボーナスを繋いでから正式に追加する。
+      // ★獣群使い最大の特徴：ペットを同時に3体まで編成し、
+      //   全員が毎ターン同時に行動する（doBeastPartyTurn 側で参照）。
+      maxActivePets: 3
     }
   },
 
@@ -472,7 +475,8 @@ function getJobBonuses(jobId) {
       petAtkRate: 0,
       petHpMaxRate: 0,
       dotDamageRate: 0,
-      statusDurationRate: 0
+      statusDurationRate: 0,
+      maxActivePets: 0
     };
   }
   const b = def.bonuses || {};
@@ -508,8 +512,25 @@ function getJobBonuses(jobId) {
     petAtkRate: b.petAtkRate || 0,
     petHpMaxRate: b.petHpMaxRate || 0,
     dotDamageRate: b.dotDamageRate || 0,
-    statusDurationRate: b.statusDurationRate || 0
+    statusDurationRate: b.statusDurationRate || 0,
+    // ★同時に戦闘へ連れて行けるペット数（未指定/1以下なら通常の単体運用）
+    maxActivePets: b.maxActivePets || 0
   };
+}
+
+/**
+ * 現在のジョブで同時に戦闘へ出せるペットの最大数を返す。
+ * - 通常の動物使い（jobId=2）など未指定の職業は 1（従来どおり単体運用）。
+ * - 獣群使いのように bonuses.maxActivePets が指定されていればその数。
+ */
+function getMaxActivePetSlots() {
+  const jid = window.player?.jobId ?? window.jobId;
+  if (jid == null) return 1;
+  const b = getJobBonuses(jid);
+  return (b && b.maxActivePets > 0) ? b.maxActivePets : 1;
+}
+if (typeof window.getMaxActivePetSlots === "undefined") {
+  window.getMaxActivePetSlots = getMaxActivePetSlots;
 }
 
 // ★修正 throw を削除してエラーログ出力＋デフォルト値を返す

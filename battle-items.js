@@ -62,14 +62,19 @@ function onEnemyDefeatedCore(enemyInst, killFlag, killSource) {
   }
 
   // ★修正: 動物使いかつ、ペットが場に出ていて生存している場合のみ、従来どおり exp/2 を付与
-  if (typeof addPetExp === "function" &&
-      typeof hasCompanion === "function" &&
-      typeof jobId === "number" &&
-      jobId === 2 &&
-      hasCompanion() &&
-      typeof petHp === "number" &&
-      petHp > 0) {
-    addPetExp(Math.floor(expGain / 2));
+  //   獣群使い（複数ペット運用職）の場合は、編成中の生存ペット全員に exp/2 を付与する
+  if (typeof hasCompanion === "function" && hasCompanion()) {
+    if (typeof isMultiPetJob === "function" && isMultiPetJob()) {
+      if (typeof addPetExpToParty === "function") {
+        addPetExpToParty(Math.floor(expGain / 2));
+      }
+    } else if (typeof addPetExp === "function" &&
+        typeof jobId === "number" &&
+        jobId === 2 &&
+        typeof petHp === "number" &&
+        petHp > 0) {
+      addPetExp(Math.floor(expGain / 2));
+    }
   }
 
   if (typeof handleHungerThirstOnAction === "function") {

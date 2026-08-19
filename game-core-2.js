@@ -806,8 +806,8 @@ function applyJobChange(newJobId) {
     // それ以外（錬金術師など）は自動設定せずバランス型のまま
   }
 
-  if (jobId === 2) {
-    // 既存どおりペットスキル付与
+  if (typeof jobHasPetTurn === "function" ? jobHasPetTurn() : (jobId === 2)) {
+    // 既存どおりペットスキル付与（獣群使いの初期1匹目にも同じ技構成を使う）
     petSkills = [
       { id: "powerBite", name: "パワーバイト", powerRate: 1.6 },
       { id: "taunt",     name: "挑発" },
@@ -815,8 +815,9 @@ function applyJobChange(newJobId) {
     ];
 
     // ★ここだけ追加:
-    // 「最初に動物使いになったときだけペット選択モーダルを開く」
+    // 「最初にペットを連れる職に転職したときだけペット選択モーダルを開く」
     // 条件：まだ companionTypeId が決まっていない（初回だけ）
+    // ※動物使い・獣群使いなど、hasPetTurn を持つ職すべてに共通の入口
     if (!window.companionTypeId && typeof openCompanionModalIfNeeded === "function") {
       // 職業モーダルを閉じてからペット選択モーダルを開く
       closeJobModal();
@@ -882,7 +883,7 @@ function updatePetMiniStatus() {
 
   // 名前：アクティブペットがいるときだけ petName を表示、それ以外は "-"
   if (nameEl) {
-    const hasPet = (jobId === 2) && !!window.companionTypeId;
+    const hasPet = (typeof jobHasPetTurn === "function" ? jobHasPetTurn() : (jobId === 2)) && !!window.companionTypeId;
     if (hasPet && typeof petName === "string" && petName.length > 0) {
       nameEl.textContent = petName;
     } else {

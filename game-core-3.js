@@ -4,6 +4,21 @@
 // 状態異常・バフデバフの定義＆ロジックは status-effects-core.js 側に分離。
 
 // =======================
+// ダメージ計算共通式
+// =======================
+//
+// ★変更: atk - def の線形式から atk*atk/(atk+def) 式に変更。
+//   def=0 のときは従来どおり dmg=atk。
+//   def が atk に近づいても 0 に落ちず、緩やかに収束するのが特徴。
+//   （呼び出し側の書き方が変わらないよう、ここに共通関数として集約）
+function calcAtkDefDamage(atk, def) {
+  const a = Math.max(0, atk || 0);
+  const d = Math.max(0, def || 0);
+  if (a <= 0) return 1;
+  return Math.max(1, Math.floor((a * a) / (a + d)));
+}
+
+// =======================
 // シールドブロウ用ガードフラグ
 // =======================
 //
@@ -556,7 +571,7 @@ function playerAttack() {
   }
 
   // ダメージ計算共通部分（物理攻撃）
-  let baseDamage = Math.max(1, atkTotal - (currentEnemy.def || 0));
+  let baseDamage = calcAtkDefDamage(atkTotal, currentEnemy.def || 0);
   baseDamage = applyAttackBuffsForPlayer(baseDamage);
   baseDamage = applyDefenseBuffsForEnemy(baseDamage);
 
@@ -617,12 +632,20 @@ function playerAttack() {
       return;
     }
 
-    // ★動物使いかつペット選択済み＆生存時だけペットターン
-    if (jobId === 2 &&
+    // ★動物使い／獣群使い等、ペットターンを持つ職でペット選択済み＆生存時だけペットターン
+    if (typeof jobHasPetTurn === "function" &&
+        jobHasPetTurn() &&
         typeof hasCompanion === "function" &&
-        hasCompanion() &&
-        petHp > 0) {
-      doPetTurn();
+        hasCompanion()) {
+      if (typeof isMultiPetJob === "function" && isMultiPetJob()) {
+        // ★獣群使い：編成中の生存ペット全員が同時に行動
+        if (typeof doBeastPartyTurn === "function") {
+          doBeastPartyTurn();
+        }
+      } else if (petHp > 0) {
+        // 通常の動物使い等：単体ペットのみ
+        doPetTurn();
+      }
     }
 
     // ★修正: ペット撃破は doPetTurn 内で処理するため、ここでは再チェックしない
@@ -678,8 +701,27 @@ function enemyTurn() {
   }
 
   let target = "player";
-  // ★修正: 動物使いかつペット選択済みかつHP>0のときだけペットをターゲット候補に
-  if (jobId === 2 && typeof hasCompanion === "function" && hasCompanion() && petHp > 0) {
+  let targetPetRec = null; // ★獣群使い用：狙われた個体のレコード
+
+  if (typeof isMultiPetJob === "function" && isMultiPetJob() &&
+      typeof hasCompanion === "function" && hasCompanion()) {
+    // ★獣群使い：編成中の生存ペットの中からランダムに1体を狙う
+    const aliveParty = (typeof getActivePartyRecords === "function")
+      ? getActivePartyRecords(true)
+      : [];
+    if (aliveParty.length > 0) {
+      // 威嚇（taunt）使用直後は特に狙われやすくする
+      const petTargetRate = beastPartyTauntTurnRemain > 0 ? 0.85 : 0.7;
+      if (Math.random() < petTargetRate) {
+        target = "petParty";
+        targetPetRec = aliveParty[Math.floor(Math.random() * aliveParty.length)];
+      }
+    }
+    if (beastPartyTauntTurnRemain > 0) {
+      beastPartyTauntTurnRemain--;
+    }
+  } else if (jobId === 2 && typeof hasCompanion === "function" && hasCompanion() && petHp > 0) {
+    // ★修正: 動物使いかつペット選択済みかつHP>0のときだけペットをターゲット候補に
     target = (Math.random() < 0.7) ? "pet" : "player";
   }
 
@@ -697,7 +739,7 @@ function enemyTurn() {
     }
 
     // ★追加: 防御前の「生ダメージ」を計算してカウンター用に保存
-    let raw = Math.max(1, baseAtk - effectiveDefTotal);
+    let raw = calcAtkDefDamage(baseAtk, effectiveDefTotal);
     if (typeof setLastRawEnemyDamage === "function") {
       setLastRawEnemyDamage(raw);
     }
@@ -777,6 +819,37 @@ function enemyTurn() {
       updateEnemyStatusUI();
       updateDisplay();
     }
+  } else if (target === "petParty") {
+    // ★獣群使い：狙われた個体（targetPetRec）に直接ダメージを与える
+    if (!targetPetRec) {
+      // 念のためのフォールバック（対象が取れなければ何もせず終了）
+      tickSkillBuffTurns();
+      renderPlayerStatusIcons();
+      updateEnemyStatusUI();
+      updateDisplay();
+      return;
+    }
+
+    const petDef = (typeof getPetRecordDef === "function")
+      ? getPetRecordDef(targetPetRec)
+      : Math.floor((targetPetRec.level || 1) * 0.5);
+
+    let baseAtk = (currentEnemy.atk || 3);
+    baseAtk     = applyAttackBuffsForEnemy(baseAtk);
+    const dmg   = calcAtkDefDamage(baseAtk, petDef);
+
+    targetPetRec.hp = Math.max(0, (targetPetRec.hp || 0) - dmg);
+
+    appendLog(`${currentEnemy.name}の攻撃！ ${targetPetRec.name}に${dmg}ダメージ`);
+
+    if (targetPetRec.hp <= 0) {
+      appendLog(`${targetPetRec.name}は倒れてしまった…`);
+    }
+
+    tickSkillBuffTurns();
+    renderPlayerStatusIcons();
+    updateEnemyStatusUI();
+    updateDisplay();
   } else {
     // ★ 修正: ペット防御ステータスを使用
     let petDef  = (typeof getPetDef === "function")
@@ -785,7 +858,7 @@ function enemyTurn() {
 
     let baseAtk = (currentEnemy.atk || 3);
     baseAtk     = applyAttackBuffsForEnemy(baseAtk);
-    let dmg     = Math.max(1, baseAtk - petDef);
+    let dmg     = calcAtkDefDamage(baseAtk, petDef);
 
     petHp -= dmg;
 

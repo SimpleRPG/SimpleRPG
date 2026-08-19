@@ -184,6 +184,37 @@ const JOB_SKILLS = {
         mpCost: 5
       }
     ]
+  },
+  102: { // 獣群使い（動物使いギルドの戦闘ギルド職。ペット複数運用が持ち味）
+    phys: [
+      {
+        id: "packSlash",
+        name: "パックスラッシュ",
+        type: SKILL_TYPE_PHYS,
+        spCost: 3
+      },
+      {
+        id: "packRally",
+        name: "群れの咆哮",
+        type: SKILL_TYPE_PET,
+        spCost: 5
+      },
+      // ★ 動物使いギルド専用: パックフレンジー（所属中のみ UI 表示＆使用可）
+      {
+        id: "packFrenzy",
+        name: "パックフレンジー",
+        type: SKILL_TYPE_PET,
+        spCost: 7
+      }
+    ],
+    magic: [
+      {
+        id: "packMend",
+        name: "群れの手当て",
+        type: SKILL_TYPE_PET,
+        mpCost: 6
+      }
+    ]
   }
 };
 
@@ -234,6 +265,8 @@ function refreshSkillUIs() {
         if (s.id === "guardImpact" && guildId !== "warrior") return false;
         // ビーストロアは動物使いギルド所属中のみ表示
         if (s.id === "beastRoar" && guildId !== "tamer") return false;
+        // パックフレンジーは動物使いギルド所属中のみ表示（獣群使いの上位バフ技）
+        if (s.id === "packFrenzy" && guildId !== "tamer") return false;
         // 大盾兵のカウンタースタンスは戦士ギルド所属中のみ表示（任意だが戦士系なので揃える）
         if (s.id === "greatshieldCounter" && guildId !== "warrior") return false;
         return true;
@@ -255,6 +288,11 @@ let braveChargeTurnRemain = 0;
 let braveChargeRate       = 0.3;  // 攻撃 +30%
 
 let petBuffTurnRemain = 0;
+
+// ★獣群使い専用：パーティ全体（編成中の生存ペット全員）にかかる攻撃バフ
+//   petBuffRate/petBuffTurnRemain の「単体ペット版」に対応する多頭版。
+let beastPartyBuffRate = 1.0;
+let beastPartyBuffTurnRemain = 0;
 // petBuffRate は game-core 側で宣言済み
 
 // 錬金術師用: アイテムブースト
@@ -373,6 +411,12 @@ function tickSkillBuffTurns() {
     petBuffTurnRemain--;
     if (petBuffTurnRemain <= 0) {
       petBuffRate = 1.0;
+    }
+  }
+  if (beastPartyBuffTurnRemain > 0) {
+    beastPartyBuffTurnRemain--;
+    if (beastPartyBuffTurnRemain <= 0) {
+      beastPartyBuffRate = 1.0;
     }
   }
   if (itemBoostTurnRemain > 0) {
@@ -555,6 +599,172 @@ function doPetTurn() {
 }
 
 // =======================
+// 獣群使い用：パーティ全員が同時に行動するペットターン
+// =======================
+//
+// 通常の doPetTurn() が「グローバル1体分の petHp/petAtkBase 等」を直接触るのに対し、
+// こちらは getActivePartyRecords() で取得した petList の複数レコードを
+// 1体ずつ順番に処理し、各レコードの hp を直接書き換える（petList にそのまま反映される）。
+
+// 獣群使いの「威嚇」効果：次の敵ターンで、敵がプレイヤーよりペットを狙いやすくなる
+let beastPartyTauntTurnRemain = 0;
+
+function calcPetRecordDamage(rec) {
+  const buffRate = (typeof rec.buffRate === "number") ? rec.buffRate : 1.0;
+  let base = getPetRecordAtk(rec) * buffRate;
+
+  // ★獣群使い専用：群れの咆哮／パックフレンジーによるパーティ全体バフ
+  if (typeof beastPartyBuffRate === "number" && beastPartyBuffRate > 1.0) {
+    base = base * beastPartyBuffRate;
+  }
+
+  // ★ ギルドペットボーナス（動物使いギルド系。獣群使いでも共通して乗る想定）
+  if (typeof getGuildBattleBonus === "function") {
+    const bonus = getGuildBattleBonus();
+    if (bonus && bonus.pet) {
+      base = base * (1 + bonus.pet);
+    }
+  }
+
+  // ★スキルツリー petAtkRate ＋ ジョブ petAtkRate
+  let petAtkRate = 0;
+  if (typeof getGlobalSkillTreeBonus === "function") {
+    const t = getGlobalSkillTreeBonus();
+    if (t && typeof t.petAtkRate === "number") petAtkRate += t.petAtkRate;
+  }
+  if (typeof getJobBonuses === "function" && typeof jobId !== "undefined") {
+    const j = getJobBonuses(jobId);
+    if (j && typeof j.petAtkRate === "number") petAtkRate += j.petAtkRate;
+  }
+  base = base * (1 + petAtkRate);
+
+  const variance = Math.floor(base * 0.2);
+  const roll = base + (Math.floor(Math.random() * (variance * 2 + 1)) - variance);
+  return Math.max(1, Math.floor(roll));
+}
+
+// 1体分の行動（通常攻撃 or スキル）。enemyHp を直接減らす。
+// 戻り値: 敵を倒したら true
+function runBeastPartyPetAction(rec) {
+  let usedSkill = false;
+
+  if (Array.isArray(rec.skills) && rec.skills.length > 0 && Math.random() < PET_SKILL_TRY_RATE) {
+    const s = rec.skills[Math.floor(Math.random() * rec.skills.length)];
+    if (s && s.id === "powerBite") {
+      const base = calcPetRecordDamage(rec);
+      const dmg = Math.floor(base * (s.powerRate || 1.6));
+      enemyHp = Math.max(0, enemyHp - dmg);
+      if (typeof currentBattleMaxDamage === "number") {
+        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+      }
+      if (typeof currentBattleMaxPet === "number") {
+        currentBattleMaxPet = Math.max(currentBattleMaxPet, dmg);
+      }
+      appendLog(`${rec.name}の${s.name}！ ${currentEnemy.name}に${dmg}ダメージ！`);
+      usedSkill = true;
+    } else if (s && s.id === "taunt") {
+      appendLog(`${rec.name}の${s.name}！ 敵の注意を引きつけた！`);
+      beastPartyTauntTurnRemain = Math.max(beastPartyTauntTurnRemain, 1);
+      usedSkill = true;
+    } else if (s && s.id === "selfHeal") {
+      const heal = Math.floor((rec.hpMax || 1) * (s.healRate || 0.3)) + 3;
+      rec.hp = Math.min((rec.hp || 0) + heal, rec.hpMax || heal);
+      appendLog(`${rec.name}の${s.name}！ HP が${heal}回復した！`);
+      usedSkill = true;
+    }
+  }
+
+  if (!usedSkill) {
+    let dmg = calcPetRecordDamage(rec);
+
+    let critRate = 0.2;
+    if (typeof modifyCritRateForPlayer === "function") {
+      critRate = modifyCritRateForPlayer(critRate);
+    }
+
+    if (Math.random() < critRate) {
+      let critMult = 1.5;
+      if (typeof getBaseCritMultFromLuk === "function") {
+        critMult = getBaseCritMultFromLuk();
+      }
+      if (typeof modifyCritMultForPlayer === "function") {
+        critMult = modifyCritMultForPlayer(critMult);
+      }
+      if (typeof applyCritMultDiminishing === "function") {
+        critMult = applyCritMultDiminishing(critMult);
+      }
+      dmg = Math.floor(dmg * critMult);
+      enemyHp = Math.max(0, enemyHp - dmg);
+      if (typeof currentBattleMaxDamage === "number") {
+        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+      }
+      if (typeof currentBattleMaxPet === "number") {
+        currentBattleMaxPet = Math.max(currentBattleMaxPet, dmg);
+      }
+      appendLog(`${rec.name}の渾身の一撃！ ${currentEnemy.name}に${dmg}ダメージ！`);
+    } else {
+      enemyHp = Math.max(0, enemyHp - dmg);
+      if (typeof currentBattleMaxDamage === "number") {
+        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+      }
+      if (typeof currentBattleMaxPet === "number") {
+        currentBattleMaxPet = Math.max(currentBattleMaxPet, dmg);
+      }
+      appendLog(`${rec.name}の攻撃！ ${currentEnemy.name}に${dmg}ダメージ`);
+    }
+  }
+
+  return enemyHp <= 0;
+}
+
+/**
+ * 獣群使いのペットターン：編成中（最大3体）の生存ペット全員が順番に行動する。
+ * 動物使いの doPetTurn() と同じ呼び出し位置（プレイヤー攻撃後）から呼ぶ。
+ */
+function doBeastPartyTurn() {
+  if (!currentEnemy) return;
+  if (typeof hasCompanion === "function" && !hasCompanion()) return;
+  if (typeof getActivePartyRecords !== "function") return;
+
+  const party = getActivePartyRecords(true); // 生存中のみ
+  if (party.length === 0) return;
+
+  for (const rec of party) {
+    if (enemyHp <= 0) break;
+    if (!rec || (rec.hp || 0) <= 0) continue;
+
+    const killed = runBeastPartyPetAction(rec);
+    if (killed) {
+      enemyHp = 0;
+      if (typeof onEnemyKilledForGuild === "function") {
+        onEnemyKilledForGuild({ by: "pet", isBoss: !!isBossBattle });
+      }
+      winBattle(true, "pet");
+      return;
+    }
+  }
+
+  if (typeof updateDisplay === "function") {
+    updateDisplay();
+  }
+}
+
+/**
+ * 「動物使いなら doPetTurn、獣群使いなら doBeastPartyTurn」を1箇所にまとめたヘルパー。
+ * スキル発動後のターン進行など、doPetTurn() を呼んでいた箇所はすべてこちらに置き換える。
+ */
+function runPetOrPartyTurnForCurrentJob() {
+  if (typeof jobHasPetTurn !== "function" || !jobHasPetTurn()) return;
+  if (typeof hasCompanion !== "function" || !hasCompanion()) return;
+
+  if (typeof isMultiPetJob === "function" && isMultiPetJob()) {
+    doBeastPartyTurn();
+  } else if (petHp > 0) {
+    doPetTurn();
+  }
+}
+
+// =======================
 // 魔法発動（UI セレクト版）
 // =======================
 
@@ -593,8 +803,8 @@ function castMagicFromUI() {
     return;
   }
 
-  // ビーストヒール以外は敵必須（セーフブリューは自己回復なので敵不要）
-  if (!currentEnemy && skillId !== "beastHeal" && skillId !== "safeBrew") {
+  // ビーストヒール／群れの手当て以外は敵必須（セーフブリューは自己回復なので敵不要）
+  if (!currentEnemy && skillId !== "beastHeal" && skillId !== "packMend" && skillId !== "safeBrew") {
     appendLog("敵がいない");
     return;
   }
@@ -850,7 +1060,7 @@ function castMagicFromUI() {
       return;
     }
 
-    doPetTurn();
+    runPetOrPartyTurnForCurrentJob();
     if (enemyHp > 0) {
       enemyTurn();
       if (typeof tickStatusesTurnEndForBoth === "function") {
@@ -862,7 +1072,7 @@ function castMagicFromUI() {
     }
   } else {
     // ダメージを与えない魔法（beastHeal, safeBrew など）: 戦闘中のみターン進行
-    doPetTurn();
+    runPetOrPartyTurnForCurrentJob();
     if (enemyHp > 0) {
       enemyTurn();
       if (typeof tickStatusesTurnEndForBoth === "function") {
@@ -919,6 +1129,11 @@ function useSkillFromUI() {
   }
   // ★ ビーストロアは動物使いギルド所属中のみ使用可能
   if (skillId === "beastRoar" && guildId !== "tamer") {
+    appendLog("このスキルは今は使えない（対応するギルドに所属していない）");
+    return;
+  }
+  // ★ パックフレンジーは動物使いギルド所属中のみ使用可能
+  if (skillId === "packFrenzy" && guildId !== "tamer") {
     appendLog("このスキルは今は使えない（対応するギルドに所属していない）");
     return;
   }
@@ -1051,6 +1266,66 @@ function useSkillFromUI() {
       petBuffTurnRemain = 3;
       appendLog(`ビーストロア！ ${petName}の力がみなぎった`);
     }
+  } else if (skillId === "packSlash") {
+    // 獣群使い専用：プレイヤー自身の物理攻撃スキル（ビーストスラッシュ相当）
+    if (jobId !== 102) {
+      appendLog("パックスラッシュは獣群使い専用だ");
+    } else {
+      const dmg = Math.floor(getCurrentAtkForSkill() * 1.3);
+      enemyHp = Math.max(0, enemyHp - dmg);
+
+      if (typeof currentBattleMaxDamage === "number") {
+        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+      }
+      if (typeof currentBattleMaxPhys === "number") {
+        currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
+      }
+
+      appendLog(`パックスラッシュ！ ${currentEnemy.name} に${dmg}ダメージ`);
+      didDamage = true;
+    }
+  } else if (skillId === "packRally") {
+    // 獣群使い専用：編成中パーティ全員の攻撃力アップ（アニマルリンクの多頭版）
+    if (jobId !== 102) {
+      appendLog("群れの咆哮は獣群使い専用だ");
+    } else {
+      beastPartyBuffRate = 1.3;
+      beastPartyBuffTurnRemain = 2;
+      appendLog("群れの咆哮！ パーティ全員の攻撃力が上がった");
+    }
+  } else if (skillId === "packFrenzy") {
+    // 獣群使い専用（動物使いギルド限定）：パーティ全員の攻撃力を大きく・長く強化
+    if (jobId !== 102) {
+      appendLog("パックフレンジーは獣群使い専用だ");
+    } else {
+      beastPartyBuffRate = 1.5;
+      beastPartyBuffTurnRemain = 3;
+      appendLog("パックフレンジー！ パーティ全員が興奮状態になった");
+    }
+  } else if (skillId === "packMend") {
+    // 獣群使い専用：編成中パーティ全員のHPを回復（ビーストヒールの多頭版）
+    if (jobId !== 102) {
+      appendLog("この魔法は獣群使い専用だ");
+    } else if (typeof getActivePartyRecords !== "function") {
+      appendLog("パーティ情報が取得できなかった");
+    } else {
+      const party = getActivePartyRecords(true);
+      if (party.length === 0) {
+        appendLog("回復できるペットがいない");
+      } else {
+        // ★固定回復量（+5相当）はビーストヒールと同じ「合計+5」になるよう頭数で分ける。
+        //   ％部分（HP上限×0.4）は編成分割済みの hpMax に対する計算なので、ここは頭数分でOK。
+        const flatBonusPerPet = Math.max(1, Math.round(5 / party.length));
+
+        const healedNames = [];
+        for (const rec of party) {
+          const heal = Math.floor((rec.hpMax || 1) * 0.4) + flatBonusPerPet;
+          rec.hp = Math.min((rec.hp || 0) + heal, rec.hpMax || heal);
+          healedNames.push(rec.name);
+        }
+        appendLog(`群れの手当て！ ${healedNames.join("・")}のHPが回復した`);
+      }
+    }
   } else if (skillId === "itemBoost") {
     // 錬金術師専用：アイテム強化バフ（SP 消費）
     if (jobId !== 202) {
@@ -1119,6 +1394,8 @@ function useSkillFromUI() {
   if (skillId === "animalLink" ||
       skillId === "braveCharge" ||
       skillId === "beastRoar" ||
+      skillId === "packRally" ||
+      skillId === "packFrenzy" ||
       skillId === "itemBoost" ||
       skillId === "greatshieldCounter" ||
       skillId === "greatshieldFortify" ||
@@ -1152,7 +1429,7 @@ function useSkillFromUI() {
       return;
     }
 
-    doPetTurn();
+    runPetOrPartyTurnForCurrentJob();
     if (enemyHp > 0) {
       enemyTurn();
       if (typeof tickStatusesTurnEndForBoth === "function") {

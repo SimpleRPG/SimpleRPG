@@ -28,7 +28,7 @@ const ENEMIES = {
     name: "森のオオカミ",
     hp: 140,     // 素STR/VITに対して10ターン程度想定で増やす
     atk: 55,     // 10転生VIT96前後に対してそこそこ痛い
-    def: 18,
+    def: 27,
     money: 12,
     isBoss: false
   },
@@ -37,7 +37,7 @@ const ENEMIES = {
     name: "ゴブリン",
     hp: 170,
     atk: 60,
-    def: 20,
+    def: 30,
     money: 14,
     isBoss: false
   },
@@ -48,7 +48,7 @@ const ENEMIES = {
     name: "洞窟ゴブリン",
     hp: 260,
     atk: 85,
-    def: 30,
+    def: 46,
     money: 24,
     isBoss: false
   },
@@ -57,7 +57,7 @@ const ENEMIES = {
     name: "ゴブリンマジシャン",
     hp: 300,
     atk: 95,
-    def: 32,
+    def: 48,
     money: 30,
     isBoss: false
   },
@@ -66,7 +66,7 @@ const ENEMIES = {
     name: "ゴブリンテイマー",
     hp: 340,
     atk: 105,
-    def: 35,
+    def: 52,
     money: 36,
     isBoss: false
   },
@@ -75,7 +75,7 @@ const ENEMIES = {
     name: "オーガ",
     hp: 420,
     atk: 120,
-    def: 40,
+    def: 60,
     money: 60,
     isBoss: false
   },
@@ -86,7 +86,7 @@ const ENEMIES = {
     name: "オーガブルート",
     hp: 650,
     atk: 155,
-    def: 55,
+    def: 85,
     money: 70,
     isBoss: false
   },
@@ -95,7 +95,7 @@ const ENEMIES = {
     name: "オーガガード",
     hp: 720,
     atk: 165,
-    def: 60,
+    def: 94,
     money: 82,
     isBoss: false
   },
@@ -104,184 +104,187 @@ const ENEMIES = {
     name: "オーガシャーマン",
     hp: 680,
     atk: 175,
-    def: 52,
+    def: 74,
     money: 90,
     isBoss: false
   },
 
-  // ===== ここから T5〜T10 用の雑魚（仮データ） =====
-  // 既存の伸びを参考に、だいたい1〜2段階ずつ強くしているだけ
+  // ===== T5〜T10 用の雑魚 =====
+  // 【調整】実測プレイヤー成長カーブ（転生ボーナス込みシミュレーション）に基づき再計算。
+  // 転生ペース目安: desert=60 / swamp=90 / ruin=130 / sky=180 / ice=240 / hell=310（+20,+30,+40,+50,+60,+70の緩加速）
+  // ザコは「一つ前のエリア到達時点のプレイヤー実力」に対して1撃で沈められる程度、
+  // かつ被弾7発前後で瀕死になる強さに調整（旧仮データは伸びが線形すぎて手前と繋がっていなかった）
 
-  // 灼熱の砂漠（T5想定）
+  // 灼熱の砂漠（T5・転生60目安）
   desertScorpion: {
     id: "desertScorpion",
     name: "砂漠サソリ",
-    hp: 780,
-    atk: 190,
-    def: 70,
+    hp: 1470,
+    atk: 597,
+    def: 210,
     money: 110,
     isBoss: false
   },
   desertBandit: {
     id: "desertBandit",
     name: "砂漠の盗賊",
-    hp: 820,
-    atk: 200,
-    def: 72,
+    hp: 1580,
+    atk: 642,
+    def: 225,
     money: 120,
     isBoss: false
   },
   desertWorm: {
     id: "desertWorm",
     name: "サンドワーム",
-    hp: 880,
-    atk: 210,
-    def: 75,
+    hp: 1706,
+    atk: 693,
+    def: 243,
     money: 130,
     isBoss: false
   },
 
-  // 毒沼（T6想定）
+  // 毒沼（T6・転生90目安）
   swampSlime: {
     id: "swampSlime",
     name: "毒沼スライム",
-    hp: 950,
-    atk: 230,
-    def: 80,
+    hp: 2427,
+    atk: 887,
+    def: 339,
     money: 150,
     isBoss: false
   },
   poisonFrog: {
     id: "poisonFrog",
     name: "ポイズンフロッグ",
-    hp: 1000,
-    atk: 240,
-    def: 85,
+    hp: 2610,
+    atk: 954,
+    def: 364,
     money: 160,
     isBoss: false
   },
   swampSpecter: {
     id: "swampSpecter",
     name: "沼の亡霊",
-    hp: 1050,
-    atk: 255,
-    def: 88,
+    hp: 2819,
+    atk: 1030,
+    def: 393,
     money: 170,
     isBoss: false
   },
 
-  // 古代遺跡（T7想定）
+  // 古代遺跡（T7・転生130目安）
   ruinGuardian: {
     id: "ruinGuardian",
     name: "遺跡ガーディアン",
-    hp: 1150,
-    atk: 280,
-    def: 95,
+    hp: 3934,
+    atk: 1338,
+    def: 536,
     money: 190,
     isBoss: false
   },
   ruinMummy: {
     id: "ruinMummy",
     name: "ミイラ戦士",
-    hp: 1200,
-    atk: 295,
-    def: 98,
+    hp: 4230,
+    atk: 1439,
+    def: 576,
     money: 200,
     isBoss: false
   },
   ruinMagus: {
     id: "ruinMagus",
     name: "古代魔導師",
-    hp: 1250,
-    atk: 310,
-    def: 100,
+    hp: 4568,
+    atk: 1554,
+    def: 622,
     money: 210,
     isBoss: false
   },
 
-  // 浮遊島（T8想定）
+  // 浮遊島（T8・転生180目安）
   skyHarpy: {
     id: "skyHarpy",
     name: "ハーピー",
-    hp: 1350,
-    atk: 340,
-    def: 110,
+    hp: 6250,
+    atk: 2015,
+    def: 794,
     money: 230,
     isBoss: false
   },
   skyKnight: {
     id: "skyKnight",
     name: "空の騎士",
-    hp: 1400,
-    atk: 360,
-    def: 115,
+    hp: 6720,
+    atk: 2167,
+    def: 854,
     money: 245,
     isBoss: false
   },
   skyElemental: {
     id: "skyElemental",
     name: "風のエレメンタル",
-    hp: 1450,
-    atk: 380,
-    def: 118,
+    hp: 7258,
+    atk: 2340,
+    def: 922,
     money: 260,
     isBoss: false
   },
 
-  // 氷の塔（T9想定）
+  // 氷の塔（T9・転生240目安）
   iceWolf: {
     id: "iceWolf",
     name: "アイスウルフ",
-    hp: 1600,
-    atk: 410,
-    def: 130,
+    hp: 9291,
+    atk: 2889,
+    def: 1134,
     money: 290,
     isBoss: false
   },
   iceGolem: {
     id: "iceGolem",
     name: "アイスゴーレム",
-    hp: 1700,
-    atk: 430,
-    def: 140,
+    hp: 9990,
+    atk: 3106,
+    def: 1219,
     money: 310,
     isBoss: false
   },
   frostMage: {
     id: "frostMage",
     name: "フロストメイジ",
-    hp: 1650,
-    atk: 450,
-    def: 135,
+    hp: 10789,
+    atk: 3355,
+    def: 1317,
     money: 320,
     isBoss: false
   },
 
-  // 地獄の門（T10想定）
+  // 地獄の門（T10・転生310目安）
   hellHound: {
     id: "hellHound",
     name: "ヘルハウンド",
-    hp: 1900,
-    atk: 500,
-    def: 155,
+    hp: 13290,
+    atk: 4033,
+    def: 1559,
     money: 360,
     isBoss: false
   },
   darkKnight: {
     id: "darkKnight",
     name: "ダークナイト",
-    hp: 2000,
-    atk: 530,
-    def: 165,
+    hp: 14290,
+    atk: 4337,
+    def: 1676,
     money: 380,
     isBoss: false
   },
   abyssDemon: {
     id: "abyssDemon",
     name: "アビスデーモン",
-    hp: 2100,
-    atk: 560,
-    def: 175,
+    hp: 15433,
+    atk: 4684,
+    def: 1810,
     money: 400,
     isBoss: false
   },
@@ -292,8 +295,8 @@ const ENEMIES = {
     id: "kingSlime",
     name: "キングスライム？",
     hp: 450,   // HP228＋装備込ATK/DEF想定で10T前後
-    atk: 160,   // 0転生DEF＋料理で3〜5発耐える程度
-    def: 50,
+    atk: 150,   // 【調整】実測プレイヤーDEFで被弾2〜3発耐える水準に修正
+    def: 73,
     
     money: 200,
     isBoss: true
@@ -303,8 +306,8 @@ const ENEMIES = {
     id: "hundredWolfKing",
     name: "百狼の王",
     hp: 5000,   // 10転生想定、与ダメも被ダメも10T前後
-    atk: 1900,
-    def: 600,
+    atk: 384,   // 【調整】旧1900は実測プレイヤーDEFに対し被弾1発で即死級だったため是正
+    def: 877,
     
     money: 450,
     isBoss: true
@@ -314,8 +317,8 @@ const ENEMIES = {
     id: "goblinKing",
     name: "ゴブリンキング",
     hp: 9000,
-    atk: 3900,
-    def: 1000,
+    atk: 622,   // 【調整】旧3900は被弾1発で即死級だったため是正（2〜3発耐え目標）
+    def: 1345,
     
     money: 800,
     isBoss: true
@@ -325,69 +328,71 @@ const ENEMIES = {
     id: "berserkOgre",
     name: "バーサークオーガー",
     hp: 21000,  // 40転生STR/スキル/料理フルで10T前後を想定
-    atk: 9000,  // DEF237＋装備＋防御料理でも2〜4発は食らう
-    def: 1500,   // 1転生T1装備ではまともに通らない程度
+    atk: 1142,  // 【調整】旧9000は実測プレイヤーHPの8倍超で即死一発だったため是正（2〜3発耐え目標）
+    def: 1800,   // 1転生T1装備ではまともに通らない程度
     money: 1400,
     isBoss: true
   },
 
-  // 砂漠ボス（T5想定）
+  // 砂漠ボス（T5・転生60目安）
+  // 【調整】旧数値はT4までの伸び率と断絶した単純延長だったため、
+  // 実測ステ成長カーブから討伐10T前後・被弾2〜3発で瀕死になるよう再計算
   desertLord: {
     id: "desertLord",
     name: "砂漠の覇王",
-    hp: 26000,
-    atk: 11000,
-    def: 1800,
+    hp: 33400,
+    atk: 1690,
+    def: 1871,
     money: 1800,
     isBoss: true
   },
-  // 毒沼ボス（T6想定）
+  // 毒沼ボス（T6・転生90目安）
   swampQueen: {
     id: "swampQueen",
     name: "毒沼の女王",
-    hp: 32000,
-    atk: 13000,
-    def: 2200,
+    hp: 54400,
+    atk: 2553,
+    def: 3047,
     money: 2200,
     isBoss: true
   },
-  // 古代遺跡ボス（T7想定）
+  // 古代遺跡ボス（T7・転生130目安）
   ruinOverlord: {
     id: "ruinOverlord",
     name: "遺跡の支配者",
-    hp: 39000,
-    atk: 15500,
-    def: 2600,
+    hp: 84400,
+    atk: 3777,
+    def: 4724,
     money: 2600,
     isBoss: true
   },
-  // 浮遊島ボス（T8想定）
+  // 浮遊島ボス（T8・転生180目安）
   skyDragon: {
     id: "skyDragon",
     name: "天空竜",
-    hp: 47000,
-    atk: 18500,
-    def: 3000,
+    hp: 126300,
+    atk: 5436,
+    def: 7074,
     money: 3100,
     isBoss: true
   },
-  // 氷の塔ボス（T9想定）
+  // 氷の塔ボス（T9・転生240目安）
   iceEmperor: {
     id: "iceEmperor",
     name: "氷帝",
-    hp: 56000,
-    atk: 21500,
-    def: 3400,
+    hp: 181100,
+    atk: 7595,
+    def: 10143,
     money: 3600,
     isBoss: true
   },
-  // 地獄の門ボス（T10想定）
+  // 地獄の門ボス（T10・転生310目安）
   hellLord: {
     id: "hellLord",
     name: "地獄の王",
-    hp: 66000,
-    atk: 25000,
-    def: 3800,
+    hp: 249400,
+    atk: 10210,
+    def: 13964,
     money: 4200,
     isBoss: true
   }

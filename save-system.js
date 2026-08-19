@@ -10,7 +10,7 @@ const SAVE_KEY = "myGatherGameSave_v1";
 // ==============================
 function makeSaveData() {
   let player, pet, companionTypeId, companionTraitId;
-  let petListSafe, activePetIdSafe;
+  let petListSafe, activePetIdSafe, activePartyIdsSafe;
   let materialsSafe, gatherSkillsSafe, craftSkillsSafe, intermediateMatsSafe, cookingMatsSafe, lastGatherInfoSafe, gatherStatsSafe;
   let itemCountsSafe, weaponsSafe, armorsSafe, potionsSafe;
   let weaponCountsSafe, armorCountsSafe, potionCountsSafe;
@@ -101,6 +101,9 @@ function makeSaveData() {
       petListSafe = [];
     }
     activePetIdSafe = (typeof window !== "undefined") ? (window.activePetId || null) : null;
+    activePartyIdsSafe = (typeof window !== "undefined" && Array.isArray(window.activePartyIds))
+      ? window.activePartyIds.slice()
+      : [];
   } catch (e) {
     throw e;
   }
@@ -254,6 +257,8 @@ function makeSaveData() {
     // ★追加: 複数ペット用のリストとアクティブID
     petList: petListSafe,
     activePetId: activePetIdSafe,
+    // ★獣群使い用：同時編成中のペットID配列
+    activePartyIds: activePartyIdsSafe,
 
     // --------------------------------
     // 採取・クラフト・素材
@@ -573,9 +578,23 @@ function applySaveData(data) {
         window.activePetId = null;
       }
 
+      // ★獣群使い用：編成中パーティIDのロード（旧セーブには存在しない）
+      if (Array.isArray(data.activePartyIds)) {
+        window.activePartyIds = data.activePartyIds.filter(id =>
+          window.petList.some(p => p && p.id === id)
+        );
+      } else {
+        window.activePartyIds = [];
+      }
+
       // 旧セーブ互換: petList が空で companionTypeId があるなら 1 匹だけ移行
       if (typeof window.ensurePetListFromLegacy === "function") {
         window.ensurePetListFromLegacy();
+      }
+
+      // パーティが空のままなら、activePetId（あれば）を1件だけ入れて後方互換を保つ
+      if (window.activePartyIds.length === 0 && window.activePetId) {
+        window.activePartyIds = [window.activePetId];
       }
 
       // activePetId があり、同期ヘルパーがあれば単一ペット変数へ反映

@@ -83,6 +83,10 @@ function renderPetList(root) {
     selectedPetIdForCare = currentActivePetId || pets[0].id;
   }
 
+  // ★獣群使い（複数ペット運用職）かどうかで表示を切り替える
+  const isMulti = (typeof isMultiPetJob === "function") && isMultiPetJob();
+  const maxSlots = (typeof getActivePetSlotLimit === "function") ? getActivePetSlotLimit() : 1;
+
   let html = "";
   html += `<table class="pet-list-table" style="width:100%; font-size:12px; border-collapse:collapse;">`;
   html += `
@@ -93,7 +97,7 @@ function renderPetList(root) {
         <th style="border-bottom:1px solid #555; text-align:left; padding:2px 4px;">Lv</th>
         <th style="border-bottom:1px solid #555; text-align:left; padding:2px 4px;">親密度</th>
         <th style="border-bottom:1px solid #555; text-align:left; padding:2px 4px;">今日のお世話</th>
-        <th style="border-bottom:1px solid #555; text-align:center; padding:2px 4px;">★</th>
+        <th style="border-bottom:1px solid #555; text-align:center; padding:2px 4px;">${isMulti ? `編成(${maxSlots})` : "★"}</th>
       </tr>
     </thead>
     <tbody>
@@ -107,7 +111,9 @@ function renderPetList(root) {
     const rowStyle = isSelected
       ? "background-color:rgba(255,255,255,0.06);"
       : "";
-    const activeIcon = isActive ? "★" : "";
+    const activeIcon = isMulti
+      ? (pet.isInParty ? "🐾" : "")
+      : (isActive ? "★" : "");
 
     html += `
       <tr class="pet-list-row"
@@ -124,6 +130,15 @@ function renderPetList(root) {
   });
 
   html += `</tbody></table>`;
+
+  // ★獣群使い用：新しいペットを迎えるボタン（編成に空きがある時だけ）
+  if (isMulti && Array.isArray(window.petList) && window.petList.length < maxSlots) {
+    html += `
+      <div style="margin-top:6px;">
+        <button type="button" class="petRecruitBtn">新しいペットを迎える（${window.petList.length}/${maxSlots}）</button>
+      </div>
+    `;
+  }
   listContainer.innerHTML = html;
 
   const rows = listContainer.querySelectorAll(".pet-list-row");
@@ -135,6 +150,15 @@ function renderPetList(root) {
       renderPetCareBox(root);
     });
   });
+
+  const recruitBtn = listContainer.querySelector(".petRecruitBtn");
+  if (recruitBtn) {
+    recruitBtn.addEventListener("click", () => {
+      if (typeof openRecruitCompanionModal === "function") {
+        openRecruitCompanionModal();
+      }
+    });
+  }
 }
 
 // =======================
@@ -336,6 +360,31 @@ function renderPetCareBox(root) {
     ? "（このペットは既にアクティブです）"
     : "（一覧から選択したペットをアクティブにします）";
 
+  // ★獣群使い用：パーティ編成トグル
+  const isMulti = (typeof isMultiPetJob === "function") && isMultiPetJob();
+  const maxSlots = (typeof getActivePetSlotLimit === "function") ? getActivePetSlotLimit() : 1;
+  const partyIds = (typeof getActivePartyIds === "function") ? getActivePartyIds() : [];
+  const isInParty = partyIds.includes(pet.id);
+  const partyFull = partyIds.length >= maxSlots;
+  const partyBtnDisabled = (!isInParty && partyFull) ? "disabled" : "";
+  const partyBtnLabel = isInParty ? "編成から外す" : "編成に入れる";
+  const partyNoteText = isInParty
+    ? "（このペットは現在パーティに編成されています）"
+    : (partyFull ? `（編成が上限 ${maxSlots} 匹に達しています）` : `（現在 ${partyIds.length}/${maxSlots} 匹）`);
+
+  const legacyChangeBlock = `
+    <div style="margin-top:8px; padding-top:8px; border-top:1px solid #555;">
+      <button type="button" class="petCareChangeBtn" ${changeDisabledAttr}>このペットをアクティブにする</button>
+      <span style="font-size:11px; color:#ccc; margin-left:4px;">${changeNoteText}</span>
+    </div>
+  `;
+  const partyChangeBlock = `
+    <div style="margin-top:8px; padding-top:8px; border-top:1px solid #555;">
+      <button type="button" class="petCarePartyToggleBtn" ${partyBtnDisabled}>${partyBtnLabel}</button>
+      <span style="font-size:11px; color:#ccc; margin-left:4px;">${partyNoteText}</span>
+    </div>
+  `;
+
   careBox.innerHTML = `
     <div style="margin-bottom:4px;">
       <strong>${pet.name}</strong>
@@ -352,10 +401,7 @@ function renderPetCareBox(root) {
       <button type="button" class="petCareFeedBtn" ${feedDisabledAttr}>ご飯をあげる</button>
       <span style="font-size:11px; color:#ccc;">${feedNoteText}</span>
     </div>
-    <div style="margin-top:8px; padding-top:8px; border-top:1px solid #555;">
-      <button type="button" class="petCareChangeBtn" ${changeDisabledAttr}>このペットをアクティブにする</button>
-      <span style="font-size:11px; color:#ccc; margin-left:4px;">${changeNoteText}</span>
-    </div>
+    ${isMulti ? partyChangeBlock : legacyChangeBlock}
   `;
 
   const btnPetting = careBox.querySelector(".petCarePettingBtn");
@@ -430,6 +476,49 @@ function renderPetCareBox(root) {
         renderPetCareBox(root);
       } else if (typeof appendLog === "function") {
         appendLog("ペット切り替え機能がまだ準備できていない…。");
+      }
+    });
+  }
+
+  const btnPartyToggle = careBox.querySelector(".petCarePartyToggleBtn");
+  if (btnPartyToggle) {
+    btnPartyToggle.addEventListener("click", () => {
+      if (typeof getActivePartyIds !== "function" || typeof setActiveParty !== "function") return;
+
+      const currentParty = getActivePartyIds();
+      const inParty = currentParty.includes(pet.id);
+      let nextParty;
+
+      if (inParty) {
+        // 編成から外す（最低1匹は残す）
+        if (currentParty.length <= 1) {
+          if (typeof appendLog === "function") {
+            appendLog("編成は最低1匹必要なので外せません。");
+          }
+          return;
+        }
+        nextParty = currentParty.filter(id => id !== pet.id);
+      } else {
+        const maxSlots = (typeof getActivePetSlotLimit === "function") ? getActivePetSlotLimit() : 1;
+        if (currentParty.length >= maxSlots) {
+          if (typeof appendLog === "function") {
+            appendLog(`編成が上限（${maxSlots}匹）に達しています。`);
+          }
+          return;
+        }
+        nextParty = currentParty.concat([pet.id]);
+      }
+
+      if (setActiveParty(nextParty)) {
+        if (typeof appendLog === "function") {
+          appendLog(inParty
+            ? `${pet.name}を編成から外しました。`
+            : `${pet.name}を編成に加えました！`);
+        }
+        if (typeof recalcStats === "function") recalcStats();
+        if (typeof updateDisplay === "function") updateDisplay();
+        renderPetList(root);
+        renderPetCareBox(root);
       }
     });
   }
