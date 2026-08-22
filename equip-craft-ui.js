@@ -601,6 +601,9 @@ function refreshEquipSelects(){
   // ★ 強化素材セレクトの更新（新規）
   refreshEnhanceMaterialSelects();
 
+  // ★ ペット装備クラフトセレクトの更新（新規）
+  refreshPetEquipSelect();
+
   const infoEl = document.getElementById("craftCostInfo");
 
   const updateCraftByCategory = (cat) => {
@@ -644,6 +647,14 @@ function refreshEquipSelects(){
       lastCraftCategory = "furniture";
       return true;
     }
+    if (cat === "petEquip") {
+      const petEquipSel = document.getElementById("petEquipSelect");
+      if (petEquipSel && petEquipSel.value) {
+        updateCraftCostInfo("petEquip", petEquipSel.value);
+        lastCraftCategory = "petEquip";
+        return true;
+      }
+    }
     return false;
   };
 
@@ -659,8 +670,51 @@ function refreshEquipSelects(){
   if (updateCraftByCategory("cookingFood"))   return;
   if (updateCraftByCategory("cookingDrink"))  return;
   if (updateCraftByCategory("furniture"))     return;
+  if (updateCraftByCategory("petEquip"))      return;
 
   if (infoEl) {
     infoEl.textContent = "必要素材：-";
   }
 }
+
+/**
+ * #petEquipSelect を最新化する。武器クラフトの wCraftSel ループの簡易版
+ * （Tierによる解放フィルタは今は無し。将来 petEquip 用スキルLvゲートを足す余地あり）。
+ */
+function refreshPetEquipSelect() {
+  const petEquipSel = document.getElementById("petEquipSelect");
+  if (!petEquipSel) return;
+
+  const prevId = petEquipSel.value;
+  petEquipSel.innerHTML = "";
+
+  const recipes = typeof getAllCraftRecipesByCategory === "function"
+    ? getAllCraftRecipesByCategory("petEquip")
+    : [];
+
+  const owned = (window.petEquipCounts && typeof window.petEquipCounts === "object")
+    ? window.petEquipCounts
+    : {};
+
+  recipes.forEach(r => {
+    const opt = document.createElement("option");
+    opt.value = r.id;
+
+    const m = r.id.match(/^T(\d+)_/);
+    const tierLabel = m ? `T${m[1]}` : "";
+    const baseName  = (r.name || "").replace(/^T\d+/, "");
+    const ownCount  = owned[r.id] || 0;
+    const ownedText = ownCount > 0 ? `（所持${ownCount}）` : "";
+
+    opt.textContent = tierLabel
+      ? `${tierLabel}${baseName}${ownedText}`
+      : `${r.name || r.id}${ownedText}`;
+
+    petEquipSel.appendChild(opt);
+  });
+
+  if (prevId && Array.from(petEquipSel.options).some(o => o.value === prevId)) {
+    petEquipSel.value = prevId;
+  }
+}
+window.refreshPetEquipSelect = refreshPetEquipSelect;

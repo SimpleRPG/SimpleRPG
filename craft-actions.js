@@ -208,6 +208,153 @@ function craftWeapon(){
   }
 }
 
+// =======================
+// ペット装備クラフト
+// =======================
+// ★ craftWeapon() と全く同じ骨格。ITEM_META（craft.category==="petEquip"）経由でレシピを引く。
+//   UI側は #petEquipSelect（プレイヤー用 #weaponSelect と同じ役割）を想定。
+function craftPetEquip(){
+  const sel = document.getElementById("petEquipSelect");
+  if(!sel || !sel.value) return;
+
+  const prevRecipeId = sel.value;
+
+  const recipes = getAllCraftRecipesByCategory("petEquip");
+  const recipe  = recipes.find(r => r.id === sel.value);
+  if(!recipe){ appendLog("そのペット装備レシピは存在しない"); return; }
+  if(!hasMaterials(recipe.cost)){ appendLog("素材が足りない"); return; }
+
+  const skillLv = getCraftSkillLevel("petEquip");
+  let successRate = calcCraftSuccessRate(recipe.baseRate, skillLv);
+
+  const guildBonus = getGuildCraftSuccessBonus("petEquip");
+
+  const traitBonus = (typeof getCraftSuccessBonusByTrait === "function")
+    ? getCraftSuccessBonusByTrait()
+    : 0;
+
+  if (typeof getCraftSuccessBonusFromRebirth === "function") {
+    successRate += getCraftSuccessBonusFromRebirth();
+  }
+
+  let dailyAdd = 0;
+  if (typeof getDailyCraftBonus === "function") {
+    const daily = getDailyCraftBonus("petEquip");
+    if (daily && typeof daily.successAdd === "number") {
+      successRate += daily.successAdd;
+      dailyAdd = daily.successAdd;
+    }
+  }
+
+  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus));
+
+  // ログ用: 実際に消費されるコスト（軽減後）
+  // ★修正: refreshCraftSkillTreeBonus() の呼び出しが抜けており、
+  //   スキルツリーのクラフトコスト軽減が最新化されないまま finalCost を計算していた
+  refreshCraftSkillTreeBonus();
+  const finalCost = applyCraftCostReduction(recipe.cost) || {};
+
+  consumeMaterials(recipe.cost);
+  addCraftSkillExp("petEquip");
+
+  const roll = Math.random();
+  const success = roll < successRate;
+
+  if (!success) {
+    if (typeof getCraftRefundChanceFromRebirth === "function" &&
+        typeof refundMaterialsPartially === "function") {
+      const refundChance = getCraftRefundChanceFromRebirth();
+      if (refundChance > 0 && Math.random() < refundChance) {
+        refundMaterialsPartially(finalCost, 0.2);
+        appendLog("職人としての経験から、一部の素材を回収できた。");
+      }
+    }
+
+    addCraftStat("petEquip", recipe.id, false);
+    appendLog(`${recipe.name} のクラフトに失敗した…（素材は消費された）`);
+
+    if (typeof debugRecordCraft === "function") {
+      try {
+        debugRecordCraft({
+          category: "petEquip",
+          recipeId: recipe.id,
+          success: false,
+          skillLv,
+          successRate,
+          cost: finalCost,
+          guildBonus,
+          traitBonus,
+          dailyBonus: dailyAdd
+        });
+      } catch (e) {}
+    }
+
+    updateDisplay();
+    return;
+  }
+
+  const q = rollQualityBySkillLv(skillLv);
+  const qName = QUALITY_NAMES[q];
+
+  let baseEnh = 0;
+  if (typeof getItemMeta === "function") {
+    const meta = getItemMeta(recipe.id);
+    if (meta && typeof meta.baseEnhance === "number") {
+      baseEnh = meta.baseEnhance;
+    }
+  }
+
+  addPetEquipInstance(recipe.id, q, baseEnh);
+
+  addCraftStat("petEquip", recipe.id, true);
+
+  appendLog(`${qName}${recipe.name} をクラフトした`);
+
+  if (typeof onCraftCompletedForGuild === "function") {
+    onCraftCompletedForGuild({
+      category: "petEquip",
+      recipeId: recipe.id,
+      tier: getTierNumberFromId(recipe.id)
+    });
+  }
+
+  if (typeof debugRecordCraft === "function") {
+    try {
+      debugRecordCraft({
+        category: "petEquip",
+        recipeId: recipe.id,
+        success: true,
+        skillLv,
+        successRate,
+        cost: finalCost,
+        resultItems: [{ id: recipe.id, count: 1, quality: q }],
+        guildBonus,
+        traitBonus,
+        dailyBonus: dailyAdd
+      });
+    } catch (e) {}
+  }
+
+  if (typeof addExp === "function") {
+    addExp(1, "gather");
+  }
+
+  // ★修正: refreshPetEquipSelect単体ではなくrefreshEquipSelects()を呼ぶ（craftWeaponと同じ流儀）
+  if (typeof refreshEquipSelects === "function") {
+    refreshEquipSelects();
+  } else if (typeof refreshPetEquipSelect === "function") {
+    refreshPetEquipSelect();
+  }
+  updateDisplay();
+
+  const selAfter = document.getElementById("petEquipSelect");
+  if (selAfter) {
+    selAfter.value = prevRecipeId;
+    // ★修正: 選択を戻した後にコスト表示も更新し直す（元々抜けていた）
+    updateCraftCostInfo("petEquip", prevRecipeId);
+  }
+}
+
 function craftArmor(){
   const sel = document.getElementById("armorSelect");
   if(!sel || !sel.value) return;

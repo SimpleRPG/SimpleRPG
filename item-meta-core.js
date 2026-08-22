@@ -83,6 +83,12 @@
       craftCategory: "furniture",
       storageKind: "inventory",
       storageTab: "furniture"
+    },
+    // ★ ペット専用装備カテゴリ（プレイヤー武器/防具とは別枠）
+    petEquip: {
+      craftCategory: "petEquip",
+      storageKind: "petEquip",
+      storageTab: "petEquip"
     }
   };
 
@@ -408,6 +414,7 @@
     drink:    "料理（飲み物）",
     cookingMat: "料理素材",
     furniture: "家具",
+    petEquip: "ペット装備",
     other:    "その他"
   };
 

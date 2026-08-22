@@ -121,6 +121,8 @@ let potionCounts = {};
 // location: "warehouse" | "carry" | "equipped"
 let weaponInstances = []; // { id, quality, enhance, durability, location, options }
 let armorInstances  = [];
+// ★ペット装備の実体（petEquipInstances/petEquipCounts）は pet-equip-data.js 側で管理
+//   （weaponInstances/armorInstances と同型で、ITEM_META登録も含めてそちらに寄せてある）
 
 // 既存セーブとの整合を取りつつ、必ず配列にしておく
 window.weaponInstances = Array.isArray(window.weaponInstances) ? window.weaponInstances : weaponInstances;
@@ -641,6 +643,9 @@ function initWeaponsAndArmors() {
   armorInstances.length  = 0;
   window.weaponInstances = weaponInstances;
   window.armorInstances  = armorInstances;
+  // ★ペット装備インスタンスもリセット（実体は pet-equip-data.js 側）
+  if (Array.isArray(window.petEquipInstances)) window.petEquipInstances.length = 0;
+  window.petEquipCounts = {};
 
   equippedWeaponIndex = null;
   equippedArmorIndex  = null;

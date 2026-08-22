@@ -268,6 +268,7 @@ function buildAppLayout() {
                 <button class="craft-cat-tab" data-cat="potion">ポーション</button>
                 <button class="craft-cat-tab" data-cat="tool">道具</button>
                 <button class="craft-cat-tab" data-cat="material">素材</button>
+                <button class="craft-cat-tab" data-cat="petEquip">ペット装備</button>
                 <button class="craft-cat-tab" data-cat="cooking">料理</button>
                 <!-- ★生活クラフトタブを追加 -->
                 <button class="craft-cat-tab" data-cat="life">生活</button>
@@ -329,6 +330,13 @@ function buildAppLayout() {
                 <div id="intermediateInfo" style="font-size:11px; color:#ccc;">
                   素材から板材・インゴットなどを作成します。
                 </div>
+              </div>
+
+              <!-- ペット装備クラフトパネル -->
+              <div id="craftPanelPetEquip" class="craft-panel" style="display:none;">
+                <h3>ペット装備クラフト</h3>
+                <select id="petEquipSelect"></select>
+                <button id="craftPetEquipBtn">ペット装備を作る</button>
               </div>
 
               <!-- 料理クラフトパネル -->

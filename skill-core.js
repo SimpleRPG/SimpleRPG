@@ -451,7 +451,10 @@ function getPetBaseAtk() {
   const levelBonus = Math.floor(petLevel * 0.5);
   const baseStats = getCompanionAdjustedPetBaseStats();
   const atkBase = baseStats.atk != null ? baseStats.atk : petAtkBase;
-  return Math.max(1, atkBase + levelBonus);
+  const equipAtk = (typeof getPetEquipStatTotal === "function" && Array.isArray(window.petEquip))
+    ? getPetEquipStatTotal({ equip: window.petEquip }).atk
+    : 0;
+  return Math.max(1, atkBase + levelBonus + equipAtk);
 }
 
 // ★ ペット防御力（game-core-1.js の petDefBase を利用）＋特性補正
@@ -459,7 +462,10 @@ function getPetDef() {
   const levelBonus = Math.floor(petLevel * 0.3);
   const baseStats = getCompanionAdjustedPetBaseStats();
   const defBase = baseStats.def != null ? baseStats.def : petDefBase;
-  return Math.max(0, defBase + levelBonus);
+  const equipDef = (typeof getPetEquipStatTotal === "function" && Array.isArray(window.petEquip))
+    ? getPetEquipStatTotal({ equip: window.petEquip }).def
+    : 0;
+  return Math.max(0, defBase + levelBonus + equipDef);
 }
 
 function calcPetDamage() {
@@ -529,6 +535,29 @@ function doPetTurn() {
       const heal = Math.floor(petHpMax * (s.healRate || 0.3)) + 3;
       petHp = Math.min(petHp + heal, petHpMax);
       appendLog(`${petName}の${s.name}！ HP が${heal}回復した！`);
+      usedSkill = true;
+    } else if (s && s.id === "furyStrike") {
+      // ★高倍率だが一定確率で外れる大技
+      if (Math.random() < (s.missRate || 0.15)) {
+        appendLog(`${petName}の${s.name}！ しかし外れてしまった…`);
+        usedSkill = true;
+      } else {
+        let base = calcPetDamage();
+        let dmg = Math.floor(base * (s.powerRate || 2.2));
+        enemyHp = Math.max(0, enemyHp - dmg);
+        if (typeof currentBattleMaxDamage === "number") {
+          currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+        }
+        if (typeof currentBattleMaxPet === "number") {
+          currentBattleMaxPet = Math.max(currentBattleMaxPet, dmg);
+        }
+        appendLog(`${petName}の${s.name}！ ${currentEnemy.name}に${dmg}ダメージ！`);
+        usedSkill = true;
+      }
+    } else if (s && s.id === "guardStance") {
+      // ★次の被弾1回だけダメージを軽減する（消費型。petBuffTurnRemainとは別管理）
+      window.petGuardRate = (s.defRate || 0.5);
+      appendLog(`${petName}の${s.name}！ 身構えて防御を固めた！`);
       usedSkill = true;
     }
   }
@@ -670,6 +699,28 @@ function runBeastPartyPetAction(rec) {
       const heal = Math.floor((rec.hpMax || 1) * (s.healRate || 0.3)) + 3;
       rec.hp = Math.min((rec.hp || 0) + heal, rec.hpMax || heal);
       appendLog(`${rec.name}の${s.name}！ HP が${heal}回復した！`);
+      usedSkill = true;
+    } else if (s && s.id === "furyStrike") {
+      if (Math.random() < (s.missRate || 0.15)) {
+        appendLog(`${rec.name}の${s.name}！ しかし外れてしまった…`);
+        usedSkill = true;
+      } else {
+        const base = calcPetRecordDamage(rec);
+        const dmg = Math.floor(base * (s.powerRate || 2.2));
+        enemyHp = Math.max(0, enemyHp - dmg);
+        if (typeof currentBattleMaxDamage === "number") {
+          currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+        }
+        if (typeof currentBattleMaxPet === "number") {
+          currentBattleMaxPet = Math.max(currentBattleMaxPet, dmg);
+        }
+        appendLog(`${rec.name}の${s.name}！ ${currentEnemy.name}に${dmg}ダメージ！`);
+        usedSkill = true;
+      }
+    } else if (s && s.id === "guardStance") {
+      // ★このレコード個体だけの消費型ガード（次の被弾1回だけ軽減）
+      rec.guardRate = (s.defRate || 0.5);
+      appendLog(`${rec.name}の${s.name}！ 身構えて防御を固めた！`);
       usedSkill = true;
     }
   }

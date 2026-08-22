@@ -131,14 +131,8 @@ function renderPetList(root) {
 
   html += `</tbody></table>`;
 
-  // ★獣群使い用：新しいペットを迎えるボタン（編成に空きがある時だけ）
-  if (isMulti && Array.isArray(window.petList) && window.petList.length < maxSlots) {
-    html += `
-      <div style="margin-top:6px;">
-        <button type="button" class="petRecruitBtn">新しいペットを迎える（${window.petList.length}/${maxSlots}）</button>
-      </div>
-    `;
-  }
+  // ★追加ペットは草原などの探索中の野生動物イベント（doExplorePetEncounter）で
+  //   捕獲するのが正規ルート。ここにUIは置かない。
   listContainer.innerHTML = html;
 
   const rows = listContainer.querySelectorAll(".pet-list-row");
@@ -148,17 +142,9 @@ function renderPetList(root) {
       selectedPetIdForCare = petId;
       renderPetList(root);
       renderPetCareBox(root);
+      if (typeof renderPetEquipBox === "function") renderPetEquipBox(root);
     });
   });
-
-  const recruitBtn = listContainer.querySelector(".petRecruitBtn");
-  if (recruitBtn) {
-    recruitBtn.addEventListener("click", () => {
-      if (typeof openRecruitCompanionModal === "function") {
-        openRecruitCompanionModal();
-      }
-    });
-  }
 }
 
 // =======================
@@ -525,6 +511,111 @@ function renderPetCareBox(root) {
 }
 
 // =======================
+// ペット装備UI
+// =======================
+
+function renderPetEquipBox(root) {
+  if (!root) return;
+
+  let equipBox = root.querySelector(".pet-equip-box");
+  if (!equipBox) {
+    equipBox = document.createElement("div");
+    equipBox.className = "pet-equip-box";
+    equipBox.style.marginTop = "8px";
+    equipBox.style.padding = "6px";
+    equipBox.style.border = "1px solid #555";
+    equipBox.style.fontSize = "12px";
+    root.appendChild(equipBox);
+  }
+
+  const pets = getPetDisplayInfoListForUI();
+  if (!pets.length) {
+    equipBox.innerHTML = "";
+    return;
+  }
+
+  const currentActivePetId = window.activePetId || null;
+  if (!selectedPetIdForCare || !pets.some(p => p.id === selectedPetIdForCare)) {
+    selectedPetIdForCare = currentActivePetId || pets[0].id;
+  }
+
+  const petInfo = pets.find(p => p.id === selectedPetIdForCare) || pets[0];
+  const rec = Array.isArray(window.petList) ? window.petList.find(p => p.id === petInfo.id) : null;
+  const equip = (rec && Array.isArray(rec.equip)) ? rec.equip : [null, null];
+
+  function describeInst(inst) {
+    if (!inst) return "（空き）";
+    const meta = (typeof getItemMeta === "function") ? getItemMeta(inst.id) : null;
+    const name = meta ? meta.name : inst.id;
+    const qName = (typeof QUALITY_NAMES !== "undefined" && QUALITY_NAMES[inst.quality || 0])
+      ? QUALITY_NAMES[inst.quality || 0]
+      : "";
+    const enh = inst.enhance ? `+${inst.enhance}` : "";
+    const stat = (typeof getPetEquipInstanceStat === "function") ? getPetEquipInstanceStat(inst) : { atk: 0, def: 0 };
+    return `${qName}${name}${enh}（ATK+${stat.atk} / DEF+${stat.def}）`;
+  }
+
+  let html = `<div style="margin-bottom:4px; font-weight:bold;">${petInfo.name}の装備</div>`;
+
+  for (let i = 0; i < 2; i++) {
+    const inst = equip[i] || null;
+    html += `
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+        <span>装備${i + 1}: ${describeInst(inst)}</span>
+        ${inst ? `<button type="button" class="petEquipUnsetBtn" data-slot="${i}">外す</button>` : ""}
+      </div>
+    `;
+  }
+
+  const inventory = Array.isArray(window.petEquipInstances) ? window.petEquipInstances : [];
+
+  html += `<div style="margin-top:6px; border-top:1px solid #555; padding-top:4px;">倉庫の未装備アイテム</div>`;
+
+  if (!inventory.length) {
+    html += `<p style="font-size:11px; color:#ccc;">クラフトしたペット装備がここに並びます。</p>`;
+  } else {
+    inventory.forEach((inst, idx) => {
+      html += `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+          <span>${describeInst(inst)}</span>
+          <span>
+            <button type="button" class="petEquipSetBtn" data-inv="${idx}" data-slot="0">①へ</button>
+            <button type="button" class="petEquipSetBtn" data-inv="${idx}" data-slot="1">②へ</button>
+          </span>
+        </div>
+      `;
+    });
+  }
+
+  equipBox.innerHTML = html;
+
+  equipBox.querySelectorAll(".petEquipUnsetBtn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const slot = parseInt(btn.dataset.slot, 10);
+      if (typeof unequipPetItemToInventory === "function") {
+        unequipPetItemToInventory(petInfo.id, slot);
+        if (typeof recalcStats === "function") recalcStats();
+        if (typeof updateDisplay === "function") updateDisplay();
+        renderPetEquipBox(root);
+      }
+    });
+  });
+
+  equipBox.querySelectorAll(".petEquipSetBtn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const invIdx = parseInt(btn.dataset.inv, 10);
+      const slot   = parseInt(btn.dataset.slot, 10);
+      if (typeof equipPetItemFromInventory === "function") {
+        equipPetItemFromInventory(petInfo.id, slot, invIdx);
+        if (typeof recalcStats === "function") recalcStats();
+        if (typeof updateDisplay === "function") updateDisplay();
+        renderPetEquipBox(root);
+      }
+    });
+  });
+}
+
+// =======================
 // 共用エントリポイント
 // =======================
 
@@ -539,6 +630,7 @@ function buildPetPage(root) {
 
   renderPetList(root);
   renderPetCareBox(root);
+  renderPetEquipBox(root);
 }
 
 // 倉庫タブ用
@@ -560,4 +652,5 @@ if (typeof window !== "undefined") {
   window.buildHousingPetPage = buildHousingPetPage;
   window.renderPetList = renderPetList;
   window.renderPetCareBox = renderPetCareBox;
+  window.renderPetEquipBox = renderPetEquipBox;
 }

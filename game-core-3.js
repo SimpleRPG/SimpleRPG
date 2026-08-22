@@ -836,7 +836,13 @@ function enemyTurn() {
 
     let baseAtk = (currentEnemy.atk || 3);
     baseAtk     = applyAttackBuffsForEnemy(baseAtk);
-    const dmg   = calcAtkDefDamage(baseAtk, petDef);
+    let dmg   = calcAtkDefDamage(baseAtk, petDef);
+
+    // ★ガードスタンス（消費型）：このレコードが直前に使っていれば軽減して消費
+    if (typeof targetPetRec.guardRate === "number" && targetPetRec.guardRate > 0) {
+      dmg = Math.max(1, Math.floor(dmg * (1 - targetPetRec.guardRate)));
+      targetPetRec.guardRate = 0;
+    }
 
     targetPetRec.hp = Math.max(0, (targetPetRec.hp || 0) - dmg);
 
@@ -859,6 +865,12 @@ function enemyTurn() {
     let baseAtk = (currentEnemy.atk || 3);
     baseAtk     = applyAttackBuffsForEnemy(baseAtk);
     let dmg     = calcAtkDefDamage(baseAtk, petDef);
+
+    // ★ガードスタンス（消費型）：直前に使っていれば次の1発だけ軽減して消費
+    if (typeof window.petGuardRate === "number" && window.petGuardRate > 0) {
+      dmg = Math.max(1, Math.floor(dmg * (1 - window.petGuardRate)));
+      window.petGuardRate = 0;
+    }
 
     petHp -= dmg;
 

@@ -292,6 +292,8 @@ function makeSaveData() {
 
     weaponInstances: weaponInstancesSafe,
     armorInstances:  armorInstancesSafe,
+    petEquipInstances: Array.isArray(window.petEquipInstances) ? window.petEquipInstances : [],
+    petEquipCounts:    (window.petEquipCounts && typeof window.petEquipCounts === "object") ? window.petEquipCounts : {},
 
     equippedWeaponId,
     equippedArmorId,
@@ -591,6 +593,10 @@ function applySaveData(data) {
       if (typeof window.ensurePetListFromLegacy === "function") {
         window.ensurePetListFromLegacy();
       }
+      // 旧セーブ互換: equip フィールド（装備2枠）が無ければ補う
+      if (typeof window.ensurePetEquipSlots === "function") {
+        window.ensurePetEquipSlots();
+      }
 
       // パーティが空のままなら、activePetId（あれば）を1件だけ入れて後方互換を保つ
       if (window.activePartyIds.length === 0 && window.activePetId) {
@@ -704,6 +710,14 @@ function applySaveData(data) {
       armorInstances.length = 0;
       data.armorInstances.forEach(i => armorInstances.push(i));
     }
+    if (Array.isArray(data.petEquipInstances)) {
+      if (!Array.isArray(window.petEquipInstances)) window.petEquipInstances = [];
+      window.petEquipInstances.length = 0;
+      data.petEquipInstances.forEach(i => window.petEquipInstances.push(i));
+    }
+    window.petEquipCounts = (data.petEquipCounts && typeof data.petEquipCounts === "object")
+      ? data.petEquipCounts
+      : {};
 
     // ★ 装備インデックス／ID をローカルと window 両方に反映（ロード後に消えないようにする）
     if ("equippedWeaponId" in data) {

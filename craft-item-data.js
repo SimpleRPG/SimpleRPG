@@ -32,7 +32,8 @@ const CRAFT_SKILLS_INIT = {
   tool:      { lv: 0, exp: 0, expToNext: 10 },
   cooking:   { lv: 0, exp: 0, expToNext: 10 },
   material:  { lv: 0, exp: 0, expToNext: 10 },
-  furniture: { lv: 0, exp: 0, expToNext: 10 }
+  furniture: { lv: 0, exp: 0, expToNext: 10 },
+  petEquip:  { lv: 0, exp: 0, expToNext: 10 }
 };
 
 // =======================

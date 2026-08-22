@@ -112,6 +112,7 @@ function addCraftSkillExp(category){
     else if (category === "cooking")  label = "料理";
     else if (category === "material") label = "中間素材";
     else if (category === "furniture") label = "家具";
+    else if (category === "petEquip")  label = "ペット装備";
 
     appendLog(`${label}クラフトスキルがLv${s.lv}になった！`);
   }
@@ -446,7 +447,7 @@ function updateCraftCostInfo(category, recipeId){
   // --------------------
   if (category === "weapon" || category === "armor" ||
       category === "potion" || category === "tool" ||
-      category === "furniture") {
+      category === "furniture" || category === "petEquip") {
 
     const recipes = getAllCraftRecipesByCategory(category);
     recipe = recipes.find(r => r.id === recipeId);

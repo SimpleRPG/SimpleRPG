@@ -939,12 +939,26 @@ function setupWarehouseSubTabs(root, prefix) {
     return;
   }
 
+  // ★ペットタブは倉庫ルート（prefix=""）にしか存在しない（housing側はhousingPagePetInnerで別系統）。
+  //   無ければ単にnullのままにして、以降の分岐で無視する。
+  const tabPet  = root.querySelector("#" + prefix + "warehouseTabPet");
+  const pagePet = root.querySelector("#" + prefix + "warehousePagePet");
+
   function setWarehouseSubPage(key) {
     const isItems = key === "items";
+    const isPet   = key === "pet";
+
     pageItems.style.display     = isItems ? "" : "none";
-    pageMaterials.style.display = isItems ? "none" : "";
+    pageMaterials.style.display = (!isItems && !isPet) ? "" : "none";
     tabItems.classList.toggle("active", isItems);
-    tabMaterials.classList.toggle("active", !isItems);
+    tabMaterials.classList.toggle("active", !isItems && !isPet);
+
+    if (pagePet) {
+      pagePet.style.display = isPet ? "" : "none";
+    }
+    if (tabPet) {
+      tabPet.classList.toggle("active", isPet);
+    }
   }
 
   tabItems.addEventListener("click", () => {
@@ -962,6 +976,16 @@ function setupWarehouseSubTabs(root, prefix) {
       refreshWarehouseUI();
     }
   });
+
+  // ★修正: ペットタブにクリックリスナーが一切無く、ボタンが見えても反応しなかったバグを修正
+  if (tabPet) {
+    tabPet.addEventListener("click", () => {
+      setWarehouseSubPage("pet");
+      if (typeof buildWarehousePetPage === "function") {
+        buildWarehousePetPage();
+      }
+    });
+  }
 
   setWarehouseSubPage("items");
 }

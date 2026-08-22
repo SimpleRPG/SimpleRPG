@@ -942,6 +942,22 @@ if (typeof registerStorageImpl === "function") {
     }
   });
 
+  // ペット装備用ストレージ（storageKind: "petEquip"）
+  // 武器/防具と同じ考え方：実体は petEquipInstances/petEquipCounts（pet-equip-data.js）側で管理し、
+  // ここは汎用インベントリ表示からカウントを引けるようにするための薄い橋渡し。
+  registerStorageImpl("petEquip", {
+    getCount: function (id) {
+      return (typeof window.petEquipCounts === "object" && window.petEquipCounts[id]) || 0;
+    },
+    add: function () {
+      // 実際の追加は addPetEquipInstance() 経由（クラフト成功時）で行う想定。
+      // ここでの汎用add経由は使わない。
+    },
+    remove: function () {
+      // 実際の削除はインスタンス単位（消費/破棄）で行う想定。
+    }
+  });
+
   // 料理素材用ストレージ（storageKind: "cooking"）
   registerStorageImpl("cooking", {
     getCount(id) {

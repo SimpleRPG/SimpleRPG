@@ -335,6 +335,13 @@ function refreshCurrentCraftCost() {
       updateCraftCostInfo("material", sel.value);
       return;
     }
+  } else if (cat === "petEquip") {
+    window.activeCraftCategory = "petEquip";
+    const sel = document.getElementById("petEquipSelect");
+    if (sel && sel.value) {
+      updateCraftCostInfo("petEquip", sel.value);
+      return;
+    }
   } else if (cat === "cooking") {
     const activeSubTab = document.querySelector(".cook-sub-tab.active");
     const sub = activeSubTab ? activeSubTab.dataset.sub : "food";
@@ -453,7 +460,8 @@ window.addEventListener("DOMContentLoaded", () => {
     tool:     document.getElementById("craftPanelTool"),
     material: document.getElementById("craftPanelMaterial"),
     cooking:  document.getElementById("craftPanelCooking"),
-    life:     document.getElementById("craftPanelLife")
+    life:     document.getElementById("craftPanelLife"),
+    petEquip: document.getElementById("craftPanelPetEquip")
   };
 
   function setCraftCategory(cat) {
@@ -502,6 +510,10 @@ window.addEventListener("DOMContentLoaded", () => {
       window.activeCraftCategory = "material";
       const sel = document.getElementById("intermediateSelect");
       if (sel && sel.value) { updateCraftCostInfo("material", sel.value); return; }
+    } else if (cat === "petEquip") {
+      window.activeCraftCategory = "petEquip";
+      const sel = document.getElementById("petEquipSelect");
+      if (sel && sel.value) { updateCraftCostInfo("petEquip", sel.value); return; }
     } else if (cat === "cooking") {
       const foodSel  = document.getElementById("foodSelect");
       const drinkSel = document.getElementById("drinkSelect");
@@ -753,6 +765,20 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  const petEquipCraftBtn = document.getElementById("craftPetEquipBtn");
+  if (petEquipCraftBtn && typeof craftPetEquip === "function") {
+    petEquipCraftBtn.addEventListener("click", () => {
+      if (window.isExploring || window.currentEnemy) {
+        appendLog("探索中はクラフトできない！");
+        return;
+      }
+      craftPetEquip();
+      updateGatherMatDetailText?.();
+      updateCraftMatDetailText?.();
+      refreshCurrentCraftCost();
+    });
+  }
+
   // 肥料クラフト（自動）ボタン
   const fertAutoBtn = document.getElementById("craftFertilizerAutoBtn");
   console.log("[fertAutoBtn] element =", fertAutoBtn, "typeof craftFertilizerAuto =", typeof craftFertilizerAuto);
@@ -853,6 +879,15 @@ window.addEventListener("DOMContentLoaded", () => {
     toolSelect.addEventListener("change", e => {
       const id = e.target.value;
       if (id) updateCraftCostInfo("tool", id);
+      updateCraftMatDetailText?.();
+    });
+  }
+
+  const petEquipSelect = document.getElementById("petEquipSelect");
+  if (petEquipSelect) {
+    petEquipSelect.addEventListener("change", e => {
+      const id = e.target.value;
+      if (id) updateCraftCostInfo("petEquip", id);
       updateCraftMatDetailText?.();
     });
   }

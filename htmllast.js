@@ -44,9 +44,16 @@ function updateWarehousePetTabVisibility() {
   if (!btnPet || !pagePet || !btnItems || !btnMats || !pageItems || !pageMats) return;
 
   // 職業判定ヘルパーがあれば使う。なければ単純に jobId===2 を見る
+  // ★修正: isBeastTamer() だと動物使い(jobId=2)しか true にならず、
+  //   獣群使い(jobId=102, hasPetTurn:true)で倉庫ペットタブが出なくなるバグがあった。
+  //   game-core-1.js の shouldShowPetUI と同じ優先順位（jobShowsPetUI/jobHasPetTurn優先）に統一する。
   let isTamer = false;
   try {
-    if (typeof window.isBeastTamer === "function") {
+    if (typeof window.jobShowsPetUI === "function") {
+      isTamer = window.jobShowsPetUI();
+    } else if (typeof window.jobHasPetTurn === "function") {
+      isTamer = window.jobHasPetTurn();
+    } else if (typeof window.isBeastTamer === "function") {
       isTamer = window.isBeastTamer();
     } else if (typeof window.jobId === "number") {
       isTamer = (window.jobId === 2);

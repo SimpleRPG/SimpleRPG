@@ -162,8 +162,128 @@ const COMPANION_TRAITS = {
 };
 
 // =======================
-// セーブ互換用グローバル
+// ペットスキル：捕獲時ランダム付与
 // =======================
+//
+// ★方針：スキルは「捕獲したペット個体ごとにランダムで決まる」（種族固定ではない）。
+//   実行ロジック（doPetTurn / runBeastPartyPetAction）は id で分岐する作りなので、
+//   ここでは「候補プール」と「そこからN個をランダムに重複無しで選ぶ」処理だけ持つ。
+//   いずれ交配システムが入ったら、親のスキルを継承/合成する形に拡張する想定。
+const PET_SKILL_POOL = [
+  { id: "powerBite", name: "パワーバイト", powerRate: 1.6 },
+  { id: "taunt",     name: "挑発" },
+  { id: "selfHeal",  name: "セルフヒール", healRate: 0.3 },
+  { id: "furyStrike", name: "フューリーストライク", powerRate: 2.2, missRate: 0.15 },
+  { id: "guardStance", name: "ガードスタンス", defRate: 0.5 }
+];
+window.PET_SKILL_POOL = PET_SKILL_POOL;
+
+const PET_SKILL_COUNT_ON_CAPTURE = 2; // 捕獲時に付与するスキル数
+
+/**
+ * PET_SKILL_POOL から重複無しで count 個ランダムに選んで返す。
+ * （個体ごとの skills 配列に丸ごと入れる用）
+ */
+function rollRandomPetSkills(count) {
+  const n = (typeof count === "number" && count > 0) ? count : PET_SKILL_COUNT_ON_CAPTURE;
+  const pool = PET_SKILL_POOL.slice();
+  const picked = [];
+  const take = Math.min(n, pool.length);
+  for (let i = 0; i < take; i++) {
+    const idx = Math.floor(Math.random() * pool.length);
+    picked.push(pool.splice(idx, 1)[0]);
+  }
+  return picked;
+}
+window.rollRandomPetSkills = rollRandomPetSkills;
+
+// =======================
+// ペット装備：倉庫(petEquipInstances)⇔個体(rec.equip)の付け外し
+// =======================
+// ★実体（petEquipInstances配列・petEquipCounts）は pet-equip-data.js 側で管理。
+//   ここでは weaponInstances/armorInstances と同じ「付け外し」操作だけを行う。
+window.petEquipInstances = Array.isArray(window.petEquipInstances) ? window.petEquipInstances : [];
+window.petEquipCounts    = (window.petEquipCounts && typeof window.petEquipCounts === "object") ? window.petEquipCounts : {};
+
+/**
+ * petEquipInstances（倉庫）から指定インデックスの装備を
+ * 指定ペットの指定スロットへ移す。元々そのスロットに何か入っていれば
+ * petEquipInstances に戻す（＝入れ替え）。
+ * @param {string} petId
+ * @param {number} slotIndex 0 or 1
+ * @param {number} inventoryIndex petEquipInstances内のインデックス
+ * @returns {boolean} 成功したか
+ */
+function equipPetItemFromInventory(petId, slotIndex, inventoryIndex) {
+  if (slotIndex !== 0 && slotIndex !== 1) return false;
+  if (!Array.isArray(window.petEquipInstances)) window.petEquipInstances = [];
+  const inst = window.petEquipInstances[inventoryIndex];
+  if (!inst) return false;
+
+  const rec = Array.isArray(window.petList) ? window.petList.find(p => p.id === petId) : null;
+  if (!rec) return false;
+  if (!Array.isArray(rec.equip)) rec.equip = [null, null];
+
+  // 倉庫から取り出す（＝装備するので倉庫カウントは-1）
+  window.petEquipInstances.splice(inventoryIndex, 1);
+  if (!window.petEquipCounts) window.petEquipCounts = {};
+  window.petEquipCounts[inst.id] = Math.max(0, (window.petEquipCounts[inst.id] || 0) - 1);
+
+  // 元々そのスロットにあったものは倉庫へ戻す（＋1）
+  const prev = rec.equip[slotIndex];
+  if (prev) {
+    window.petEquipInstances.push(prev);
+    window.petEquipCounts[prev.id] = (window.petEquipCounts[prev.id] || 0) + 1;
+  }
+
+  rec.equip[slotIndex] = inst;
+
+  // ★アクティブペット（単体運用中）ならグローバルにも即反映
+  if (window.activePetId === petId && typeof loadActivePetToGlobals === "function") {
+    loadActivePetToGlobals();
+  }
+
+  const meta = (typeof getItemMeta === "function") ? getItemMeta(inst.id) : null;
+  const dispName = meta ? meta.name : inst.id;
+  if (typeof appendLog === "function") {
+    appendLog(`${rec.name}に${dispName}を装備した`);
+  }
+  return true;
+}
+window.equipPetItemFromInventory = equipPetItemFromInventory;
+
+/**
+ * 指定ペットの指定スロットの装備を外し、petEquipInstancesへ戻す。
+ */
+function unequipPetItemToInventory(petId, slotIndex) {
+  if (slotIndex !== 0 && slotIndex !== 1) return false;
+  const rec = Array.isArray(window.petList) ? window.petList.find(p => p.id === petId) : null;
+  if (!rec || !Array.isArray(rec.equip)) return false;
+
+  const inst = rec.equip[slotIndex];
+  if (!inst) return false;
+
+  rec.equip[slotIndex] = null;
+  if (!Array.isArray(window.petEquipInstances)) window.petEquipInstances = [];
+  window.petEquipInstances.push(inst);
+  if (!window.petEquipCounts) window.petEquipCounts = {};
+  window.petEquipCounts[inst.id] = (window.petEquipCounts[inst.id] || 0) + 1;
+
+  if (window.activePetId === petId && typeof loadActivePetToGlobals === "function") {
+    loadActivePetToGlobals();
+  }
+
+  const meta = (typeof getItemMeta === "function") ? getItemMeta(inst.id) : null;
+  const dispName = meta ? meta.name : inst.id;
+  if (typeof appendLog === "function") {
+    appendLog(`${rec.name}から${dispName}を外した`);
+  }
+  return true;
+}
+window.unequipPetItemToInventory = unequipPetItemToInventory;
+
+
+
 //
 // companionTypeId : 選んだ動物そのもののID（犬/烏/兎など）
 // companionTraitId: 実際の特性ID（今は同じ値を使っているが将来分ける余地）
@@ -223,6 +343,7 @@ function ensurePetListFromLegacy() {
   const growth    = (typeof window.petGrowthType === "number") ? window.petGrowthType : (window.PET_GROWTH_BALANCE || 0);
   const buffRate  = (typeof window.petBuffRate === "number") ? window.petBuffRate : 1.0;
   const skills    = Array.isArray(window.petSkills) ? window.petSkills.slice() : [];
+  const equip     = Array.isArray(window.petEquip) ? window.petEquip.slice() : [null, null];
 
   const petId = "p_1";
 
@@ -242,12 +363,28 @@ function ensurePetListFromLegacy() {
     hp,
     growthType: growth,
     buffRate,
+    equip,
     skills
   };
 
   window.petList = [record];
   window.activePetId = petId;
 }
+
+/**
+ * 既存petList全レコードに対して equip フィールドが無ければ [null, null] で補う。
+ * 装備システム実装前のセーブを読み込んだ場合の後方互換用。
+ * ensurePetListFromLegacy と同じタイミング（セーブロード直後）で呼ぶ想定。
+ */
+function ensurePetEquipSlots() {
+  if (!Array.isArray(window.petList)) return;
+  for (const rec of window.petList) {
+    if (rec && !Array.isArray(rec.equip)) {
+      rec.equip = [null, null];
+    }
+  }
+}
+window.ensurePetEquipSlots = ensurePetEquipSlots;
 
 /**
  * アクティブペット（activePetId）のレコードを取得する。
@@ -303,6 +440,12 @@ function loadActivePetToGlobals() {
 
   window.petBuffRate = typeof rec.buffRate === "number" ? rec.buffRate : 1.0;
 
+  if (Array.isArray(rec.equip)) {
+    window.petEquip = rec.equip.slice();
+  } else {
+    window.petEquip = [null, null];
+  }
+
   if (Array.isArray(rec.skills)) {
     window.petSkills = rec.skills.slice();
   }
@@ -353,6 +496,10 @@ function saveActivePetFromGlobals() {
 
   rec.growthType = (typeof window.petGrowthType === "number") ? window.petGrowthType : rec.growthType;
   rec.buffRate   = (typeof window.petBuffRate === "number") ? window.petBuffRate : rec.buffRate;
+
+  if (Array.isArray(window.petEquip)) {
+    rec.equip = window.petEquip.slice();
+  }
 
   if (Array.isArray(window.petSkills)) {
     rec.skills = window.petSkills.slice();
@@ -523,7 +670,8 @@ function getPetRecordAtk(rec) {
   const levelBonus = Math.floor((rec.level || 1) * 0.5);
   const adjusted = applyCompanionRatesForTrait(rec.traitId, rec.hpBase, rec.atkBase, rec.defBase);
   const atkBase = adjusted.atk != null ? adjusted.atk : rec.atkBase;
-  let atk = atkBase + levelBonus;
+  const equipBonus = (typeof getPetEquipStatTotal === "function") ? getPetEquipStatTotal(rec).atk : 0;
+  let atk = atkBase + levelBonus + equipBonus;
   if (typeof isMultiPetJob === "function" && isMultiPetJob()) {
     atk = atk / BEAST_PARTY_STAT_DIVISOR;
   }
@@ -539,7 +687,8 @@ function getPetRecordDef(rec) {
   const levelBonus = Math.floor((rec.level || 1) * 0.3);
   const adjusted = applyCompanionRatesForTrait(rec.traitId, rec.hpBase, rec.atkBase, rec.defBase);
   const defBase = adjusted.def != null ? adjusted.def : rec.defBase;
-  let def = defBase + levelBonus;
+  const equipBonus = (typeof getPetEquipStatTotal === "function") ? getPetEquipStatTotal(rec).def : 0;
+  let def = defBase + levelBonus + equipBonus;
   if (typeof isMultiPetJob === "function" && isMultiPetJob()) {
     def = def / BEAST_PARTY_STAT_DIVISOR;
   }
@@ -730,11 +879,8 @@ function recruitAdditionalPet(typeId, name) {
     hp: hpMax,
     growthType: (typeof PET_GROWTH_BALANCE === "number") ? PET_GROWTH_BALANCE : 0,
     buffRate: 1.0,
-    skills: [
-      { id: "powerBite", name: "パワーバイト", powerRate: 1.6 },
-      { id: "taunt",     name: "挑発" },
-      { id: "selfHeal",  name: "セルフヒール", healRate: 0.3 }
-    ]
+    equip: [null, null],
+    skills: rollRandomPetSkills()
   };
 
   window.petList.push(record);
@@ -810,7 +956,11 @@ function setCompanionByTypeId(typeId) {
 
     const growth    = (typeof window.petGrowthType === "number") ? window.petGrowthType : (window.PET_GROWTH_BALANCE || 0);
     const buffRate  = (typeof window.petBuffRate === "number") ? window.petBuffRate : 1.0;
-    const skills    = Array.isArray(window.petSkills) ? window.petSkills.slice() : [];
+    // ★既存セーブ（window.petSkillsがある）ならそれを維持、無ければ新規個体としてランダム付与
+    const skills    = Array.isArray(window.petSkills) && window.petSkills.length > 0
+      ? window.petSkills.slice()
+      : rollRandomPetSkills();
+    const equip     = Array.isArray(window.petEquip) ? window.petEquip.slice() : [null, null];
 
     window.petList = [{
       id: petId,
@@ -828,6 +978,7 @@ function setCompanionByTypeId(typeId) {
       hp,
       growthType: growth,
       buffRate,
+      equip,
       skills
     }];
     window.activePetId = petId;
