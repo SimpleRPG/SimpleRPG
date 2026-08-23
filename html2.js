@@ -87,7 +87,6 @@
         <div class="status-block pet-only">
           <div id="petNameRow" style="display:inline-flex; align-items:center; gap:4px;">
             ペット名: <span id="stPetName">ペット</span>
-            <button id="renamePetBtn" style="font-size:11px; padding:1px 6px;">ペット名を変更</button>
           </div><br>
           種類: <span id="stPetType">未選択</span><br>
           ペットLv: <span id="stPetLevel">1</span><br>

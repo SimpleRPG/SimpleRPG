@@ -107,7 +107,9 @@ const JOB_DEFS = [
       // ★獣群使い（複数ペット運用職）とのバランス調整：
       //   1人と一体で大暴れする動物使いの持ち味を活かすため、単体ペットへの倍率ボーナスを引き上げ
       petAtkRate: 0.5,
-      petHpMaxRate: 0.5
+      petHpMaxRate: 0.5,
+      // ★追加: petDefRate新設。ATK/HPと同水準の+50%で、単体特化の生存力もここで担保する
+      petDefRate: 0.5
     }
   },
 
@@ -163,7 +165,11 @@ const JOB_DEFS = [
     bonuses: {
       // ★獣群使い最大の特徴：ペットを同時に3体まで編成し、
       //   全員が毎ターン同時に行動する（doBeastPartyTurn 側で参照）。
-      maxActivePets: 3
+      maxActivePets: 3,
+      // ★追加: petDefRate新設。動物使い(+50%)より控えめな+25%。
+      //   敵の攻撃対象が3体に分散する分、個体あたりの被弾頻度は動物使いより低いという
+      //   構造的な差を踏まえた値（1体特化の動物使いと同率にすると3体合計の実質耐久が過剰になるため）。
+      petDefRate: 0.25
     }
   },
 
@@ -474,6 +480,7 @@ function getJobBonuses(jobId) {
       physSkillRate: 0,
       petAtkRate: 0,
       petHpMaxRate: 0,
+      petDefRate: 0,
       dotDamageRate: 0,
       statusDurationRate: 0,
       maxActivePets: 0
@@ -511,6 +518,7 @@ function getJobBonuses(jobId) {
     physSkillRate: b.physSkillRate || 0,
     petAtkRate: b.petAtkRate || 0,
     petHpMaxRate: b.petHpMaxRate || 0,
+    petDefRate: b.petDefRate || 0,
     dotDamageRate: b.dotDamageRate || 0,
     statusDurationRate: b.statusDurationRate || 0,
     // ★同時に戦闘へ連れて行けるペット数（未指定/1以下なら通常の単体運用）
@@ -661,6 +669,17 @@ function getPetHpMaxRateMultiplier() {
   if (typeof getJobBonuses !== "function" || (!jobId && jobId !== 0)) return 0;
   const b = getJobBonuses(jobId);
   return (b && typeof b.petHpMaxRate === "number") ? b.petHpMaxRate : 0;
+}
+
+// ★新規: ペット防御力へのジョブボーナス倍率（petHpMaxRateと同じくjob層のみで合算）
+function getPetDefRateMultiplier() {
+  const jobId = window.player?.jobId ?? window.jobId;
+  if (typeof getJobBonuses !== "function" || (!jobId && jobId !== 0)) return 0;
+  const b = getJobBonuses(jobId);
+  return (b && typeof b.petDefRate === "number") ? b.petDefRate : 0;
+}
+if (typeof window.getPetDefRateMultiplier === "undefined") {
+  window.getPetDefRateMultiplier = getPetDefRateMultiplier;
 }
 
 // =======================

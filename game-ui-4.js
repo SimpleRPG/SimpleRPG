@@ -486,13 +486,7 @@ function buildStatusPage() {
     });
   });
 
-  // ペット名変更ボタン
-  const renamePetBtn = document.getElementById("renamePetBtn");
-  if (renamePetBtn && typeof promptRenamePet === "function") {
-    renamePetBtn.addEventListener("click", () => {
-      promptRenamePet();
-    });
-  }
+  // ★ペット名変更は倉庫ペットタブ側（pet-ui.js）に移設した
 
   // 魔巧区 採取拠点タブ側の描画
   const magicGatherBox = document.querySelector("#magicPageGather #gatherBaseStatus");

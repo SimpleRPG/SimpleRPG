@@ -23,6 +23,9 @@ const PET_EQUIP_TEMPLATES = [
     atkPerTier: 2,
     baseDef: 0,
     defPerTier: 0,
+    // ★追加: プレイヤー武器のscaleStrに相当。petAtkBase（転生・レベルで伸びる）の%を上乗せ
+    baseScaleAtk: 0.05,
+    scaleAtkPerTier: 0.03,
     baseRate: 0.75,
     ratePerTier: -0.04,
     enhanceStep: 1,
@@ -39,6 +42,8 @@ const PET_EQUIP_TEMPLATES = [
     atkPerTier: 3,
     baseDef: 0,
     defPerTier: 0,
+    baseScaleAtk: 0.08,
+    scaleAtkPerTier: 0.04,
     baseRate: 0.70,
     ratePerTier: -0.04,
     enhanceStep: 1,
@@ -56,6 +61,9 @@ const PET_EQUIP_TEMPLATES = [
     atkPerTier: 0,
     baseDef: 2,
     defPerTier: 2,
+    // ★追加: プレイヤー防具のscaleVitに相当。petDefBase（転生・レベルで伸びる）の%を上乗せ
+    baseScaleDef: 0.03,
+    scaleDefPerTier: 0.02,
     baseRate: 0.75,
     ratePerTier: -0.04,
     enhanceStep: 1,
@@ -71,6 +79,8 @@ const PET_EQUIP_TEMPLATES = [
     atkPerTier: 0,
     baseDef: 3,
     defPerTier: 3,
+    baseScaleDef: 0.06,
+    scaleDefPerTier: 0.03,
     baseRate: 0.70,
     ratePerTier: -0.04,
     enhanceStep: 1,
@@ -89,6 +99,11 @@ const PET_EQUIP_TEMPLATES = [
     atkPerTier: 1,
     baseDef: 1,
     defPerTier: 1,
+    // ★追加: 攻防複合カテゴリなので両方を控えめに持たせる
+    baseScaleAtk: 0.02,
+    scaleAtkPerTier: 0.01,
+    baseScaleDef: 0.02,
+    scaleDefPerTier: 0.01,
     baseRate: 0.75,
     ratePerTier: -0.04,
     enhanceStep: 1,
@@ -113,6 +128,9 @@ function generatePetEquipTiers(tpl) {
     const def  = tpl.baseDef + tpl.defPerTier * (tier - 1);
     const rate = tpl.baseRate + tpl.ratePerTier * (tier - 1);
     const cost = tpl.costPattern(tier);
+    // ★追加: scaleAtk/scaleDef（プレイヤー武器/防具のscaleStr/scaleVitに相当）
+    const scaleAtk = +((tpl.baseScaleAtk || 0) + (tpl.scaleAtkPerTier || 0) * (tier - 1)).toFixed(2);
+    const scaleDef = +((tpl.baseScaleDef || 0) + (tpl.scaleDefPerTier || 0) * (tier - 1)).toFixed(2);
 
     list.push({
       id: `T${tier}_${tpl.baseId}`,
@@ -121,6 +139,8 @@ function generatePetEquipTiers(tpl) {
       tier,
       atk,
       def,
+      scaleAtk,
+      scaleDef,
       cost,
       rate,
       enhance: 0,
@@ -147,9 +167,11 @@ if (typeof registerItemDefs === "function") {
         category: "petEquip",
         tier: it.tier,
 
-        // ペット用固定ステ（強化率だけ実行時に掛ける。プレイヤー装備のscaleStr/scaleVitに相当するものは無し）
+        // ペット用固定ステ＋scale系（プレイヤー装備のscaleStr/scaleVitに相当。petAtkBase/petDefBaseの%を上乗せ）
         atk: it.atk,
         def: it.def,
+        scaleAtk: it.scaleAtk,
+        scaleDef: it.scaleDef,
         baseDurability: it.durability,
         enhanceStep: it.enhanceStep,
 
@@ -203,9 +225,9 @@ const PET_EQUIP_QUALITY_RATE = [1.0, 1.10, 1.20]; // 通常/良品/傑作
  * 空スロット(null)なら {atk:0, def:0} を返す。
  */
 function getPetEquipInstanceStat(inst) {
-  if (!inst) return { atk: 0, def: 0 };
+  if (!inst) return { atk: 0, def: 0, scaleAtk: 0, scaleDef: 0 };
   const meta = (typeof getItemMeta === "function") ? getItemMeta(inst.id) : null;
-  if (!meta) return { atk: 0, def: 0 };
+  if (!meta) return { atk: 0, def: 0, scaleAtk: 0, scaleDef: 0 };
 
   const enhance = inst.enhance || 0;
   const quality = inst.quality || 0;
@@ -214,23 +236,28 @@ function getPetEquipInstanceStat(inst) {
 
   return {
     atk: Math.floor((meta.atk || 0) * enhRate * qRate),
-    def: Math.floor((meta.def || 0) * enhRate * qRate)
+    def: Math.floor((meta.def || 0) * enhRate * qRate),
+    // ★追加: scaleAtk/scaleDefはプレイヤー武器のscaleStrと同じく強化・品質の影響を受けない（tier由来の%そのまま）
+    scaleAtk: meta.scaleAtk || 0,
+    scaleDef: meta.scaleDef || 0
   };
 }
 window.getPetEquipInstanceStat = getPetEquipInstanceStat;
 
 /**
  * petList レコードの2スロット(equip[0]/equip[1])を合算したatk/defボーナスを返す。
- * レコードにequipが無い（旧セーブ）場合は {atk:0, def:0}。
+ * レコードにequipが無い（旧セーブ）場合は {atk:0, def:0, scaleAtk:0, scaleDef:0}。
  */
 function getPetEquipStatTotal(rec) {
-  if (!rec || !Array.isArray(rec.equip)) return { atk: 0, def: 0 };
-  let atk = 0, def = 0;
+  if (!rec || !Array.isArray(rec.equip)) return { atk: 0, def: 0, scaleAtk: 0, scaleDef: 0 };
+  let atk = 0, def = 0, scaleAtk = 0, scaleDef = 0;
   for (const inst of rec.equip) {
     const s = getPetEquipInstanceStat(inst);
     atk += s.atk;
     def += s.def;
+    scaleAtk += s.scaleAtk;
+    scaleDef += s.scaleDef;
   }
-  return { atk, def };
+  return { atk, def, scaleAtk, scaleDef };
 }
 window.getPetEquipStatTotal = getPetEquipStatTotal;

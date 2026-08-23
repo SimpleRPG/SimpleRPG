@@ -287,12 +287,15 @@ function addPetExp(amount) {
     if (petGrowthType === PET_GROWTH_TANK) {
       petHpBase += 7;
       petAtkBase += 1;
+      petDefBase += 3; // ★追加: タンク型は一番硬く
     } else if (petGrowthType === PET_GROWTH_DPS) {
       petHpBase += 2;
       petAtkBase += 3;
+      petDefBase += 1; // ★追加: DPS型は一番脆く、火力寄り
     } else {
       petHpBase += 4;
       petAtkBase += 2;
+      petDefBase += 2; // ★追加: バランス型
     }
 
     // ★ ペット転生ボーナス適用済みの petHpBase/petAtkBase/petDefBase に対して
@@ -370,6 +373,7 @@ function applyPetRebirthBonus() {
   petRebirthCount++;
   petAtkBase += 2;
   petHpBase  += 8;
+  petDefBase += 2; // ★追加: ATK/HPと同じく転生ごとに一律成長（タイプ差はレベルアップ側で出す）
 }
 
 const REBIRTH_LEVEL_REQ = 100;

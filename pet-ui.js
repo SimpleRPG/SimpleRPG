@@ -374,6 +374,7 @@ function renderPetCareBox(root) {
   careBox.innerHTML = `
     <div style="margin-bottom:4px;">
       <strong>${pet.name}</strong>
+      <button type="button" class="petCareRenameBtn" style="font-size:11px; padding:1px 6px;">名前を変更</button>
       （${pet.speciesName} / Lv:${pet.level}）<br>
       HP: ${pet.hp} / ${pet.hpMax} /
       親密度: ${pet.affinity}%
@@ -390,9 +391,22 @@ function renderPetCareBox(root) {
     ${isMulti ? partyChangeBlock : legacyChangeBlock}
   `;
 
+  const btnRename  = careBox.querySelector(".petCareRenameBtn");
   const btnPetting = careBox.querySelector(".petCarePettingBtn");
   const btnFeed    = careBox.querySelector(".petCareFeedBtn");
   const btnChange  = careBox.querySelector(".petCareChangeBtn");
+
+  if (btnRename) {
+    btnRename.addEventListener("click", () => {
+      const newName = window.prompt("ペットの新しい名前を入力してください", pet.name);
+      if (newName != null && typeof renamePetById === "function") {
+        renamePetById(pet.id, newName);
+        renderPetList(root);
+        renderPetCareBox(root);
+        if (typeof renderPetEquipBox === "function") renderPetEquipBox(root);
+      }
+    });
+  }
 
   if (btnPetting) {
     btnPetting.addEventListener("click", () => {
@@ -551,8 +565,13 @@ function renderPetEquipBox(root) {
       ? QUALITY_NAMES[inst.quality || 0]
       : "";
     const enh = inst.enhance ? `+${inst.enhance}` : "";
-    const stat = (typeof getPetEquipInstanceStat === "function") ? getPetEquipInstanceStat(inst) : { atk: 0, def: 0 };
-    return `${qName}${name}${enh}（ATK+${stat.atk} / DEF+${stat.def}）`;
+    const stat = (typeof getPetEquipInstanceStat === "function") ? getPetEquipInstanceStat(inst) : { atk: 0, def: 0, scaleAtk: 0, scaleDef: 0 };
+    // ★追加: scaleAtk/scaleDef（petAtkBase/petDefBaseの%上乗せ）があれば併記
+    const scaleParts = [];
+    if (stat.scaleAtk) scaleParts.push(`ATK素質+${Math.round(stat.scaleAtk * 100)}%`);
+    if (stat.scaleDef) scaleParts.push(`DEF素質+${Math.round(stat.scaleDef * 100)}%`);
+    const scaleText = scaleParts.length ? ` / ${scaleParts.join(" ")}` : "";
+    return `${qName}${name}${enh}（ATK+${stat.atk} / DEF+${stat.def}${scaleText}）`;
   }
 
   let html = `<div style="margin-bottom:4px; font-weight:bold;">${petInfo.name}の装備</div>`;

@@ -75,6 +75,9 @@ function makeSaveData() {
       petRebirthCount,
       petHpBase,
       petAtkBase,
+      // ★追加: petDefBaseが今までセーブ対象から漏れていた（値が固定2の間は無害だったが、
+      //   DEF成長を追加した以上、セーブ/ロードで積み上げた成長が失われるバグになるため追加）
+      petDefBase,
       petHpMax,
       petHp,
       petBuffRate,
@@ -535,6 +538,7 @@ function applySaveData(data) {
       if ("petRebirthCount" in pet) petRebirthCount = pet.petRebirthCount;
       if ("petHpBase" in pet)       petHpBase       = pet.petHpBase;
       if ("petAtkBase" in pet)      petAtkBase      = pet.petAtkBase;
+      if ("petDefBase" in pet)      petDefBase      = pet.petDefBase;
       if ("petHpMax" in pet)        petHpMax        = pet.petHpMax;
       if ("petHp" in pet)           petHp           = pet.petHp;
       if ("petBuffRate" in pet)     petBuffRate     = pet.petBuffRate;

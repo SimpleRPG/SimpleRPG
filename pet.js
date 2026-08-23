@@ -206,6 +206,40 @@ window.petEquipInstances = Array.isArray(window.petEquipInstances) ? window.petE
 window.petEquipCounts    = (window.petEquipCounts && typeof window.petEquipCounts === "object") ? window.petEquipCounts : {};
 
 /**
+ * petList の指定ペットの名前を変更する（複数ペット対応版）。
+ * アクティブペット（単体運用中のグローバルにロード済みの個体）なら
+ * petName グローバルにも即反映し、表示が古いままにならないようにする。
+ * @param {string} petId
+ * @param {string} newName
+ * @returns {boolean} 成功したか
+ */
+function renamePetById(petId, newName) {
+  const trimmed = (newName || "").trim();
+  if (!trimmed) {
+    if (typeof appendLog === "function") appendLog("名前が空です。");
+    return false;
+  }
+
+  const rec = Array.isArray(window.petList) ? window.petList.find(p => p.id === petId) : null;
+  if (!rec) return false;
+
+  const oldName = rec.name;
+  rec.name = trimmed;
+
+  // ★このペットが現在アクティブ（単体運用中グローバルにロード済み）なら petName も同期
+  if (window.activePetId === petId && typeof window.petName !== "undefined") {
+    window.petName = trimmed;
+  }
+
+  if (typeof appendLog === "function") {
+    appendLog(`ペットの名前を「${oldName}」から「${trimmed}」に変更した。`);
+  }
+  if (typeof updateDisplay === "function") updateDisplay();
+  return true;
+}
+window.renamePetById = renamePetById;
+
+/**
  * petEquipInstances（倉庫）から指定インデックスの装備を
  * 指定ペットの指定スロットへ移す。元々そのスロットに何か入っていれば
  * petEquipInstances に戻す（＝入れ替え）。

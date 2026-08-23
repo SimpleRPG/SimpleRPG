@@ -451,10 +451,14 @@ function getPetBaseAtk() {
   const levelBonus = Math.floor(petLevel * 0.5);
   const baseStats = getCompanionAdjustedPetBaseStats();
   const atkBase = baseStats.atk != null ? baseStats.atk : petAtkBase;
-  const equipAtk = (typeof getPetEquipStatTotal === "function" && Array.isArray(window.petEquip))
-    ? getPetEquipStatTotal({ equip: window.petEquip }).atk
-    : 0;
-  return Math.max(1, atkBase + levelBonus + equipAtk);
+  const equipStat = (typeof getPetEquipStatTotal === "function" && Array.isArray(window.petEquip))
+    ? getPetEquipStatTotal({ equip: window.petEquip })
+    : { atk: 0, scaleAtk: 0 };
+  const equipAtk = equipStat.atk || 0;
+  // ★追加: プレイヤー武器のscaleStrと同じ仕組み。転生・レベルで伸びるatkBase自体の%を上乗せする
+  //   （装備が固定値ATKだけだと後半エリアでプレイヤーの伸びに置いていかれるための対策）
+  const atkFromEquipScale = Math.floor(atkBase * (equipStat.scaleAtk || 0));
+  return Math.max(1, atkBase + levelBonus + equipAtk + atkFromEquipScale);
 }
 
 // ★ ペット防御力（game-core-1.js の petDefBase を利用）＋特性補正
@@ -462,10 +466,24 @@ function getPetDef() {
   const levelBonus = Math.floor(petLevel * 0.3);
   const baseStats = getCompanionAdjustedPetBaseStats();
   const defBase = baseStats.def != null ? baseStats.def : petDefBase;
-  const equipDef = (typeof getPetEquipStatTotal === "function" && Array.isArray(window.petEquip))
-    ? getPetEquipStatTotal({ equip: window.petEquip }).def
-    : 0;
-  return Math.max(0, defBase + levelBonus + equipDef);
+  const equipStat = (typeof getPetEquipStatTotal === "function" && Array.isArray(window.petEquip))
+    ? getPetEquipStatTotal({ equip: window.petEquip })
+    : { def: 0, scaleDef: 0 };
+  const equipDef = equipStat.def || 0;
+  // ★追加: プレイヤー防具のscaleVitと同じ仕組み。転生・レベルで伸びるdefBase自体の%を上乗せする
+  const defFromEquipScale = Math.floor(defBase * (equipStat.scaleDef || 0));
+  let total = defBase + levelBonus + equipDef + defFromEquipScale;
+
+  // ★追加: ジョブpetDefRate（動物使い+50%/獣群使い+25%）。
+  //   petAtkRateがcalcPetDamage側で掛かっているのと対になる、これまで存在しなかった経路。
+  if (typeof getJobBonuses === "function" && typeof jobId !== "undefined") {
+    const j = getJobBonuses(jobId);
+    if (j && typeof j.petDefRate === "number") {
+      total = total * (1 + j.petDefRate);
+    }
+  }
+
+  return Math.max(0, Math.floor(total));
 }
 
 function calcPetDamage() {

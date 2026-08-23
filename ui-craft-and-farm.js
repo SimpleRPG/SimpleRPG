@@ -3,42 +3,7 @@
 
 console.log("ui-craft-and-farm.js start");
 
-// ---------------------------------------
-// 任意ボタンを「押している間だけ連打」させるヘルパー
-// ---------------------------------------
-function setupAutoRepeatButton(btn, action, intervalMs = 100) {
-  if (!btn || typeof action !== "function") return;
-
-  let timer = null;
-
-  function start() {
-    if (timer) return;
-    action(); // 押した瞬間に1回
-    timer = setInterval(action, intervalMs);
-  }
-
-  function stop() {
-    if (!timer) return;
-    clearInterval(timer);
-    timer = null;
-  }
-
-  // PC（マウス）
-  btn.addEventListener("mousedown", (e) => {
-    if (e.button !== 0) return;
-    start();
-  });
-  btn.addEventListener("mouseup", stop);
-  btn.addEventListener("mouseleave", stop);
-
-  // スマホ（タッチ）
-  btn.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    start();
-  }, { passive: false });
-  btn.addEventListener("touchend", stop);
-  btn.addEventListener("touchcancel", stop);
-}
+// ★setupAutoRepeatButton は gather-data.js 側に統合（重複定義を解消）
 
 // ---------------------------------------
 // クラフト詳細テーブル再計算ヘルパー
