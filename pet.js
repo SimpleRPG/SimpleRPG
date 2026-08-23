@@ -704,8 +704,12 @@ function getPetRecordAtk(rec) {
   const levelBonus = Math.floor((rec.level || 1) * 0.5);
   const adjusted = applyCompanionRatesForTrait(rec.traitId, rec.hpBase, rec.atkBase, rec.defBase);
   const atkBase = adjusted.atk != null ? adjusted.atk : rec.atkBase;
-  const equipBonus = (typeof getPetEquipStatTotal === "function") ? getPetEquipStatTotal(rec).atk : 0;
-  let atk = atkBase + levelBonus + equipBonus;
+  const equipStat = (typeof getPetEquipStatTotal === "function") ? getPetEquipStatTotal(rec) : { atk: 0, scaleAtk: 0 };
+  const equipBonus = equipStat.atk || 0;
+  // ★修正: 装備のscaleAtk（petAtkBase比%上乗せ）が単体ペット側 getPetBaseAtk() にしか
+  //   接続されておらず、獣群使いの複数体ダメージ計算（getPetRecordAtk）には一切乗っていなかったため追加。
+  const atkFromEquipScale = Math.floor(atkBase * (equipStat.scaleAtk || 0));
+  let atk = atkBase + levelBonus + equipBonus + atkFromEquipScale;
   if (typeof isMultiPetJob === "function" && isMultiPetJob()) {
     atk = atk / BEAST_PARTY_STAT_DIVISOR;
   }
@@ -721,8 +725,23 @@ function getPetRecordDef(rec) {
   const levelBonus = Math.floor((rec.level || 1) * 0.3);
   const adjusted = applyCompanionRatesForTrait(rec.traitId, rec.hpBase, rec.atkBase, rec.defBase);
   const defBase = adjusted.def != null ? adjusted.def : rec.defBase;
-  const equipBonus = (typeof getPetEquipStatTotal === "function") ? getPetEquipStatTotal(rec).def : 0;
-  let def = defBase + levelBonus + equipBonus;
+  const equipStat = (typeof getPetEquipStatTotal === "function") ? getPetEquipStatTotal(rec) : { def: 0, scaleDef: 0 };
+  const equipBonus = equipStat.def || 0;
+  // ★修正: 装備のscaleDef（petDefBase比%上乗せ）が単体ペット側 getPetDef() にしか
+  //   接続されておらず、獣群使いの複数体ダメージ計算（getPetRecordDef）には一切乗っていなかったため追加。
+  const defFromEquipScale = Math.floor(defBase * (equipStat.scaleDef || 0));
+  let def = defBase + levelBonus + equipBonus + defFromEquipScale;
+
+  // ★修正: ジョブpetDefRate（動物使い+50%/獣群使い+25%）が単体ペット側 getPetDef() にしか
+  //   接続されておらず、獣群使いの複数体ダメージ計算（getPetRecordDef）には一切乗っていなかったため追加。
+  //   petHpMaxRate（pet.js側hpMax計算）と同じく、頭数分割(BEAST_PARTY_STAT_DIVISOR)より先に掛ける。
+  if (typeof getJobBonuses === "function" && typeof jobId !== "undefined") {
+    const j = getJobBonuses(jobId);
+    if (j && typeof j.petDefRate === "number") {
+      def = def * (1 + j.petDefRate);
+    }
+  }
+
   if (typeof isMultiPetJob === "function" && isMultiPetJob()) {
     def = def / BEAST_PARTY_STAT_DIVISOR;
   }
