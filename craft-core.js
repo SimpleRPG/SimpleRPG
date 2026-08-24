@@ -798,24 +798,17 @@ function consumeCookingMaterialsByRequires(recipe){
 
 // smith: weapon / armor, alchemist: potion / tool, cooking: food / drink
 function getGuildCraftSuccessBonus(category) {
-  if (!window.playerGuildId || !window.guildFame) return 0;
+  if (!window.playerGuildId) return 0;
   const guildId = window.playerGuildId;
-  const fame    = window.guildFame[guildId] || 0;
 
-  // guild.js と同じ閾値構成をここでも使う想定:
-  const thresholds = [
-    { fame: 0,   rank: 0 },
-    { fame: 10,  rank: 1 },
-    { fame: 30,  rank: 2 },
-    { fame: 70,  rank: 3 },
-    { fame: 150, rank: 4 },
-    { fame: 300, rank: 5 }
-  ];
-
-  let currentRank = 0;
-  for (const t of thresholds) {
-    if (fame >= t.fame) currentRank = t.rank;
-  }
+  // ★修正: 以前はここに guild.js のランク閾値（0/50/100/200/350/500）と
+  //   食い違う独自の閾値（0/10/30/70/150/300）を複製していたため、
+  //   ギルド画面に表示されるランクと、実際にクラフト成功率へ乗る
+  //   ランクがズレる不具合になっていた。
+  //   getGuildFame / getGuildRankInfo（guild.js側の正本）を直接使う方式に変更。
+  const fame = (typeof getGuildFame === "function") ? getGuildFame(guildId) : 0;
+  const rankInfo = (typeof getGuildRankInfo === "function") ? getGuildRankInfo(fame) : null;
+  const currentRank = rankInfo ? rankInfo.id : 0;
   if (currentRank <= 0) return 0;
 
   // ランク毎 +2% => rank * 0.02

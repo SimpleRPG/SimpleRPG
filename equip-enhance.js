@@ -575,7 +575,7 @@ function doEnhanceWeapon(target, inst, base, useStarShard, matKey, matIndex) {
   }
   money -= cost;
 
-  // ★ 強化成功率 + 星屑スキルツリーボーナス
+  // ★ 強化成功率 + 星屑スキルツリーボーナス + 鍛冶ギルドランクボーナス
   let rate = ENHANCE_SUCCESS_RATES[inst.enhance];
   let starBonus = 0;
   if (useStarShard && typeof getGlobalSkillTreeBonus === "function") {
@@ -588,6 +588,9 @@ function doEnhanceWeapon(target, inst, base, useStarShard, matKey, matIndex) {
     } catch (e) {
       console.warn("enhanceWeapon: skilltree bonus error", e);
     }
+  }
+  if (typeof getGuildSmithEnhanceBonus === "function") {
+    rate += getGuildSmithEnhanceBonus();
   }
   if (rate > 0.98) rate = 0.98;
 
@@ -735,7 +738,7 @@ function doEnhanceArmor(target, inst, base, useStarShard, matKey, matIndex) {
   }
   money -= cost;
 
-  // ★ 強化成功率 + 星屑スキルツリーボーナス
+  // ★ 強化成功率 + 星屑スキルツリーボーナス + 鍛冶ギルドランクボーナス
   let rate = ENHANCE_SUCCESS_RATES[inst.enhance];
   let starBonus = 0;
   if (useStarShard && typeof getGlobalSkillTreeBonus === "function") {
@@ -748,6 +751,9 @@ function doEnhanceArmor(target, inst, base, useStarShard, matKey, matIndex) {
     } catch (e) {
       console.warn("enhanceArmor: skilltree bonus error", e);
     }
+  }
+  if (typeof getGuildSmithEnhanceBonus === "function") {
+    rate += getGuildSmithEnhanceBonus();
   }
   if (rate > 0.98) rate = 0.98;
 

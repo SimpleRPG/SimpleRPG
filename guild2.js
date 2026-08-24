@@ -1058,6 +1058,27 @@ function renderGuildRewards() {
     } else {
       bonusLine.textContent = "現在のランクボーナス: まだ発生していません（名声を稼いでランクを上げよう）";
     }
+  } else if (g.id === "smith") {
+    const smithBonus = (typeof getGuildSmithEnhanceBonus === "function") ? getGuildSmithEnhanceBonus() : 0;
+    if (smithBonus > 0) {
+      bonusLine.textContent = `現在のランクボーナス: 装備強化成功率 +${Math.round(smithBonus * 100)}%`;
+    } else {
+      bonusLine.textContent = "現在のランクボーナス: まだ発生していません（名声を稼いでランクを上げよう）";
+    }
+  } else if (g.id === "alchemist") {
+    const alcBonus = (typeof getGuildCraftSuccessBonus === "function") ? getGuildCraftSuccessBonus("potion") : 0;
+    if (alcBonus > 0) {
+      bonusLine.textContent = `現在のランクボーナス: ポーション・道具の製作成功率 +${Math.round(alcBonus * 100)}%`;
+    } else {
+      bonusLine.textContent = "現在のランクボーナス: まだ発生していません（名声を稼いでランクを上げよう）";
+    }
+  } else if (g.id === "cooking") {
+    const cookBonus = (typeof getGuildCraftSuccessBonus === "function") ? getGuildCraftSuccessBonus("food") : 0;
+    if (cookBonus > 0) {
+      bonusLine.textContent = `現在のランクボーナス: 料理・飲み物の製作成功率 +${Math.round(cookBonus * 100)}%`;
+    } else {
+      bonusLine.textContent = "現在のランクボーナス: まだ発生していません（名声を稼いでランクを上げよう）";
+    }
   } else {
     bonusLine.textContent = "現在のランクボーナス: 今後のアップデートで追加予定。";
   }

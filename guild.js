@@ -143,12 +143,12 @@ const GUILDS = {
     type: "craft",
     desc: "武器や防具の制作・強化を担うギルド。装備の性能を引き出すプロ集団。",
     detail: "高品質装備や強化技術の研究が盛ん。",
-    // 鍛冶ギルドは現状ランクボーナス実装なし → 説明だけ残す
+    // ランク×2% の装備強化成功率ボーナス
     perks: [
       {
         rank: 1,
         fame: 10,
-        summary: "将来的に、鍛冶関連のランクボーナスや専用依頼が追加される予定。"
+        summary: "所属中、ランク×2%分だけ装備強化成功率が増加する（最大+10%）。"
       }
     ]
   },
@@ -158,11 +158,14 @@ const GUILDS = {
     type: "craft",
     desc: "ポーションや爆弾などの道具を扱う錬金術師たちのギルド。",
     detail: "薬品調合から危険な実験まで、少し物騒な仕事が多い。",
+    // ランク×2% の調合(製作)成功率ボーナス
+    // ★実体は craft-core.js の getGuildCraftSuccessBonus("potion"/"tool") 側で
+    //   既に実装・接続済み。ここは説明文の同期のみ。
     perks: [
       {
         rank: 1,
         fame: 10,
-        summary: "将来的に、錬金関連のランクボーナスや専用依頼が追加される予定。"
+        summary: "所属中、ランク×2%分だけポーション・道具の製作成功率が増加する（最大+10%）。"
       }
     ]
   },
@@ -172,11 +175,14 @@ const GUILDS = {
     type: "craft",
     desc: "料理人たちが所属するギルド。強力な料理バフを生み出す。",
     detail: "パーティ用の大皿料理から珍味まで幅広く扱う。",
+    // ランク×2% の調理(製作)成功率ボーナス
+    // ★実体は craft-core.js の getGuildCraftSuccessBonus("food"/"drink") 側で
+    //   既に実装・接続済み。ここは説明文の同期のみ。
     perks: [
       {
         rank: 1,
         fame: 10,
-        summary: "将来的に、料理関連のランクボーナスや専用依頼が追加される予定。"
+        summary: "所属中、ランク×2%分だけ料理・飲み物の製作成功率が増加する（最大+10%）。"
       }
     ]
   },
@@ -340,6 +346,22 @@ function getGuildGatherExtraBonusChance() {
   if (!guildId) return 0;
 
   if (guildId !== "gather" && guildId !== "food") return 0;
+
+  const fame = getGuildFame(guildId);
+  const rankInfo = getGuildRankInfo(fame);
+  const rank = rankInfo ? rankInfo.id : 0;
+  if (rank <= 0) return 0;
+
+  const perRank = 0.02; // 2%
+  return rank * perRank;
+}
+
+// 鍛冶ギルド: 所属中、ランク×2%分だけ装備強化成功率が増加する（最大+10%）
+// ※他ギルドと同じ「所属していれば職業を問わず効く」ランクパーク方式。
+//   equip-enhance.js の武器/防具強化 両方の成功率計算から参照する。
+function getGuildSmithEnhanceBonus() {
+  const guildId = window.playerGuildId;
+  if (guildId !== "smith") return 0;
 
   const fame = getGuildFame(guildId);
   const rankInfo = getGuildRankInfo(fame);
