@@ -369,13 +369,6 @@ function applyRebirthBonus() {
   return "転生ボーナス:\n" + msgList.join("\n");
 }
 
-function applyPetRebirthBonus() {
-  petRebirthCount++;
-  petAtkBase += 2;
-  petHpBase  += 8;
-  petDefBase += 2; // ★追加: ATK/HPと同じく転生ごとに一律成長（タイプ差はレベルアップ側で出す）
-}
-
 const REBIRTH_LEVEL_REQ = 100;
 
 // ★ 初期ステータスに戻す（転生用）
@@ -493,9 +486,6 @@ function doRebirth() {
     bonusMsg = "転生ボーナス:\n(戦闘転生なし)";
   }
 
-  // ペット転生ボーナスは、仕様に合わせてここでは「全転生共通」で付与を維持
-  applyPetRebirthBonus();
-
   // レベル・経験値リセット
   level     = 1;
   exp       = 0;
@@ -517,27 +507,53 @@ function doRebirth() {
   }
 
   // ペットリセット（レベル・EXP だけリセットし、転生ボーナスと特性込みで HP 再計算）
-  petLevel     = 1;
-  petExp       = 0;
-  petExpToNext = BASE_EXP_PER_LEVEL;
+  // ★バグ修正: 以前は「アクティブペット1体」のグローバル変数だけを更新し、
+  //   獣群使いの編成2・3体目には転生ボーナスが一切反映されていなかった。
+  //   petList の全レコードに直接ボーナスを適用する applyPetRebirthBonusToAll() に置き換え、
+  //   編成中の全ペットが等しく転生の恩恵を受けるようにした。
+  if (typeof window.applyPetRebirthBonusToAll === "function") {
+    window.applyPetRebirthBonusToAll();
+    // ★重要: petLevel等はこのファイル内では let 宣言のグローバル変数であり、
+    //   window.petLevel への代入とは別物（同名でも別バインディング）。
+    //   applyPetRebirthBonusToAll()内のloadActivePetToGlobals()はwindow.petX側
+    //   しか更新しないため、動物使いの実戦闘・ログ表示が参照するbare変数側も
+    //   ここで明示的に合わせておく（合わせないと動物使いの実ステータスが
+    //   転生後も更新されないまま止まってしまう）。
+    if (typeof window.petLevel === "number")       petLevel       = window.petLevel;
+    if (typeof window.petExp === "number")         petExp         = window.petExp;
+    if (typeof window.petExpToNext === "number")   petExpToNext   = window.petExpToNext;
+    if (typeof window.petRebirthCount === "number") petRebirthCount = window.petRebirthCount;
+    if (typeof window.petHpBase === "number")      petHpBase      = window.petHpBase;
+    if (typeof window.petAtkBase === "number")     petAtkBase     = window.petAtkBase;
+    if (typeof window.petDefBase === "number")     petDefBase     = window.petDefBase;
+    if (typeof window.petHpMax === "number")       petHpMax       = window.petHpMax;
+    if (typeof window.petHp === "number")          petHp          = window.petHp;
+  } else {
+    // ★保険: pet.js未読込等の万一のフォールバック（従来の単体のみ更新）
+    petRebirthCount++;
+    petAtkBase += 2;
+    petHpBase  += 8;
+    petDefBase += 2;
+    petLevel     = 1;
+    petExp       = 0;
+    petExpToNext = BASE_EXP_PER_LEVEL;
 
-  let baseHpForMax = petHpBase;
-  if (typeof applyCompanionPetRates === "function") {
-    const r = applyCompanionPetRates(petHpBase, petAtkBase, petDefBase);
-    if (r && typeof r.hp === "number") {
-      baseHpForMax = r.hp;
+    let baseHpForMax = petHpBase;
+    if (typeof applyCompanionPetRates === "function") {
+      const r = applyCompanionPetRates(petHpBase, petAtkBase, petDefBase);
+      if (r && typeof r.hp === "number") {
+        baseHpForMax = r.hp;
+      }
     }
-  }
-  petHpMax = baseHpForMax + petRebirthCount * 3;
-  // ★修正: 死んでいた job.petHpMaxRate を接続
-  if (typeof getPetHpMaxRateMultiplier === "function") {
-    petHpMax = Math.floor(petHpMax * (1 + getPetHpMaxRateMultiplier()));
-  }
-  petHp    = petHpMax;
+    petHpMax = baseHpForMax + petRebirthCount * 3;
+    if (typeof getPetHpMaxRateMultiplier === "function") {
+      petHpMax = Math.floor(petHpMax * (1 + getPetHpMaxRateMultiplier()));
+    }
+    petHp = petHpMax;
 
-  // ★複数ペット対応：転生後のペット状態を petList のアクティブレコードに保存
-  if (typeof window.saveActivePetFromGlobals === "function") {
-    window.saveActivePetFromGlobals();
+    if (typeof window.saveActivePetFromGlobals === "function") {
+      window.saveActivePetFromGlobals();
+    }
   }
 
   // 戦闘状態リセット

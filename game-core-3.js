@@ -123,7 +123,6 @@ function applyCritMultDiminishing(mult) {
 // win / lose / escape: 結果別回数
 // maxDamage: 1戦内の最大与ダメージの通算最大
 // maxTaken: 1戦内の最大被ダメージの通算最大
-// maxCombo: 現状コンボ未実装のため常に0（あとで拡張余地を残す）
 // maxPhysDamage / maxMagicDamage / maxPetDamage: 系統別の最大与ダメージ
 
 const battleStats = {
@@ -133,7 +132,6 @@ const battleStats = {
   escape: 0,
   maxDamage: 0,
   maxTaken: 0,
-  maxCombo: 0,
   maxPhysDamage: 0,   // 物理（通常攻撃＋物理スキル）
   maxMagicDamage: 0,  // 魔法（各種魔法スキル）
   maxPetDamage: 0     // ペット（ペット攻撃・ペットスキル）
@@ -141,7 +139,6 @@ const battleStats = {
 
 let currentBattleMaxDamage = 0;
 let currentBattleMaxTaken  = 0;
-let currentBattleMaxCombo  = 0;
 let currentBattleMaxPhys   = 0;
 let currentBattleMaxMagic  = 0;
 let currentBattleMaxPet    = 0;
@@ -153,7 +150,6 @@ function getBattleStats() {
 function resetCurrentBattleStats() {
   currentBattleMaxDamage = 0;
   currentBattleMaxTaken  = 0;
-  currentBattleMaxCombo  = 0;
   currentBattleMaxPhys   = 0;
   currentBattleMaxMagic  = 0;
   currentBattleMaxPet    = 0;
@@ -175,9 +171,6 @@ function commitCurrentBattleStats(resultType) {
   if (currentBattleMaxTaken > battleStats.maxTaken) {
     battleStats.maxTaken = currentBattleMaxTaken;
   }
-  if (currentBattleMaxCombo > battleStats.maxCombo) {
-    battleStats.maxCombo = currentBattleMaxCombo;
-  }
 
   if (currentBattleMaxPhys > battleStats.maxPhysDamage) {
     battleStats.maxPhysDamage = currentBattleMaxPhys;
@@ -195,8 +188,7 @@ function commitCurrentBattleStats(resultType) {
       debugRecordBattle({
         win: resultType === "win",
         damageDealt: currentBattleMaxDamage,
-        damageTaken: currentBattleMaxTaken,
-        turns: currentBattleMaxCombo || 0 // コンボ未実装なので暫定
+        damageTaken: currentBattleMaxTaken
       });
     } catch (e) {
       // 失敗してもゲーム進行に影響しないよう握りつぶす

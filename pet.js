@@ -718,7 +718,13 @@ function getPetRecordAtk(rec) {
 
 /**
  * petList レコード1件分の実効防御力を返す（特性・親密度・レベル込み）。
- * ★獣群使いなど複数ペット運用職の場合は、最後に BEAST_PARTY_STAT_DIVISOR で割る。
+ * ★バランス再調整(2026-08): 以前は「頭数割りすると終盤でDEFが指数的に足りなくなる」
+ *   という理由でDEFだけ分割対象外にしていたが、実際の被弾実感（獣群使い1体あたり
+ *   3〜4発、動物使いは10〜15発で力尽きるのが目安）に対して、転生バグ修正後の
+ *   フルDEFだと獣群使い側が硬すぎたため、ATK/HPと同じくBEAST_PARTY_STAT_DIVISORで
+ *   割る方針に戻す。petDefRate(獣群使い+25% / 動物使い+50%)との掛け合わせで
+ *   「1体特化の動物使いより脆いが、3体同時展開で数の利がある」という差を出す狙い。
+ *   実測して硬すぎ/脆すぎる場合は BEAST_PARTY_STAT_DIVISOR かこの関数の分割有無を再調整すること。
  */
 function getPetRecordDef(rec) {
   if (!rec) return 0;
@@ -734,7 +740,6 @@ function getPetRecordDef(rec) {
 
   // ★修正: ジョブpetDefRate（動物使い+50%/獣群使い+25%）が単体ペット側 getPetDef() にしか
   //   接続されておらず、獣群使いの複数体ダメージ計算（getPetRecordDef）には一切乗っていなかったため追加。
-  //   petHpMaxRate（pet.js側hpMax計算）と同じく、頭数分割(BEAST_PARTY_STAT_DIVISOR)より先に掛ける。
   if (typeof getJobBonuses === "function" && typeof jobId !== "undefined") {
     const j = getJobBonuses(jobId);
     if (j && typeof j.petDefRate === "number") {
@@ -742,11 +747,71 @@ function getPetRecordDef(rec) {
     }
   }
 
+  // ★再修正: ATK/HPと同じくDEFもBEAST_PARTY_STAT_DIVISORで頭数分割する。
   if (typeof isMultiPetJob === "function" && isMultiPetJob()) {
     def = def / BEAST_PARTY_STAT_DIVISOR;
   }
+
   return Math.max(0, Math.floor(def));
 }
+
+/**
+ * petList レコード1件分の「個体転生」を行う。
+ * ・レベルを1に戻し、rebirthCount/atkBase/hpBase/defBaseを恒久強化する。
+ * ・プレイヤーの転生時（doRebirth、全ペット一括）と、
+ *   ペット自身がレベル100に到達した際の自動転生（addPetExpToRecord）の両方から使う共通ロジック。
+ */
+function rebirthPetRecord(rec) {
+  if (!rec) return;
+
+  rec.rebirthCount = (rec.rebirthCount || 0) + 1;
+  rec.atkBase = (rec.atkBase || 0) + 2;
+  rec.hpBase  = (rec.hpBase  || 0) + 8;
+  rec.defBase = (rec.defBase || 0) + 2;
+
+  rec.level     = 1;
+  rec.exp       = 0;
+  rec.expToNext = (typeof BASE_EXP_PER_LEVEL === "number") ? BASE_EXP_PER_LEVEL : 5;
+
+  const isMulti = (typeof isMultiPetJob === "function") && isMultiPetJob();
+
+  let baseHpForMax = rec.hpBase;
+  const adjusted = applyCompanionRatesForTrait(rec.traitId, rec.hpBase, rec.atkBase, rec.defBase);
+  if (adjusted && typeof adjusted.hp === "number") {
+    baseHpForMax = adjusted.hp;
+  }
+  rec.hpMax = baseHpForMax + rec.rebirthCount * 3;
+  if (typeof getPetHpMaxRateMultiplier === "function") {
+    rec.hpMax = Math.floor(rec.hpMax * (1 + getPetHpMaxRateMultiplier()));
+  }
+  if (isMulti) {
+    rec.hpMax = Math.max(1, Math.floor(rec.hpMax / BEAST_PARTY_STAT_DIVISOR));
+  }
+  rec.hp = rec.hpMax;
+}
+window.rebirthPetRecord = rebirthPetRecord;
+
+/**
+ * プレイヤーの転生（doRebirth）から呼ぶ：petList内の【全ペット】に
+ * rebirthPetRecordを適用する。
+ * ★バグ修正: 以前はグローバル変数(petHpBase等)だけを更新し、
+ *   saveActivePetFromGlobals()でactivePartyIds[0](編成の先頭1体)にしか
+ *   書き戻していなかったため、獣群使いの2・3体目は転生してもrebirthCount/
+ *   ATK/DEF/HPが一切成長しない状態になっていた。
+ *   petListの全レコードを直接更新する方式に変更し、編成中の全ペットが
+ *   等しく転生の恩恵を受けるようにした。
+ */
+function applyPetRebirthBonusToAll() {
+  if (!Array.isArray(window.petList)) return;
+  for (const rec of window.petList) {
+    rebirthPetRecord(rec);
+  }
+  // アクティブペット分は従来通りグローバル単体変数側にも同期（UI・旧仕様互換用）
+  if (typeof loadActivePetToGlobals === "function") {
+    loadActivePetToGlobals();
+  }
+}
+window.applyPetRebirthBonusToAll = applyPetRebirthBonusToAll;
 
 /**
  * applyCompanionPetRates のレコード対応版。

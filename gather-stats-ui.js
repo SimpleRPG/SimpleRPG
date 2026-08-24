@@ -315,7 +315,6 @@ function buildBattleStatsTable(st) {
     ["逃走回数",           st.escape || 0],
     ["最大与ダメージ",     st.maxDamage || 0],
     ["最大被ダメージ",     st.maxTaken || 0],
-    ["最大コンボ数",       st.maxCombo || 0],
     ["最大物理ダメージ",   st.maxPhysDamage || 0],
     ["最大魔法ダメージ",   st.maxMagicDamage || 0],
     ["最大ペットダメージ", st.maxPetDamage || 0]
