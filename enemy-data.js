@@ -9,6 +9,7 @@ const ENEMIES = {
     hp: 158,  // 【調整】討伐1.8T目安に変更
     atk: 4,   // HP30に対して8発前後
     def: 0,
+    dex: 0,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 3,
     isBoss: false
   },
@@ -18,6 +19,7 @@ const ENEMIES = {
     hp: 157,  // 【調整】討伐1.8T目安に変更
     atk: 6,   // ちょっとだけ痛い
     def: 1,
+    dex: 0,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 5,
     isBoss: false
   },
@@ -29,6 +31,7 @@ const ENEMIES = {
     hp: 1030,    // 【調整】討伐1.8T目安に変更
     atk: 55,     // 10転生VIT96前後に対してそこそこ痛い
     def: 27,
+    dex: 9,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 12,
     isBoss: false
   },
@@ -38,6 +41,7 @@ const ENEMIES = {
     hp: 1020,   // 【調整】討伐1.8T目安に変更
     atk: 60,
     def: 30,
+    dex: 10,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 14,
     isBoss: false
   },
@@ -49,6 +53,7 @@ const ENEMIES = {
     hp: 2170,   // 【調整】討伐1.8T目安に変更
     atk: 85,
     def: 46,
+    dex: 15,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 24,
     isBoss: false
   },
@@ -58,6 +63,7 @@ const ENEMIES = {
     hp: 2170,   // 【調整】討伐1.8T目安に変更
     atk: 95,
     def: 48,
+    dex: 16,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 30,
     isBoss: false
   },
@@ -67,6 +73,7 @@ const ENEMIES = {
     hp: 2160,   // 【調整】討伐1.8T目安に変更
     atk: 105,
     def: 52,
+    dex: 17,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 36,
     isBoss: false
   },
@@ -76,6 +83,7 @@ const ENEMIES = {
     hp: 2150,   // 【調整】討伐1.8T目安に変更
     atk: 120,
     def: 60,
+    dex: 20,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 60,
     isBoss: false
   },
@@ -87,6 +95,7 @@ const ENEMIES = {
     hp: 5010,   // 【調整】討伐1.8T目安に変更
     atk: 155,
     def: 85,
+    dex: 28,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 70,
     isBoss: false
   },
@@ -96,6 +105,7 @@ const ENEMIES = {
     hp: 5000,   // 【調整】討伐1.8T目安に変更
     atk: 165,
     def: 94,
+    dex: 31,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 82,
     isBoss: false
   },
@@ -105,6 +115,7 @@ const ENEMIES = {
     hp: 5030,   // 【調整】討伐1.8T目安に変更
     atk: 175,
     def: 74,
+    dex: 25,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 90,
     isBoss: false
   },
@@ -122,6 +133,7 @@ const ENEMIES = {
     hp: 4810,   // 【調整】討伐1.8T目安に変更
     atk: 597,
     def: 210,
+    dex: 70,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 110,
     isBoss: false
   },
@@ -131,6 +143,7 @@ const ENEMIES = {
     hp: 4790,   // 【調整】討伐1.8T目安に変更
     atk: 642,
     def: 225,
+    dex: 75,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 120,
     isBoss: false
   },
@@ -140,6 +153,7 @@ const ENEMIES = {
     hp: 4760,   // 【調整】討伐1.8T目安に変更
     atk: 693,
     def: 243,
+    dex: 81,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 130,
     isBoss: false
   },
@@ -151,6 +165,7 @@ const ENEMIES = {
     hp: 7850,   // 【調整】討伐1.8T目安に変更
     atk: 887,
     def: 339,
+    dex: 113,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 150,
     isBoss: false
   },
@@ -160,6 +175,7 @@ const ENEMIES = {
     hp: 7810,   // 【調整】討伐1.8T目安に変更
     atk: 954,
     def: 364,
+    dex: 121,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 160,
     isBoss: false
   },
@@ -169,6 +185,7 @@ const ENEMIES = {
     hp: 7770,   // 【調整】討伐1.8T目安に変更
     atk: 1030,
     def: 393,
+    dex: 131,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 170,
     isBoss: false
   },
@@ -180,6 +197,7 @@ const ENEMIES = {
     hp: 12810,   // 【調整】討伐1.8T目安に変更
     atk: 1338,
     def: 536,
+    dex: 179,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 190,
     isBoss: false
   },
@@ -189,6 +207,7 @@ const ENEMIES = {
     hp: 12750,   // 【調整】討伐1.8T目安に変更
     atk: 1439,
     def: 576,
+    dex: 192,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 200,
     isBoss: false
   },
@@ -198,6 +217,7 @@ const ENEMIES = {
     hp: 12680,   // 【調整】討伐1.8T目安に変更
     atk: 1554,
     def: 622,
+    dex: 207,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 210,
     isBoss: false
   },
@@ -209,6 +229,7 @@ const ENEMIES = {
     hp: 19920,   // 【調整】討伐1.8T目安に変更
     atk: 2015,
     def: 794,
+    dex: 265,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 230,
     isBoss: false
   },
@@ -218,6 +239,7 @@ const ENEMIES = {
     hp: 19820,   // 【調整】討伐1.8T目安に変更
     atk: 2167,
     def: 854,
+    dex: 285,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 245,
     isBoss: false
   },
@@ -227,6 +249,7 @@ const ENEMIES = {
     hp: 19720,   // 【調整】討伐1.8T目安に変更
     atk: 2340,
     def: 922,
+    dex: 307,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 260,
     isBoss: false
   },
@@ -238,6 +261,7 @@ const ENEMIES = {
     hp: 29910,   // 【調整】討伐1.8T目安に変更
     atk: 2889,
     def: 1134,
+    dex: 378,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 290,
     isBoss: false
   },
@@ -247,6 +271,7 @@ const ENEMIES = {
     hp: 29780,   // 【調整】討伐1.8T目安に変更
     atk: 3106,
     def: 1219,
+    dex: 406,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 310,
     isBoss: false
   },
@@ -256,6 +281,7 @@ const ENEMIES = {
     hp: 29620,   // 【調整】討伐1.8T目安に変更
     atk: 3355,
     def: 1317,
+    dex: 439,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 320,
     isBoss: false
   },
@@ -267,6 +293,7 @@ const ENEMIES = {
     hp: 43000,   // 【調整】討伐1.8T目安に変更
     atk: 4033,
     def: 1559,
+    dex: 520,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 360,
     isBoss: false
   },
@@ -276,6 +303,7 @@ const ENEMIES = {
     hp: 42810,   // 【調整】討伐1.8T目安に変更
     atk: 4337,
     def: 1676,
+    dex: 559,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 380,
     isBoss: false
   },
@@ -285,6 +313,7 @@ const ENEMIES = {
     hp: 42600,   // 【調整】討伐1.8T目安に変更
     atk: 4684,
     def: 1810,
+    dex: 603,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 400,
     isBoss: false
   },
@@ -297,6 +326,7 @@ const ENEMIES = {
     hp: 450,   // HP228＋装備込ATK/DEF想定で10T前後
     atk: 150,   // 【調整】実測プレイヤーDEFで被弾2〜3発耐える水準に修正
     def: 73,
+    dex: 24,  // ★命中/回避用DEX（def/3目安、要調整）
     
     money: 200,
     isBoss: true
@@ -308,6 +338,7 @@ const ENEMIES = {
     hp: 5000,   // 10転生想定、与ダメも被ダメも10T前後
     atk: 384,   // 【調整】旧1900は実測プレイヤーDEFに対し被弾1発で即死級だったため是正
     def: 877,
+    dex: 292,  // ★命中/回避用DEX（def/3目安、要調整）
     
     money: 450,
     isBoss: true
@@ -319,6 +350,7 @@ const ENEMIES = {
     hp: 9000,
     atk: 622,   // 【調整】旧3900は被弾1発で即死級だったため是正（2〜3発耐え目標）
     def: 1345,
+    dex: 448,  // ★命中/回避用DEX（def/3目安、要調整）
     
     money: 800,
     isBoss: true
@@ -330,6 +362,7 @@ const ENEMIES = {
     hp: 21000,  // 40転生STR/スキル/料理フルで10T前後を想定
     atk: 1142,  // 【調整】旧9000は実測プレイヤーHPの8倍超で即死一発だったため是正（2〜3発耐え目標）
     def: 1800,   // 1転生T1装備ではまともに通らない程度
+    dex: 600,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 1400,
     isBoss: true
   },
@@ -343,6 +376,7 @@ const ENEMIES = {
     hp: 33400,
     atk: 1690,
     def: 1871,
+    dex: 624,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 1800,
     isBoss: true
   },
@@ -353,6 +387,7 @@ const ENEMIES = {
     hp: 54400,
     atk: 2553,
     def: 3047,
+    dex: 1016,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 2200,
     isBoss: true
   },
@@ -363,6 +398,7 @@ const ENEMIES = {
     hp: 84400,
     atk: 3777,
     def: 4724,
+    dex: 1575,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 2600,
     isBoss: true
   },
@@ -373,6 +409,7 @@ const ENEMIES = {
     hp: 126300,
     atk: 5436,
     def: 7074,
+    dex: 2358,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 3100,
     isBoss: true
   },
@@ -383,6 +420,7 @@ const ENEMIES = {
     hp: 181100,
     atk: 7595,
     def: 10143,
+    dex: 3381,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 3600,
     isBoss: true
   },
@@ -393,6 +431,7 @@ const ENEMIES = {
     hp: 249400,
     atk: 10210,
     def: 13964,
+    dex: 4655,  // ★命中/回避用DEX（def/3目安、要調整）
     money: 4200,
     isBoss: true
   }

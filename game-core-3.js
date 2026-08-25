@@ -57,9 +57,53 @@ function refreshBattleSkillTreeBonus() {
 // クリティカル関連ヘルパ
 // =======================
 
-// LUKから減衰付きの「素クリ率」を計算（バフを含まない部分）
-// 目的: LUK が無限に伸びても素クリ率は 50% 付近で頭打ち
+// ★DEXから「命中率」「回避率」を算出する共通ヘルパ（飽和カーブ方式）
+// base: DEXが0でも保証される下限値、cap: DEXを積んでも超えない上限値
+function calcDexRate(dex, base, cap) {
+  const d = typeof dex === "number" ? dex : 0;
+
+  // 素の傾向（DEXが増えるほど伸びるが、そのままだと青天井なので後で飽和させる）
+  const raw = d * 0.003;
+
+  // 飽和関数で cap に収束させる
+  const K = 0.6; // 調整パラメータ
+  const rate = base + (raw * (cap - base)) / (raw + K); // baseからcapへ漸近
+
+  // 念のためハード上限
+  return Math.min(rate, cap);
+}
+
+// ★DEXから「プレイヤーの回避率」を計算（敵の攻撃をかわす確率）
+// 下限5%・上限70%
+function getPlayerEvasionRateFromDex() {
+  const dex = typeof DEX_ === "number" ? DEX_ : 0;
+  return calcDexRate(dex, 0.05, 0.70);
+}
+
+// ★DEXから「プレイヤーの命中率」を計算（敵への攻撃が当たる確率）
+// 下限30%・上限95%
+function getPlayerHitRateFromDex() {
+  const dex = typeof DEX_ === "number" ? DEX_ : 0;
+  return calcDexRate(dex, 0.30, 0.95);
+}
+
+// ★敵側の回避率（enemy-data.js の dex フィールドから算出）
+// プレイヤーと同じく下限5%・上限70%
+function getEnemyEvasionRate(enemy) {
+  const dex = (enemy && typeof enemy.dex === "number") ? enemy.dex : 0;
+  return calcDexRate(dex, 0.05, 0.70);
+}
+
+// ★敵側の命中率（enemy-data.js の dex フィールドから算出）
+// プレイヤーと同じく下限30%・上限95%
+function getEnemyHitRateFromDex(enemy) {
+  const dex = (enemy && typeof enemy.dex === "number") ? enemy.dex : 0;
+  return calcDexRate(dex, 0.30, 0.95);
+}
+
 function getBaseCritRateFromLuk() {
+  // LUKから減衰付きの「素クリ率」を計算（バフを含まない部分）
+  // 目的: LUK が無限に伸びても素クリ率は 50% 付近で頭打ち
   const luk = typeof LUK_ === "number" ? LUK_ : 0;
 
   // まず直線で「潜在クリ率」を計算（基礎5%＋LUK×0.2% 相当）
@@ -549,7 +593,7 @@ function playerAttack() {
   // 命中判定は「敵に向けた攻撃」の時だけ行う（自傷は必中扱い）
   let isHit = true;
   if (targetType === "enemy") {
-    let hitRate = 0.95;
+    let hitRate = getPlayerHitRateFromDex();
     hitRate = modifyAccuracyForPlayer(hitRate);
     if (Math.random() > hitRate) {
       appendLog("あなたの攻撃は外れた！");
@@ -559,6 +603,20 @@ function playerAttack() {
       updateEnemyStatusUI();
       updateDisplay();
       return;
+    }
+
+    // ★敵側のDEX的な回避判定（enemy-data.js の eva フィールド、未設定なら0）
+    if (typeof getEnemyEvasionRate === "function") {
+      const enemyEvaRate = getEnemyEvasionRate(currentEnemy);
+      if (enemyEvaRate > 0 && Math.random() < enemyEvaRate) {
+        appendLog(`あなたの攻撃！ しかし${currentEnemy.name}に回避された！`);
+        enemyTurn();
+        tickStatusesTurnEndForBoth();
+        renderPlayerStatusIcons();
+        updateEnemyStatusUI();
+        updateDisplay();
+        return;
+      }
     }
   }
 
@@ -721,6 +779,59 @@ function enemyTurn() {
     let baseAtk = (currentEnemy.atk || 3);
     baseAtk = applyAttackBuffsForEnemy(baseAtk);
 
+    // ★敵専用スキル（enemy-skills.js）：この敵が使えるスキルの中から抽選
+    let enemySkill = null;
+    if (typeof pickEnemySkill === "function") {
+      const hpRatio = (enemyHpMax > 0) ? (enemyHp / enemyHpMax) : 1;
+      enemySkill = pickEnemySkill(currentEnemy.id, hpRatio);
+    }
+
+    // デバフ系／自己バフ系は通常攻撃を行わず、スキルの発動だけでターンを終える
+    if (enemySkill && (enemySkill.kind === "debuff" || enemySkill.kind === "selfBuff")) {
+      if (typeof applyEnemySkillEffects === "function") {
+        applyEnemySkillEffects(enemySkill, currentEnemy.name);
+      }
+      tickSkillBuffTurns();
+      renderPlayerStatusIcons();
+      updateEnemyStatusUI();
+      updateDisplay();
+      return;
+    }
+
+    // 重い一撃系は、通常攻撃のダメージ倍率として baseAtk に乗せて後続の計算に流す
+    if (enemySkill && enemySkill.kind === "heavyAttack") {
+      baseAtk = Math.floor(baseAtk * (enemySkill.dmgMultiplier || 1));
+    }
+
+    // ★DEXによる敵の命中判定（物理攻撃・重い一撃のみ対象。デバフ系スキルは上の分岐で既に終了している）
+    if (typeof getEnemyHitRateFromDex === "function") {
+      let enemyHitRate = getEnemyHitRateFromDex(currentEnemy);
+      if (typeof modifyAccuracyForEnemy === "function") {
+        enemyHitRate = modifyAccuracyForEnemy(enemyHitRate);
+      }
+      if (Math.random() > enemyHitRate) {
+        appendLog(`${currentEnemy.name}の攻撃！ しかし外れた！`);
+        tickSkillBuffTurns();
+        renderPlayerStatusIcons();
+        updateEnemyStatusUI();
+        updateDisplay();
+        return;
+      }
+    }
+
+    // ★DEXによる回避判定（物理攻撃・重い一撃のみ対象。デバフ系スキルは上の分岐で既に終了している）
+    if (typeof getPlayerEvasionRateFromDex === "function") {
+      const evaRate = getPlayerEvasionRateFromDex();
+      if (Math.random() < evaRate) {
+        appendLog(`${currentEnemy.name}の攻撃！ しかしあなたは攻撃を回避した！`);
+        tickSkillBuffTurns();
+        renderPlayerStatusIcons();
+        updateEnemyStatusUI();
+        updateDisplay();
+        return;
+      }
+    }
+
     // ★堅固の大盾などの防御バフを反映した「実効防御値」を作る
     let effectiveDefTotal = defTotal;
     if (typeof greatshieldFortifyTurnRemain === "number" && greatshieldFortifyTurnRemain > 0) {
@@ -781,7 +892,17 @@ function enemyTurn() {
     // ★ここでカウンター状態があれば onDamaged が呼ばれる
     onPlayerDamagedByEnemy();
 
-    if (didGuard) {
+    if (enemySkill && enemySkill.kind === "heavyAttack") {
+      // スキルのフレーバーログ＋効果付与（bleed/def_downなど）
+      if (typeof applyEnemySkillEffects === "function") {
+        applyEnemySkillEffects(enemySkill, currentEnemy.name);
+      }
+      if (didGuard) {
+        appendLog(`大盾でガードし、あなたは${dmg}ダメージを受けた！`);
+      } else {
+        appendLog(`あなたは${dmg}ダメージを受けた！`);
+      }
+    } else if (didGuard) {
       appendLog(`${currentEnemy.name}の攻撃！ 大盾でガードし、あなたは${dmg}ダメージを受けた！`);
     } else {
       appendLog(`${currentEnemy.name}の攻撃！ あなたに${dmg}ダメージ`);

@@ -441,13 +441,11 @@ function recalcStats() {
 
   // ステータス由来の攻撃
   let atkFromStr = Math.floor(effSTR * 0.5);
-  let atkFromDex = Math.floor(effDEX * 0.3);
   let atkFromWeaponStr = Math.floor(effSTR * weaponScaleStr);
   let atkFromWeaponInt = Math.floor(effINT * weaponScaleInt);
 
   // ステータス由来の防御
   let defFromVit = Math.floor(effVIT * 0.7);
-  let defFromDex = Math.floor(effDEX * 0.2);
   let defFromArmorVit = Math.floor(effVIT * armorScaleVit);
 
   // ===== 空腹・水分デバフ反映（攻撃・防御） =====
@@ -459,7 +457,6 @@ function recalcStats() {
 
   if (typeof thirstDefDexLukRate === "number") {
     defFromVit      = Math.floor(defFromVit      * thirstDefDexLukRate);
-    defFromDex      = Math.floor(defFromDex      * thirstDefDexLukRate);
     defFromArmorVit = Math.floor(defFromArmorVit * thirstDefDexLukRate);
   }
 
@@ -538,7 +535,6 @@ function recalcStats() {
     baseAtk +
     enhancedWeaponAtk +
     atkFromStr +
-    atkFromDex +
     atkFromWeaponStr +
     atkFromWeaponInt;
 
@@ -546,7 +542,6 @@ function recalcStats() {
     baseDef +
     enhancedArmorDef +
     defFromVit +
-    defFromDex +
     defFromArmorVit;
 
   // ★ ATK%枠の合算（武器固定%＋接頭語%＋スキルツリー%＋職業%）
