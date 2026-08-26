@@ -235,11 +235,10 @@ const JOB_DEFS = [
       craftBonus: 0.08,
       craftCostReduceRate: 0.05,
       potionEffectRate: 1.3,
-      toolDamageRate: 2.0,
-      toolItemBoostRate: 1.5,
-      statusApplyRateAdd: 0.3,
       dotDamageRate: 1.5,       // ★修正: status-effects-core.js にハードコードされていた+50%を吸収
       statusDurationRate: 1.25  // ★修正: 同じくハードコードされていた+25%を吸収
+      // ★2024: 道具（爆弾等）関連ボーナスは道具使い(203)に移管。
+      //   toolDamageRate / toolItemBoostRate / statusApplyRateAdd はここでは持たない。
     }
   },
   {
@@ -256,7 +255,10 @@ const JOB_DEFS = [
     bonuses: {
       craftBonus: 0.08,
       craftCostReduceRate: 0.05,
-      toolDamageRate: 0.10
+      // ★2024: 錬金術師(202)が持っていた「道具」関連ボーナスをこちらへ移管。
+      toolDamageRate: 2.0,
+      toolItemBoostRate: 1.5,
+      statusApplyRateAdd: 0.3
     }
   },
 
@@ -615,6 +617,22 @@ function getAlchemistBonus(key, fallback) {
   return getJobBonus(key, fallback);
 }
 
+// ★新規: 道具使い(203)専用の判定関数。isAlchemist()とは完全に別軸。
+function isToolUser() {
+  const jobId = window.player?.jobId ?? window.jobId;
+  if (!jobId && jobId !== 0) return false;
+  const def = getJobDefById(jobId);
+  if (!def) return false;
+  return def.id === 203 || def.key === "tool_user";
+}
+
+function getToolUserBonus(key, fallback) {
+  if (!isToolUser()) {
+    return fallback;
+  }
+  return getJobBonus(key, fallback);
+}
+
 // =======================
 // 錬金術師用ボーナスヘルパー（動的計算版）
 // =======================
@@ -622,18 +640,6 @@ function getAlchemistBonus(key, fallback) {
 function getAlcPotionRate() {
   // 非錬金職は 1.0 倍（=ボーナスなし）
   return getAlchemistBonus("potionEffectRate", 1.0);
-}
-
-function getAlcToolDamageRate() {
-  return getAlchemistBonus("toolDamageRate", 1.0);
-}
-
-function getAlcToolBoostRate() {
-  return getAlchemistBonus("toolItemBoostRate", 1.0);
-}
-
-function getAlcStatusAdd() {
-  return getAlchemistBonus("statusApplyRateAdd", 0.0);
 }
 
 // ★修正: status-effects-core.js にハードコードされていた錬金術師専用倍率を
@@ -644,6 +650,23 @@ function getAlcDotDamageRate() {
 
 function getAlcStatusDurationRate() {
   return getAlchemistBonus("statusDurationRate", 1.0);
+}
+
+// =======================
+// 道具使い用ボーナスヘルパー（動的計算版）
+// ★2024: 元は錬金術師側にあった道具（爆弾等）関連ボーナス。道具使いへ移管。
+// =======================
+
+function getToolDamageRate() {
+  return getToolUserBonus("toolDamageRate", 1.0);
+}
+
+function getToolBoostRate() {
+  return getToolUserBonus("toolItemBoostRate", 1.0);
+}
+
+function getToolStatusAdd() {
+  return getToolUserBonus("statusApplyRateAdd", 0.0);
 }
 
 // =======================
@@ -1113,6 +1136,9 @@ if (typeof window.getJobInitialStats === "undefined") {
 if (typeof window.isAlchemist === "undefined") {
   window.isAlchemist = isAlchemist;
 }
+if (typeof window.isToolUser === "undefined") {
+  window.isToolUser = isToolUser;
+}
 if (typeof window.isBeastTamer === "undefined") {
   window.isBeastTamer = isBeastTamer;
 }
@@ -1122,17 +1148,20 @@ if (typeof window.getJobBonus === "undefined") {
 if (typeof window.getAlchemistBonus === "undefined") {
   window.getAlchemistBonus = getAlchemistBonus;
 }
+if (typeof window.getToolUserBonus === "undefined") {
+  window.getToolUserBonus = getToolUserBonus;
+}
 if (typeof window.getAlcPotionRate === "undefined") {
   window.getAlcPotionRate = getAlcPotionRate;
 }
-if (typeof window.getAlcToolDamageRate === "undefined") {
-  window.getAlcToolDamageRate = getAlcToolDamageRate;
+if (typeof window.getToolDamageRate === "undefined") {
+  window.getToolDamageRate = getToolDamageRate;
 }
-if (typeof window.getAlcToolBoostRate === "undefined") {
-  window.getAlcToolBoostRate = getAlcToolBoostRate;
+if (typeof window.getToolBoostRate === "undefined") {
+  window.getToolBoostRate = getToolBoostRate;
 }
-if (typeof window.getAlcStatusAdd === "undefined") {
-  window.getAlcStatusAdd = getAlcStatusAdd;
+if (typeof window.getToolStatusAdd === "undefined") {
+  window.getToolStatusAdd = getToolStatusAdd;
 }
 if (typeof window.setupJobSelectUI === "undefined") {
   window.setupJobSelectUI = setupJobSelectUI;

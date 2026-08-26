@@ -73,18 +73,25 @@ function calcDexRate(dex, base, cap) {
   return Math.min(rate, cap);
 }
 
+// ★プレイヤーの実効DEXを取得（防具のbonusDexや接頭語のdexPct込みの値）
+// recalcStats()が一度も走っていない場合のみ、素のDEX_にフォールバック
+function getPlayerEffectiveDex() {
+  if (typeof window !== "undefined" && typeof window.effDEX === "number") {
+    return window.effDEX;
+  }
+  return typeof DEX_ === "number" ? DEX_ : 0;
+}
+
 // ★DEXから「プレイヤーの回避率」を計算（敵の攻撃をかわす確率）
 // 下限5%・上限70%
 function getPlayerEvasionRateFromDex() {
-  const dex = typeof DEX_ === "number" ? DEX_ : 0;
-  return calcDexRate(dex, 0.05, 0.70);
+  return calcDexRate(getPlayerEffectiveDex(), 0.05, 0.70);
 }
 
 // ★DEXから「プレイヤーの命中率」を計算（敵への攻撃が当たる確率）
 // 下限30%・上限95%
 function getPlayerHitRateFromDex() {
-  const dex = typeof DEX_ === "number" ? DEX_ : 0;
-  return calcDexRate(dex, 0.30, 0.95);
+  return calcDexRate(getPlayerEffectiveDex(), 0.30, 0.95);
 }
 
 // ★敵側の回避率（enemy-data.js の dex フィールドから算出）

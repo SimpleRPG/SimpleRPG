@@ -58,6 +58,16 @@
         ? window.tetoTestBuildStyle
         : null;
 
+    // ★新設: セッション開始時に一度だけ、職業カバレッジに基づく意志ある転職判断を行う
+    // （ランダムな頻繁転職はせず、セッション中は固定）
+    if (typeof window.tetoDecideAndApplyJobForSession === "function") {
+      try {
+        window.tetoDecideAndApplyJobForSession(mode);
+      } catch (e) {
+        console.warn("[teto-ai] job decision at session start failed:", e);
+      }
+    }
+
     _tetoSession = {
       mode,
       minutes: m,

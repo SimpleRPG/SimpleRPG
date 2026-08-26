@@ -129,6 +129,14 @@ function addFarmGrowthPoint(source) {
       delta = applyFarmFertilizerToGrowth(delta, idx);
     }
 
+    // ★職業ボーナス（農夫）: 育成サイクルの短縮（＝成長速度アップ）
+    if (typeof getJobBonuses === "function" && typeof jobId !== "undefined") {
+      const farmGrowJobB = getJobBonuses(jobId) || {};
+      if (farmGrowJobB.foodFarmCycleReduceRate > 0) {
+        delta = delta * (1 + farmGrowJobB.foodFarmCycleReduceRate);
+      }
+    }
+
     slot.growth += delta;
     if (slot.growth >= FARM_GROW_NEEDED) {
       slot.growth = FARM_GROW_NEEDED;
@@ -328,6 +336,14 @@ function harvestFarmSlot(index) {
   // 枠ごとの肥料による収穫ボーナス
   if (typeof applyFarmFertilizerToHarvest === "function") {
     amount = applyFarmFertilizerToHarvest(amount, index);
+  }
+
+  // ★職業ボーナス（農夫）: 農園の収穫量アップ
+  if (typeof getJobBonuses === "function" && typeof jobId !== "undefined") {
+    const farmHarvestJobB = getJobBonuses(jobId) || {};
+    if (farmHarvestJobB.foodFarmAmountBonusRate > 0) {
+      amount = Math.max(1, Math.floor(amount * (1 + farmHarvestJobB.foodFarmAmountBonusRate)));
+    }
   }
 
   if (typeof cookingMats !== "object") {

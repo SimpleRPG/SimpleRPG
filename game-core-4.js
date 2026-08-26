@@ -379,10 +379,28 @@ function gatherCooking(mode) {
     }
   }
 
+  // ★職業ボーナス（狩猟師／漁師）: 食材ギルド職の採取量ボーナス
+  let foodJobB = {};
+  if (typeof getJobBonuses === "function" && typeof jobId !== "undefined") {
+    foodJobB = getJobBonuses(jobId) || {};
+  }
+  if (mode === "hunt" && foodJobB.foodHuntAmountBonusRate > 0) {
+    added = Math.max(1, Math.floor(added * (1 + foodJobB.foodHuntAmountBonusRate)));
+  }
+  if (mode === "fish" && foodJobB.foodFishAmountBonusRate > 0) {
+    added = Math.max(1, Math.floor(added * (1 + foodJobB.foodFishAmountBonusRate)));
+  }
+
   const GATHER_COOK_HUNT = [
     "meat_hard",
     "meat_soft",
     "meat_fatty",
+    "meat_premium",
+    "meat_magic"
+  ];
+
+  // 狩猟師の「レア食材もやや見つかりやすくなる」用の高級素材プール
+  const GATHER_COOK_HUNT_RARE = [
     "meat_premium",
     "meat_magic"
   ];
@@ -446,7 +464,13 @@ function gatherCooking(mode) {
 
   if (mode === "hunt") {
     for (let i = 0; i < added; i++) {
-      const id = pool[Math.floor(Math.random() * pool.length)];
+      let id;
+      // ★職業ボーナス（狩猟師）: 一定確率で高級素材プールから抽選
+      if (foodJobB.foodHuntRareChanceAdd > 0 && Math.random() < foodJobB.foodHuntRareChanceAdd) {
+        id = GATHER_COOK_HUNT_RARE[Math.floor(Math.random() * GATHER_COOK_HUNT_RARE.length)];
+      } else {
+        id = pool[Math.floor(Math.random() * pool.length)];
+      }
 
       const q = (typeof rollCookingMatQuality === "function")
         ? rollCookingMatQuality()
@@ -473,6 +497,17 @@ function gatherCooking(mode) {
 
       if (!fishId) {
         fishId = "fish_small";
+      }
+
+      // ★職業ボーナス（漁師）: ハズレ（小魚）を引いた場合、一定確率で振り直す
+      if (fishId === "fish_small" &&
+          foodJobB.foodFishJunkReduceRate > 0 &&
+          Math.random() < foodJobB.foodFishJunkReduceRate &&
+          typeof rollFishKind === "function") {
+        const reroll = rollFishKind(area, bait);
+        if (reroll) {
+          fishId = reroll;
+        }
       }
 
       let finalFishId = fishId;
@@ -707,6 +742,22 @@ function calcGatherAmount(resourceKey){
     total = Math.max(1, Math.floor(total * (1 + rate)));
   }
 
+  // ★職業ボーナス（採集士など）: 通常採取（木/鉱石/草/布/皮/水）のみ対象。
+  //   hunt/fish 等はここを通らないよう resourceKey を GATHER_BASE_MATERIAL_KEYS で絞る。
+  if (typeof GATHER_BASE_MATERIAL_KEYS !== "undefined" && GATHER_BASE_MATERIAL_KEYS.includes(resourceKey)) {
+    let jobB = {};
+    if (typeof getJobBonuses === "function" && typeof jobId !== "undefined") {
+      jobB = getJobBonuses(jobId) || {};
+    }
+
+    if (jobB.gatherAmountBonusRate > 0) {
+      total = Math.max(1, Math.floor(total * (1 + jobB.gatherAmountBonusRate)));
+    }
+    if (jobB.gatherExtraChanceAdd > 0 && Math.random() < jobB.gatherExtraChanceAdd) {
+      total += 1;
+    }
+  }
+
   // ★ 採取転生ボーナス: この採取1回ぶんの「+1個抽選」をまとめて足す
   total += getGatherRebirthExtraCountOnce();
 
@@ -893,7 +944,8 @@ function gather(){
   let added = calcGatherAmount(target);
 
   // ★修正: jobs.js の外に隠れていたジョブ限定採取ボーナス（戦士/魔法使い/動物使い）を削除。
-  //   今後 gatherExtraChanceAdd 等、既存の job ボーナス経路で必要なら正式に追加する。
+  //   gatherAmountBonusRate / gatherExtraChanceAdd（採集士など）は calcGatherAmount() 側で
+  //   getJobBonuses() 経由の正式な job ボーナス経路として接続済み。
   const lukBonus = (Math.random() < LUK_ * 0.01) ? 1 : 0;
   added += lukBonus;
   if (added < 0) added = 0;

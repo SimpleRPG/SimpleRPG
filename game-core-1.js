@@ -377,7 +377,8 @@ function recalcStats() {
   let effSTR = baseSTR;
   let effVIT = baseVIT;
   let effINT = baseINT;
-  let effDEX = baseDEX;
+  // ★修正: 防具のbonusDex（armorBonusDex）が集計だけされて一度も加算されていなかったバグを修正
+  let effDEX = baseDEX + armorBonusDex;
   let effLUK = baseLUK;
 
   if (prefixMods.strPct) {

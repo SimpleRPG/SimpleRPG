@@ -123,11 +123,12 @@ function useBattleItem() {
     } else {
       let dmg = BOMB_DAMAGE_TABLE[id] || 5;
 
-      // ★錬金術師ボーナス（爆弾・道具ダメージ + itemBoost 補正）
-      if (typeof isAlchemist === "function" && isAlchemist()) {
+      // ★道具使いボーナス（爆弾・道具ダメージ + itemBoost 補正）
+      // ★2024: 錬金術師(202)専用だった判定を道具使い(203)専用に移管。
+      if (typeof isToolUser === "function" && isToolUser()) {
         let baseRate = 1.0;
-        if (typeof getAlcToolDamageRate === "function") {
-          baseRate = getAlcToolDamageRate();
+        if (typeof getToolDamageRate === "function") {
+          baseRate = getToolDamageRate();
         } else if (typeof ALC_TOOL_DMG_RATE === "number") {
           baseRate = ALC_TOOL_DMG_RATE;
         } else {
@@ -138,8 +139,8 @@ function useBattleItem() {
         if (typeof itemBoostTurnRemain === "number" &&
             itemBoostTurnRemain > 0) {
           let boostRate = 1.0;
-          if (typeof getAlcToolBoostRate === "function") {
-            boostRate = getAlcToolBoostRate();
+          if (typeof getToolBoostRate === "function") {
+            boostRate = getToolBoostRate();
           } else if (typeof ALC_TOOL_BOOST_RATE === "number") {
             boostRate = ALC_TOOL_BOOST_RATE;
           } else {
@@ -155,10 +156,10 @@ function useBattleItem() {
 
       function rollStatusApply(baseRate) {
         let rate = baseRate;
-        if (typeof isAlchemist === "function" && isAlchemist()) {
+        if (typeof isToolUser === "function" && isToolUser()) {
           let add = 0.0;
-          if (typeof getAlcStatusAdd === "function") {
-            add = getAlcStatusAdd();
+          if (typeof getToolStatusAdd === "function") {
+            add = getToolStatusAdd();
           } else if (typeof ALC_STATUS_ADD === "number") {
             add = ALC_STATUS_ADD;
           } else {

@@ -44,6 +44,10 @@
         // [areaId]: { visits, wins, losses }
       },
 
+      // ★新設: 職業カバレッジ（意志を持った転職判断用）
+      // [jobId]: { battleSamples, sessionsPlayed }
+      jobStats: {},
+
       // 重み（将来のユーティリティAI用）
       weights: {
         safety: 1.0,
@@ -61,9 +65,24 @@
     return window.tetoAiLevel || "normal"; // simple / normal / smart
   }
 
+  // ★新設: 職業の物理/魔法スキル適性をjobs.jsのクエリ層から判定する共通ヘルパー。
+  // 従来 isPhys/isMagic が jobId===0/1/2/3 の決め打ちで、大盾兵(100)・呪術師(101)・
+  // 獣群使い(102)などのギルド職を一切考慮できていなかったのを修正するために追加。
+  function getJobAptitude(jobId) {
+    if (typeof jobCanUsePhysSkill === "function" && typeof jobCanUseMagic === "function") {
+      // jobCanUsePhysSkill/jobCanUseMagic は window.player.jobId / window.jobId を直接見るため、
+      // 渡された jobId が現在の実ジョブと一致する前提で使う（テトの判断は常に現在の実ステートに対して行うため問題ない）
+      return { isPhys: jobCanUsePhysSkill(), isMagic: jobCanUseMagic() };
+    }
+    // フォールバック（jobs.js未読込時のみ）: 旧仕様
+    return { isPhys: (jobId === 0 || jobId === 2), isMagic: (jobId === 1 || jobId === 3) };
+  }
+
   function getPlayerSnapshot() {
+    // ★修正: money は let 宣言でwindowに同期されておらず、window.money は常に
+    // undefined だった（＝ここのmoneyは常に0固定になっていた）。素のmoneyを直接参照するよう修正
     return {
-      money: typeof window.money === "number" ? window.money : 0,
+      money: typeof money === "number" ? money : 0,
       jobId: typeof window.jobId === "number" ? window.jobId : 0,
       isExploring: !!window.isExploring,
       currentEnemy: !!window.currentEnemy
@@ -95,7 +114,8 @@
     return {
       hunger: typeof window.currentHunger === "number" ? window.currentHunger : null,
       thirst: typeof window.currentThirst === "number" ? window.currentThirst : null,
-      money: typeof window.money === "number" ? window.money : null
+      // ★修正: 同上のmoney同期バグ。素のmoneyを直接参照
+      money: typeof money === "number" ? money : null
     };
   }
 
@@ -127,52 +147,73 @@
   }
 
   // 現在装備のざっくり戦闘力スコア（ジョブと戦闘状況で軽く補正）
+  //
+  // ★修正: 従来は itemMeta.status / itemMeta.stats というネスト構造を参照していたが、
+  // 実際の武器・防具メタ（combat-equip-data.js → registerItemDefs）はフラット構造
+  // （atk / scaleStr / scaleInt / atkPctFixed、def / scaleVit / bonusDex / defPctFixed / hpPctFixed）
+  // のため、st.atk 等は常に undefined で rarity 以外ほぼスコアに寄与していなかった。
+  // 実データのフィールド名に合わせて全面的に書き直し、DEX（bonusDex）の重みも新設。
   function estimateEquipScore(itemMeta) {
     if (!itemMeta || typeof itemMeta !== "object") return 0;
-    const st = itemMeta.status || itemMeta.stats || {};
     const player = getPlayerSnapshot();
     const learn  = window.tetoLearn || {};
     const jobId = player.jobId || 0;
 
+    // プレイヤーの実効ステータス（装備・接頭語補正込み。未計算時は素のステにフォールバック）
+    const effSTR = (typeof window.effSTR === "number") ? window.effSTR
+                 : (typeof window.STR === "number" ? window.STR : 0);
+    const effVIT = (typeof window.effVIT === "number") ? window.effVIT
+                 : (typeof window.VIT === "number" ? window.VIT : 0);
+    const effINT = (typeof window.effINT === "number") ? window.effINT
+                 : (typeof window.INT_ === "number" ? window.INT_ : 0);
+
     // ベースの重み
-    let wAtk = 1.0;
-    let wMatk = 1.0;
-    let wDef = 0.7;
-    let wMdef = 0.7;
-    let wHpMax = 0.05;
-    let wSpMax = 0.03;
-    let wMpMax = 0.03;
+    let wAtk      = 1.0;  // 武器の固定ATK
+    let wScaleStr = 1.0;  // 武器のSTR倍率（実際のSTRに掛けて評価）
+    let wScaleInt = 1.0;  // 武器のINT倍率
+    let wDef      = 0.7;  // 防具の固定DEF
+    let wScaleVit = 0.7;  // 防具のVIT倍率
+    let wDex      = 1.5;  // ★新設: 防具のbonusDex（命中/回避に直結。要調整）
+    let wPctBase  = 1000; // ％固定ボーナス系（atk/defPctFixed, hpPctFixed）の仮想母数。要調整
 
     // ジョブによる補正（物理職/魔法職で少し寄せる）
-    const isPhys = (jobId === 0 || jobId === 2);
-    const isMagic = (jobId === 1 || jobId === 3);
+    const { isPhys, isMagic } = getJobAptitude(jobId);
     if (isPhys) {
       wAtk *= 1.3;
-      wMatk *= 0.7;
+      wScaleStr *= 1.3;
+      wScaleInt *= 0.7;
       wDef *= 1.1;
+      wScaleVit *= 1.1;
     } else if (isMagic) {
       wAtk *= 0.7;
-      wMatk *= 1.3;
-      wMpMax *= 1.2;
+      wScaleStr *= 0.7;
+      wScaleInt *= 1.3;
     }
 
-    // 戦闘状況による安全寄せ（被ダメが痛いときは防御寄り）
+    // 戦闘状況による安全寄せ（被ダメが痛いときは防御・回避寄り）
     const avgTaken = learn.avgMaxTaken || 0;
     const avgDamage = learn.avgMaxDamage || 0;
     if (avgTaken > 0 && avgTaken >= avgDamage * 0.7) {
       wDef *= 1.2;
-      wMdef *= 1.2;
-      wHpMax *= 1.2;
+      wScaleVit *= 1.2;
+      wDex *= 1.3; // 回避も稼いで被弾を減らす
     }
 
     let s = 0;
-    if (typeof st.atk === "number") s += st.atk * wAtk;
-    if (typeof st.def === "number") s += st.def * wDef;
-    if (typeof st.matk === "number") s += st.matk * wMatk;
-    if (typeof st.mdef === "number") s += st.mdef * wMdef;
-    if (typeof st.hpMax === "number") s += st.hpMax * wHpMax;
-    if (typeof st.spMax === "number") s += st.spMax * wSpMax;
-    if (typeof st.mpMax === "number") s += st.mpMax * wMpMax;
+
+    // 武器系フィールド
+    if (typeof itemMeta.atk === "number") s += itemMeta.atk * wAtk;
+    if (typeof itemMeta.scaleStr === "number") s += itemMeta.scaleStr * effSTR * wScaleStr;
+    if (typeof itemMeta.scaleInt === "number") s += itemMeta.scaleInt * effINT * wScaleInt;
+    if (typeof itemMeta.atkPctFixed === "number") s += itemMeta.atkPctFixed * wPctBase * wAtk;
+
+    // 防具系フィールド
+    if (typeof itemMeta.def === "number") s += itemMeta.def * wDef;
+    if (typeof itemMeta.scaleVit === "number") s += itemMeta.scaleVit * effVIT * wScaleVit;
+    if (typeof itemMeta.bonusDex === "number") s += itemMeta.bonusDex * wDex;
+    if (typeof itemMeta.defPctFixed === "number") s += itemMeta.defPctFixed * wPctBase * wDef;
+    if (typeof itemMeta.hpPctFixed === "number") s += itemMeta.hpPctFixed * wPctBase * 0.05;
+
     if (typeof itemMeta.rarity === "number") s += itemMeta.rarity * 5;
     return s;
   }
@@ -234,6 +275,13 @@
       else if (resultType === "lose") stats.losses++;
       learn.areaStats[areaId] = stats;
     }
+
+    // ★新設: 職業カバレッジ更新（現在のジョブで何戦こなしたか）
+    const curJobId = typeof window.jobId === "number" ? window.jobId : 0;
+    if (!learn.jobStats) learn.jobStats = {};
+    const js = learn.jobStats[curJobId] || { battleSamples: 0, sessionsPlayed: 0 };
+    js.battleSamples = (js.battleSamples || 0) + 1;
+    learn.jobStats[curJobId] = js;
 
     const recentFail = window._tetoRecentBattleFailCount || 0;
     if (resultType === "lose") {
@@ -640,8 +688,7 @@
     const learn  = window.tetoLearn || {};
 
     const jobId = player.jobId || 0;
-    const isPhys = (jobId === 0 || jobId === 2);
-    const isMagic = (jobId === 1 || jobId === 3);
+    const { isPhys, isMagic } = getJobAptitude(jobId);
 
     const foodCounts = {};
     if (inv.carryFoods) {
@@ -769,8 +816,7 @@
     const jobId = player.jobId || 0;
 
     const wantCookingForSurvival = (lowHunger || lowThirst) && (lowFoodStock || lowDrinkStock);
-    const isMagicBuild = (jobId === 1 || jobId === 3);
-    const isBattleBuild = (jobId === 0 || jobId === 2);
+    const { isPhys: isBattleBuild, isMagic: isMagicBuild } = getJobAptitude(jobId);
 
     pushMany("weapon", isBattleBuild ? 3 : 2);
     pushMany("armor", isBattleBuild ? 3 : 2);
@@ -923,6 +969,142 @@
   }
 
   // =========================
+  // ★新設: 職業カバレッジに基づく「意志を持った転職」
+  // =========================
+  //
+  // - ランダムな頻繁転職（いわゆる「ガチャガチャ転職」）はしない
+  // - runTestChanAuto は5分単位の短いセッションを連続で回す仕組みなので、
+  //   単に「セッション開始のたび判断」だとその5分単位で転職してしまいかねない。
+  //   → 現職で最低 MIN_BATTLES_PER_JOB_STINT 戦こなすまでは転職候補にすら挙げない
+  //     「stint（今の職を始めてから何戦したか）」を別途カウントして判断する
+  // - 判断は battleMain / mixed モードのセッション開始時のみ行う
+  //   （gatherMain 等、戦闘が絡まないセッションでは職業カバレッジに関係ないので判断しない）
+  // - 判断基準: 選択可能な職業の中で battleSamples が一番少ない
+  //   （＝まだ検証が足りていない）職を優先する。同点（現職が最少のまま）なら転職しない
+  //
+  // ★対象は基本職(0/1/2)＋戦闘ギルド職(100/101/102)のみ。
+  //   クラフト/採取/食材ギルド職(200番台以降)は職業選択が配列報酬＝職業選択モーダル
+  //   （guild2.js の openJobSelectModal、ボタンクリック前提）でしか解放できず、
+  //   テトはまだそこに対応していないため対象外（別途対応が必要）。
+
+  const MIN_BATTLES_PER_JOB_STINT = 15; // 1つの職を最低これだけ戦わせてから次を検討。要調整
+
+  function getCombatCandidateJobIds() {
+    const ids = [0, 1, 2];
+    if (typeof getUnlockedGuildJobs === "function") {
+      ["warrior", "mage", "tamer"].forEach(gid => {
+        const list = getUnlockedGuildJobs(gid) || [];
+        list.forEach(jid => {
+          if (ids.indexOf(jid) === -1) ids.push(jid);
+        });
+      });
+    }
+    return ids;
+  }
+
+  // jobStats[jobId] が無ければ作り、stintStartSamples（今の在任が始まった時点の
+  // battleSamples）が未設定なら現在値で初期化する
+  function ensureJobStint(learn, jobId) {
+    if (!learn.jobStats) learn.jobStats = {};
+    const js = learn.jobStats[jobId] || { battleSamples: 0, sessionsPlayed: 0 };
+    if (typeof js.stintStartSamples !== "number") {
+      js.stintStartSamples = js.battleSamples || 0;
+    }
+    learn.jobStats[jobId] = js;
+    return js;
+  }
+
+  // 一番検証が足りていない職業IDを選ぶ（同点・stint未達なら現職維持でnull）
+  // mode: 呼び出し元のセッションモード。battleMain/mixed以外では判断自体をスキップする
+  function tetoDecideJobForSession(mode) {
+    if (mode !== "battleMain" && mode !== "mixed") return null;
+
+    const learn = window.tetoLearn || {};
+    const stats = learn.jobStats || {};
+    const currentJobId = typeof window.jobId === "number" ? window.jobId : 0;
+
+    const curJs = ensureJobStint(learn, currentJobId);
+    const stintBattles = (curJs.battleSamples || 0) - curJs.stintStartSamples;
+
+    // 現職でまだ十分に戦えていない（1〜数戦しかしていない）なら転職候補にしない
+    if (stintBattles < MIN_BATTLES_PER_JOB_STINT) return null;
+
+    const candidates = getCombatCandidateJobIds();
+    let best = currentJobId;
+    let bestCount = curJs.battleSamples || 0;
+
+    candidates.forEach(jid => {
+      const count = (stats[jid] && stats[jid].battleSamples) || 0;
+      if (count < bestCount) {
+        best = jid;
+        bestCount = count;
+      }
+    });
+
+    return (best === currentJobId) ? null : best;
+  }
+
+  // 初回のペット付随職（動物使い/獣群使い）転職時に開くペット選択モーダルを、
+  // DOM操作ではなくデータ層の setCompanionByTypeId で直接解決する
+  function tetoAutoResolveCompanionIfNeeded() {
+    if (window.companionTypeId) return;
+    if (window.companionSkipForever) return;
+    if (typeof COMPANION_TYPES === "undefined" || !Array.isArray(COMPANION_TYPES) || !COMPANION_TYPES.length) return;
+    if (typeof setCompanionByTypeId !== "function") return;
+
+    // ★暫定: 先頭のコンパニオンタイプを選択。種類ごとの優劣検証は別課題として要調整
+    setCompanionByTypeId(COMPANION_TYPES[0].id);
+
+    const modal = (typeof document !== "undefined") ? document.getElementById("companionModal") : null;
+    if (modal) modal.classList.add("hidden");
+
+    if (typeof recalcStats === "function") recalcStats();
+    if (typeof updateDisplay === "function") updateDisplay();
+  }
+
+  // セッション開始時に一度だけ呼ばれる、意志を持った転職の実行本体
+  // mode: tetoBeginSession に渡されたのと同じセッションモード
+  function tetoDecideAndApplyJobForSession(mode) {
+    try {
+      const currentJobId = typeof window.jobId === "number" ? window.jobId : 0;
+      const target = tetoDecideJobForSession(mode);
+
+      if (!target || target === currentJobId) return; // 現職継続（stint未達 or カバレッジ十分）
+
+      if (typeof applyJobChange !== "function") return;
+
+      // 2回目以降の転職には100G必要（既存仕様）。払えないなら今回は見送り、次回また判断
+      // ★注: jobChangedOnce も money と同じくwindowに同期されていないため素のまま参照
+      const alreadyChangedOnce = typeof jobChangedOnce !== "undefined" ? !!jobChangedOnce : false;
+      if (alreadyChangedOnce && (typeof money !== "number" || money < 100)) {
+        if (typeof appendLog === "function") {
+          appendLog("[テト] 職業カバレッジのため転職したいが、資金不足のため今回は見送り");
+        }
+        return;
+      }
+
+      applyJobChange(target);
+      tetoAutoResolveCompanionIfNeeded();
+
+      if (typeof appendLog === "function") {
+        const jobName = (typeof getJobNameFromId === "function") ? getJobNameFromId(target) : `職業ID:${target}`;
+        appendLog(`[テト] 職業カバレッジのため「${jobName}」に転職`);
+      }
+
+      const learn = window.tetoLearn;
+      if (learn) {
+        const js = ensureJobStint(learn, target);
+        // ★新しい在任(stint)の開始点を記録。ここから最低ライン分また戦わせる
+        js.stintStartSamples = js.battleSamples || 0;
+        js.sessionsPlayed = (js.sessionsPlayed || 0) + 1;
+        learn.jobStats[target] = js;
+      }
+    } catch (e) {
+      console.warn("[teto-ai3] job decision error:", e);
+    }
+  }
+
+  // =========================
   // 公開 API
   // =========================
 
@@ -947,6 +1129,7 @@
   if (typeof window !== "undefined") {
     window.tetoStrategicPreTick = tetoStrategicPreTick;
     window.tetoOnBattleCommitted = tetoOnBattleCommitted;
+    window.tetoDecideAndApplyJobForSession = tetoDecideAndApplyJobForSession;
     window.tetoOnPlayerDeath = tetoOnPlayerDeath;
   }
 

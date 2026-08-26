@@ -417,6 +417,12 @@ function tickGatherBasesOnceStocked() {
 function tickGatherBasesOnce() {
   if (!materials) return;
 
+  // ★職業ボーナス（採取監督官など）: 拠点採取のT1量・T2発生率に反映
+  let gatherBaseJobBonus = {};
+  if (typeof getJobBonuses === "function" && typeof jobId !== "undefined") {
+    gatherBaseJobBonus = getJobBonuses(jobId) || {};
+  }
+
   GATHER_BASE_MATERIAL_KEYS.forEach(matKey => {
     const lv = getGatherBaseLevel(matKey);
     if (lv <= 0) return;
@@ -447,7 +453,10 @@ function tickGatherBasesOnce() {
       return;
     }
 
-    const t1Amount = t1Min + Math.floor(Math.random() * (t1Max - t1Min + 1));
+    let t1Amount = t1Min + Math.floor(Math.random() * (t1Max - t1Min + 1));
+    if (gatherBaseJobBonus.gatherBaseT1BonusRate > 0 && t1Amount > 0) {
+      t1Amount = Math.max(t1Amount, Math.floor(t1Amount * (1 + gatherBaseJobBonus.gatherBaseT1BonusRate)));
+    }
     if (t1Amount > 0) {
       if (typeof addMatTierCount === "function") {
         addMatTierCount(matKey, 1, t1Amount);
@@ -459,6 +468,10 @@ function tickGatherBasesOnce() {
           materials[matKey].t1 = (materials[matKey].t1 || 0) + t1Amount;
         }
       }
+    }
+
+    if (t2Chance > 0 && gatherBaseJobBonus.gatherBaseT2BonusRate > 0) {
+      t2Chance = Math.min(1, t2Chance + gatherBaseJobBonus.gatherBaseT2BonusRate);
     }
 
     if (t2Chance > 0 && Math.random() < t2Chance && t2Amount > 0) {

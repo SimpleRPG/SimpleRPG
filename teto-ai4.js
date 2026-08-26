@@ -168,7 +168,17 @@
     const bs = tetoGetBattleStatus();
     if (!bs.currentEnemy) return false;
 
-    if (bs.jobId === 1 || bs.jobId === 2 || bs.jobId === 3) {
+    // ★修正: jobId===1/2/3という旧職業限定の決め打ちをやめ、jobs.jsのクエリ層
+    // （canUseMagic/canUsePhysSkill、100番台の戦闘系ギルド職も含む）を参照するように変更。
+    // これにより大盾兵(100)・呪術師(101)・獣群使い(102)もスキルを使うようになる。
+    const canMagic = (typeof jobCanUseMagic === "function")
+      ? jobCanUseMagic()
+      : (bs.jobId === 1 || bs.jobId === 2 || bs.jobId === 3);
+    const canPhys = (typeof jobCanUsePhysSkill === "function")
+      ? jobCanUsePhysSkill()
+      : (bs.jobId === 0 || bs.jobId === 2 || bs.jobId === 3);
+
+    if (canMagic) {
       const magicSel = document.getElementById("magicSelect");
       if (magicSel && magicSel.value && typeof castMagicFromUI === "function") {
         castMagicFromUI();
@@ -178,7 +188,7 @@
         return true;
       }
     }
-    if (bs.jobId === 0 || bs.jobId === 2 || bs.jobId === 3) {
+    if (canPhys) {
       const skillSel = document.getElementById("skillSelect");
       if (skillSel && skillSel.value && typeof useSkillFromUI === "function") {
         useSkillFromUI();
