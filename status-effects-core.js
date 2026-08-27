@@ -213,6 +213,17 @@ const STATUS_EFFECTS = {
       return acc - 0.3;
     }
   },
+  gather_focus: {
+    id: "gather_focus",
+    name: "集中（採取の勘）",
+    baseDuration: 3,
+    modifyAccuracy(acc) {
+      return acc + 0.15;
+    },
+    modifyCritRate(rate) {
+      return rate + 0.08;
+    }
+  },
   paralyze: {
     id: "paralyze",
     name: "麻痺",

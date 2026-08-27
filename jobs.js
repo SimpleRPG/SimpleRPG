@@ -232,11 +232,11 @@ const JOB_DEFS = [
     canUsePhysSkill: true,   // 旧 physJobs
     hasPetTurn: false,
     bonuses: {
-      craftBonus: 0.08,
-      craftCostReduceRate: 0.05,
-      potionEffectRate: 1.3,
-      dotDamageRate: 1.5,       // ★修正: status-effects-core.js にハードコードされていた+50%を吸収
-      statusDurationRate: 1.25  // ★修正: 同じくハードコードされていた+25%を吸収
+      craftBonus: 0.09,          // ★微増 0.08→0.09
+      craftCostReduceRate: 0.06, // ★微増 0.05→0.06
+      potionEffectRate: 1.35,    // ★微増 1.3→1.35
+      dotDamageRate: 1.6,        // ★微増 1.5→1.6
+      statusDurationRate: 1.3    // ★微増 1.25→1.3
       // ★2024: 道具（爆弾等）関連ボーナスは道具使い(203)に移管。
       //   toolDamageRate / toolItemBoostRate / statusApplyRateAdd はここでは持たない。
     }
@@ -253,12 +253,12 @@ const JOB_DEFS = [
     canUsePhysSkill: false,
     hasPetTurn: false,
     bonuses: {
-      craftBonus: 0.08,
-      craftCostReduceRate: 0.05,
+      craftBonus: 0.09,           // ★微増 0.08→0.09
+      craftCostReduceRate: 0.06,  // ★微増 0.05→0.06
       // ★2024: 錬金術師(202)が持っていた「道具」関連ボーナスをこちらへ移管。
-      toolDamageRate: 2.0,
-      toolItemBoostRate: 1.5,
-      statusApplyRateAdd: 0.3
+      toolDamageRate: 2.2,        // ★微増 2.0→2.2
+      toolItemBoostRate: 1.6,     // ★微増 1.5→1.6
+      statusApplyRateAdd: 0.35    // ★微増 0.3→0.35
     }
   },
 
