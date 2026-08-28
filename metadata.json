@@ -1,0 +1,8 @@
+{
+  "name": "しんぷるRPG",
+  "description": "Simple RPG online multiplayer game with combat, crafting, gathering, pets, housing, and real-time market.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

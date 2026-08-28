@@ -311,7 +311,7 @@ const JOB_DEFS = [
     desc: "木・鉱石・草・布・皮・水など、あらゆる基礎素材を満遍なく集める職。通常採取での採取量と +1 個ボーナスがわずかに増える、汎用型の採取職。",
     initialStats: { STR: 1, VIT: 1, INT_: 2, DEX_: 3, LUK_: 2 },
     canUseMagic: false,
-    canUsePhysSkill: false,
+    canUsePhysSkill: true,
     hasPetTurn: false,
     bonuses: {
       gatherAmountBonusRate: 0.05,
@@ -327,7 +327,7 @@ const JOB_DEFS = [
     desc: "各地の採取拠点の運営に優れた職。拠点から自動的に集まる素材量がわずかに増える、基盤運用特化の採取職。",
     initialStats: { STR: 1, VIT: 2, INT_: 2, DEX_: 2, LUK_: 2 },
     canUseMagic: false,
-    canUsePhysSkill: false,
+    canUsePhysSkill: true,
     hasPetTurn: false,
     bonuses: {
       gatherBaseT1BonusRate: 0.10,
@@ -345,7 +345,7 @@ const JOB_DEFS = [
     desc: "狩猟で得られる肉・皮などの食材調達に特化した職。狩猟食材の入手量がわずかと増え、レア食材もやや見つかりやすくなる狩猟特化の採取職。",
     initialStats: { STR: 2, VIT: 2, INT_: 1, DEX_: 3, LUK_: 2 },
     canUseMagic: false,
-    canUsePhysSkill: false,
+    canUsePhysSkill: true,
     hasPetTurn: false,
     bonuses: {
       foodHuntAmountBonusRate: 0.10,
@@ -361,7 +361,7 @@ const JOB_DEFS = [
     desc: "釣りで得られる魚系食材の調達に特化した職。釣り食材の入手量がわずかに増え、ハズレを引きにくくなる漁業特化の採取職。",
     initialStats: { STR: 1, VIT: 2, INT_: 1, DEX_: 3, LUK_: 3 },
     canUseMagic: false,
-    canUsePhysSkill: false,
+    canUsePhysSkill: true,
     hasPetTurn: false,
     bonuses: {
       foodFishAmountBonusRate: 0.10,
@@ -377,7 +377,7 @@ const JOB_DEFS = [
     desc: "農園で得られる穀物・野菜などの食材調達に特化した職。農園の収穫量がわずかに増え、育成サイクルもわずかに短くなる農業特化の採取職。",
     initialStats: { STR: 1, VIT: 2, INT_: 2, DEX_: 2, LUK_: 2 },
     canUseMagic: false,
-    canUsePhysSkill: false,
+    canUsePhysSkill: true,
     hasPetTurn: false,
     bonuses: {
       foodFarmAmountBonusRate: 0.10,
@@ -489,9 +489,7 @@ function getJobBonuses(jobId) {
       petDefRate: 0,
       dotDamageRate: 0,
       statusDurationRate: 0,
-      maxActivePets: 0,
-      enhanceBonusRate: 0,
-      guardReductionRate: 0
+      maxActivePets: 0
     };
   }
   const b = def.bonuses || {};

@@ -491,21 +491,6 @@ function rollQualityBySkillLv(skillLv) {
     console.warn("rollQualityBySkillLv: skilltree bonus error", e);
   }
 
-  // ★ジョブ品質ボーナス（鍛冶職人など craftBonus 持ちジョブ：「高品質な装備を作りやすい」）
-  try {
-    if (typeof getJobBonuses === "function" && typeof jobId !== "undefined" && jobId != null) {
-      const jb = getJobBonuses(jobId) || {};
-      const jobQBonus = jb.craftBonus || 0;
-      if (jobQBonus > 0) {
-        const jobMul = 1 + jobQBonus;
-        goodRate *= jobMul;
-        exRate   *= jobMul;
-      }
-    }
-  } catch (e) {
-    console.warn("rollQualityBySkillLv: job bonus error", e);
-  }
-
   const r = Math.random();
   if (r < exRate) {
     return 2;

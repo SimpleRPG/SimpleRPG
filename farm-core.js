@@ -137,11 +137,6 @@ function addFarmGrowthPoint(source) {
       }
     }
 
-    // ★季節: 季節外の作物は成長速度にペナルティ
-    if (typeof applySeasonToGrowthDelta === "function") {
-      delta = applySeasonToGrowthDelta(delta, slot.cropId);
-    }
-
     slot.growth += delta;
     if (slot.growth >= FARM_GROW_NEEDED) {
       slot.growth = FARM_GROW_NEEDED;
@@ -311,11 +306,6 @@ function harvestFarmSlot(index) {
 
   const id = harvestId;
   let amount = getRandomHarvestAmount();
-
-  // ★季節: 季節外の作物は収穫量にペナルティ
-  if (typeof applySeasonToHarvestAmount === "function") {
-    amount = applySeasonToHarvestAmount(amount, id);
-  }
 
   // 日替わりボーナス: 農園収穫量（畑=field→farm / 菜園=garden→garden）
   if (typeof getDailyGatherBonus === "function") {
@@ -616,23 +606,11 @@ function getFarmFertilizerStatusTextForSlot(idx) {
 // =======================
 
 function updateFarmUI() {
-  updateFarmSeasonUI();
   updateFarmSlotsUI();
   updateFarmDetailUI();
   if (typeof window.onFarmUIUpdated === "function") {
     window.onFarmUIUpdated();
   }
-}
-
-// 現在の季節表示
-function updateFarmSeasonUI() {
-  const el = document.getElementById("farmSeasonInfo");
-  if (!el) return;
-  if (typeof getCurrentSeasonLabel !== "function") {
-    el.textContent = "";
-    return;
-  }
-  el.textContent = `現在の季節：${getCurrentSeasonLabel()}`;
 }
 
 // 4マス部分（選択用）
@@ -706,14 +684,7 @@ function updateFarmSlotsUI() {
       }
 
       // ツールチップ的な情報
-      const offSeasonNote = (typeof isCropInSeason === "function" && !isCropInSeason(slot.cropId))
-        ? " ／ 季節外（成長・収穫が弱まっています）"
-        : "";
-      btn.title = `${cropName} (${pct}%)` + (slot.ready ? " 収穫OK" : "") + offSeasonNote;
-
-      if (offSeasonNote) {
-        btn.classList.add("off-season");
-      }
+      btn.title = `${cropName} (${pct}%)` + (slot.ready ? " 収穫OK" : "");
     }
 
     btn.appendChild(icon);
@@ -781,10 +752,6 @@ function updateFarmDetailUI() {
     const pct = Math.floor((g / need) * 100);
     text = `${cropName} を育成中 / 成長 ${g}/${need} (${pct}%)` +
            (slot.ready ? " / 収穫可能です。" : " / まだ育成中です。");
-
-    if (typeof isCropInSeason === "function" && !isCropInSeason(slot.cropId)) {
-      text += "（季節外のため成長・収穫が弱まっています）";
-    }
   }
 
   if (infoEl) {

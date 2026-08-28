@@ -730,7 +730,7 @@ function setupSocketIoClient() {
     }
 
     const socket = io({
-      transports: ["websocket"],
+      transports: ["polling", "websocket"],
       withCredentials: false,
     });
     window.globalSocket = socket;

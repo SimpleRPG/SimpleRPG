@@ -518,7 +518,7 @@ io.on("connection", (socket) => {
 });
 
 // ポート
-const port = process.env.PORT || 3001;
-httpServer.listen(port, () => {
-  console.log("Server (HTTP + Socket.io) listening on port " + port);
+const PORT = 3000;
+httpServer.listen(PORT, "0.0.0.0", () => {
+  console.log("Server (HTTP + Socket.io) listening on port " + PORT);
 });

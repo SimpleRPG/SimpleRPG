@@ -53,12 +53,6 @@ function craftWeapon(){
   // ギルド成功率ボーナス（鍛冶ギルド）
   const guildBonus = getGuildCraftSuccessBonus("weapon");
 
-  // ★ジョブ成功率ボーナス（鍛冶職人など craftBonus 持ちジョブ）
-  const jobBonus = (typeof getJobBonuses === "function" && typeof jobId !== "undefined" && jobId != null)
-    ? getJobBonuses(jobId)
-    : {};
-  const jobCraftBonus = jobBonus.craftBonus || 0;
-
   // ★ペット特性ボーナス（兎など）
   const traitBonus = (typeof getCraftSuccessBonusByTrait === "function")
     ? getCraftSuccessBonusByTrait()
@@ -80,7 +74,7 @@ function craftWeapon(){
   }
 
   // 最終的な成功率は 0〜1 にクランプ
-  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus + jobCraftBonus));
+  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus));
 
   // ログ用: 実際に消費されるコスト（軽減後）
   refreshCraftSkillTreeBonus();
@@ -235,12 +229,6 @@ function craftPetEquip(){
 
   const guildBonus = getGuildCraftSuccessBonus("petEquip");
 
-  // ★ジョブ成功率ボーナス（鍛冶職人など craftBonus 持ちジョブ）
-  const jobBonus = (typeof getJobBonuses === "function" && typeof jobId !== "undefined" && jobId != null)
-    ? getJobBonuses(jobId)
-    : {};
-  const jobCraftBonus = jobBonus.craftBonus || 0;
-
   const traitBonus = (typeof getCraftSuccessBonusByTrait === "function")
     ? getCraftSuccessBonusByTrait()
     : 0;
@@ -258,7 +246,7 @@ function craftPetEquip(){
     }
   }
 
-  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus + jobCraftBonus));
+  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus));
 
   // ログ用: 実際に消費されるコスト（軽減後）
   // ★修正: refreshCraftSkillTreeBonus() の呼び出しが抜けており、
@@ -384,12 +372,6 @@ function craftArmor(){
   // ギルド成功率ボーナス（鍛冶ギルド）
   const guildBonus = getGuildCraftSuccessBonus("armor");
 
-  // ★ジョブ成功率ボーナス（鍛冶職人など craftBonus 持ちジョブ）
-  const jobBonus = (typeof getJobBonuses === "function" && typeof jobId !== "undefined" && jobId != null)
-    ? getJobBonuses(jobId)
-    : {};
-  const jobCraftBonus = jobBonus.craftBonus || 0;
-
   const traitBonus = (typeof getCraftSuccessBonusByTrait === "function")
     ? getCraftSuccessBonusByTrait()
     : 0;
@@ -409,7 +391,7 @@ function craftArmor(){
     }
   }
 
-  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus + jobCraftBonus));
+  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus));
 
   refreshCraftSkillTreeBonus();
   const finalCost = applyCraftCostReduction(recipe.cost) || {};
@@ -555,12 +537,6 @@ function craftPotion(){
   // ギルド成功率ボーナス（錬金ギルド）
   const guildBonus = getGuildCraftSuccessBonus("potion");
 
-  // ★ジョブ成功率ボーナス（鍛冶職人など craftBonus 持ちジョブ）
-  const jobBonus = (typeof getJobBonuses === "function" && typeof jobId !== "undefined" && jobId != null)
-    ? getJobBonuses(jobId)
-    : {};
-  const jobCraftBonus = jobBonus.craftBonus || 0;
-
   const traitBonus = (typeof getCraftSuccessBonusByTrait === "function")
     ? getCraftSuccessBonusByTrait()
     : 0;
@@ -580,7 +556,7 @@ function craftPotion(){
     }
   }
 
-  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus + jobCraftBonus));
+  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus));
 
   refreshCraftSkillTreeBonus();
   const finalCost = applyCraftCostReduction(recipe.cost) || {};
@@ -700,12 +676,6 @@ function craftTool(){
   // ギルド成功率ボーナス（錬金ギルド）
   const guildBonus = getGuildCraftSuccessBonus("tool");
 
-  // ★ジョブ成功率ボーナス（鍛冶職人など craftBonus 持ちジョブ）
-  const jobBonus = (typeof getJobBonuses === "function" && typeof jobId !== "undefined" && jobId != null)
-    ? getJobBonuses(jobId)
-    : {};
-  const jobCraftBonus = jobBonus.craftBonus || 0;
-
   const traitBonus = (typeof getCraftSuccessBonusByTrait === "function")
     ? getCraftSuccessBonusByTrait()
     : 0;
@@ -725,7 +695,7 @@ function craftTool(){
     }
   }
 
-  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus + jobCraftBonus));
+  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus));
 
   refreshCraftSkillTreeBonus();
   const finalCost = applyCraftCostReduction(recipe.cost) || {};
@@ -928,12 +898,6 @@ function craftFood(){
   // ギルド成功率ボーナス（料理ギルド）
   const guildBonus = getGuildCraftSuccessBonus("food");
 
-  // ★ジョブ成功率ボーナス（鍛冶職人など craftBonus 持ちジョブ）
-  const jobBonus = (typeof getJobBonuses === "function" && typeof jobId !== "undefined" && jobId != null)
-    ? getJobBonuses(jobId)
-    : {};
-  const jobCraftBonus = jobBonus.craftBonus || 0;
-
   const traitBonus = (typeof getCraftSuccessBonusByTrait === "function")
     ? getCraftSuccessBonusByTrait()
     : 0;
@@ -953,7 +917,7 @@ function craftFood(){
     }
   }
 
-  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus + jobCraftBonus));
+  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus));
 
   // 実際に消費されるコストをログ用に組み立て
   let finalCost = {};
@@ -1122,12 +1086,6 @@ function craftDrink(){
   // ギルド成功率ボーナス（料理ギルド）
   const guildBonus = getGuildCraftSuccessBonus("drink");
 
-  // ★ジョブ成功率ボーナス（鍛冶職人など craftBonus 持ちジョブ）
-  const jobBonus = (typeof getJobBonuses === "function" && typeof jobId !== "undefined" && jobId != null)
-    ? getJobBonuses(jobId)
-    : {};
-  const jobCraftBonus = jobBonus.craftBonus || 0;
-
   const traitBonus = (typeof getCraftSuccessBonusByTrait === "function")
     ? getCraftSuccessBonusByTrait()
     : 0;
@@ -1147,7 +1105,7 @@ function craftDrink(){
     }
   }
 
-  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus + jobCraftBonus));
+  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus));
 
   // 実際に消費されるコスト
   let finalCost = {};
@@ -1310,12 +1268,6 @@ function craftFurniture(){
   // 家具は専用ギルドなし想定なのでギルドボーナスは 0（必要ならここで対応可能）
   const guildBonus = getGuildCraftSuccessBonus("furniture") || 0;
 
-  // ★ジョブ成功率ボーナス（鍛冶職人など craftBonus 持ちジョブ）
-  const jobBonus = (typeof getJobBonuses === "function" && typeof jobId !== "undefined" && jobId != null)
-    ? getJobBonuses(jobId)
-    : {};
-  const jobCraftBonus = jobBonus.craftBonus || 0;
-
   const traitBonus = (typeof getCraftSuccessBonusByTrait === "function")
     ? getCraftSuccessBonusByTrait()
     : 0;
@@ -1335,7 +1287,7 @@ function craftFurniture(){
     }
   }
 
-  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus + jobCraftBonus));
+  successRate = Math.min(1, Math.max(0, successRate + guildBonus + traitBonus));
 
   refreshCraftSkillTreeBonus();
   const finalCost = applyCraftCostReduction(recipe.cost) || {};

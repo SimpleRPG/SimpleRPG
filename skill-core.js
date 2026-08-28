@@ -260,6 +260,91 @@ const JOB_SKILLS = {
         mpCost: 6
       }
     ]
+  },
+  300: { // 採集士（採取ギルド職。通常採取6種の最高レベルをスキル倍率に反映）
+    phys: [
+      {
+        id: "quickHarvest",
+        name: "クイックハーベスト",
+        type: SKILL_TYPE_PHYS,
+        spCost: 3
+      },
+      {
+        id: "gatherersInstinct",
+        name: "採取の勘",
+        type: SKILL_TYPE_BUFF,
+        spCost: 4
+      }
+    ],
+    magic: []
+  },
+  301: { // 採取監督官（採取ギルド職。拠点レベル(0〜3)をスキル倍率に反映）
+    phys: [
+      {
+        id: "supervisorStrike",
+        name: "監督官の一撃",
+        type: SKILL_TYPE_PHYS,
+        spCost: 3
+      },
+      {
+        id: "baseDefenseFormation",
+        name: "拠点防衛陣形",
+        type: SKILL_TYPE_BUFF,
+        spCost: 5
+      }
+    ],
+    magic: []
+  },
+  400: { // 狩猟師（食材ギルド職。狩猟(hunt)レベルをスキル倍率に反映）
+    phys: [
+      {
+        id: "takedown",
+        name: "テイクダウン",
+        type: SKILL_TYPE_PHYS,
+        spCost: 3
+      },
+      {
+        id: "vitalStrike",
+        name: "急所突き",
+        type: SKILL_TYPE_PHYS,
+        spCost: 5
+      }
+    ],
+    magic: []
+  },
+  401: { // 漁師（食材ギルド職。釣り(fish)レベルをスキル倍率に反映）
+    phys: [
+      {
+        id: "harpoonThrust",
+        name: "銛突き",
+        type: SKILL_TYPE_PHYS,
+        spCost: 3
+      },
+      {
+        id: "castNet",
+        name: "投網",
+        type: SKILL_TYPE_PHYS,
+        spCost: 4
+      }
+    ],
+    magic: []
+  },
+  402: { // 農夫（食材ギルド職。畑/菜園の高い方のレベルをスキル倍率に反映）
+    phys: [
+      {
+        id: "sickleSlash",
+        name: "鎌の一閃",
+        type: SKILL_TYPE_PHYS,
+        spCost: 3
+      },
+      {
+        id: "soilFortify",
+        name: "土壌強化",
+        type: SKILL_TYPE_BUFF,
+        spCost: 5
+      }
+    ],
+    magic: []
   }
 };
 
@@ -421,7 +506,68 @@ function getPhysSkillRateMultiplier() {
     const j = getJobBonuses(jobId);
     if (j && typeof j.physSkillRate === "number") rate += j.physSkillRate;
   }
+  // ★採取ギルド職（採集士/採取監督官/狩猟師/漁師/農夫）: 対応する採取レベルに応じてスキル倍率が伸びる
+  rate += getGatherJobSkillLevelBonus();
   return rate;
+}
+
+// ★新規: 採取ギルド職の戦闘スキルに、それぞれ対応する採取レベル（または拠点レベル）を反映する
+//   - 採集士(300)   : 通常採取6種（木/鉱石/草/布/皮/水）の中で最も高いレベル
+//   - 採取監督官(301): 6拠点の中で最も高い拠点レベル（0〜3）
+//   - 狩猟師(400)    : 狩猟(hunt)レベル
+//   - 漁師(401)      : 釣り(fish)レベル
+//   - 農夫(402)      : 畑(fieldFarm)/菜園(garden)のうち高い方のレベル
+//   採取スキルLv依存(300/400/401/402)は上限+25%（Lv100到達が前提の重い成長曲線）。
+//   拠点レベル依存(301)は採取スキルLv30程度で上限に届いてしまう＝到達が速いため、上限+15%に抑える。
+function getGatherJobSkillLevelBonus() {
+  const jid = (typeof jobId !== "undefined" && jobId !== null)
+    ? jobId
+    : (typeof window !== "undefined" ? window.jobId : null);
+  if (jid == null) return 0;
+
+  const GS = (typeof gatherSkills !== "undefined")
+    ? gatherSkills
+    : (typeof window !== "undefined" ? (window.gatherSkills || {}) : {});
+  const MAXLV = (typeof GATHER_SKILL_MAX_LV === "number") ? GATHER_SKILL_MAX_LV : 100;
+
+  let ratio = 0;
+  let maxBonus = 0.25; // 基本上限: 最大+25%
+
+  if (jid === 300) {
+    const keys = ["wood", "ore", "herb", "cloth", "leather", "water"];
+    let maxLv = 0;
+    keys.forEach(k => {
+      const lv = (GS[k] && GS[k].lv) || 0;
+      if (lv > maxLv) maxLv = lv;
+    });
+    ratio = maxLv / MAXLV;
+  } else if (jid === 301) {
+    let maxBaseLv = 0;
+    if (typeof getGatherBaseLevel === "function") {
+      const keys = (typeof GATHER_BASE_MATERIAL_KEYS !== "undefined")
+        ? GATHER_BASE_MATERIAL_KEYS
+        : ["wood", "ore", "herb", "cloth", "leather", "water"];
+      keys.forEach(k => {
+        const lv = getGatherBaseLevel(k) || 0;
+        if (lv > maxBaseLv) maxBaseLv = lv;
+      });
+    }
+    ratio = maxBaseLv / 3; // 拠点レベルは 0〜3
+    maxBonus = 0.15; // 到達が速い分、上限は低め
+  } else if (jid === 400) {
+    ratio = ((GS.hunt && GS.hunt.lv) || 0) / MAXLV;
+  } else if (jid === 401) {
+    ratio = ((GS.fish && GS.fish.lv) || 0) / MAXLV;
+  } else if (jid === 402) {
+    const fLv = (GS.fieldFarm && GS.fieldFarm.lv) || 0;
+    const gLv = (GS.garden && GS.garden.lv) || 0;
+    ratio = Math.max(fLv, gLv) / MAXLV;
+  } else {
+    return 0;
+  }
+
+  ratio = Math.max(0, Math.min(1, ratio));
+  return ratio * maxBonus;
 }
 
 // ★新規: スキルツリー＋ジョブの魔法スキル倍率を合算して返す
@@ -1257,7 +1403,8 @@ function useSkillFromUI() {
       return;
     }
   } else {
-    if (jobId !== 0 && jobId !== 2 && jobId !== 100 && jobId !== 202) {
+    if (jobId !== 0 && jobId !== 2 && jobId !== 100 && jobId !== 202 &&
+        jobId !== 300 && jobId !== 301 && jobId !== 400 && jobId !== 401 && jobId !== 402) {
       appendLog("スキルを扱える職業ではない");
       return;
     }
@@ -1304,12 +1451,12 @@ function useSkillFromUI() {
       skillId !== "animalLink" &&
       skillId !== "beastRoar" &&
       skillId !== "itemBoost" &&
-      skillId !== "potionBoost" &&
-      skillId !== "fieldForging" &&
-      skillId !== "fullGear" &&
       skillId !== "greatshieldCounter" &&
       skillId !== "greatshieldFortify" &&
-      skillId !== "greatshieldGuardStance") {
+      skillId !== "greatshieldGuardStance" &&
+      skillId !== "gatherersInstinct" &&
+      skillId !== "baseDefenseFormation" &&
+      skillId !== "soilFortify") {
     appendLog("敵がいない");
     return;
   }
@@ -1614,6 +1761,165 @@ function useSkillFromUI() {
       greatshieldGuardStanceTurnRemain = 3;
       appendLog("護の構え！ 大盾を構え直し、敵の攻撃をしのぐ体勢を取った");
     }
+  } else if (skillId === "quickHarvest") {
+    // 採集士専用：クイックハーベスト（通常採取レベル依存で伸びる素早い一撃）
+    if (jobId !== 300) {
+      appendLog("クイックハーベストは採集士専用だ");
+    } else {
+      const dmg = Math.floor(getCurrentAtkForSkill() * 1.1);
+      enemyHp = Math.max(0, enemyHp - dmg);
+
+      if (typeof currentBattleMaxDamage === "number") {
+        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+      }
+      if (typeof currentBattleMaxPhys === "number") {
+        currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
+      }
+
+      appendLog(`クイックハーベスト！ ${currentEnemy.name} に${dmg}ダメージ`);
+      didDamage = true;
+    }
+  } else if (skillId === "gatherersInstinct") {
+    // 採集士専用：採取の勘（自己バフ。命中・会心率アップ）
+    if (jobId !== 300) {
+      appendLog("採取の勘は採集士専用だ");
+    } else if (typeof addStatusToPlayer === "function") {
+      addStatusToPlayer("gather_focus");
+      appendLog("採取の勘！ 集中力が高まり、命中・会心率が上がった");
+    }
+  } else if (skillId === "supervisorStrike") {
+    // 採取監督官専用：監督官の一撃（拠点レベル依存で伸びる一撃）
+    if (jobId !== 301) {
+      appendLog("監督官の一撃は採取監督官専用だ");
+    } else {
+      const dmg = Math.floor(getCurrentAtkForSkill() * 1.1);
+      enemyHp = Math.max(0, enemyHp - dmg);
+
+      if (typeof currentBattleMaxDamage === "number") {
+        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+      }
+      if (typeof currentBattleMaxPhys === "number") {
+        currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
+      }
+
+      appendLog(`監督官の一撃！ ${currentEnemy.name} に${dmg}ダメージ`);
+      didDamage = true;
+    }
+  } else if (skillId === "baseDefenseFormation") {
+    // 採取監督官専用：拠点防衛陣形（自己バフ。防御アップ）
+    if (jobId !== 301) {
+      appendLog("拠点防衛陣形は採取監督官専用だ");
+    } else if (typeof addStatusToPlayer === "function") {
+      addStatusToPlayer("def_up");
+      appendLog("拠点防衛陣形！ 守りの構えを取り、防御力が上がった");
+    }
+  } else if (skillId === "takedown") {
+    // 狩猟師専用：テイクダウン（狩猟レベル依存で伸びる一撃）
+    if (jobId !== 400) {
+      appendLog("テイクダウンは狩猟師専用だ");
+    } else {
+      const dmg = Math.floor(getCurrentAtkForSkill() * 1.1);
+      enemyHp = Math.max(0, enemyHp - dmg);
+
+      if (typeof currentBattleMaxDamage === "number") {
+        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+      }
+      if (typeof currentBattleMaxPhys === "number") {
+        currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
+      }
+
+      appendLog(`テイクダウン！ ${currentEnemy.name} に${dmg}ダメージ`);
+      didDamage = true;
+    }
+  } else if (skillId === "vitalStrike") {
+    // 狩猟師専用：急所突き（高倍率単発。狩猟レベルが高いほど伸びる）
+    if (jobId !== 400) {
+      appendLog("急所突きは狩猟師専用だ");
+    } else {
+      const dmg = Math.floor(getCurrentAtkForSkill() * 1.3);
+      enemyHp = Math.max(0, enemyHp - dmg);
+
+      if (typeof currentBattleMaxDamage === "number") {
+        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+      }
+      if (typeof currentBattleMaxPhys === "number") {
+        currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
+      }
+
+      appendLog(`急所突き！ ${currentEnemy.name} の急所に${dmg}ダメージ`);
+      didDamage = true;
+    }
+  } else if (skillId === "harpoonThrust") {
+    // 漁師専用：銛突き（釣りレベル依存で伸びる一撃）
+    if (jobId !== 401) {
+      appendLog("銛突きは漁師専用だ");
+    } else {
+      const dmg = Math.floor(getCurrentAtkForSkill() * 1.1);
+      enemyHp = Math.max(0, enemyHp - dmg);
+
+      if (typeof currentBattleMaxDamage === "number") {
+        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+      }
+      if (typeof currentBattleMaxPhys === "number") {
+        currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
+      }
+
+      appendLog(`銛突き！ ${currentEnemy.name} に${dmg}ダメージ`);
+      didDamage = true;
+    }
+  } else if (skillId === "castNet") {
+    // 漁師専用：投網（小ダメージ＋一定確率で敵の防御ダウン）
+    if (jobId !== 401) {
+      appendLog("投網は漁師専用だ");
+    } else {
+      const dmg = Math.floor(getCurrentAtkForSkill() * 0.8);
+      enemyHp = Math.max(0, enemyHp - dmg);
+
+      if (typeof currentBattleMaxDamage === "number") {
+        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+      }
+      if (typeof currentBattleMaxPhys === "number") {
+        currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
+      }
+
+      appendLog(`投網！ ${currentEnemy.name} に${dmg}ダメージ`);
+
+      if (typeof addStatusToEnemy === "function") {
+        if (rollStatusApplyForCurrentJob(0.7)) {
+          addStatusToEnemy("def_down");
+          appendLog(`${currentEnemy.name}は網に絡め取られ、動きが鈍った！（防御ダウン）`);
+        } else {
+          appendLog("しかし網はうまくかからなかった…");
+        }
+      }
+      didDamage = true;
+    }
+  } else if (skillId === "sickleSlash") {
+    // 農夫専用：鎌の一閃（畑/菜園レベル依存で伸びる一撃）
+    if (jobId !== 402) {
+      appendLog("鎌の一閃は農夫専用だ");
+    } else {
+      const dmg = Math.floor(getCurrentAtkForSkill() * 1.1);
+      enemyHp = Math.max(0, enemyHp - dmg);
+
+      if (typeof currentBattleMaxDamage === "number") {
+        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
+      }
+      if (typeof currentBattleMaxPhys === "number") {
+        currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
+      }
+
+      appendLog(`鎌の一閃！ ${currentEnemy.name} に${dmg}ダメージ`);
+      didDamage = true;
+    }
+  } else if (skillId === "soilFortify") {
+    // 農夫専用：土壌強化（自己バフ。防御アップ）
+    if (jobId !== 402) {
+      appendLog("土壌強化は農夫専用だ");
+    } else if (typeof addStatusToPlayer === "function") {
+      addStatusToPlayer("def_up");
+      appendLog("土壌強化！ 足場を固め、防御力が上がった");
+    }
   }
 
   if (skillId === "animalLink" ||
@@ -1622,12 +1928,12 @@ function useSkillFromUI() {
       skillId === "packRally" ||
       skillId === "packFrenzy" ||
       skillId === "itemBoost" ||
-      skillId === "potionBoost" ||
-      skillId === "fieldForging" ||
-      skillId === "fullGear" ||
       skillId === "greatshieldCounter" ||
       skillId === "greatshieldFortify" ||
-      skillId === "greatshieldGuardStance") {
+      skillId === "greatshieldGuardStance" ||
+      skillId === "gatherersInstinct" ||
+      skillId === "baseDefenseFormation" ||
+      skillId === "soilFortify") {
     // 純バフ系スキルもターンを消費して敵ターンへ
     if (currentEnemy) {
       enemyTurn();

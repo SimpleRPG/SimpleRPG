@@ -216,9 +216,6 @@ function buildAppLayout() {
                   <p style="font-size:11px; color:#ccc; margin:0 0 4px;">
                     農園の管理・収穫はここから行います。
                   </p>
-                  <!-- ★現在の季節表示 -->
-                  <div id="farmSeasonInfo" style="font-size:12px; color:#9fd; margin:0 0 6px; font-weight:bold;">
-                  </div>
 
                   <div id="farmSlots">
                   </div>

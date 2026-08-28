@@ -1326,16 +1326,6 @@ input[type="text"] {
   color: #ffd95e;
 }
 
-.farm-slot.off-season {
-  box-shadow:
-    0 0 0 1px rgba(120,180,255,0.5) inset;
-}
-
-.farm-slot.off-season .farm-slot-title::after {
-  content: " ⚠";
-  opacity: 0.8;
-}
-
 .farm-slot.selected {
   border-color: var(--accent);
   box-shadow:

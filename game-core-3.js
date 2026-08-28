@@ -847,20 +847,6 @@ function enemyTurn() {
         effectiveDefTotal = Math.floor(effectiveDefTotal * (1 + rate));
       }
     }
-    // ★鍛冶職人: 応急鍛冶（一時的な防御バフ）
-    if (typeof fieldForgingTurnRemain === "number" && fieldForgingTurnRemain > 0) {
-      const rate = (typeof fieldForgingRate === "number") ? fieldForgingRate : 0;
-      if (rate > 0) {
-        effectiveDefTotal = Math.floor(effectiveDefTotal * (1 + rate));
-      }
-    }
-    // ★武具使い: 完全装備（一時的な防御バフ）
-    if (typeof fullGearTurnRemain === "number" && fullGearTurnRemain > 0) {
-      const rate = (typeof fullGearDefRate === "number") ? fullGearDefRate : 0;
-      if (rate > 0) {
-        effectiveDefTotal = Math.floor(effectiveDefTotal * (1 + rate));
-      }
-    }
 
     // ★追加: 防御前の「生ダメージ」を計算してカウンター用に保存
     let raw = calcAtkDefDamage(baseAtk, effectiveDefTotal);
@@ -901,14 +887,6 @@ function enemyTurn() {
     if (battleSkillTreeBonus.combatGuardReductionRate > 0) {
       const rate = battleSkillTreeBonus.combatGuardReductionRate;
       dmg = Math.max(1, Math.floor(dmg * (1 - rate)));
-    }
-
-    // ★武具使い: 常時被ダメージ軽減（jobs.js の guardReductionRate）
-    if (typeof getJobBonuses === "function" && typeof jobId !== "undefined" && jobId != null) {
-      const jobGuardRate = (getJobBonuses(jobId) || {}).guardReductionRate || 0;
-      if (jobGuardRate > 0) {
-        dmg = Math.max(1, Math.floor(dmg * (1 - jobGuardRate)));
-      }
     }
 
     hp -= dmg;
