@@ -160,9 +160,11 @@ function applyPotionEffect(p, inBattle) {
                  : 1.3;
       val = Math.floor(val * rate);
     }
-    if (typeof itemBoostTurnRemain === "number" && itemBoostTurnRemain > 0 &&
-        typeof itemBoostRate       === "number" && itemBoostRate > 0) {
-      val = Math.floor(val * (1 + itemBoostRate));
+    // ★2024: ポーション側は potionBoostTurnRemain（錬金術師「ポーションブースト」専用）を参照。
+    //   道具側の itemBoostTurnRemain（道具使い専用）とは完全に分離。
+    if (typeof potionBoostTurnRemain === "number" && potionBoostTurnRemain > 0 &&
+        typeof potionBoostRate       === "number" && potionBoostRate > 0) {
+      val = Math.floor(val * (1 + potionBoostRate));
     }
     return val;
   }

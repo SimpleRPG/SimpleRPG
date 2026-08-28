@@ -233,12 +233,20 @@ let craftSkillTreeBonus = {
 };
 
 function refreshCraftSkillTreeBonus() {
+  let treeRate = 0;
   if (typeof getGlobalSkillTreeBonus === "function") {
     const b = getGlobalSkillTreeBonus() || {};
-    craftSkillTreeBonus.craftCostReduceRate = b.craftCraftCostReduceRate || b.craftCostReduceRate || 0;
-  } else {
-    craftSkillTreeBonus.craftCostReduceRate = 0;
+    treeRate = b.craftCraftCostReduceRate || b.craftCostReduceRate || 0;
   }
+
+  // ★ジョブ由来のクラフトコスト軽減（鍛冶職人など craftCostReduceRate 持ちジョブ）
+  let jobRate = 0;
+  if (typeof getJobBonuses === "function" && typeof jobId !== "undefined" && jobId != null) {
+    const jb = getJobBonuses(jobId) || {};
+    jobRate = jb.craftCostReduceRate || 0;
+  }
+
+  craftSkillTreeBonus.craftCostReduceRate = treeRate + jobRate;
 }
 
 // コストオブジェクトをスキルツリー用に減算したコピーを返すヘルパー

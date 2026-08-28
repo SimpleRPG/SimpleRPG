@@ -251,6 +251,8 @@ function recalcStats() {
   const jobMpMaxRate = jobBonus.mpMaxRate || 0;
   const jobAtkRate   = jobBonus.atkRate   || 0;
   const jobDefRate   = jobBonus.defRate   || 0;
+  // ★武具使い: 強化1段階あたりの効果量を増幅
+  const jobEnhanceBonusRate = jobBonus.enhanceBonusRate || 0;
   // （将来 magicAtkRate などを使うならここで拾う）
 
   // ★ 接頭語・その他オプション由来の補正をまとめるオブジェクト
@@ -420,6 +422,12 @@ function recalcStats() {
   // 強化補正（1 段階あたり +5% 想定）
   let WEAPON_ENH_RATE   = 0.05;
   let ARMOR_ENH_RATE    = 0.05;
+
+  // ★武具使い: 強化1段階あたりの効果量を増幅（例: +15% なら 0.05 → 0.0575）
+  if (jobEnhanceBonusRate > 0) {
+    WEAPON_ENH_RATE *= (1 + jobEnhanceBonusRate);
+    ARMOR_ENH_RATE  *= (1 + jobEnhanceBonusRate);
+  }
 
   // 品質補正（良品 10% / 傑作 20%）
   let QUALITY_GOOD_RATE = 0.10; // quality=1

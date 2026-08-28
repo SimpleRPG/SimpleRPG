@@ -190,13 +190,11 @@ const JOB_DEFS = [
     desc: "武器・防具作りに特化した職。高品質な装備を作りやすく、クラフト成功率・品質が向上する製作特化の役割を持つ。",
     initialStats: { STR: 1, VIT: 2, INT_: 2, DEX_: 2, LUK_: 1 },
     canUseMagic: false,
-    canUsePhysSkill: false,
+    canUsePhysSkill: true,  // ★修正: 専用スキル「入魂の一撃」「応急鍛冶」使用のため有効化
     hasPetTurn: false,
     bonuses: {
       craftBonus: 0.08,
       craftCostReduceRate: 0.05
-      // TODO: 設計段階。強化成功率系ボーナスは getJobBonuses() に
-      // キーを追加してから正式実装する（enhanceSuccessRateAdd は削除）。
     }
   },
   {
@@ -205,17 +203,18 @@ const JOB_DEFS = [
     name: "武具使い",
     type: "craft",
     guildId: "smith",
-    desc: "武器・防具の性能を最大限に活かす職。装備の攻撃力・防御力が少し向上し、強化効果も増幅される装備運用特化の職業。",
+    desc: "武器・防具の性能を最大限に活かす職。装備の攻撃力・防御力が少し向上し、強化効果が増幅されるほか、常時わずかに被ダメージを軽減する装備運用特化の職業。",
     initialStats: { STR: 2, VIT: 2, INT_: 1, DEX_: 2, LUK_: 2 },
     canUseMagic: false,
-    canUsePhysSkill: false,
+    canUsePhysSkill: true,  // ★修正: 専用スキル「渾身の一撃」「完全装備」使用のため有効化
     hasPetTurn: false,
     bonuses: {
       atkRate: 0.02,
-      defRate: 0.02
-      // TODO: 設計段階。enhanceBonusRate（強化効果増幅）と
-      // guardReductionRate（被ダメ軽減）は getJobBonuses() に
-      // キーを追加してから正式実装する。
+      defRate: 0.02,
+      // ★強化1段階あたりの効果量を+15%増幅（例: 通常+5%/段階 → +5.75%/段階）
+      enhanceBonusRate: 0.15,
+      // ★常時、被ダメージ-5%（大盾兵のガードとは別枠の常時軽減）
+      guardReductionRate: 0.05
     }
   },
 
@@ -250,7 +249,7 @@ const JOB_DEFS = [
     desc: "爆弾・ツール系に特化した錬金職。道具の威力・効果範囲が向上し、戦闘での活用法が広がる、道具運用特化の職業。",
     initialStats: { STR: 1, VIT: 1, INT_: 2, DEX_: 2, LUK_: 2 },
     canUseMagic: false,
-    canUsePhysSkill: false,
+    canUsePhysSkill: true,  // ★修正: 専用スキル「アイテムブースト」使用のため有効化
     hasPetTurn: false,
     bonuses: {
       craftBonus: 0.09,           // ★微増 0.08→0.09
@@ -490,7 +489,9 @@ function getJobBonuses(jobId) {
       petDefRate: 0,
       dotDamageRate: 0,
       statusDurationRate: 0,
-      maxActivePets: 0
+      maxActivePets: 0,
+      enhanceBonusRate: 0,
+      guardReductionRate: 0
     };
   }
   const b = def.bonuses || {};
@@ -529,7 +530,10 @@ function getJobBonuses(jobId) {
     dotDamageRate: b.dotDamageRate || 0,
     statusDurationRate: b.statusDurationRate || 0,
     // ★同時に戦闘へ連れて行けるペット数（未指定/1以下なら通常の単体運用）
-    maxActivePets: b.maxActivePets || 0
+    maxActivePets: b.maxActivePets || 0,
+    // ★武具使い: 強化効果増幅／常時被ダメ軽減
+    enhanceBonusRate: b.enhanceBonusRate || 0,
+    guardReductionRate: b.guardReductionRate || 0
   };
 }
 

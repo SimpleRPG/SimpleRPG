@@ -1309,24 +1309,25 @@ window.cookingMatsQuality = window.cookingMatsQuality || {};
     },
     // 農園素材
     // 畑向け: field
-    veg_root_rough: { id: "veg_root_rough", name: "ゴロゴロ根菜",   farmGrowable: true, farmCategory: "field" },
-    veg_leaf_crisp: { id: "veg_leaf_crisp", name: "シャキシャキ葉菜", farmGrowable: true, farmCategory: "field" },
-    veg_premium:    { id: "veg_premium",    name: "高級野菜",       farmGrowable: true, farmCategory: "field" },
-    grain_ancient:  { id: "grain_ancient",  name: "古代穀物",       farmGrowable: true, farmCategory: "field" },
-    grain_coarse:   { id: "grain_coarse",   name: "粗挽き穀物",     farmGrowable: true, farmCategory: "field" },
-    grain_refined:  { id: "grain_refined",  name: "精製穀物",       farmGrowable: true, farmCategory: "field" },
-    grain_mochi:    { id: "grain_mochi",    name: "もちもち穀物",   farmGrowable: true, farmCategory: "field" },
+    // season: "spring" | "summer" | "autumn" | "winter" | "all"（未指定は "all" 扱い）
+    veg_root_rough: { id: "veg_root_rough", name: "ゴロゴロ根菜",   farmGrowable: true, farmCategory: "field", season: "autumn" },
+    veg_leaf_crisp: { id: "veg_leaf_crisp", name: "シャキシャキ葉菜", farmGrowable: true, farmCategory: "field", season: "spring" },
+    veg_premium:    { id: "veg_premium",    name: "高級野菜",       farmGrowable: true, farmCategory: "field", season: "summer" },
+    grain_ancient:  { id: "grain_ancient",  name: "古代穀物",       farmGrowable: true, farmCategory: "field", season: "all" },
+    grain_coarse:   { id: "grain_coarse",   name: "粗挽き穀物",     farmGrowable: true, farmCategory: "field", season: "spring" },
+    grain_refined:  { id: "grain_refined",  name: "精製穀物",       farmGrowable: true, farmCategory: "field", season: "summer" },
+    grain_mochi:    { id: "grain_mochi",    name: "もちもち穀物",   farmGrowable: true, farmCategory: "field", season: "autumn" },
 
     // 菜園向け: garden
-    veg_mushroom_aroma: { id: "veg_mushroom_aroma", name: "香るキノコ",   farmGrowable: true, farmCategory: "garden" },
-    veg_spice:          { id: "veg_spice",          name: "香辛料",       farmGrowable: true, farmCategory: "garden" },
-    veg_herb_aroma:     { id: "veg_herb_aroma",     name: "香草",         farmGrowable: true, farmCategory: "garden" },
-    veg_mountain:       { id: "veg_mountain",       name: "山菜",         farmGrowable: true, farmCategory: "garden" },
-    veg_dried:          { id: "veg_dried",          name: "乾物",         farmGrowable: true, farmCategory: "garden" },
-    spice_salt_rock:    { id: "spice_salt_rock",    name: "岩塩",         farmGrowable: true, farmCategory: "garden" },
-    spice_pepper:       { id: "spice_pepper",       name: "胡椒",         farmGrowable: true, farmCategory: "garden" },
-    spice_premium:      { id: "spice_premium",      name: "高級スパイス", farmGrowable: true, farmCategory: "garden" },
-    spice_secret:       { id: "spice_secret",       name: "秘伝スパイス", farmGrowable: true, farmCategory: "garden" }
+    veg_mushroom_aroma: { id: "veg_mushroom_aroma", name: "香るキノコ",   farmGrowable: true, farmCategory: "garden", season: "autumn" },
+    veg_spice:          { id: "veg_spice",          name: "香辛料",       farmGrowable: true, farmCategory: "garden", season: "summer" },
+    veg_herb_aroma:     { id: "veg_herb_aroma",     name: "香草",         farmGrowable: true, farmCategory: "garden", season: "spring" },
+    veg_mountain:       { id: "veg_mountain",       name: "山菜",         farmGrowable: true, farmCategory: "garden", season: "spring" },
+    veg_dried:          { id: "veg_dried",          name: "乾物",         farmGrowable: true, farmCategory: "garden", season: "all" },
+    spice_salt_rock:    { id: "spice_salt_rock",    name: "岩塩",         farmGrowable: true, farmCategory: "garden", season: "all" },
+    spice_pepper:       { id: "spice_pepper",       name: "胡椒",         farmGrowable: true, farmCategory: "garden", season: "summer" },
+    spice_premium:      { id: "spice_premium",      name: "高級スパイス", farmGrowable: true, farmCategory: "garden", season: "winter" },
+    spice_secret:       { id: "spice_secret",       name: "秘伝スパイス", farmGrowable: true, farmCategory: "garden", season: "winter" }
   };
 
   Object.keys(cookingMatDefs).forEach(id => {
@@ -1343,6 +1344,7 @@ window.cookingMatsQuality = window.cookingMatsQuality || {};
       // 畑用メタ（あるものだけ）
       farmGrowable: !!base.farmGrowable,
       farmCategory: base.farmCategory || null,
+      season: base.season || "all", // "spring"|"summer"|"autumn"|"winter"|"all"
 
       // 釣り用メタ（魚だけに有効）
       fishRarity: base.fishRarity || null,
