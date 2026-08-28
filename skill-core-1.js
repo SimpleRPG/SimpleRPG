@@ -1,5 +1,5 @@
-// skill-core.js
-// 職業スキル定義 ＋ スキルUI ＋ 実行ロジック ＋ ペット攻撃
+// skill-core-1.js
+// 職業スキル定義・UI更新・バフ・ステータス計算・ペットターン・魔法発動ロジック
 // 前提: game-core-*.js のグローバル（jobId, atkTotal, INT_, DEX_, LUK_, hp, mp, sp, currentEnemy, enemyHp, enemyHpMax,
 //        petHp, petHpMax, petAtkBase, petDefBase, petLevel, petName, shieldBlowGuardTurnRemain など）が存在
 
@@ -12,7 +12,9 @@ const SKILL_TYPE_PHYS  = "phys";
 const SKILL_TYPE_BUFF  = "buff";
 const SKILL_TYPE_PET   = "pet";
 
-// jobId: 0=戦士, 1=魔法使い, 2=動物使い, 100=大盾兵, 202=錬金術師（ギルド職）[web:165]
+// jobId: 0=戦士, 1=魔法使い, 2=動物使い, 100=大盾兵, 101=呪術師, 102=獣群使い,
+//        200=鍛冶職人, 201=武具使い, 202=錬金術師, 203=道具使い, 204=料理人, 205=貪食家,
+//        300=採集士, 301=採取監督官, 400=狩猟師, 401=漁師, 402=農夫
 const JOB_SKILLS = {
   0: { // 戦士
     phys: [
@@ -105,7 +107,7 @@ const JOB_SKILLS = {
       }
     ]
   },
-  100: { // 大盾兵（戦士ギルドの戦闘ギルド職）[web:165]
+  100: { // 大盾兵（戦士ギルドの戦闘ギルド職）
     phys: [
       // 既存：カウンタースタンス
       {
@@ -136,7 +138,7 @@ const JOB_SKILLS = {
         spCost: 6
       }
     ],
-    magic: [] // 大盾兵は魔法なし（jobs.js の canUseMagic:false に対応）[web:165]
+    magic: [] // 大盾兵は魔法なし（jobs.js の canUseMagic:false に対応）
   },
   101: { // 呪術師（魔法ギルドの戦闘ギルド職）
     phys: [], // 呪術師は物理スキルなし（jobs.js の canUsePhysSkill:false に対応）
@@ -170,14 +172,14 @@ const JOB_SKILLS = {
   200: { // 鍛冶職人（鍛冶ギルド職）
     phys: [
       {
-        id: "soulForgedStrike",
-        name: "入魂の一撃",
+        id: "armorCrush",
+        name: "装甲粉砕",
         type: SKILL_TYPE_PHYS,
         spCost: 3
       },
       {
-        id: "fieldForging",
-        name: "応急鍛冶",
+        id: "whetstoneSharpen",
+        name: "刃研ぎ",
         type: SKILL_TYPE_BUFF,
         spCost: 4
       }
@@ -187,15 +189,15 @@ const JOB_SKILLS = {
   201: { // 武具使い（鍛冶ギルド職）
     phys: [
       {
-        id: "fullPowerStrike",
-        name: "渾身の一撃",
-        type: SKILL_TYPE_PHYS,
+        id: "parryCounter",
+        name: "受け流し反撃",
+        type: SKILL_TYPE_BUFF,
         spCost: 4
       },
       {
-        id: "fullGear",
-        name: "完全装備",
-        type: SKILL_TYPE_BUFF,
+        id: "consecutiveStrike",
+        name: "連撃破",
+        type: SKILL_TYPE_PHYS,
         spCost: 5
       }
     ],
@@ -264,14 +266,14 @@ const JOB_SKILLS = {
   300: { // 採集士（採取ギルド職。通常採取6種の最高レベルをスキル倍率に反映）
     phys: [
       {
-        id: "quickHarvest",
-        name: "クイックハーベスト",
+        id: "sandToss",
+        name: "目潰し砂煙",
         type: SKILL_TYPE_PHYS,
         spCost: 3
       },
       {
-        id: "gatherersInstinct",
-        name: "採取の勘",
+        id: "wildHerbPoultice",
+        name: "野草の調合",
         type: SKILL_TYPE_BUFF,
         spCost: 4
       }
@@ -281,16 +283,16 @@ const JOB_SKILLS = {
   301: { // 採取監督官（採取ギルド職。拠点レベル(0〜3)をスキル倍率に反映）
     phys: [
       {
-        id: "supervisorStrike",
-        name: "監督官の一撃",
+        id: "overseerStrike",
+        name: "監督官の号令",
         type: SKILL_TYPE_PHYS,
         spCost: 3
       },
       {
-        id: "baseDefenseFormation",
-        name: "拠点防衛陣形",
+        id: "interceptFormation",
+        name: "迎撃防衛陣",
         type: SKILL_TYPE_BUFF,
-        spCost: 5
+        spCost: 4
       }
     ],
     magic: []
@@ -298,8 +300,8 @@ const JOB_SKILLS = {
   400: { // 狩猟師（食材ギルド職。狩猟(hunt)レベルをスキル倍率に反映）
     phys: [
       {
-        id: "takedown",
-        name: "テイクダウン",
+        id: "hunterSnare",
+        name: "狩人の罠",
         type: SKILL_TYPE_PHYS,
         spCost: 3
       },
@@ -307,7 +309,7 @@ const JOB_SKILLS = {
         id: "vitalStrike",
         name: "急所突き",
         type: SKILL_TYPE_PHYS,
-        spCost: 5
+        spCost: 4
       }
     ],
     magic: []
@@ -322,7 +324,7 @@ const JOB_SKILLS = {
       },
       {
         id: "castNet",
-        name: "投網",
+        name: "投網拘束",
         type: SKILL_TYPE_PHYS,
         spCost: 4
       }
@@ -332,16 +334,50 @@ const JOB_SKILLS = {
   402: { // 農夫（食材ギルド職。畑/菜園の高い方のレベルをスキル倍率に反映）
     phys: [
       {
-        id: "sickleSlash",
-        name: "鎌の一閃",
+        id: "earthTiller",
+        name: "耕作の一撃",
         type: SKILL_TYPE_PHYS,
         spCost: 3
       },
       {
-        id: "soilFortify",
-        name: "土壌強化",
+        id: "harvestBlessing",
+        name: "豊穣の恵み",
         type: SKILL_TYPE_BUFF,
-        spCost: 5
+        spCost: 4
+      }
+    ],
+    magic: []
+  },
+  204: { // 料理人（料理ギルド職。料理クラフトレベルをスキル倍率に反映）
+    phys: [
+      {
+        id: "spiceBlind",
+        name: "スパイス目潰し",
+        type: SKILL_TYPE_PHYS,
+        spCost: 3
+      },
+      {
+        id: "nourishingSoup",
+        name: "滋養スープ",
+        type: SKILL_TYPE_BUFF,
+        spCost: 4
+      }
+    ],
+    magic: []
+  },
+  205: { // 貪食家（料理ギルド職。満腹度消費・生命力吸収特化）
+    phys: [
+      {
+        id: "hungerBurst",
+        name: "満腹バースト",
+        type: SKILL_TYPE_PHYS,
+        spCost: 4
+      },
+      {
+        id: "digestDrain",
+        name: "丸呑み消化",
+        type: SKILL_TYPE_PHYS,
+        spCost: 4
       }
     ],
     magic: []
@@ -434,7 +470,7 @@ let potionBoostRate       = 0.5; // ポーション効果さらに +50%
 
 // ★ 大盾兵用: 防御バフ（堅固の大盾）
 let greatshieldFortifyTurnRemain = 0;
-let greatshieldFortifyRate       = 0.2;  // 防御 +20%（バランス調整用）[web:167]
+let greatshieldFortifyRate       = 0.2;  // 防御 +20%
 
 // ★ 大盾兵用: 護りスタンス（護の構え）
 //   - ガード率 +30%（ベース）
@@ -453,6 +489,16 @@ let fullGearTurnRemain = 0;
 let fullGearAtkRate    = 0.20;  // スキル攻撃 +20%
 let fullGearDefRate    = 0.20;  // 防御 +20%
 
+// ★ 料理人用: 特製まかない（一時的な自己回復＋攻撃・防御バフ）
+let chefSpecialtyTurnRemain = 0;
+let chefSpecialtyAtkRate    = 0.15;  // 攻撃 +15%〜+25%（料理Lv依存）
+let chefSpecialtyDefRate    = 0.15;  // 防御 +15%〜+25%（料理Lv依存）
+
+// ★ 貪食家用: 鋼の胃袋（一時的な攻撃・防御バフ）
+let ironStomachTurnRemain = 0;
+let ironStomachAtkRate    = 0.20;  // 攻撃 +20%
+let ironStomachDefRate    = 0.20;  // 防御 +20%
+
 function getCurrentAtkForSkill() {
   let base = atkTotal;
   if (braveChargeTurnRemain > 0) {
@@ -469,6 +515,16 @@ function getCurrentAtkForSkill() {
     base = Math.floor(base * (1 + fieldForgingAtkRate));
   }
 
+  // ★ 料理人用: 特製まかない（スキル攻撃バフ）
+  if (chefSpecialtyTurnRemain > 0) {
+    base = Math.floor(base * (1 + chefSpecialtyAtkRate));
+  }
+
+  // ★ 貪食家用: 鋼の胃袋（スキル攻撃バフ）
+  if (ironStomachTurnRemain > 0) {
+    base = Math.floor(base * (1 + ironStomachAtkRate));
+  }
+
   // ★ ギルド物理ボーナス（戦士ギルド）
   if (typeof getGuildBattleBonus === "function") {
     const bonus = getGuildBattleBonus();
@@ -478,21 +534,23 @@ function getCurrentAtkForSkill() {
   }
 
   // ★修正: スキルツリー物理スキル倍率＋ジョブ物理スキル倍率
-  //   （physSkillRate はスキルツリー側に既に存在したが、これまでどの
-  //    ダメージ式にも掛かっておらず、UI表示だけの死んだボーナスだった）
   base = Math.floor(base * (1 + getPhysSkillRateMultiplier()));
 
   return base;
 }
 
 // ★鍛冶職人専用: クラフトスキルレベル（武器/防具の高い方）を参照するヘルパー
-//   採取職の「採取スキルレベルで効果が伸びる」仕組みと同じ考え方で、
-//   鍛冶職人のスキル効果もクラフトの熟練度（getCraftSkillLevel）に応じて伸びる。
 function getSmithCraftSkillLevel() {
   if (typeof getCraftSkillLevel !== "function") return 0;
   const w = getCraftSkillLevel("weapon") || 0;
   const a = getCraftSkillLevel("armor") || 0;
   return Math.max(w, a);
+}
+
+// ★料理人専用: 料理クラフトスキルレベルを参照するヘルパー
+function getCookingCraftSkillLevel() {
+  if (typeof getCraftSkillLevel !== "function") return 0;
+  return getCraftSkillLevel("cooking") || 0;
 }
 
 // ★新規: スキルツリー＋ジョブの物理スキル倍率を合算して返す
@@ -517,8 +575,6 @@ function getPhysSkillRateMultiplier() {
 //   - 狩猟師(400)    : 狩猟(hunt)レベル
 //   - 漁師(401)      : 釣り(fish)レベル
 //   - 農夫(402)      : 畑(fieldFarm)/菜園(garden)のうち高い方のレベル
-//   採取スキルLv依存(300/400/401/402)は上限+25%（Lv100到達が前提の重い成長曲線）。
-//   拠点レベル依存(301)は採取スキルLv30程度で上限に届いてしまう＝到達が速いため、上限+15%に抑える。
 function getGatherJobSkillLevelBonus() {
   const jid = (typeof jobId !== "undefined" && jobId !== null)
     ? jobId
@@ -562,6 +618,12 @@ function getGatherJobSkillLevelBonus() {
     const fLv = (GS.fieldFarm && GS.fieldFarm.lv) || 0;
     const gLv = (GS.garden && GS.garden.lv) || 0;
     ratio = Math.max(fLv, gLv) / MAXLV;
+  } else if (jid === 200) {
+    // 鍛冶職人: 武器/防具クラフトレベル依存
+    ratio = getSmithCraftSkillLevel() / 100;
+  } else if (jid === 204 || jid === 205) {
+    // 料理人・貪食家: 料理クラフトレベル依存
+    ratio = getCookingCraftSkillLevel() / 100;
   } else {
     return 0;
   }
@@ -606,15 +668,12 @@ function getEffectiveIntForMagic() {
   }
 
   // ★修正: スキルツリー魔法スキル倍率＋ジョブ魔法スキル倍率
-  //   （魔法スキルは atkTotal を経由せず baseInt から直接ダメージを出すため、
-  //    ここに掛けないと物理側だけ恩恵を受ける非対称な状態になっていた）
   base = Math.floor(base * (1 + getMagicSkillRateMultiplier()));
 
   return base;
 }
 
 // ★呪術師スキル専用の状態異常成功率判定。
-//   アイテム側の rollStatusApply()（battle-items-use.js, isAlchemist() 判定）とは完全に別経路。
 function rollStatusApplyForCurrentJob(baseRate) {
   let rate = baseRate;
   if (typeof isCurseMage === "function" && isCurseMage()) {
@@ -661,6 +720,12 @@ function tickSkillBuffTurns() {
   if (fullGearTurnRemain > 0) {
     fullGearTurnRemain--;
   }
+  if (chefSpecialtyTurnRemain > 0) {
+    chefSpecialtyTurnRemain--;
+  }
+  if (ironStomachTurnRemain > 0) {
+    ironStomachTurnRemain--;
+  }
 }
 
 // =======================
@@ -670,7 +735,6 @@ function tickSkillBuffTurns() {
 // ★特性補正込みのペット基礎ステを取得するヘルパー
 function getCompanionAdjustedPetBaseStats() {
   if (typeof applyCompanionPetRates === "function") {
-    // petRebirthCount などによるボーナス適用済みの petHpBase/petAtkBase/petDefBase に対して特性補正を掛ける
     return applyCompanionPetRates(petHpBase, petAtkBase, petDefBase);
   }
   return {
@@ -688,8 +752,6 @@ function getPetBaseAtk() {
     ? getPetEquipStatTotal({ equip: window.petEquip })
     : { atk: 0, scaleAtk: 0 };
   const equipAtk = equipStat.atk || 0;
-  // ★追加: プレイヤー武器のscaleStrと同じ仕組み。転生・レベルで伸びるatkBase自体の%を上乗せする
-  //   （装備が固定値ATKだけだと後半エリアでプレイヤーの伸びに置いていかれるための対策）
   const atkFromEquipScale = Math.floor(atkBase * (equipStat.scaleAtk || 0));
   return Math.max(1, atkBase + levelBonus + equipAtk + atkFromEquipScale);
 }
@@ -703,12 +765,9 @@ function getPetDef() {
     ? getPetEquipStatTotal({ equip: window.petEquip })
     : { def: 0, scaleDef: 0 };
   const equipDef = equipStat.def || 0;
-  // ★追加: プレイヤー防具のscaleVitと同じ仕組み。転生・レベルで伸びるdefBase自体の%を上乗せする
   const defFromEquipScale = Math.floor(defBase * (equipStat.scaleDef || 0));
   let total = defBase + levelBonus + equipDef + defFromEquipScale;
 
-  // ★追加: ジョブpetDefRate（動物使い+50%/獣群使い+25%）。
-  //   petAtkRateがcalcPetDamage側で掛かっているのと対になる、これまで存在しなかった経路。
   if (typeof getJobBonuses === "function" && typeof jobId !== "undefined") {
     const j = getJobBonuses(jobId);
     if (j && typeof j.petDefRate === "number") {
@@ -730,9 +789,6 @@ function calcPetDamage() {
     }
   }
 
-  // ★修正: スキルツリー petAtkRate ＋ ジョブ petAtkRate
-  //   （どちらも UI・集計上は存在したが、実際のペットダメージ計算には
-  //    一度も掛かっておらず死んでいたボーナス）
   let petAtkRate = 0;
   if (typeof getGlobalSkillTreeBonus === "function") {
     const t = getGlobalSkillTreeBonus();
@@ -750,7 +806,6 @@ function calcPetDamage() {
 }
 
 function doPetTurn() {
-  // ★ 動物使い以外・敵不在・ペット不在/戦闘不能なら何もしない
   if (typeof jobHasPetTurn === "function") {
     if (!jobHasPetTurn()) return;
   } else {
@@ -768,7 +823,6 @@ function doPetTurn() {
       let dmg = Math.floor(base * (s.powerRate || 1.6));
       enemyHp = Math.max(0, enemyHp - dmg);
 
-      // ★ ペットダメージとして最大値更新
       if (typeof currentBattleMaxDamage === "number") {
         currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
       }
@@ -788,7 +842,6 @@ function doPetTurn() {
       appendLog(`${petName}の${s.name}！ HP が${heal}回復した！`);
       usedSkill = true;
     } else if (s && s.id === "furyStrike") {
-      // ★高倍率だが一定確率で外れる大技
       if (Math.random() < (s.missRate || 0.15)) {
         appendLog(`${petName}の${s.name}！ しかし外れてしまった…`);
         usedSkill = true;
@@ -806,7 +859,6 @@ function doPetTurn() {
         usedSkill = true;
       }
     } else if (s && s.id === "guardStance") {
-      // ★次の被弾1回だけダメージを軽減する（消費型。petBuffTurnRemainとは別管理）
       window.petGuardRate = (s.defRate || 0.5);
       appendLog(`${petName}の${s.name}！ 身構えて防御を固めた！`);
       usedSkill = true;
@@ -816,14 +868,12 @@ function doPetTurn() {
   if (!usedSkill) {
     let dmg = calcPetDamage();
 
-    // ★ ここだけ調整: クリティカル率にステータスバフを反映（ベース 20% は維持）
     let critRate = 0.2;
     if (typeof modifyCritRateForPlayer === "function") {
       critRate = modifyCritRateForPlayer(critRate);
     }
 
     if (Math.random() < critRate) {
-      // ★ プレイヤーと同じクリダメ倍率ロジックを適用（LUK＋バフ＋減衰＋3.0 倍上限）
       let critMult = 1.5;
       if (typeof getBaseCritMultFromLuk === "function") {
         critMult = getBaseCritMultFromLuk();
@@ -838,7 +888,6 @@ function doPetTurn() {
       dmg = Math.floor(dmg * critMult);
       enemyHp = Math.max(0, enemyHp - dmg);
 
-      // ★ ペットクリティカルダメージとして最大値更新
       if (typeof currentBattleMaxDamage === "number") {
         currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
       }
@@ -850,7 +899,6 @@ function doPetTurn() {
     } else {
       enemyHp = Math.max(0, enemyHp - dmg);
 
-      // ★ ペット通常攻撃として最大値更新
       if (typeof currentBattleMaxDamage === "number") {
         currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
       }
@@ -865,7 +913,6 @@ function doPetTurn() {
   if (enemyHp <= 0) {
     enemyHp = 0;
 
-    // ★ ギルド用ヘルパーにペット撃破を通知（動物使い時のみ）
     if (typeof onEnemyKilledForGuild === "function") {
       onEnemyKilledForGuild({ by: "pet", isBoss: !!isBossBattle });
     }
@@ -881,24 +928,17 @@ function doPetTurn() {
 // =======================
 // 獣群使い用：パーティ全員が同時に行動するペットターン
 // =======================
-//
-// 通常の doPetTurn() が「グローバル1体分の petHp/petAtkBase 等」を直接触るのに対し、
-// こちらは getActivePartyRecords() で取得した petList の複数レコードを
-// 1体ずつ順番に処理し、各レコードの hp を直接書き換える（petList にそのまま反映される）。
 
-// 獣群使いの「威嚇」効果：次の敵ターンで、敵がプレイヤーよりペットを狙いやすくなる
 let beastPartyTauntTurnRemain = 0;
 
 function calcPetRecordDamage(rec) {
   const buffRate = (typeof rec.buffRate === "number") ? rec.buffRate : 1.0;
   let base = getPetRecordAtk(rec) * buffRate;
 
-  // ★獣群使い専用：群れの咆哮／パックフレンジーによるパーティ全体バフ
   if (typeof beastPartyBuffRate === "number" && beastPartyBuffRate > 1.0) {
     base = base * beastPartyBuffRate;
   }
 
-  // ★ ギルドペットボーナス（動物使いギルド系。獣群使いでも共通して乗る想定）
   if (typeof getGuildBattleBonus === "function") {
     const bonus = getGuildBattleBonus();
     if (bonus && bonus.pet) {
@@ -906,7 +946,6 @@ function calcPetRecordDamage(rec) {
     }
   }
 
-  // ★スキルツリー petAtkRate ＋ ジョブ petAtkRate
   let petAtkRate = 0;
   if (typeof getGlobalSkillTreeBonus === "function") {
     const t = getGlobalSkillTreeBonus();
@@ -923,8 +962,6 @@ function calcPetRecordDamage(rec) {
   return Math.max(1, Math.floor(roll));
 }
 
-// 1体分の行動（通常攻撃 or スキル）。enemyHp を直接減らす。
-// 戻り値: 敵を倒したら true
 function runBeastPartyPetAction(rec) {
   let usedSkill = false;
 
@@ -969,7 +1006,6 @@ function runBeastPartyPetAction(rec) {
         usedSkill = true;
       }
     } else if (s && s.id === "guardStance") {
-      // ★このレコード個体だけの消費型ガード（次の被弾1回だけ軽減）
       rec.guardRate = (s.defRate || 0.5);
       appendLog(`${rec.name}の${s.name}！ 身構えて防御を固めた！`);
       usedSkill = true;
@@ -1019,10 +1055,6 @@ function runBeastPartyPetAction(rec) {
   return enemyHp <= 0;
 }
 
-/**
- * 獣群使いのペットターン：編成中（最大3体）の生存ペット全員が順番に行動する。
- * 動物使いの doPetTurn() と同じ呼び出し位置（プレイヤー攻撃後）から呼ぶ。
- */
 function doBeastPartyTurn() {
   if (!currentEnemy) return;
   if (typeof hasCompanion === "function" && !hasCompanion()) return;
@@ -1051,10 +1083,6 @@ function doBeastPartyTurn() {
   }
 }
 
-/**
- * 「動物使いなら doPetTurn、獣群使いなら doBeastPartyTurn」を1箇所にまとめたヘルパー。
- * スキル発動後のターン進行など、doPetTurn() を呼んでいた箇所はすべてこちらに置き換える。
- */
 function runPetOrPartyTurnForCurrentJob() {
   if (typeof jobHasPetTurn !== "function" || !jobHasPetTurn()) return;
   if (typeof hasCompanion !== "function" || !hasCompanion()) return;
@@ -1071,14 +1099,14 @@ function runPetOrPartyTurnForCurrentJob() {
 // =======================
 
 function castMagicFromUI() {
-  // 魔法使用可能職：魔法使い(1)、動物使い(2)、錬金術師(202)
+  // 魔法使用可能職：魔法使い(1)、動物使い(2)、呪術師(101)、獣群使い(102)、錬金術師(202)
   if (typeof jobCanUseMagic === "function") {
     if (!jobCanUseMagic()) {
       appendLog("魔法を扱える職業ではない");
       return;
     }
   } else {
-    if (jobId !== 1 && jobId !== 2 && jobId !== 202) {
+    if (jobId !== 1 && jobId !== 2 && jobId !== 101 && jobId !== 102 && jobId !== 202) {
       appendLog("魔法を扱える職業ではない");
       return;
     }
@@ -1115,7 +1143,6 @@ function castMagicFromUI() {
   if (typeof beforeActionPlayer === "function") {
     const pre = beforeActionPlayer();
     if (!pre || !pre.canAct) {
-      // playerAttack と同様、行動不能でもターンは進める
       if (currentEnemy) {
         enemyTurn();
         if (typeof tickStatusesTurnEndForBoth === "function") {
@@ -1149,7 +1176,6 @@ function castMagicFromUI() {
     const dmg = 10 + baseInt * 2;
     enemyHp = Math.max(0, enemyHp - dmg);
 
-    // ★ 魔法ダメージとして最大値更新
     if (typeof currentBattleMaxDamage === "number") {
       currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
     }
@@ -1164,7 +1190,6 @@ function castMagicFromUI() {
     const dmg = 8 + Math.floor(baseInt * 1.8);
     enemyHp = Math.max(0, enemyHp - dmg);
 
-    // ★ 魔法ダメージとして最大値更新
     if (typeof currentBattleMaxDamage === "number") {
       currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
     }
@@ -1184,7 +1209,6 @@ function castMagicFromUI() {
     }
     enemyHp = Math.max(0, enemyHp - total);
 
-    // ★ 多段の合計ダメージを魔法ダメージとして最大値更新
     if (typeof currentBattleMaxDamage === "number") {
       currentBattleMaxDamage = Math.max(currentBattleMaxDamage, total);
     }
@@ -1201,7 +1225,6 @@ function castMagicFromUI() {
     const extra = Math.floor(mpMax * 0.1);
     mp = Math.max(0, mp - extra);
 
-    // ★ 魔法ダメージとして最大値更新
     if (typeof currentBattleMaxDamage === "number") {
       currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
     }
@@ -1212,7 +1235,6 @@ function castMagicFromUI() {
     appendLog(`マナバースト！ ${currentEnemy.name} に${dmg}ダメージ（反動で MP を${extra}消費）`);
     didDamage = true;
   } else if (skillId === "curseStrike") {
-    // 呪術師専用：呪いの一撃（確定ダメージ＋60%で防御ダウン）
     if (jobId !== 101) {
       appendLog("呪いの一撃は呪術師専用だ");
     } else {
@@ -1240,7 +1262,6 @@ function castMagicFromUI() {
       didDamage = true;
     }
   } else if (skillId === "witherHex") {
-    // 呪術師専用：衰弱の呪詛（純デバフ、ダメージなし。80%で「呪い」＝継続ダメージを付与）
     if (jobId !== 101) {
       appendLog("衰弱の呪詛は呪術師専用だ");
     } else {
@@ -1252,10 +1273,8 @@ function castMagicFromUI() {
           appendLog("衰弱の呪詛！ しかし呪いはうまく浸透しなかった…");
         }
       }
-      // ダメージを与えないスキルなので didDamage は false のまま
     }
   } else if (skillId === "darkVeil") {
-    // 呪術師専用：闇のヴェール（小ダメージ＋75%で暗闇＝命中-30%）
     if (jobId !== 101) {
       appendLog("闇のヴェールは呪術師専用だ");
     } else {
@@ -1283,7 +1302,6 @@ function castMagicFromUI() {
       didDamage = true;
     }
   } else if (skillId === "ruinCurse") {
-    // 呪術師専用：破滅の呪詛（フィニッシャー。大ダメージ＋50%で麻痺）
     if (jobId !== 101) {
       appendLog("破滅の呪詛は呪術師専用だ");
     } else {
@@ -1319,7 +1337,6 @@ function castMagicFromUI() {
       appendLog(`ビーストヒール！ ${petName}の HP が${heal}回復した`);
     }
   } else if (skillId === "safeBrew") {
-    // 錬金術師用：INT/DEX/LUK 複合回復
     if (jobId !== 202) {
       appendLog("セーフブリューは錬金術師専用だ");
     } else {
@@ -1336,7 +1353,6 @@ function castMagicFromUI() {
 
   // ここからターン進行
   if (!currentEnemy) {
-    // 非戦闘時：セーフブリューやビーストヒールだけして終了（敵・ペットターンは進めない）
     if (typeof updateDisplay === "function") {
       updateDisplay();
     }
@@ -1347,7 +1363,6 @@ function castMagicFromUI() {
     if (enemyHp <= 0) {
       enemyHp = 0;
 
-      // ★ ギルド用ヘルパーに魔法撃破を通知
       if (typeof onEnemyKilledForGuild === "function") {
         onEnemyKilledForGuild({ by: "magic", isBoss: !!isBossBattle });
       }
@@ -1373,7 +1388,6 @@ function castMagicFromUI() {
       }
     }
   } else {
-    // ダメージを与えない魔法（beastHeal, safeBrew など）: 戦闘中のみターン進行
     runPetOrPartyTurnForCurrentJob();
     if (enemyHp > 0) {
       enemyTurn();
@@ -1389,650 +1403,4 @@ function castMagicFromUI() {
   if (typeof updateDisplay === "function") {
     updateDisplay();
   }
-}
-
-// =======================
-// 物理スキル発動（UI セレクト版）
-// =======================
-
-function useSkillFromUI() {
-  // 物理スキル使用可能職：戦士(0)、動物使い(2)、大盾兵(100)、錬金術師(202) など[web:165]
-  if (typeof jobCanUsePhysSkill === "function") {
-    if (!jobCanUsePhysSkill()) {
-      appendLog("スキルを扱える職業ではない");
-      return;
-    }
-  } else {
-    if (jobId !== 0 && jobId !== 2 && jobId !== 100 && jobId !== 202 &&
-        jobId !== 300 && jobId !== 301 && jobId !== 400 && jobId !== 401 && jobId !== 402) {
-      appendLog("スキルを扱える職業ではない");
-      return;
-    }
-  }
-
-  const sel = document.getElementById("skillSelect");
-  if (!sel) return;
-  const skillId = sel.value;
-  if (!skillId) {
-    appendLog("使用するスキルを選んでください");
-    return;
-  }
-  const jobSkills = JOB_SKILLS[jobId] || { phys: [] };
-  const skill = jobSkills.phys.find(s => s.id === skillId);
-  if (!skill) {
-    appendLog("そのスキルは使用できない");
-    return;
-  }
-
-  const guildId = typeof window !== "undefined" ? window.playerGuildId : null;
-  // ★ ガードインパクトは戦士ギルド所属中のみ使用可能
-  if (skillId === "guardImpact" && guildId !== "warrior") {
-    appendLog("このスキルは今は使えない（対応するギルドに所属していない）");
-    return;
-  }
-  // ★ ビーストロアは動物使いギルド所属中のみ使用可能
-  if (skillId === "beastRoar" && guildId !== "tamer") {
-    appendLog("このスキルは今は使えない（対応するギルドに所属していない）");
-    return;
-  }
-  // ★ パックフレンジーは動物使いギルド所属中のみ使用可能
-  if (skillId === "packFrenzy" && guildId !== "tamer") {
-    appendLog("このスキルは今は使えない（対応するギルドに所属していない）");
-    return;
-  }
-  // ★ 大盾兵カウンタースタンスは戦士ギルド所属中のみ使用可能
-  if (skillId === "greatshieldCounter" && guildId !== "warrior") {
-    appendLog("このスキルは今は使えない（対応するギルドに所属していない）");
-    return;
-  }
-
-  // アイテムブーストは敵がいなくても使える（自己バフ）
-  if (!currentEnemy &&
-      skillId !== "animalLink" &&
-      skillId !== "beastRoar" &&
-      skillId !== "itemBoost" &&
-      skillId !== "greatshieldCounter" &&
-      skillId !== "greatshieldFortify" &&
-      skillId !== "greatshieldGuardStance" &&
-      skillId !== "gatherersInstinct" &&
-      skillId !== "baseDefenseFormation" &&
-      skillId !== "soilFortify") {
-    appendLog("敵がいない");
-    return;
-  }
-
-  // プレイヤー行動前の状態異常チェック
-  if (typeof beforeActionPlayer === "function") {
-    const pre = beforeActionPlayer();
-    if (!pre || !pre.canAct) {
-      // playerAttack と同様、行動不能でもターンは進める
-      if (currentEnemy) {
-        enemyTurn();
-        if (typeof tickStatusesTurnEndForBoth === "function") {
-          tickStatusesTurnEndForBoth();
-        }
-        if (typeof renderPlayerStatusIcons === "function") {
-          renderPlayerStatusIcons();
-        }
-        if (typeof updateEnemyStatusUI === "function") {
-          updateEnemyStatusUI();
-        }
-      }
-      if (typeof updateDisplay === "function") {
-        updateDisplay();
-      }
-      return;
-    }
-  }
-
-  const spCost = skill.spCost || 0;
-  if (sp < spCost) {
-    appendLog("SP が足りない");
-    return;
-  }
-  sp -= spCost;
-
-  let didDamage = false;
-
-  if (skillId === "powerSlash") {
-    const dmg = Math.floor(getCurrentAtkForSkill() * 1.5);
-    enemyHp = Math.max(0, enemyHp - dmg);
-
-    // ★ 物理スキルダメージとして最大値更新
-    if (typeof currentBattleMaxDamage === "number") {
-      currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
-    }
-    if (typeof currentBattleMaxPhys === "number") {
-      currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
-    }
-
-    appendLog(`パワースラッシュ！ ${currentEnemy.name} に${dmg}ダメージ`);
-    didDamage = true;
-  } else if (skillId === "shieldBlow") {
-    const dmg = Math.floor(getCurrentAtkForSkill() * 1.2);
-    enemyHp = Math.max(0, enemyHp - dmg);
-    shieldBlowGuardTurnRemain = 1;
-
-    // ★ 物理スキルダメージとして最大値更新
-    if (typeof currentBattleMaxDamage === "number") {
-      currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
-    }
-    if (typeof currentBattleMaxPhys === "number") {
-      currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
-    }
-
-    appendLog(`シールドブロウ！ ${currentEnemy.name} に${dmg}ダメージ（次の被ダメージ軽減）`);
-    didDamage = true;
-  } else if (skillId === "braveCharge") {
-    braveChargeTurnRemain = 2;
-    appendLog("ブレイブチャージ！ しばらく攻撃力が上がった");
-  } else if (skillId === "guardImpact") {
-    const dmg = Math.floor(getCurrentAtkForSkill() * 1.1);
-    enemyHp = Math.max(0, enemyHp - dmg);
-    // シールドブロウより長くガード
-    shieldBlowGuardTurnRemain = 2;
-
-    // ★ 物理スキルダメージとして最大値更新
-    if (typeof currentBattleMaxDamage === "number") {
-      currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
-    }
-    if (typeof currentBattleMaxPhys === "number") {
-      currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
-    }
-
-    appendLog(`ガードインパクト！ ${currentEnemy.name} に${dmg}ダメージ（しばらく被ダメージ軽減）`);
-    didDamage = true;
-  } else if (skillId === "beastSlash") {
-    const dmg = Math.floor(getCurrentAtkForSkill() * 1.3);
-    enemyHp = Math.max(0, enemyHp - dmg);
-
-    // ★ 物理スキルダメージとして最大値更新
-    if (typeof currentBattleMaxDamage === "number") {
-      currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
-    }
-    if (typeof currentBattleMaxPhys === "number") {
-      currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
-    }
-
-    appendLog(`ビーストスラッシュ！ ${currentEnemy.name} に${dmg}ダメージ`);
-    didDamage = true;
-  } else if (skillId === "animalLink") {
-    if (jobId !== 2) {
-      appendLog("アニマルリンクは動物使い専用だ");
-    } else {
-      petBuffRate = 1.4;
-      petBuffTurnRemain = 2;
-      appendLog(`アニマルリンク！ ${petName}の攻撃力が上がった`);
-    }
-  } else if (skillId === "beastRoar") {
-    if (jobId !== 2) {
-      appendLog("ビーストロアは動物使い専用だ");
-    } else {
-      petBuffRate = 1.6;
-      petBuffTurnRemain = 3;
-      appendLog(`ビーストロア！ ${petName}の力がみなぎった`);
-    }
-  } else if (skillId === "packSlash") {
-    // 獣群使い専用：プレイヤー自身の物理攻撃スキル（ビーストスラッシュ相当）
-    if (jobId !== 102) {
-      appendLog("パックスラッシュは獣群使い専用だ");
-    } else {
-      const dmg = Math.floor(getCurrentAtkForSkill() * 1.3);
-      enemyHp = Math.max(0, enemyHp - dmg);
-
-      if (typeof currentBattleMaxDamage === "number") {
-        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
-      }
-      if (typeof currentBattleMaxPhys === "number") {
-        currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
-      }
-
-      appendLog(`パックスラッシュ！ ${currentEnemy.name} に${dmg}ダメージ`);
-      didDamage = true;
-    }
-  } else if (skillId === "packRally") {
-    // 獣群使い専用：編成中パーティ全員の攻撃力アップ（アニマルリンクの多頭版）
-    if (jobId !== 102) {
-      appendLog("群れの咆哮は獣群使い専用だ");
-    } else {
-      beastPartyBuffRate = 1.3;
-      beastPartyBuffTurnRemain = 2;
-      appendLog("群れの咆哮！ パーティ全員の攻撃力が上がった");
-    }
-  } else if (skillId === "packFrenzy") {
-    // 獣群使い専用（動物使いギルド限定）：パーティ全員の攻撃力を大きく・長く強化
-    if (jobId !== 102) {
-      appendLog("パックフレンジーは獣群使い専用だ");
-    } else {
-      beastPartyBuffRate = 1.5;
-      beastPartyBuffTurnRemain = 3;
-      appendLog("パックフレンジー！ パーティ全員が興奮状態になった");
-    }
-  } else if (skillId === "packMend") {
-    // 獣群使い専用：編成中パーティ全員のHPを回復（ビーストヒールの多頭版）
-    if (jobId !== 102) {
-      appendLog("この魔法は獣群使い専用だ");
-    } else if (typeof getActivePartyRecords !== "function") {
-      appendLog("パーティ情報が取得できなかった");
-    } else {
-      const party = getActivePartyRecords(true);
-      if (party.length === 0) {
-        appendLog("回復できるペットがいない");
-      } else {
-        // ★固定回復量（+5相当）はビーストヒールと同じ「合計+5」になるよう頭数で分ける。
-        //   ％部分（HP上限×0.4）は編成分割済みの hpMax に対する計算なので、ここは頭数分でOK。
-        const flatBonusPerPet = Math.max(1, Math.round(5 / party.length));
-
-        const healedNames = [];
-        for (const rec of party) {
-          const heal = Math.floor((rec.hpMax || 1) * 0.4) + flatBonusPerPet;
-          rec.hp = Math.min((rec.hp || 0) + heal, rec.hpMax || heal);
-          healedNames.push(rec.name);
-        }
-        appendLog(`群れの手当て！ ${healedNames.join("・")}のHPが回復した`);
-      }
-    }
-  } else if (skillId === "potionBoost") {
-    // 錬金術師専用：ポーション強化バフ（SP 消費）
-    if (jobId !== 202) {
-      appendLog("ポーションブーストは錬金術師専用だ");
-    } else {
-      potionBoostTurnRemain = 3;
-      appendLog("ポーションブースト！ しばらくポーションの効果がさらに高まった");
-    }
-  } else if (skillId === "itemBoost") {
-    // ★2024: 道具使い専用：道具（爆弾等）強化バフ（SP 消費）
-    if (jobId !== 203) {
-      appendLog("アイテムブーストは道具使い専用だ");
-    } else {
-      itemBoostTurnRemain = 3;
-      appendLog("アイテムブースト！ しばらく道具の効果がさらに高まった");
-    }
-  } else if (skillId === "soulForgedStrike") {
-    // 鍛冶職人専用：物理攻撃スキル（クラフトスキルLvが高いほど威力上昇：Lv0で1.3倍→Lv100で1.6倍）
-    if (jobId !== 200) {
-      appendLog("入魂の一撃は鍛冶職人専用だ");
-    } else {
-      const smithLv = getSmithCraftSkillLevel();
-      const mult = 1.3 + 0.3 * Math.min(1, smithLv / 100);
-      const dmg = Math.floor(getCurrentAtkForSkill() * mult);
-      enemyHp = Math.max(0, enemyHp - dmg);
-
-      if (typeof currentBattleMaxDamage === "number") {
-        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
-      }
-      if (typeof currentBattleMaxPhys === "number") {
-        currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
-      }
-
-      appendLog(`入魂の一撃！ ${currentEnemy.name} に${dmg}ダメージ`);
-      didDamage = true;
-    }
-  } else if (skillId === "fieldForging") {
-    // 鍛冶職人専用：一時的な攻撃・防御バフ（クラフトスキルLvが高いほど倍率上昇：Lv0で+15%→Lv100で+25%）
-    if (jobId !== 200) {
-      appendLog("応急鍛冶は鍛冶職人専用だ");
-    } else {
-      const smithLv = getSmithCraftSkillLevel();
-      const bonus = 0.10 * Math.min(1, smithLv / 100);
-      fieldForgingAtkRate = 0.15 + bonus;
-      fieldForgingRate    = 0.15 + bonus;
-      fieldForgingTurnRemain = 2;
-      appendLog("応急鍛冶！ しばらく攻撃力・防御力が上がった");
-    }
-  } else if (skillId === "fullPowerStrike") {
-    // 武具使い専用：物理攻撃スキル
-    if (jobId !== 201) {
-      appendLog("渾身の一撃は武具使い専用だ");
-    } else {
-      const dmg = Math.floor(getCurrentAtkForSkill() * 1.5);
-      enemyHp = Math.max(0, enemyHp - dmg);
-
-      if (typeof currentBattleMaxDamage === "number") {
-        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
-      }
-      if (typeof currentBattleMaxPhys === "number") {
-        currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
-      }
-
-      appendLog(`渾身の一撃！ ${currentEnemy.name} に${dmg}ダメージ`);
-      didDamage = true;
-    }
-  } else if (skillId === "fullGear") {
-    // 武具使い専用：一時的な攻撃・防御バフ
-    if (jobId !== 201) {
-      appendLog("完全装備は武具使い専用だ");
-    } else {
-      fullGearTurnRemain = 2;
-      appendLog("完全装備！ しばらく攻撃力・防御力が上がった");
-    }
-  } else if (skillId === "greatshieldCounter") {
-    // ★ 大盾兵専用：カウンタースタンス（防御前生ダメージ×職倍率で1回だけ反撃）
-    if (jobId !== 100) {
-      appendLog("カウンタースタンスは大盾兵専用だ");
-    } else {
-      if (typeof addSkillStatusToPlayer === "function") {
-        // 状態側の counter が getCounterDamageRateForJob(jobId) から倍率を読む前提で、
-        // ここではターン数だけ指定（例: 2ターンの間、最初の被弾で1回だけ発動）
-        addSkillStatusToPlayer("counter", 2);
-      }
-      appendLog("カウンタースタンス！ 次の被ダメージに対して反撃の構えを取った");
-    }
-  } else if (skillId === "greatshieldSmash") {
-    // ★ 大盾砕き：防御力依存の攻撃
-    if (jobId !== 100) {
-      appendLog("大盾砕きは大盾兵専用だ");
-    } else if (!currentEnemy) {
-      appendLog("敵がいない");
-    } else {
-      const defBase = typeof defTotal === "number" ? defTotal : 0;
-      // 防御 80% ＋ 固定値 10（バランスは後で調整）
-      let dmg = Math.floor(defBase * 0.8) + 10;
-      // ★修正: 物理スキル扱いなので physSkillRate（スキルツリー＋ジョブ）も適用
-      dmg = Math.floor(dmg * (1 + getPhysSkillRateMultiplier()));
-      if (dmg < 1) dmg = 1;
-
-      enemyHp = Math.max(0, enemyHp - dmg);
-
-      // 戦闘統計（物理扱い）
-      if (typeof currentBattleMaxDamage === "number") {
-        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
-      }
-      if (typeof currentBattleMaxPhys === "number") {
-        currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
-      }
-
-      appendLog(`大盾砕き！ ${currentEnemy.name} に${dmg}ダメージ（防御力を活かした一撃）`);
-      didDamage = true;
-    }
-  } else if (skillId === "greatshieldFortify") {
-    // ★ 堅固の大盾：防御アップ 5 ターン
-    if (jobId !== 100) {
-      appendLog("堅固の大盾は大盾兵専用だ");
-    } else {
-      greatshieldFortifyTurnRemain = 5;
-      appendLog("堅固の大盾！ しばらく防御力が上がった");
-    }
-  } else if (skillId === "greatshieldGuardStance") {
-    // ★ 護の構え：ガード率・軽減アップ
-    if (jobId !== 100) {
-      appendLog("護の構えは大盾兵専用だ");
-    } else {
-      greatshieldGuardStanceTurnRemain = 3;
-      appendLog("護の構え！ 大盾を構え直し、敵の攻撃をしのぐ体勢を取った");
-    }
-  } else if (skillId === "quickHarvest") {
-    // 採集士専用：クイックハーベスト（通常採取レベル依存で伸びる素早い一撃）
-    if (jobId !== 300) {
-      appendLog("クイックハーベストは採集士専用だ");
-    } else {
-      const dmg = Math.floor(getCurrentAtkForSkill() * 1.1);
-      enemyHp = Math.max(0, enemyHp - dmg);
-
-      if (typeof currentBattleMaxDamage === "number") {
-        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
-      }
-      if (typeof currentBattleMaxPhys === "number") {
-        currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
-      }
-
-      appendLog(`クイックハーベスト！ ${currentEnemy.name} に${dmg}ダメージ`);
-      didDamage = true;
-    }
-  } else if (skillId === "gatherersInstinct") {
-    // 採集士専用：採取の勘（自己バフ。命中・会心率アップ）
-    if (jobId !== 300) {
-      appendLog("採取の勘は採集士専用だ");
-    } else if (typeof addStatusToPlayer === "function") {
-      addStatusToPlayer("gather_focus");
-      appendLog("採取の勘！ 集中力が高まり、命中・会心率が上がった");
-    }
-  } else if (skillId === "supervisorStrike") {
-    // 採取監督官専用：監督官の一撃（拠点レベル依存で伸びる一撃）
-    if (jobId !== 301) {
-      appendLog("監督官の一撃は採取監督官専用だ");
-    } else {
-      const dmg = Math.floor(getCurrentAtkForSkill() * 1.1);
-      enemyHp = Math.max(0, enemyHp - dmg);
-
-      if (typeof currentBattleMaxDamage === "number") {
-        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
-      }
-      if (typeof currentBattleMaxPhys === "number") {
-        currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
-      }
-
-      appendLog(`監督官の一撃！ ${currentEnemy.name} に${dmg}ダメージ`);
-      didDamage = true;
-    }
-  } else if (skillId === "baseDefenseFormation") {
-    // 採取監督官専用：拠点防衛陣形（自己バフ。防御アップ）
-    if (jobId !== 301) {
-      appendLog("拠点防衛陣形は採取監督官専用だ");
-    } else if (typeof addStatusToPlayer === "function") {
-      addStatusToPlayer("def_up");
-      appendLog("拠点防衛陣形！ 守りの構えを取り、防御力が上がった");
-    }
-  } else if (skillId === "takedown") {
-    // 狩猟師専用：テイクダウン（狩猟レベル依存で伸びる一撃）
-    if (jobId !== 400) {
-      appendLog("テイクダウンは狩猟師専用だ");
-    } else {
-      const dmg = Math.floor(getCurrentAtkForSkill() * 1.1);
-      enemyHp = Math.max(0, enemyHp - dmg);
-
-      if (typeof currentBattleMaxDamage === "number") {
-        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
-      }
-      if (typeof currentBattleMaxPhys === "number") {
-        currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
-      }
-
-      appendLog(`テイクダウン！ ${currentEnemy.name} に${dmg}ダメージ`);
-      didDamage = true;
-    }
-  } else if (skillId === "vitalStrike") {
-    // 狩猟師専用：急所突き（高倍率単発。狩猟レベルが高いほど伸びる）
-    if (jobId !== 400) {
-      appendLog("急所突きは狩猟師専用だ");
-    } else {
-      const dmg = Math.floor(getCurrentAtkForSkill() * 1.3);
-      enemyHp = Math.max(0, enemyHp - dmg);
-
-      if (typeof currentBattleMaxDamage === "number") {
-        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
-      }
-      if (typeof currentBattleMaxPhys === "number") {
-        currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
-      }
-
-      appendLog(`急所突き！ ${currentEnemy.name} の急所に${dmg}ダメージ`);
-      didDamage = true;
-    }
-  } else if (skillId === "harpoonThrust") {
-    // 漁師専用：銛突き（釣りレベル依存で伸びる一撃）
-    if (jobId !== 401) {
-      appendLog("銛突きは漁師専用だ");
-    } else {
-      const dmg = Math.floor(getCurrentAtkForSkill() * 1.1);
-      enemyHp = Math.max(0, enemyHp - dmg);
-
-      if (typeof currentBattleMaxDamage === "number") {
-        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
-      }
-      if (typeof currentBattleMaxPhys === "number") {
-        currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
-      }
-
-      appendLog(`銛突き！ ${currentEnemy.name} に${dmg}ダメージ`);
-      didDamage = true;
-    }
-  } else if (skillId === "castNet") {
-    // 漁師専用：投網（小ダメージ＋一定確率で敵の防御ダウン）
-    if (jobId !== 401) {
-      appendLog("投網は漁師専用だ");
-    } else {
-      const dmg = Math.floor(getCurrentAtkForSkill() * 0.8);
-      enemyHp = Math.max(0, enemyHp - dmg);
-
-      if (typeof currentBattleMaxDamage === "number") {
-        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
-      }
-      if (typeof currentBattleMaxPhys === "number") {
-        currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
-      }
-
-      appendLog(`投網！ ${currentEnemy.name} に${dmg}ダメージ`);
-
-      if (typeof addStatusToEnemy === "function") {
-        if (rollStatusApplyForCurrentJob(0.7)) {
-          addStatusToEnemy("def_down");
-          appendLog(`${currentEnemy.name}は網に絡め取られ、動きが鈍った！（防御ダウン）`);
-        } else {
-          appendLog("しかし網はうまくかからなかった…");
-        }
-      }
-      didDamage = true;
-    }
-  } else if (skillId === "sickleSlash") {
-    // 農夫専用：鎌の一閃（畑/菜園レベル依存で伸びる一撃）
-    if (jobId !== 402) {
-      appendLog("鎌の一閃は農夫専用だ");
-    } else {
-      const dmg = Math.floor(getCurrentAtkForSkill() * 1.1);
-      enemyHp = Math.max(0, enemyHp - dmg);
-
-      if (typeof currentBattleMaxDamage === "number") {
-        currentBattleMaxDamage = Math.max(currentBattleMaxDamage, dmg);
-      }
-      if (typeof currentBattleMaxPhys === "number") {
-        currentBattleMaxPhys = Math.max(currentBattleMaxPhys, dmg);
-      }
-
-      appendLog(`鎌の一閃！ ${currentEnemy.name} に${dmg}ダメージ`);
-      didDamage = true;
-    }
-  } else if (skillId === "soilFortify") {
-    // 農夫専用：土壌強化（自己バフ。防御アップ）
-    if (jobId !== 402) {
-      appendLog("土壌強化は農夫専用だ");
-    } else if (typeof addStatusToPlayer === "function") {
-      addStatusToPlayer("def_up");
-      appendLog("土壌強化！ 足場を固め、防御力が上がった");
-    }
-  }
-
-  if (skillId === "animalLink" ||
-      skillId === "braveCharge" ||
-      skillId === "beastRoar" ||
-      skillId === "packRally" ||
-      skillId === "packFrenzy" ||
-      skillId === "itemBoost" ||
-      skillId === "greatshieldCounter" ||
-      skillId === "greatshieldFortify" ||
-      skillId === "greatshieldGuardStance" ||
-      skillId === "gatherersInstinct" ||
-      skillId === "baseDefenseFormation" ||
-      skillId === "soilFortify") {
-    // 純バフ系スキルもターンを消費して敵ターンへ
-    if (currentEnemy) {
-      enemyTurn();
-      if (typeof tickStatusesTurnEndForBoth === "function") {
-        tickStatusesTurnEndForBoth();
-      }
-      if (typeof updateEnemyStatusUI === "function") {
-        updateEnemyStatusUI();
-      }
-    }
-  } else if (didDamage) {
-    if (enemyHp <= 0) {
-      enemyHp = 0;
-
-      // ★ ギルド用ヘルパーに物理スキル撃破を通知
-      if (typeof onEnemyKilledForGuild === "function") {
-        onEnemyKilledForGuild({ by: "phys", isBoss: !!isBossBattle });
-      }
-
-      winBattle(true, "phys");
-      if (typeof updateEnemyStatusUI === "function") {
-        updateEnemyStatusUI();
-      }
-      if (typeof updateDisplay === "function") {
-        updateDisplay();
-      }
-      return;
-    }
-
-    runPetOrPartyTurnForCurrentJob();
-    if (enemyHp > 0) {
-      enemyTurn();
-      if (typeof tickStatusesTurnEndForBoth === "function") {
-        tickStatusesTurnEndForBoth();
-      }
-      if (typeof updateEnemyStatusUI === "function") {
-        updateEnemyStatusUI();
-      }
-    }
-  }
-
-  if (typeof updateDisplay === "function") {
-    updateDisplay();
-  }
-}
-
-// =======================
-// game-ui.js から呼ばれるラッパー
-// =======================
-
-function refreshMagicSelect() {
-  refreshSkillUIs();
-}
-function refreshSkillSelect() {
-  refreshSkillUIs();
-}
-
-function castSelectedMagic() {
-  castMagicFromUI();
-}
-function useSelectedSkill() {
-  useSkillFromUI();
-}
-
-// =======================
-// 職業ごとのスキル UI 表示切り替え
-// =======================
-
-function updateBattleSkillUIByJob() {
-  const magicBlock = document.getElementById("magicBlock");
-  const skillBlock = document.getElementById("skillBlock");
-  const magicBtn   = document.getElementById("castMagicBtn");
-  const skillBtn   = document.getElementById("useSkillBtn");
-  if (!magicBlock || !skillBlock || !magicBtn || !skillBtn) return;
-
-  const hasMagic = (typeof jobCanUseMagic === "function")
-    ? jobCanUseMagic()
-    : (jobId === 1 || jobId === 2 || jobId === 202);
-  const hasPhys  = (typeof jobCanUsePhysSkill === "function")
-    ? jobCanUsePhysSkill()
-    : (jobId === 0 || jobId === 2 || jobId === 100 || jobId === 202);
-
-  magicBlock.style.display = hasMagic ? "" : "none";
-  magicBtn.style.display   = hasMagic ? "" : "none";
-  skillBlock.style.display = hasPhys  ? "" : "none";
-  skillBtn.style.display   = hasPhys  ? "" : "none";
-}
-
-function updateSkillButtonsByJob() {
-  const magicBlock = document.getElementById("magicBlock");
-  const skillBlock = document.getElementById("skillBlock");
-
-  const hasMagic = (typeof jobCanUseMagic === "function")
-    ? jobCanUseMagic()
-    : (jobId === 1 || jobId === 2 || jobId === 202);
-  const hasPhys  = (typeof jobCanUsePhysSkill === "function")
-    ? jobCanUsePhysSkill()
-    : (jobId === 0 || jobId === 2 || jobId === 100 || jobId === 202);
-
-  if (magicBlock) magicBlock.style.display = hasMagic ? "" : "none";
-  if (skillBlock) skillBlock.style.display = hasPhys  ? "" : "none";
 }

@@ -730,23 +730,37 @@ function applyFoodEffect(effect, foodId) {
     addFoodStatusToPlayer(effect.statusId, effect.durationTurns);
   }
 
+  let effectBonus = 0;
+  if (typeof getJobBonuses === "function") {
+    const jid = (typeof window !== "undefined" && window.player?.jobId != null) ? window.player.jobId : (typeof jobId !== "undefined" ? jobId : null);
+    if (jid != null) {
+      const b = getJobBonuses(jid);
+      if (b && b.foodBuffEffectRate > 0) {
+        effectBonus = b.foodBuffEffectRate;
+      }
+    }
+  }
+
   if (typeof restoreHungerThirst === "function") {
-    const h = effect.hungerRecover || 0;
-    const t = effect.thirstRecover || 0;
+    const h = Math.floor((effect.hungerRecover || 0) * (1 + effectBonus));
+    const t = Math.floor((effect.thirstRecover || 0) * (1 + effectBonus));
     restoreHungerThirst(h, t);
   }
 
   if (typeof hp !== "undefined" && typeof hpMax !== "undefined" &&
       typeof effect.hpRegen === "number") {
-    hp = Math.min(hpMax, hp + effect.hpRegen);
+    const heal = Math.floor(effect.hpRegen * (1 + effectBonus));
+    hp = Math.min(hpMax, hp + heal);
   }
   if (typeof mp !== "undefined" && typeof mpMax !== "undefined" &&
       typeof effect.mpRegen === "number") {
-    mp = Math.min(mpMax, mp + effect.mpRegen);
+    const heal = Math.floor(effect.mpRegen * (1 + effectBonus));
+    mp = Math.min(mpMax, mp + heal);
   }
   if (typeof sp !== "undefined" && typeof spMax !== "undefined" &&
       typeof effect.spRegen === "number") {
-    sp = Math.min(spMax, sp + effect.spRegen);
+    const heal = Math.floor(effect.spRegen * (1 + effectBonus));
+    sp = Math.min(spMax, sp + heal);
   }
 
   if (typeof updateDisplay === "function") {
@@ -761,23 +775,37 @@ function applyDrinkEffect(effect, drinkId) {
     addDrinkStatusToPlayer(effect.statusId, effect.durationTurns);
   }
 
+  let effectBonus = 0;
+  if (typeof getJobBonuses === "function") {
+    const jid = (typeof window !== "undefined" && window.player?.jobId != null) ? window.player.jobId : (typeof jobId !== "undefined" ? jobId : null);
+    if (jid != null) {
+      const b = getJobBonuses(jid);
+      if (b && b.foodBuffEffectRate > 0) {
+        effectBonus = b.foodBuffEffectRate;
+      }
+    }
+  }
+
   if (typeof restoreHungerThirst === "function") {
-    const h = effect.hungerRecover || 0;
-    const t = effect.thirstRecover || 0;
+    const h = Math.floor((effect.hungerRecover || 0) * (1 + effectBonus));
+    const t = Math.floor((effect.thirstRecover || 0) * (1 + effectBonus));
     restoreHungerThirst(h, t);
   }
 
   if (typeof hp !== "undefined" && typeof hpMax !== "undefined" &&
       typeof effect.hpRegen === "number") {
-    hp = Math.min(hpMax, hp + effect.hpRegen);
+    const heal = Math.floor(effect.hpRegen * (1 + effectBonus));
+    hp = Math.min(hpMax, hp + heal);
   }
   if (typeof mp !== "undefined" && typeof mpMax !== "undefined" &&
       typeof effect.mpRegen === "number") {
-    mp = Math.min(mpMax, mp + effect.mpRegen);
+    const heal = Math.floor(effect.mpRegen * (1 + effectBonus));
+    mp = Math.min(mpMax, mp + heal);
   }
   if (typeof sp !== "undefined" && typeof spMax !== "undefined" &&
       typeof effect.spRegen === "number") {
-    sp = Math.min(spMax, sp + effect.spRegen);
+    const heal = Math.floor(effect.spRegen * (1 + effectBonus));
+    sp = Math.min(spMax, sp + heal);
   }
 
   if (typeof updateDisplay === "function") {

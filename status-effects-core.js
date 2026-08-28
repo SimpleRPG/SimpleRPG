@@ -224,6 +224,20 @@ const STATUS_EFFECTS = {
       return rate + 0.08;
     }
   },
+  sharpen: {
+    id: "sharpen",
+    name: "刃研ぎ",
+    baseDuration: 3,
+    modifyAttack(mult) {
+      return mult * 1.15;
+    },
+    modifyCritRate(rate) {
+      return rate + 0.25;
+    },
+    modifyCritMult(mult) {
+      return mult * 1.2;
+    }
+  },
   paralyze: {
     id: "paralyze",
     name: "麻痺",
@@ -994,9 +1008,20 @@ function addStatusToEnemy(id, opts) {
 function addFoodStatusToPlayer(id, durationOverride) {
   const def = STATUS_EFFECTS[id];
   if (!def) return;
-  const baseDur = (typeof durationOverride === "number" && durationOverride > 0)
+  let baseDur = (typeof durationOverride === "number" && durationOverride > 0)
     ? durationOverride
     : (def.baseDuration || 0);
+
+  // ★ 貪食家(205)等の料理バフ持続時間延長ボーナス
+  if (typeof getJobBonuses === "function") {
+    const jid = (typeof window !== "undefined" && window.player?.jobId != null) ? window.player.jobId : (typeof jobId !== "undefined" ? jobId : null);
+    if (jid != null) {
+      const b = getJobBonuses(jid);
+      if (b && b.foodBuffDurationRate > 0) {
+        baseDur = Math.ceil(baseDur * (1 + b.foodBuffDurationRate));
+      }
+    }
+  }
 
   const ex = playerStatuses.find(s => s.id === id && s.source === BUFF_SOURCE_FOOD);
   if (ex) {
@@ -1010,9 +1035,20 @@ function addFoodStatusToPlayer(id, durationOverride) {
 function addDrinkStatusToPlayer(id, durationOverride) {
   const def = STATUS_EFFECTS[id];
   if (!def) return;
-  const baseDur = (typeof durationOverride === "number" && durationOverride > 0)
+  let baseDur = (typeof durationOverride === "number" && durationOverride > 0)
     ? durationOverride
     : (def.baseDuration || 0);
+
+  // ★ 貪食家(205)等の飲み物バフ持続時間延長ボーナス
+  if (typeof getJobBonuses === "function") {
+    const jid = (typeof window !== "undefined" && window.player?.jobId != null) ? window.player.jobId : (typeof jobId !== "undefined" ? jobId : null);
+    if (jid != null) {
+      const b = getJobBonuses(jid);
+      if (b && b.foodBuffDurationRate > 0) {
+        baseDur = Math.ceil(baseDur * (1 + b.foodBuffDurationRate));
+      }
+    }
+  }
 
   const ex = playerStatuses.find(s => s.id === id && s.source === BUFF_SOURCE_DRINK);
   if (ex) {

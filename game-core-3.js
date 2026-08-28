@@ -19,12 +19,13 @@ function calcAtkDefDamage(atk, def) {
 }
 
 // =======================
-// シールドブロウ用ガードフラグ
+// シールドブロウ・受け流し用ガードフラグ
 // =======================
 //
-// 戦士スキル「シールドブロウ」で立つガード状態。
+// 戦士スキル「シールドブロウ」、武具使いスキル「受け流し反撃」で立つガード状態。
 // skill-core.js からも enemyTurn からも共通で読む/書く。
 let shieldBlowGuardTurnRemain = 0;
+let parryGuardTurnRemain = 0;
 
 // =======================
 // 戦闘用スキルツリーボーナスキャッシュ
@@ -839,13 +840,27 @@ function enemyTurn() {
       }
     }
 
-    // ★堅固の大盾などの防御バフを反映した「実効防御値」を作る
+    // ★堅固の大盾・応急鍛冶・完全装備・特製まかない・鋼の胃袋などの防御バフを反映した「実効防御値」を作る
     let effectiveDefTotal = defTotal;
     if (typeof greatshieldFortifyTurnRemain === "number" && greatshieldFortifyTurnRemain > 0) {
       const rate = (typeof greatshieldFortifyRate === "number") ? greatshieldFortifyRate : 0;
-      if (rate > 0) {
-        effectiveDefTotal = Math.floor(effectiveDefTotal * (1 + rate));
-      }
+      if (rate > 0) effectiveDefTotal = Math.floor(effectiveDefTotal * (1 + rate));
+    }
+    if (typeof fieldForgingTurnRemain === "number" && fieldForgingTurnRemain > 0) {
+      const rate = (typeof fieldForgingRate === "number") ? fieldForgingRate : 0;
+      if (rate > 0) effectiveDefTotal = Math.floor(effectiveDefTotal * (1 + rate));
+    }
+    if (typeof fullGearTurnRemain === "number" && fullGearTurnRemain > 0) {
+      const rate = (typeof fullGearDefRate === "number") ? fullGearDefRate : 0;
+      if (rate > 0) effectiveDefTotal = Math.floor(effectiveDefTotal * (1 + rate));
+    }
+    if (typeof chefSpecialtyTurnRemain === "number" && chefSpecialtyTurnRemain > 0) {
+      const rate = (typeof chefSpecialtyDefRate === "number") ? chefSpecialtyDefRate : 0;
+      if (rate > 0) effectiveDefTotal = Math.floor(effectiveDefTotal * (1 + rate));
+    }
+    if (typeof ironStomachTurnRemain === "number" && ironStomachTurnRemain > 0) {
+      const rate = (typeof ironStomachDefRate === "number") ? ironStomachDefRate : 0;
+      if (rate > 0) effectiveDefTotal = Math.floor(effectiveDefTotal * (1 + rate));
     }
 
     // ★追加: 防御前の「生ダメージ」を計算してカウンター用に保存
@@ -877,10 +892,27 @@ function enemyTurn() {
       }
     }
 
+    // ★ 武具使い等の常時被ダメ軽減ボーナス（guardReductionRate）
+    if (typeof getJobBonuses === "function") {
+      const jid = window.player?.jobId ?? window.jobId;
+      if (jid != null) {
+        const jb = getJobBonuses(jid);
+        if (jb && jb.guardReductionRate > 0) {
+          dmg = Math.max(1, Math.floor(dmg * (1 - jb.guardReductionRate)));
+        }
+      }
+    }
+
     if (shieldBlowGuardTurnRemain > 0) {
       dmg = Math.floor(dmg * 0.5);
       shieldBlowGuardTurnRemain = 0;
       appendLog("シールドブロウの効果でダメージが軽減された！");
+    }
+
+    if (typeof parryGuardTurnRemain === "number" && parryGuardTurnRemain > 0) {
+      dmg = Math.max(1, Math.floor(dmg * 0.5));
+      parryGuardTurnRemain = 0;
+      appendLog("受け流しの構えで敵の攻撃を捌き、被ダメージを軽減した！");
     }
 
     // ★スキルツリー: 戦闘ガード系ボーナス（最終被ダメージ-％）

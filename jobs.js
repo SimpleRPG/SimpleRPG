@@ -187,10 +187,10 @@ const JOB_DEFS = [
     name: "鍛冶職人",
     type: "craft",
     guildId: "smith",
-    desc: "武器・防具作りに特化した職。高品質な装備を作りやすく、クラフト成功率・品質が向上する製作特化の役割を持つ。",
+    desc: "武器・防具作りに特化した職。高品質な装備を作りやすく、クラフト成功率・品質が向上するほか、敵の装甲を砕く『装甲粉砕』や会心を極める『刃研ぎ』で戦う製作特化職。",
     initialStats: { STR: 1, VIT: 2, INT_: 2, DEX_: 2, LUK_: 1 },
     canUseMagic: false,
-    canUsePhysSkill: true,  // ★修正: 専用スキル「入魂の一撃」「応急鍛冶」使用のため有効化
+    canUsePhysSkill: true,  // ★修正: 専用スキル「装甲粉砕」「刃研ぎ」使用のため有効化
     hasPetTurn: false,
     bonuses: {
       craftBonus: 0.08,
@@ -203,10 +203,10 @@ const JOB_DEFS = [
     name: "武具使い",
     type: "craft",
     guildId: "smith",
-    desc: "武器・防具の性能を最大限に活かす職。装備の攻撃力・防御力が少し向上し、強化効果が増幅されるほか、常時わずかに被ダメージを軽減する装備運用特化の職業。",
+    desc: "武器・防具の性能を最大限に活かす職。装備の攻撃力・防御力が向上し、強化効果が増幅されるほか、敵の攻撃を受け流して反撃する『受け流し反撃』や鋭い『連撃破』を操る装備運用特化職。",
     initialStats: { STR: 2, VIT: 2, INT_: 1, DEX_: 2, LUK_: 2 },
     canUseMagic: false,
-    canUsePhysSkill: true,  // ★修正: 専用スキル「渾身の一撃」「完全装備」使用のため有効化
+    canUsePhysSkill: true,  // ★修正: 専用スキル「受け流し反撃」「連撃破」使用のため有効化
     hasPetTurn: false,
     bonuses: {
       atkRate: 0.02,
@@ -268,16 +268,14 @@ const JOB_DEFS = [
     name: "料理人",
     type: "craft",
     guildId: "cooking",
-    desc: "料理・飲み物クラフトに特化した職。高品質な食事を作りやすく、クラフト成功率・品質が向上する支援寄りの役割を持つ。",
+    desc: "料理・飲み物クラフトに特化した職。高品質な食事を作りやすく、クラフト成功率・品質が向上するほか、目潰しスパイスによる弱体化や滋養スープによる回復・リジェネで戦況を支える製作支援職。",
     initialStats: { STR: 1, VIT: 1, INT_: 2, DEX_: 2, LUK_: 2 },
     canUseMagic: false,
-    canUsePhysSkill: false,
+    canUsePhysSkill: true,  // ★修正: 専用スキル「スパイス目潰し」「滋養スープ」使用のため有効化
     hasPetTurn: false,
     bonuses: {
       craftBonus: 0.08,
       craftCostReduceRate: 0.05
-      // TODO: 設計段階。cookingVarietyBonus は getJobBonuses() に
-      // キーを追加してから正式実装する。
     }
   },
   {
@@ -286,16 +284,14 @@ const JOB_DEFS = [
     name: "貪食家",
     type: "craft",
     guildId: "cooking",
-    desc: "食事・飲み物の効果を利用する特化職。バフ効果量・持続時間が向上し、食べることで強くなる、自己強化重視の職業。",
+    desc: "食事・飲み物の効果を利用する特化職。バフ効果量・持続時間が向上し、満腹度を威力に変換する『満腹バースト』や敵の生命力を吸いデバフを消化する『丸呑み消化』で戦う自己強化重視の職業。",
     initialStats: { STR: 1, VIT: 2, INT_: 1, DEX_: 2, LUK_: 3 },
     canUseMagic: false,
-    canUsePhysSkill: false,
+    canUsePhysSkill: true,  // ★修正: 専用スキル「満腹バースト」「丸呑み消化」使用のため有効化
     hasPetTurn: false,
     bonuses: {
       foodBuffEffectRate: 0.10,
       foodBuffDurationRate: 0.20
-      // TODO: 設計段階。hpRecoverRateAdd は getJobBonuses() に
-      // キーを追加してから正式実装する。
     }
   },
 
@@ -308,7 +304,7 @@ const JOB_DEFS = [
     name: "採集士",
     type: "gather",
     guildId: "gather",
-    desc: "木・鉱石・草・布・皮・水など、あらゆる基礎素材を満遍なく集める職。通常採取での採取量と +1 個ボーナスがわずかに増える、汎用型の採取職。",
+    desc: "木・鉱石・草・布・皮・水など、あらゆる基礎素材を満遍なく集める職。通常採取での採取量・ボーナスが増えるほか、砂煙での目潰しや即席の野草調合で戦う汎用採取職。",
     initialStats: { STR: 1, VIT: 1, INT_: 2, DEX_: 3, LUK_: 2 },
     canUseMagic: false,
     canUsePhysSkill: true,
@@ -324,7 +320,7 @@ const JOB_DEFS = [
     name: "採取監督官",
     type: "gather",
     guildId: "gather",
-    desc: "各地の採取拠点の運営に優れた職。拠点から自動的に集まる素材量がわずかに増える、基盤運用特化の採取職。",
+    desc: "各地の採取拠点の運営に優れた職。拠点から自動的に集まる素材量が増えるほか、拠点レベルに応じた号令攻撃や迎撃防衛陣を敷いて戦う基盤運用特化の採取職。",
     initialStats: { STR: 1, VIT: 2, INT_: 2, DEX_: 2, LUK_: 2 },
     canUseMagic: false,
     canUsePhysSkill: true,
@@ -342,7 +338,7 @@ const JOB_DEFS = [
     name: "狩猟師",
     type: "gather",
     guildId: "food",
-    desc: "狩猟で得られる肉・皮などの食材調達に特化した職。狩猟食材の入手量がわずかと増え、レア食材もやや見つかりやすくなる狩猟特化の採取職。",
+    desc: "狩猟で得られる肉・皮などの食材調達に特化した職。狩猟食材やレア食材が入手しやすくなるほか、獲物を鈍らせる罠や高会心の急所突きで仕留める狩猟特化職。",
     initialStats: { STR: 2, VIT: 2, INT_: 1, DEX_: 3, LUK_: 2 },
     canUseMagic: false,
     canUsePhysSkill: true,
@@ -358,7 +354,7 @@ const JOB_DEFS = [
     name: "漁師",
     type: "gather",
     guildId: "food",
-    desc: "釣りで得られる魚系食材の調達に特化した職。釣り食材の入手量がわずかに増え、ハズレを引きにくくなる漁業特化の採取職。",
+    desc: "釣りで得られる魚系食材の調達に特化した職。釣り食材の入手量が増えるほか、鋭い銛突きや敵の行動を封じる投網拘束を操る漁業特化職。",
     initialStats: { STR: 1, VIT: 2, INT_: 1, DEX_: 3, LUK_: 3 },
     canUseMagic: false,
     canUsePhysSkill: true,
@@ -374,7 +370,7 @@ const JOB_DEFS = [
     name: "農夫",
     type: "gather",
     guildId: "food",
-    desc: "農園で得られる穀物・野菜などの食材調達に特化した職。農園の収穫量がわずかに増え、育成サイクルもわずかに短くなる農業特化の採取職。",
+    desc: "農園で得られる穀物・野菜などの食材調達に特化した職。農園の収穫量が増えるほか、敵の足元を崩す耕作の一撃や収穫物による豊穣の恵みで粘り強く戦う農業特化職。",
     initialStats: { STR: 1, VIT: 2, INT_: 2, DEX_: 2, LUK_: 2 },
     canUseMagic: false,
     canUsePhysSkill: true,
@@ -864,7 +860,9 @@ function getGuardBonusForCurrentJob() {
 //   未定義だったため、カウンタースタンスの職業別倍率が常に 1.0 扱いになっていたバグを修正。
 //   大盾兵（jobId: 100）のみ 1.5 倍、それ以外は 1.0 倍。
 function getCounterDamageRateForJob(jobId) {
-  if (jobId === 100) return 1.5;
+  if (jobId === 100) return 1.5; // 大盾兵（カウンタースタンス）
+  if (jobId === 201) return 1.4; // 武具使い（受け流し反撃）
+  if (jobId === 301) return 1.0; // 採取監督官（迎撃防衛陣）
   return 1.0;
 }
 
