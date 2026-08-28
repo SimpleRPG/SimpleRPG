@@ -9,6 +9,12 @@ function renderGuildHeader() {
   const nameEl  = document.getElementById("guildCurrentName");
   const fameEl  = document.getElementById("guildCurrentFame");
   const rankEl  = document.getElementById("guildCurrentRank");
+  const coinsEl = document.getElementById("guildCurrentCoins");
+
+  const coins = typeof getGuildCoins === "function" ? getGuildCoins() : ((typeof window.guildCoins === "number") ? window.guildCoins : 0);
+  if (coinsEl) {
+    coinsEl.textContent = String(coins);
+  }
 
   if (!nameEl || !fameEl || !rankEl) return;
 
@@ -20,8 +26,8 @@ function renderGuildHeader() {
   }
 
   const g    = GUILDS[window.playerGuildId];
-  const fame = getGuildFame(g.id);
-  const r    = getGuildRankInfo(fame);
+  const fame = typeof getGuildFame === "function" ? getGuildFame(g.id) : ((window.guildFame && window.guildFame[g.id]) || 0);
+  const r    = typeof getGuildRankInfo === "function" ? getGuildRankInfo(fame) : { name: "-" };
 
   nameEl.textContent = g.name;
   fameEl.textContent = String(fame);
@@ -1102,11 +1108,13 @@ function renderGuildRewards() {
 
   const table = document.createElement("table");
   table.className = "mat-table";
-  table.style.marginTop = "4px";
+  table.style.marginTop = "6px";
+  table.style.width = "100%";
+  table.style.fontSize = "11px";
 
   const thead = document.createElement("thead");
   const htr = document.createElement("tr");
-  ["ランク", "必要名声", "効果要約", "状態"].forEach(text => {
+  ["ランク", "認可Tier", "必要名声", "ランク効果 / 認可", "状態"].forEach(text => {
     const th = document.createElement("th");
     th.textContent = text;
     htr.appendChild(th);
@@ -1115,28 +1123,45 @@ function renderGuildRewards() {
   table.appendChild(thead);
 
   const tbody = document.createElement("tbody");
-  g.perks.forEach(p => {
+  const ranks = (typeof GUILD_RANK_THRESHOLDS !== "undefined") ? GUILD_RANK_THRESHOLDS.filter(r => r.id > 0) : [];
+  
+  ranks.forEach(r => {
     const tr = document.createElement("tr");
+    const isUnlocked = fame >= r.fame;
+    const isCurrent = currentRank && currentRank.id === r.id;
+
+    if (isCurrent) {
+      tr.style.background = "#2a3344";
+      tr.style.fontWeight = "bold";
+    }
 
     const rankTd = document.createElement("td");
-    rankTd.textContent = `第${p.rank}段階`;
+    rankTd.textContent = `Rank ${r.id} (${r.name})`;
     tr.appendChild(rankTd);
 
+    const tierTd = document.createElement("td");
+    tierTd.textContent = `Tier ${r.tier || r.id}`;
+    tierTd.style.color = "#ffd700";
+    tr.appendChild(tierTd);
+
     const fameTd = document.createElement("td");
-    fameTd.textContent = `${p.fame}以上`;
+    fameTd.textContent = `${r.fame} 以上`;
     tr.appendChild(fameTd);
 
     const sumTd = document.createElement("td");
-    sumTd.textContent = p.summary;
+    sumTd.textContent = `ギルド効果 +${r.id * 2}% / Tier ${r.tier || r.id} 武具・素材の取り扱い認可`;
     tr.appendChild(sumTd);
 
     const stateTd = document.createElement("td");
-    if (fame >= p.fame) {
-      stateTd.textContent = "解放済み（ランクに応じて自動で強化）";
-      stateTd.style.color = "#8f8";
+    if (isCurrent) {
+      stateTd.textContent = "★ 現在のランク";
+      stateTd.style.color = "#ffda6a";
+    } else if (isUnlocked) {
+      stateTd.textContent = "到達済み";
+      stateTd.style.color = "#88ff88";
     } else {
-      stateTd.textContent = "未解放";
-      stateTd.style.color = "#ccc";
+      stateTd.textContent = "未到達";
+      stateTd.style.color = "#888888";
     }
     tr.appendChild(stateTd);
 
@@ -1152,6 +1177,470 @@ function renderGuildRewards() {
 }
 
 // =======================
+// UI: 調達・納品依頼
+// =======================
+
+function getDeliveryItemDisplayName(del) {
+  if (!del) return "アイテム";
+  const { itemType, itemId, tier } = del;
+  const t = tier || (typeof parseTieredId === "function" && parseTieredId(itemId) ? parseTieredId(itemId).tier : (itemId && itemId.includes("_t2") ? 2 : 1));
+
+  if (itemType === "mat") {
+    const key = (itemId || "").replace(/_t\d+$/i, "").replace(/^T\d+_/, "");
+    if (typeof formatMaterialName === "function") {
+      return formatMaterialName(key, t);
+    }
+    const matNames = { wood: "木材", ore: "鉱石", herb: "薬草", cloth: "布", leather: "皮", water: "水" };
+    return `T${t} ${matNames[key] || key}`;
+  }
+
+  if (itemType === "foodMat" || itemType === "cookingMat") {
+    const foodMatNames = {
+      wheat_t1: "小麦", wheat_t2: "黄金小麦",
+      meat_t1: "獣肉", meat_t2: "極上肉",
+      fish_t1: "川魚", fish_t2: "銀鱗魚"
+    };
+    return foodMatNames[itemId] || itemId;
+  }
+
+  if (itemType === "potion") {
+    if (itemId.includes("mp") || itemId.includes("mana")) return `マナポーション(T${t})`;
+    return `ポーション(T${t})`;
+  }
+
+  if (itemType === "tool") {
+    if (itemId.includes("bomb")) return `小爆弾(T${t})`;
+    return `道具(T${t})`;
+  }
+
+  if (itemType === "drink") {
+    if (itemId.includes("soup")) return `野菜スープ(T${t})`;
+    return `飲み物(T${t})`;
+  }
+
+  if (itemType === "food") {
+    if (itemId.includes("jerky")) return `干し肉(T${t})`;
+    return `料理(T${t})`;
+  }
+
+  if (itemType === "weapon") {
+    if (itemId.includes("sword") || itemId.includes("short")) return `青銅の剣(T${t})`;
+    return `武器(T${t})`;
+  }
+
+  if (itemType === "armor") {
+    if (itemId.includes("armor")) return `青銅の胸当て(T${t})`;
+    return `防具(T${t})`;
+  }
+
+  if (typeof getItemName === "function") {
+    const metaName = getItemName(itemId);
+    if (metaName) return metaName;
+  }
+
+  return itemId || "アイテム";
+}
+
+function renderGuildDeliveries() {
+  const container = document.getElementById("guildDeliveryList");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const gid = window.playerGuildId;
+  if (!gid || !GUILDS[gid]) {
+    container.innerHTML = `<div style="padding:12px; color:#aaa; text-align:center;">ギルドに所属すると、そのギルド専用の調達・納品依頼が表示されます。</div>`;
+    return;
+  }
+
+  const pool = (window.GUILD_DELIVERY_POOLS && window.GUILD_DELIVERY_POOLS[gid]) || [];
+  if (pool.length === 0) {
+    container.innerHTML = `<div style="padding:12px; color:#aaa; text-align:center;">現在受注可能な調達依頼はありません。</div>`;
+    return;
+  }
+
+  pool.forEach(del => {
+    const haveCount = typeof getDeliveryItemCount === "function" ? getDeliveryItemCount(del) : 0;
+    const isReady = haveCount >= del.count;
+    const itemName = getDeliveryItemDisplayName(del);
+
+    const card = document.createElement("div");
+    card.className = "guild-delivery-card";
+    card.style.border = isReady ? "1px solid #488848" : "1px solid #444";
+    card.style.borderRadius = "4px";
+    card.style.padding = "8px 10px";
+    card.style.marginBottom = "8px";
+    card.style.background = isReady ? "#152015" : "#181818";
+
+    const topRow = document.createElement("div");
+    topRow.style.display = "flex";
+    topRow.style.justifyContent = "space-between";
+    topRow.style.alignItems = "center";
+
+    const title = document.createElement("span");
+    title.style.fontWeight = "bold";
+    title.style.fontSize = "13px";
+    title.style.color = isReady ? "#9fef9f" : "#eee";
+    title.textContent = del.name;
+    topRow.appendChild(title);
+
+    const rewardBadge = document.createElement("span");
+    rewardBadge.style.fontSize = "11px";
+    rewardBadge.style.color = "#ffd700";
+    rewardBadge.style.background = "#2a2810";
+    rewardBadge.style.padding = "2px 6px";
+    rewardBadge.style.borderRadius = "3px";
+    rewardBadge.style.border = "1px solid #554411";
+    rewardBadge.textContent = `🪙 コイン +${del.coinReward || 15}枚`;
+    topRow.appendChild(rewardBadge);
+
+    card.appendChild(topRow);
+
+    const desc = document.createElement("div");
+    desc.style.fontSize = "11px";
+    desc.style.color = "#bbb";
+    desc.style.marginTop = "4px";
+    desc.textContent = del.desc;
+    card.appendChild(desc);
+
+    const bottomRow = document.createElement("div");
+    bottomRow.style.display = "flex";
+    bottomRow.style.justifyContent = "space-between";
+    bottomRow.style.alignItems = "center";
+    bottomRow.style.marginTop = "6px";
+    bottomRow.style.paddingTop = "4px";
+    bottomRow.style.borderTop = "1px dashed #333";
+
+    const reqInfo = document.createElement("div");
+    reqInfo.style.fontSize = "12px";
+    const countColor = haveCount >= del.count ? "#7cfc00" : "#ff8888";
+    reqInfo.innerHTML = `納品対象: <span style="font-weight:bold; color:#fff;">${itemName}</span> × ${del.count} （所持: <span style="color:${countColor}; font-weight:bold;">${haveCount}</span>）`;
+    bottomRow.appendChild(reqInfo);
+
+    const btn = document.createElement("button");
+    btn.className = "smallBtn";
+    btn.style.padding = "4px 12px";
+    btn.style.fontWeight = "bold";
+
+    if (isReady) {
+      btn.textContent = "納品する";
+      btn.style.background = "#255c25";
+      btn.style.color = "#fff";
+      btn.style.borderColor = "#488848";
+      btn.addEventListener("click", () => {
+        if (typeof submitGuildDelivery === "function") {
+          submitGuildDelivery(del.id);
+        }
+      });
+    } else {
+      btn.textContent = "素材不足";
+      btn.disabled = true;
+      btn.style.opacity = "0.5";
+    }
+
+    bottomRow.appendChild(btn);
+    card.appendChild(bottomRow);
+    container.appendChild(card);
+  });
+}
+
+// =======================
+// UI: ギルド交換所（ショップ）
+// =======================
+
+function renderGuildShop() {
+  const container = document.getElementById("guildShopList");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const gid = window.playerGuildId;
+  if (!gid || !GUILDS[gid]) {
+    container.innerHTML = `<div style="padding:12px; color:#aaa; text-align:center;">ギルドに所属すると、そのギルドの製法書交換所を利用できます。</div>`;
+    return;
+  }
+
+  const recPool = (window.GUILD_SHOP_RECIPES && window.GUILD_SHOP_RECIPES[gid]) || [];
+  const goodsPool = (window.GUILD_SHOP_GOODS && window.GUILD_SHOP_GOODS[gid]) || [];
+
+  if (recPool.length === 0 && goodsPool.length === 0) {
+    container.innerHTML = `<div style="padding:12px; color:#aaa; text-align:center;">現在取り扱い中の商品はありません。</div>`;
+    return;
+  }
+
+  const currentCoins = typeof getGuildCoins === "function" ? getGuildCoins() : ((typeof window.guildCoins === "number") ? window.guildCoins : 0);
+  const learnedList = Array.isArray(window.guildLearnedRecipes) ? window.guildLearnedRecipes : [];
+  const now = Date.now();
+
+  // ===== 1. アクティブバフ表示 =====
+  const buffs = window.guildBuffs || {};
+  const gatherSec = buffs.gatherBuffUntil > now ? Math.ceil((buffs.gatherBuffUntil - now) / 1000) : 0;
+  const combatSec = buffs.combatBuffUntil > now ? Math.ceil((buffs.combatBuffUntil - now) / 1000) : 0;
+
+  if (gatherSec > 0 || combatSec > 0) {
+    const buffBanner = document.createElement("div");
+    buffBanner.style.background = "#14281a";
+    buffBanner.style.border = "1px solid #30603a";
+    buffBanner.style.borderRadius = "4px";
+    buffBanner.style.padding = "6px 10px";
+    buffBanner.style.marginBottom = "10px";
+    buffBanner.style.fontSize = "12px";
+    buffBanner.style.display = "flex";
+    buffBanner.style.flexWrap = "wrap";
+    buffBanner.style.gap = "8px";
+    buffBanner.style.alignItems = "center";
+
+    let buffHtml = `<span style="font-weight:bold; color:#7cfc00;">✨ 発動中のギルド効果:</span>`;
+    if (gatherSec > 0) {
+      const min = Math.floor(gatherSec / 60);
+      const sec = gatherSec % 60;
+      buffHtml += `<span style="background:#1b3d22; padding:2px 6px; border-radius:3px; color:#9fef9f;">🌿 採取集中香（採取量+1/レアUP）: 残り${min}分${sec}秒</span>`;
+    }
+    if (combatSec > 0) {
+      const min = Math.floor(combatSec / 60);
+      const sec = combatSec % 60;
+      buffHtml += `<span style="background:#3d2b1b; padding:2px 6px; border-radius:3px; color:#ffd79f;">⚔️ 討伐報奨（Exp&Gold+25%）: 残り${min}分${sec}秒</span>`;
+    }
+    buffBanner.innerHTML = buffHtml;
+    container.appendChild(buffBanner);
+  }
+
+  // ===== 2. 特産品・家具・チケット・消耗品セクション =====
+  if (goodsPool.length > 0) {
+    const goodsHeader = document.createElement("div");
+    goodsHeader.style.fontWeight = "bold";
+    goodsHeader.style.fontSize = "13px";
+    goodsHeader.style.color = "#ffd700";
+    goodsHeader.style.marginBottom = "6px";
+    goodsHeader.style.paddingBottom = "4px";
+    goodsHeader.style.borderBottom = "1px solid #443311";
+    goodsHeader.textContent = "📦 ギルド物資・家具・便利チケット・消耗品";
+    container.appendChild(goodsHeader);
+
+    goodsPool.forEach(good => {
+      const haveCount = (typeof getItemCountByMeta === "function") ? getItemCountByMeta(good.itemId) : 0;
+      const canAfford = currentCoins >= (good.coinCost || 20);
+
+      const card = document.createElement("div");
+      card.className = "guild-shop-card";
+      card.style.border = "1px solid #443a22";
+      card.style.borderRadius = "4px";
+      card.style.padding = "8px 10px";
+      card.style.marginBottom = "8px";
+      card.style.background = "#1a1814";
+
+      const topRow = document.createElement("div");
+      topRow.style.display = "flex";
+      topRow.style.justifyContent = "space-between";
+      topRow.style.alignItems = "center";
+
+      const title = document.createElement("span");
+      title.style.fontWeight = "bold";
+      title.style.fontSize = "13px";
+      title.style.color = "#ffda6a";
+      title.textContent = `${good.icon || "📦"} ${good.name}`;
+      topRow.appendChild(title);
+
+      const costBadge = document.createElement("span");
+      costBadge.style.fontSize = "11px";
+      costBadge.style.color = "#ffd700";
+      costBadge.style.background = "#2a2810";
+      costBadge.style.padding = "2px 6px";
+      costBadge.style.borderRadius = "3px";
+      costBadge.style.border = "1px solid #554411";
+      costBadge.textContent = `🪙 ${good.coinCost || 20}枚`;
+      topRow.appendChild(costBadge);
+
+      card.appendChild(topRow);
+
+      const desc = document.createElement("div");
+      desc.style.fontSize = "11px";
+      desc.style.color = "#bbb";
+      desc.style.marginTop = "4px";
+      desc.textContent = good.desc;
+      card.appendChild(desc);
+
+      const bottomRow = document.createElement("div");
+      bottomRow.style.display = "flex";
+      bottomRow.style.justifyContent = "space-between";
+      bottomRow.style.alignItems = "center";
+      bottomRow.style.marginTop = "6px";
+      bottomRow.style.paddingTop = "4px";
+      bottomRow.style.borderTop = "1px dashed #333";
+
+      const stockInfo = document.createElement("div");
+      stockInfo.style.fontSize = "12px";
+      stockInfo.innerHTML = `所持数: <span style="color:#fff; font-weight:bold;">${haveCount}個</span>`;
+      bottomRow.appendChild(stockInfo);
+
+      const btnGroup = document.createElement("div");
+      btnGroup.style.display = "flex";
+      btnGroup.style.gap = "6px";
+
+      if (haveCount > 0 && good.type !== "furniture") {
+        const useBtn = document.createElement("button");
+        useBtn.className = "smallBtn";
+        useBtn.style.padding = "4px 10px";
+        useBtn.style.fontWeight = "bold";
+        useBtn.style.background = "#1b4d24";
+        useBtn.style.color = "#a0ffa0";
+        useBtn.style.borderColor = "#2b7d34";
+        useBtn.textContent = "使う";
+        useBtn.addEventListener("click", () => {
+          if (typeof useGuildConsumableItem === "function") {
+            useGuildConsumableItem(good.itemId);
+          }
+        });
+        btnGroup.appendChild(useBtn);
+      }
+
+      const buyBtn = document.createElement("button");
+      buyBtn.className = "smallBtn";
+      buyBtn.style.padding = "4px 12px";
+      buyBtn.style.fontWeight = "bold";
+
+      if (canAfford) {
+        buyBtn.textContent = "交換・購入";
+        buyBtn.style.background = "#5c4815";
+        buyBtn.style.color = "#ffd700";
+        buyBtn.style.borderColor = "#886e25";
+        buyBtn.addEventListener("click", () => {
+          if (typeof buyGuildGoods === "function") {
+            buyGuildGoods(good.id);
+          }
+        });
+      } else {
+        buyBtn.textContent = "コイン不足";
+        buyBtn.disabled = true;
+        buyBtn.style.opacity = "0.5";
+      }
+
+      btnGroup.appendChild(buyBtn);
+      bottomRow.appendChild(btnGroup);
+      card.appendChild(bottomRow);
+      container.appendChild(card);
+    });
+  }
+
+  // ===== 3. 製法書・図面セクション =====
+  if (recPool.length > 0) {
+    const recHeader = document.createElement("div");
+    recHeader.style.fontWeight = "bold";
+    recHeader.style.fontSize = "13px";
+    recHeader.style.color = "#70a0ff";
+    recHeader.style.marginTop = "14px";
+    recHeader.style.marginBottom = "6px";
+    recHeader.style.paddingBottom = "4px";
+    recHeader.style.borderBottom = "1px solid #223355";
+    recHeader.textContent = "📜 製法書・レシピ・図面（スキルレベル条件）";
+    container.appendChild(recHeader);
+
+    recPool.forEach(rec => {
+      const isLearned = learnedList.includes(rec.recipeKey);
+      const skillInfo = typeof getGuildRecipeSkillInfo === "function"
+        ? getGuildRecipeSkillInfo(rec)
+        : { isMet: true, name: "製作", reqLv: 0, curLv: 0 };
+      const isSkillLocked = !skillInfo.isMet;
+      const canAfford = currentCoins >= (rec.coinCost || 50);
+
+      const card = document.createElement("div");
+      card.className = "guild-shop-card";
+      card.style.border = isLearned ? "1px solid #335577" : (isSkillLocked ? "1px solid #333" : "1px solid #554422");
+      card.style.borderRadius = "4px";
+      card.style.padding = "8px 10px";
+      card.style.marginBottom = "8px";
+      card.style.background = isLearned ? "#101824" : (isSkillLocked ? "#121212" : "#1e1a12");
+      card.style.opacity = isSkillLocked ? "0.65" : "1";
+
+      const topRow = document.createElement("div");
+      topRow.style.display = "flex";
+      topRow.style.justifyContent = "space-between";
+      topRow.style.alignItems = "center";
+
+      const title = document.createElement("span");
+      title.style.fontWeight = "bold";
+      title.style.fontSize = "13px";
+      title.style.color = isLearned ? "#70a0ff" : (isSkillLocked ? "#888" : "#ffda6a");
+      title.textContent = rec.name;
+      topRow.appendChild(title);
+
+      const costBadge = document.createElement("span");
+      costBadge.style.fontSize = "11px";
+      costBadge.style.color = "#ffd700";
+      costBadge.style.background = "#2a2810";
+      costBadge.style.padding = "2px 6px";
+      costBadge.style.borderRadius = "3px";
+      costBadge.style.border = "1px solid #554411";
+      costBadge.textContent = `🪙 ${rec.coinCost || 50}枚`;
+      topRow.appendChild(costBadge);
+
+      card.appendChild(topRow);
+
+      const desc = document.createElement("div");
+      desc.style.fontSize = "11px";
+      desc.style.color = isSkillLocked ? "#666" : "#bbb";
+      desc.style.marginTop = "4px";
+      desc.textContent = rec.desc;
+      card.appendChild(desc);
+
+      const bottomRow = document.createElement("div");
+      bottomRow.style.display = "flex";
+      bottomRow.style.justifyContent = "space-between";
+      bottomRow.style.alignItems = "center";
+      bottomRow.style.marginTop = "6px";
+      bottomRow.style.paddingTop = "4px";
+      bottomRow.style.borderTop = "1px dashed #333";
+
+      const reqInfo = document.createElement("div");
+      reqInfo.style.fontSize = "12px";
+      if (isLearned) {
+        reqInfo.innerHTML = `<span style="color:#70a0ff; font-weight:bold;">✓ 習得済み</span>`;
+      } else if (isSkillLocked) {
+        reqInfo.innerHTML = `<span style="color:#e66;">🔒 必要条件: ${skillInfo.name} Lv${skillInfo.reqLv}以上（現在: Lv${skillInfo.curLv}）</span>`;
+      } else {
+        reqInfo.innerHTML = `<span style="color:#80d080;">✓ 条件達成: ${skillInfo.name} Lv${skillInfo.reqLv}以上（現在: Lv${skillInfo.curLv}）</span>`;
+      }
+      bottomRow.appendChild(reqInfo);
+
+      const btn = document.createElement("button");
+      btn.className = "smallBtn";
+      btn.style.padding = "4px 12px";
+      btn.style.fontWeight = "bold";
+
+      if (isLearned) {
+        btn.textContent = "習得済み";
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
+        btn.style.background = "#223344";
+      } else if (isSkillLocked) {
+        btn.textContent = `Lv${skillInfo.reqLv}で解放`;
+        btn.disabled = true;
+        btn.style.opacity = "0.4";
+      } else if (canAfford) {
+        btn.textContent = "交換・習得";
+        btn.style.background = "#5c4815";
+        btn.style.color = "#ffd700";
+        btn.style.borderColor = "#886e25";
+        btn.addEventListener("click", () => {
+          if (typeof buyGuildRecipe === "function") {
+            buyGuildRecipe(rec.id);
+          }
+        });
+      } else {
+        btn.textContent = "コイン不足";
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
+      }
+
+      bottomRow.appendChild(btn);
+      card.appendChild(bottomRow);
+      container.appendChild(card);
+    });
+  }
+}
+
+window.renderGuildDeliveries = renderGuildDeliveries;
+window.renderGuildShop = renderGuildShop;
+
+// =======================
 // メイン：ギルドタブ全体再描画
 // =======================
 
@@ -1159,6 +1648,8 @@ function renderGuildUI() {
   renderGuildHeader();
   renderGuildList();
   renderGuildQuests();   // 依頼タブ内でデイリー＋通常依頼をまとめて表示
+  renderGuildDeliveries();
+  renderGuildShop();
   renderGuildRewards();
 }
 

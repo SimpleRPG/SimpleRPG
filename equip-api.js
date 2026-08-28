@@ -17,6 +17,32 @@ function afterEquipChange() {
   }
 }
 
+// ギルドランクとTierの整合性チェック
+function checkGuildRankForTier(itemId, inst) {
+  let tier = 1;
+  if (inst && typeof inst.tier === "number") {
+    tier = inst.tier;
+  } else if (typeof parseTieredId === "function") {
+    const p = parseTieredId(itemId);
+    if (p && p.tier) tier = p.tier;
+  } else {
+    const match = String(itemId || "").match(/(?:^T(\d+)_|_t(\d+)$)/i);
+    if (match) tier = parseInt(match[1] || match[2], 10);
+  }
+
+  if (tier <= 1) return true;
+
+  const curRank = (typeof getGuildRankTier === "function") ? getGuildRankTier() : 1;
+  if (curRank < tier) {
+    if (typeof appendLog === "function") {
+      appendLog(`🔒【ギルドランク不足】Tier ${tier} の装備を扱うには、ギルドランク ${tier}（Tier ${tier}認可）以上が必要です。（現在のギルドランク: ${curRank}）`);
+    }
+    return false;
+  }
+  return true;
+}
+window.checkGuildRankForTier = checkGuildRankForTier;
+
 // 倉庫からの直接装備ヘルパー
 function equipWeaponFromWarehouse(weaponId) {
   if (window.isExploring || window.currentEnemy) {
@@ -29,33 +55,22 @@ function equipWeaponFromWarehouse(weaponId) {
 
   const hasInstances = Array.isArray(window.weaponInstances);
 
-  // 旧装備品を倉庫に戻す
-  if (hasInstances && window.equippedWeaponIndex != null) {
-    const oldInst = window.weaponInstances[window.equippedWeaponIndex];
-    if (oldInst) {
-      // 仕様: 倉庫から装備したら旧装備は倉庫へ
-      oldInst.location = "warehouse";
-      if (typeof weaponCounts === "object") {
-        weaponCounts[oldInst.id] = (weaponCounts[oldInst.id] || 0) + 1;
-      }
-    }
-    window.equippedWeaponIndex = null;
-    window.equippedWeaponId    = null;
-  } else if (!hasInstances && window.equippedWeaponId) {
-    if (typeof weaponCounts === "object") {
-      weaponCounts[window.equippedWeaponId] =
-        (weaponCounts[window.equippedWeaponId] || 0) + 1;
-    }
-    window.equippedWeaponId = null;
-  }
-
   if (!hasInstances) {
+    if (!checkGuildRankForTier(weaponId)) return;
     // インスタンス未使用フォールバック
     if (!weaponCounts[weaponId] || weaponCounts[weaponId] <= 0) {
       if (typeof appendLog === "function") {
         appendLog("倉庫に装備可能な武器がない");
       }
       return;
+    }
+    // 旧装備品を倉庫に戻す
+    if (window.equippedWeaponId) {
+      if (typeof weaponCounts === "object") {
+        weaponCounts[window.equippedWeaponId] =
+          (weaponCounts[window.equippedWeaponId] || 0) + 1;
+      }
+      window.equippedWeaponId = null;
     }
     weaponCounts[weaponId] = Math.max(0, (weaponCounts[weaponId] || 0) - 1);
     window.equippedWeaponId = weaponId;
@@ -84,8 +99,23 @@ function equipWeaponFromWarehouse(weaponId) {
     return;
   }
 
-  const inst = window.weaponInstances[idx];
-  inst.location = "equipped";
+  const targetInst = window.weaponInstances[idx];
+  if (!checkGuildRankForTier(weaponId, targetInst)) return;
+
+  // 旧装備品を倉庫に戻す
+  if (window.equippedWeaponIndex != null) {
+    const oldInst = window.weaponInstances[window.equippedWeaponIndex];
+    if (oldInst) {
+      oldInst.location = "warehouse";
+      if (typeof weaponCounts === "object") {
+        weaponCounts[oldInst.id] = (weaponCounts[oldInst.id] || 0) + 1;
+      }
+    }
+    window.equippedWeaponIndex = null;
+    window.equippedWeaponId    = null;
+  }
+
+  targetInst.location = "equipped";
   window.equippedWeaponIndex = idx;
   window.equippedWeaponId    = weaponId;
 
@@ -110,34 +140,21 @@ function equipArmorFromWarehouse(armorId) {
 
   const hasInstances = Array.isArray(window.armorInstances);
 
-  // 旧装備品を倉庫に戻す
-  if (hasInstances && window.equippedArmorIndex != null &&
-      Array.isArray(window.armorInstances)) {
-    const oldInst = window.armorInstances[window.equippedArmorIndex];
-    if (oldInst) {
-      // 仕様: 倉庫の物を装備したら旧装備は倉庫へ
-      oldInst.location = "warehouse";
-      if (typeof armorCounts === "object") {
-        armorCounts[oldInst.id] = (armorCounts[oldInst.id] || 0) + 1;
-      }
-    }
-    window.equippedArmorIndex = null;
-    window.equippedArmorId    = null;
-  } else if (!hasInstances && window.equippedArmorId) {
-    if (typeof armorCounts === "object") {
-      armorCounts[window.equippedArmorId] =
-        (armorCounts[window.equippedArmorId] || 0) + 1;
-    }
-    window.equippedArmorId = null;
-  }
-
   if (!hasInstances) {
+    if (!checkGuildRankForTier(armorId)) return;
     // インスタンス未使用フォールバック
     if (!armorCounts[armorId] || armorCounts[armorId] <= 0) {
       if (typeof appendLog === "function") {
         appendLog("倉庫に装備可能な防具がない");
       }
       return;
+    }
+    if (window.equippedArmorId) {
+      if (typeof armorCounts === "object") {
+        armorCounts[window.equippedArmorId] =
+          (armorCounts[window.equippedArmorId] || 0) + 1;
+      }
+      window.equippedArmorId = null;
     }
     armorCounts[armorId] = Math.max(0, (armorCounts[armorId] || 0) - 1);
     window.equippedArmorId = armorId;
@@ -165,8 +182,23 @@ function equipArmorFromWarehouse(armorId) {
     return;
   }
 
-  const inst = window.armorInstances[idx];
-  inst.location = "equipped";
+  const targetInst = window.armorInstances[idx];
+  if (!checkGuildRankForTier(armorId, targetInst)) return;
+
+  // 旧装備品を倉庫に戻す
+  if (window.equippedArmorIndex != null) {
+    const oldInst = window.armorInstances[window.equippedArmorIndex];
+    if (oldInst) {
+      oldInst.location = "warehouse";
+      if (typeof armorCounts === "object") {
+        armorCounts[oldInst.id] = (armorCounts[oldInst.id] || 0) + 1;
+      }
+    }
+    window.equippedArmorIndex = null;
+    window.equippedArmorId    = null;
+  }
+
+  targetInst.location = "equipped";
   window.equippedArmorIndex = idx;
   window.equippedArmorId    = armorId;
 
@@ -192,31 +224,21 @@ function equipWeaponFromCarry(weaponId) {
 
   const hasInstances = Array.isArray(window.weaponInstances);
 
-  // 旧装備を手持ちに戻す
-  if (hasInstances && window.equippedWeaponIndex != null) {
-    const oldInst = window.weaponInstances[window.equippedWeaponIndex];
-    if (oldInst) {
-      // 仕様: 手持ちの武器を装備したら旧装備は手持ちへ
-      oldInst.location = "carry";
-    }
-    window.equippedWeaponIndex = null;
-    window.equippedWeaponId    = null;
-  } else if (!hasInstances && window.equippedWeaponId) {
-    const oldId = window.equippedWeaponId;
-    if (typeof window.carryWeapons === "object") {
-      window.carryWeapons[oldId] = (window.carryWeapons[oldId] || 0) + 1;
-    }
-    window.equippedWeaponId = null;
-  }
-
   if (!hasInstances) {
-    // インスタンス未使用フォールバック:
-    // carryWeapons にあれば 1 本消費して装備IDにする
+    if (!checkGuildRankForTier(weaponId)) return;
     if (!window.carryWeapons || !(window.carryWeapons[weaponId] > 0)) {
       if (typeof appendLog === "function") {
         appendLog("手持ちに装備可能な武器がない");
       }
       return;
+    }
+    // 旧装備を手持ちに戻す
+    if (window.equippedWeaponId) {
+      const oldId = window.equippedWeaponId;
+      if (typeof window.carryWeapons === "object") {
+        window.carryWeapons[oldId] = (window.carryWeapons[oldId] || 0) + 1;
+      }
+      window.equippedWeaponId = null;
     }
     window.carryWeapons[weaponId] =
       Math.max(0, (window.carryWeapons[weaponId] || 0) - 1);
@@ -249,8 +271,20 @@ function equipWeaponFromCarry(weaponId) {
     return;
   }
 
-  const inst = window.weaponInstances[idx];
-  inst.location = "equipped";
+  const targetInst = window.weaponInstances[idx];
+  if (!checkGuildRankForTier(weaponId, targetInst)) return;
+
+  // 旧装備を手持ちに戻す
+  if (window.equippedWeaponIndex != null) {
+    const oldInst = window.weaponInstances[window.equippedWeaponIndex];
+    if (oldInst) {
+      oldInst.location = "carry";
+    }
+    window.equippedWeaponIndex = null;
+    window.equippedWeaponId    = null;
+  }
+
+  targetInst.location = "equipped";
   window.equippedWeaponIndex = idx;
   window.equippedWeaponId    = weaponId;
 
@@ -271,29 +305,20 @@ function equipArmorFromCarry(armorId) {
 
   const hasInstances = Array.isArray(window.armorInstances);
 
-  // 旧装備を手持ちに戻す
-  if (hasInstances && window.equippedArmorIndex != null) {
-    const oldInst = window.armorInstances[window.equippedArmorIndex];
-    if (oldInst) {
-      // 仕様: 手持ちの防具を装備したら旧装備は手持ちへ
-      oldInst.location = "carry";
-    }
-    window.equippedArmorIndex = null;
-    window.equippedArmorId    = null;
-  } else if (!hasInstances && window.equippedArmorId) {
-    const oldId = window.equippedArmorId;
-    if (typeof window.carryArmors === "object") {
-      window.carryArmors[oldId] = (window.carryArmors[oldId] || 0) + 1;
-    }
-    window.equippedArmorId = null;
-  }
-
   if (!hasInstances) {
+    if (!checkGuildRankForTier(armorId)) return;
     if (!window.carryArmors || !(window.carryArmors[armorId] > 0)) {
       if (typeof appendLog === "function") {
         appendLog("手持ちに装備可能な防具がない");
       }
       return;
+    }
+    if (window.equippedArmorId) {
+      const oldId = window.equippedArmorId;
+      if (typeof window.carryArmors === "object") {
+        window.carryArmors[oldId] = (window.carryArmors[oldId] || 0) + 1;
+      }
+      window.equippedArmorId = null;
     }
     window.carryArmors[armorId] =
       Math.max(0, (window.carryArmors[armorId] || 0) - 1);
@@ -325,8 +350,20 @@ function equipArmorFromCarry(armorId) {
     return;
   }
 
-  const inst = window.armorInstances[idx];
-  inst.location = "equipped";
+  const targetInst = window.armorInstances[idx];
+  if (!checkGuildRankForTier(armorId, targetInst)) return;
+
+  // 旧装備を手持ちに戻す
+  if (window.equippedArmorIndex != null) {
+    const oldInst = window.armorInstances[window.equippedArmorIndex];
+    if (oldInst) {
+      oldInst.location = "carry";
+    }
+    window.equippedArmorIndex = null;
+    window.equippedArmorId    = null;
+  }
+
+  targetInst.location = "equipped";
   window.equippedArmorIndex = idx;
   window.equippedArmorId    = armorId;
 

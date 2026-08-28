@@ -459,6 +459,11 @@ function gatherCooking(mode) {
     }
   }
 
+  // ギルド採取集中香バフ（料理素材も獲得数 +1 確定）
+  if (window.guildBuffs && window.guildBuffs.gatherBuffUntil > Date.now()) {
+    added += 1;
+  }
+
   let gained = {};
   let hasRareFish = false;
 
@@ -1032,6 +1037,11 @@ function gather(){
     if (guildExtra > 0) {
       bonusChance += guildExtra;
     }
+  }
+
+  // ギルド採取集中香バフ（獲得数 +1 確定）
+  if (window.guildBuffs && window.guildBuffs.gatherBuffUntil > Date.now()) {
+    added += 1;
   }
 
   if (bonusChance > 0) {

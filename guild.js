@@ -66,16 +66,22 @@ window.guildDailyTakenDate = window.guildDailyTakenDate || null;
 // 名声・ランク定義
 // =======================
 
-// ギルドごとの名声ランク定義
+// ギルドごとの名声ランク定義（Rank 1〜10 = 扱うTier 1〜10に対応）
 // 名声がこの値以上でランク到達、の境界
 const GUILD_RANK_THRESHOLDS = [
-  { id: 0, name: "無名",   fame: 0 },
-  { id: 1, name: "新人",   fame: 50 },
-  { id: 2, name: "一人前", fame: 100 },
-  { id: 3, name: "熟練",   fame: 200 },
-  { id: 4, name: "看板",   fame: 350 },
-  { id: 5, name: "英雄",   fame: 500 }
+  { id: 0,  name: "無名",           fame: 0,    tier: 0, desc: "ギルド未登録" },
+  { id: 1,  name: "新人 (Tier 1)",   fame: 20,   tier: 1, desc: "Tier 1 装備・素材の扱い認可" },
+  { id: 2,  name: "一人前 (Tier 2)", fame: 60,   tier: 2, desc: "Tier 2 装備・素材の扱い認可" },
+  { id: 3,  name: "熟練 (Tier 3)",   fame: 120,  tier: 3, desc: "Tier 3 装備・素材の扱い認可" },
+  { id: 4,  name: "精鋭 (Tier 4)",   fame: 220,  tier: 4, desc: "Tier 4 装備・素材の扱い認可" },
+  { id: 5,  name: "看板 (Tier 5)",   fame: 380,  tier: 5, desc: "Tier 5 装備・素材の扱い認可" },
+  { id: 6,  name: "達人 (Tier 6)",   fame: 600,  tier: 6, desc: "Tier 6 装備・素材の扱い認可" },
+  { id: 7,  name: "名匠 (Tier 7)",   fame: 900,  tier: 7, desc: "Tier 7 装備・素材の扱い認可" },
+  { id: 8,  name: "師範 (Tier 8)",   fame: 1300, tier: 8, desc: "Tier 8 装備・素材の扱い認可" },
+  { id: 9,  name: "覇者 (Tier 9)",   fame: 1800, tier: 9, desc: "Tier 9 装備・素材の扱い認可" },
+  { id: 10, name: "英雄 (Tier 10)",  fame: 2500, tier: 10, desc: "Tier 10 装備・素材の最高認可" }
 ];
+window.GUILD_RANK_THRESHOLDS = GUILD_RANK_THRESHOLDS;
 
 // 特別依頼ID一覧（市民権チェック用）
 const GUILD_SPECIAL_QUEST_IDS = [
@@ -104,8 +110,8 @@ const GUILDS = {
     perks: [
       {
         rank: 1,
-        fame: 10,
-        summary: "所属中、ランク×2%分だけ物理スキルダメージが増加する（最大+10%）。"
+        fame: 20,
+        summary: "所属中、ランク×2%分だけ物理スキルダメージが増加する（最大+20%）。ギルドランクに応じたTier（1〜10）の装備取り扱い認可。"
       }
     ]
   },
@@ -118,8 +124,8 @@ const GUILDS = {
     perks: [
       {
         rank: 1,
-        fame: 10,
-        summary: "所属中、ランク×2%分だけ魔法スキルダメージが増加する（最大+10%）。"
+        fame: 20,
+        summary: "所属中、ランク×2%分だけ魔法スキルダメージが増加する（最大+20%）。ギルドランクに応じたTier（1〜10）の装備取り扱い認可。"
       }
     ]
   },
@@ -132,8 +138,8 @@ const GUILDS = {
     perks: [
       {
         rank: 1,
-        fame: 10,
-        summary: "所属中、ランク×2%分だけペットの与ダメージが増加する（最大+10%）。"
+        fame: 20,
+        summary: "所属中、ランク×2%分だけペットの与ダメージが増加する（最大+20%）。ギルドランクに応じたTier（1〜10）の装備取り扱い認可。"
       }
     ]
   },
@@ -143,12 +149,11 @@ const GUILDS = {
     type: "craft",
     desc: "武器や防具の制作・強化を担うギルド。装備の性能を引き出すプロ集団。",
     detail: "高品質装備や強化技術の研究が盛ん。",
-    // ランク×2% の装備強化成功率ボーナス
     perks: [
       {
         rank: 1,
-        fame: 10,
-        summary: "所属中、ランク×2%分だけ装備強化成功率が増加する（最大+10%）。"
+        fame: 20,
+        summary: "所属中、ランク×2%分だけ装備強化成功率および武具製作成功率が増加する（最大+20%）。ランクに応じたTier武具の取り扱い認可。"
       }
     ]
   },
@@ -158,14 +163,11 @@ const GUILDS = {
     type: "craft",
     desc: "ポーションや爆弾などの道具を扱う錬金術師たちのギルド。",
     detail: "薬品調合から危険な実験まで、少し物騒な仕事が多い。",
-    // ランク×2% の調合(製作)成功率ボーナス
-    // ★実体は craft-core.js の getGuildCraftSuccessBonus("potion"/"tool") 側で
-    //   既に実装・接続済み。ここは説明文の同期のみ。
     perks: [
       {
         rank: 1,
-        fame: 10,
-        summary: "所属中、ランク×2%分だけポーション・道具の製作成功率が増加する（最大+10%）。"
+        fame: 20,
+        summary: "所属中、ランク×2%分だけポーション・道具の製作成功率が増加する（最大+20%）。ランクに応じたTier薬品の取り扱い認可。"
       }
     ]
   },
@@ -175,14 +177,11 @@ const GUILDS = {
     type: "craft",
     desc: "料理人たちが所属するギルド。強力な料理バフを生み出す。",
     detail: "パーティ用の大皿料理から珍味まで幅広く扱う。",
-    // ランク×2% の調理(製作)成功率ボーナス
-    // ★実体は craft-core.js の getGuildCraftSuccessBonus("food"/"drink") 側で
-    //   既に実装・接続済み。ここは説明文の同期のみ。
     perks: [
       {
         rank: 1,
-        fame: 10,
-        summary: "所属中、ランク×2%分だけ料理・飲み物の製作成功率が増加する（最大+10%）。"
+        fame: 20,
+        summary: "所属中、ランク×2%分だけ料理・飲み物の製作成功率が増加する（最大+20%）。ランクに応じたTier料理の取り扱い認可。"
       }
     ]
   },
@@ -192,12 +191,11 @@ const GUILDS = {
     type: "gather",
     desc: "木・鉱石・布・皮・水など、基本素材の採取に特化したギルド。",
     detail: "採取拠点の管理や、素材の品質管理も担当。",
-    // ランク×2% の +1個抽選ボーナスのみ
     perks: [
       {
         rank: 1,
-        fame: 10,
-        summary: "所属中、通常素材採取時の+1個ボーナス抽選がランク×2%分だけ増加する（最大+10%）。"
+        fame: 20,
+        summary: "所属中、通常素材採取時の+1個ボーナス抽選がランク×2%分だけ増加する（最大+20%）。ランクに応じたTier素材採取ツールの取り扱い認可。"
       }
     ]
   },
@@ -210,8 +208,8 @@ const GUILDS = {
     perks: [
       {
         rank: 1,
-        fame: 10,
-        summary: "所属中、料理素材採取時の+1個ボーナス抽選がランク×2%分だけ増加する（最大+10%）。"
+        fame: 20,
+        summary: "所属中、料理素材採取時の+1個ボーナス抽選がランク×2%分だけ増加する（最大+20%）。ランクに応じたTier食材採取ツールの取り扱い認可。"
       }
     ]
   }
@@ -283,11 +281,23 @@ function getGuildRankInfo(fame) {
 }
 
 function getNextRankInfo(fame) {
-  for (const r of GUILD_R_THRESHOLDS) {
+  for (const r of GUILD_RANK_THRESHOLDS) {
     if (fame < r.fame) return r;
   }
   return null;
 }
+
+function getGuildRankTier(guildId) {
+  const gId = guildId || window.playerGuildId;
+  if (!gId) return 1;
+  const fame = getGuildFame(gId);
+  const rInfo = getGuildRankInfo(fame);
+  return rInfo ? (rInfo.tier || rInfo.id || 1) : 1;
+}
+window.getGuildRankTier = getGuildRankTier;
+window.getGuildRankInfo = getGuildRankInfo;
+window.getNextRankInfo = getNextRankInfo;
+window.getGuildFame = getGuildFame;
 
 // 名声加算（今は内部用・クエスト達成時に使う）
 function addGuildFame(guildId, amount) {
@@ -615,7 +625,7 @@ function addDailyProgressFromProduction(params) {
   }
 }
 
-// デイリー報酬受取（名声なし、ゴールド100 & 経験値80）
+// デイリー報酬受取（ゴールド100、経験値80、ギルドコイン20枚）
 function claimGuildDailyReward(dailyId) {
   if (!dailyId) return;
   const all = window.guildDailyProgress || {};
@@ -639,6 +649,13 @@ function claimGuildDailyReward(dailyId) {
     exp = (exp || 0) + 80;
   }
 
+  // ★ギルドコイン20枚
+  if (typeof addGuildCoins === "function") {
+    addGuildCoins(20);
+  } else {
+    window.guildCoins = (typeof window.guildCoins === "number" ? window.guildCoins : 0) + 20;
+  }
+
   d.rewardTaken = true;
 
   // ★本日分のデイリー報酬を受け取った日付を記録
@@ -646,10 +663,13 @@ function claimGuildDailyReward(dailyId) {
   window.guildDailyTakenDate = getTodayKey();
 
   if (typeof appendLog === "function") {
-    appendLog(`${GUILDS[gid].name} のデイリー依頼「${d.name}」を達成し、ゴールド100と経験値80を獲得した！`);
+    appendLog(`${GUILDS[gid].name} のデイリー依頼「${d.name}」を達成し、ゴールド100、経験値80、🪙ギルドコイン20枚を獲得した！`);
   }
 
   refreshGuildDailyUIIfNeeded();
+  if (typeof renderGuildHeader === "function") {
+    renderGuildHeader();
+  }
 }
 
 // =======================

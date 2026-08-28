@@ -19,7 +19,7 @@ function onEnemyDefeatedCore(enemyInst, killFlag, killSource) {
   }
 
   // ===== 経験値加算 =====
-  const expGain = (typeof getBattleExpPerWin === "function")
+  let expGain = (typeof getBattleExpPerWin === "function")
     ? getBattleExpPerWin(enemyInst)
     : (enemyInst.exp || BASE_EXP_PER_BATTLE || 5);
 
@@ -32,6 +32,14 @@ function onEnemyDefeatedCore(enemyInst, killFlag, killSource) {
       battleSkillTreeBonus.moneyGainRateBattle > 0) {
     const r = battleSkillTreeBonus.moneyGainRateBattle;
     moneyGain = Math.floor(moneyGain * (1 + r));
+  }
+
+  // ===== ギルド討伐報奨バフ（Exp & Gold +25%） =====
+  let hasGuildCombatBuff = false;
+  if (window.guildBuffs && window.guildBuffs.combatBuffUntil > Date.now()) {
+    hasGuildCombatBuff = true;
+    expGain = Math.floor(expGain * 1.25);
+    moneyGain = Math.floor(moneyGain * 1.25);
   }
 
   // ===== 日替わり職業ボーナス：戦闘ゴールド＋ドロップ率 =====
@@ -49,8 +57,9 @@ function onEnemyDefeatedCore(enemyInst, killFlag, killSource) {
     }
   }
 
+  const bonusNote = hasGuildCombatBuff ? "（討伐報奨+25%）" : "";
   appendLog(
-    `${enemyInst.name}を倒した！ 経験値${expGain}と${moneyGain}Gを手に入れた`
+    `${enemyInst.name}を倒した！ 経験値${expGain}と${moneyGain}Gを手に入れた${bonusNote}`
   );
 
   // ★戦闘由来のEXP

@@ -109,7 +109,96 @@
     };
   }
 
-  // 必要なら、ここに他の家具（調理台・作業台など）も defs に追加していく。
+  // ===================================
+  // ギルド交換所用：家具・便利チケット・消耗品
+  // ===================================
+  defs["item_g_chest_guild"] = {
+    id: "item_g_chest_guild",
+    name: "ギルド特製収納チェスト",
+    category: "furniture",
+    storageKind: "inventory",
+    storageTab: "furniture",
+    tier: 2,
+    tags: ["furniture", "storage", "guild"],
+    desc: "ギルドから下付された頑丈な収納箱。自宅に設置して素材や装備を整理・保管できる。"
+  };
+
+  defs["item_g_worktable"] = {
+    id: "item_g_worktable",
+    name: "ギルド特製職人作業台",
+    category: "furniture",
+    storageKind: "inventory",
+    storageTab: "furniture",
+    tier: 2,
+    tags: ["furniture", "worktable", "guild"],
+    desc: "ギルド御用達の高品質な木製作業台。自宅に設置するとクラフト時の成功率が+5%上昇する。"
+  };
+
+  defs["item_g_ticket_shorten"] = {
+    id: "item_g_ticket_shorten",
+    name: "探索短縮の砂時計",
+    category: "tool",
+    storageKind: "inventory",
+    storageTab: "tool",
+    tier: 1,
+    tags: ["tool", "consumable", "speedup"],
+    desc: "ギルド発行の時短アイテム。使用すると探索イベントを即時3回分進行できる。"
+  };
+
+  defs["item_g_bulk_delivery"] = {
+    id: "item_g_bulk_delivery",
+    name: "ギルド一括納品状",
+    category: "tool",
+    storageKind: "inventory",
+    storageTab: "tool",
+    tier: 1,
+    tags: ["tool", "consumable", "delivery"],
+    desc: "ギルド発行の優先納品状。所持している納品可能アイテムを一度にすべて一括納品する。"
+  };
+
+  defs["item_g_gather_incense"] = {
+    id: "item_g_gather_incense",
+    name: "探鉱・採取の集中香",
+    category: "tool",
+    storageKind: "inventory",
+    storageTab: "tool",
+    tier: 2,
+    tags: ["tool", "consumable", "buff", "gather"],
+    desc: "調香師特製の採取香。使用すると30分間、素材採取時の獲得数が+1個増加し、レア素材の発見率が上昇する。"
+  };
+
+  defs["item_g_combat_scroll"] = {
+    id: "item_g_combat_scroll",
+    name: "討伐報奨の巻物",
+    category: "tool",
+    storageKind: "inventory",
+    storageTab: "tool",
+    tier: 2,
+    tags: ["tool", "consumable", "buff", "combat"],
+    desc: "ギルド特約の討伐証明書。使用すると30分間、戦闘での獲得経験値とゴールドが+25%増加する。"
+  };
+
+  defs["item_g_pet_treat"] = {
+    id: "item_g_pet_treat",
+    name: "特製ペットトリート",
+    category: "tool",
+    storageKind: "inventory",
+    storageTab: "tool",
+    tier: 2,
+    tags: ["tool", "consumable", "pet"],
+    desc: "厳選された獣肉と栄養素を凝縮したおやつ。パーティにいるペット全員の経験値+200と親愛度を上昇させる。"
+  };
+
+  defs["item_g_guild_ration"] = {
+    id: "item_g_guild_ration",
+    name: "ギルド特製スタミナレーション",
+    category: "food",
+    storageKind: "inventory",
+    storageTab: "cooking",
+    tier: 2,
+    tags: ["food", "consumable", "heal"],
+    desc: "栄養価満点のギルド保存食。HP・MPを完全回復し、活力バフを付与する。"
+  };
 
   global.registerItemDefs(defs);
 

@@ -641,22 +641,31 @@ function setupMarketTabs() {
 // ギルド内タブ切り替え
 // -----------------------------
 function setupGuildInnerTabs() {
-  const guildTabButtons = document.querySelectorAll(".guildTabBtn");
-  const guildPaneList   = document.getElementById("guildTab_list");
-  const guildPaneQuests = document.getElementById("guildTab_quests");
-  const guildPaneRewards= document.getElementById("guildTab_rewards");
+  const guildTabButtons    = document.querySelectorAll(".guildTabBtn");
+  const guildPaneList      = document.getElementById("guildTab_list");
+  const guildPaneQuests    = document.getElementById("guildTab_quests");
+  const guildPaneDeliveries= document.getElementById("guildTab_deliveries");
+  const guildPaneShop      = document.getElementById("guildTab_shop");
+  const guildPaneRewards   = document.getElementById("guildTab_rewards");
 
   function setGuildTab(tab) {
-    if (!guildPaneList || !guildPaneQuests || !guildPaneRewards) return;
-
     guildTabButtons.forEach(btn => {
       const t = btn.dataset.guildTab;
       btn.classList.toggle("active", t === tab);
     });
 
-    guildPaneList.style.display    = (tab === "list")   ? "" : "none";
-    guildPaneQuests.style.display  = (tab === "quests") ? "" : "none";
-    guildPaneRewards.style.display = (tab === "rewards")? "" : "none";
+    if (guildPaneList)       guildPaneList.style.display       = (tab === "list")       ? "" : "none";
+    if (guildPaneQuests)     guildPaneQuests.style.display     = (tab === "quests")     ? "" : "none";
+    if (guildPaneDeliveries) guildPaneDeliveries.style.display = (tab === "deliveries") ? "" : "none";
+    if (guildPaneShop)       guildPaneShop.style.display       = (tab === "shop")       ? "" : "none";
+    if (guildPaneRewards)    guildPaneRewards.style.display    = (tab === "rewards")    ? "" : "none";
+
+    if (tab === "deliveries" && typeof renderGuildDeliveries === "function") {
+      renderGuildDeliveries();
+    }
+    if (tab === "shop" && typeof renderGuildShop === "function") {
+      renderGuildShop();
+    }
   }
 
   guildTabButtons.forEach(btn => {

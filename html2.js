@@ -258,19 +258,24 @@
       <h2>ギルド</h2>
 
       <div id="guildScreen" style="padding:8px; border:1px solid #444; margin-top:8px; background:#111;">
-        <div id="guildHeader" style="margin-bottom:8px; border-bottom:1px solid #555; padding-bottom:4px;">
+        <div id="guildHeader" style="margin-bottom:8px; border-bottom:1px solid #555; padding-bottom:4px; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px;">
           <div>
-            所属ギルド: <span id="guildCurrentName">未所属</span>
+            所属ギルド: <span id="guildCurrentName" style="font-weight:bold; color:#ffda6a;">未所属</span>
           </div>
           <div>
             名声: <span id="guildCurrentFame">0</span>
             ／ ランク: <span id="guildCurrentRank">-</span>
           </div>
+          <div style="background:#222; border:1px solid #665; border-radius:4px; padding:2px 8px;">
+            🪙 ギルドコイン: <span id="guildCurrentCoins" style="font-weight:bold; color:#ffd700;">0</span> 枚
+          </div>
         </div>
 
-        <div id="guildTabs" style="margin-bottom:8px;">
+        <div id="guildTabs" style="margin-bottom:8px; display:flex; gap:4px; flex-wrap:wrap;">
           <button class="guildTabBtn active" data-guild-tab="list">ギルド一覧</button>
-          <button class="guildTabBtn" data-guild-tab="quests">依頼</button>
+          <button class="guildTabBtn" data-guild-tab="quests">依頼（通常・日課）</button>
+          <button class="guildTabBtn" data-guild-tab="deliveries">調達・納品</button>
+          <button class="guildTabBtn" data-guild-tab="shop">ギルド交換所</button>
           <button class="guildTabBtn" data-guild-tab="rewards">報酬・称号</button>
         </div>
 
@@ -284,6 +289,24 @@
           <div id="guildTab_quests" class="guildTabPane" style="display:none;">
             <h3>ギルド依頼</h3>
             <div id="guildQuestList">
+            </div>
+          </div>
+
+          <div id="guildTab_deliveries" class="guildTabPane" style="display:none;">
+            <h3>調達・納品依頼</h3>
+            <p style="font-size:12px; color:#c0bedf; margin-bottom:6px;">
+              採取した素材やクラフト品をギルドに納品して、ギルドコインと名声を獲得できます。
+            </p>
+            <div id="guildDeliveryList">
+            </div>
+          </div>
+
+          <div id="guildTab_shop" class="guildTabPane" style="display:none;">
+            <h3>ギルド交換所</h3>
+            <p style="font-size:12px; color:#c0bedf; margin-bottom:6px;">
+              獲得したギルドコインを使って、特別な製法書や図面を交換・習得できます。
+            </p>
+            <div id="guildShopList">
             </div>
           </div>
 

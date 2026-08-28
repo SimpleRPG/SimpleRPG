@@ -25,6 +25,7 @@ function makeSaveData() {
   let farmSafe, fishDexSafe;
   let marketListingsSafe, marketBuyOrdersSafe, marketTradeLogsSafe, marketOrderIdSeqSafe, marketListingIdSeqSafe;
   let playerGuildIdSafe, guildFameSafe, guildQuestProgressSafe, combatGuildTreeUnlockedSafe, combatGuildSkillPointsSafe;
+  let guildCoinsSafe, guildLearnedRecipesSafe, guildDeliveryStatsSafe, guildDailyDateSafe, guildDailyTakenDateSafe, guildDailyProgressSafe;
   let citizenshipUnlockedSafe, housingStateSafe;
   let rareGatherItemsSafe; // ★追加: レア素材（星屑の結晶など）の専用在庫
   let byproductMatsSafe;   // ★追加: 副産物素材の専用在庫
@@ -202,6 +203,12 @@ function makeSaveData() {
     guildQuestProgressSafe   = (typeof window !== "undefined") ? (window.guildQuestProgress || {}) : {};
     combatGuildTreeUnlockedSafe = (typeof window !== "undefined") ? (window.combatGuildTreeUnlocked || {}) : {};
     combatGuildSkillPointsSafe  = (typeof window !== "undefined") ? (window.combatGuildSkillPoints || 0) : 0;
+    guildCoinsSafe           = (typeof window !== "undefined" && typeof window.guildCoins === "number") ? window.guildCoins : 0;
+    guildLearnedRecipesSafe  = (typeof window !== "undefined" && Array.isArray(window.guildLearnedRecipes)) ? window.guildLearnedRecipes : [];
+    guildDeliveryStatsSafe   = (typeof window !== "undefined" && window.guildDeliveryStats) ? window.guildDeliveryStats : {};
+    guildDailyDateSafe       = (typeof window !== "undefined") ? window.guildDailyDate : null;
+    guildDailyTakenDateSafe  = (typeof window !== "undefined") ? window.guildDailyTakenDate : null;
+    guildDailyProgressSafe   = (typeof window !== "undefined") ? (window.guildDailyProgress || {}) : {};
   } catch (e) {
     throw e;
   }
@@ -366,6 +373,13 @@ function makeSaveData() {
     guildQuestProgress:     guildQuestProgressSafe,
     combatGuildTreeUnlocked: combatGuildTreeUnlockedSafe,
     combatGuildSkillPoints:  combatGuildSkillPointsSafe,
+    guildCoins:              guildCoinsSafe,
+    guildLearnedRecipes:     guildLearnedRecipesSafe,
+    guildDeliveryStats:      guildDeliveryStatsSafe,
+    guildDailyDate:          guildDailyDateSafe,
+    guildDailyTakenDate:     guildDailyTakenDateSafe,
+    guildDailyProgress:      guildDailyProgressSafe,
+    guildBuffs:              (typeof window !== "undefined" && window.guildBuffs) ? window.guildBuffs : { gatherBuffUntil: 0, combatBuffUntil: 0 },
     // ★追加: 解放済みギルド職
     unlockedGuildJobs: unlockedGuildJobsSafe,
 
@@ -948,6 +962,28 @@ function applySaveData(data) {
       }
       if (typeof data.combatGuildSkillPoints === "number") {
         window.combatGuildSkillPoints = data.combatGuildSkillPoints;
+      }
+
+      if (typeof data.guildCoins === "number") {
+        window.guildCoins = data.guildCoins;
+      }
+      if (Array.isArray(data.guildLearnedRecipes)) {
+        window.guildLearnedRecipes = data.guildLearnedRecipes;
+      }
+      if (data.guildDeliveryStats && typeof data.guildDeliveryStats === "object") {
+        window.guildDeliveryStats = data.guildDeliveryStats;
+      }
+      if (typeof data.guildDailyDate !== "undefined") {
+        window.guildDailyDate = data.guildDailyDate;
+      }
+      if (typeof data.guildDailyTakenDate !== "undefined") {
+        window.guildDailyTakenDate = data.guildDailyTakenDate;
+      }
+      if (data.guildDailyProgress && typeof data.guildDailyProgress === "object") {
+        window.guildDailyProgress = data.guildDailyProgress;
+      }
+      if (data.guildBuffs && typeof data.guildBuffs === "object") {
+        window.guildBuffs = data.guildBuffs;
       }
 
       if (typeof data.citizenshipUnlocked === "boolean") {
