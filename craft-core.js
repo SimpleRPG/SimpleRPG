@@ -98,6 +98,17 @@ function addCraftSkillExp(category){
   const s = getCraftSkill(category);
   if(!s) return;
   s.exp += 1;
+
+  // ★住宅バフ（職人の工房邸など）
+  if (typeof window.getHousingHouseBuffs === "function") {
+    const hb = window.getHousingHouseBuffs();
+    if (hb && typeof hb.craftExpRate === "number" && hb.craftExpRate > 0) {
+      if (Math.random() < hb.craftExpRate) {
+        s.exp += 1;
+      }
+    }
+  }
+
   while(s.exp >= s.expToNext && s.lv < CRAFT_SKILL_MAX_LV){
     s.exp -= s.expToNext;
     s.lv++;

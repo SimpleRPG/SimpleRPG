@@ -131,6 +131,14 @@ function addExp(amount, source) {
   if (source === "battle") {
     // 戦闘は getBattleExpPerWin などで計算済みの値をそのまま使う前提
     finalAmount = amount;
+
+    // ★住宅バフ（戦士の鍛錬屋敷など）
+    if (typeof window.getHousingHouseBuffs === "function") {
+      const hb = window.getHousingHouseBuffs();
+      if (hb && typeof hb.battleExpRate === "number" && hb.battleExpRate > 0) {
+        finalAmount = Math.max(1, Math.floor(finalAmount * (1 + hb.battleExpRate)));
+      }
+    }
   } else {
     // 非戦闘行動は source に応じて設計値を上書き
     finalAmount = getNonBattleExpPerAction(source);

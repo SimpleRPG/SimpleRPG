@@ -1003,6 +1003,16 @@ function applySaveData(data) {
           (typeof data.housingState.lastGuildId !== "undefined")
             ? data.housingState.lastGuildId
             : null;
+        window.housingState.landId = data.housingState.landId || null;
+        window.housingState.rentDueAt = data.housingState.rentDueAt || null;
+        window.housingState.rentUnpaid = !!data.housingState.rentUnpaid;
+        window.housingState.furnitureSlots = Array.isArray(data.housingState.furnitureSlots)
+          ? data.housingState.furnitureSlots
+          : [];
+        window.housingState.houseType = data.housingState.houseType || null;
+        if (data.housingState.furnitureGrid) {
+          window.housingState.furnitureGrid = data.housingState.furnitureGrid;
+        }
       }
 
       // ★追加: 解放済みギルド職のロード

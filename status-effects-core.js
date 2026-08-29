@@ -1134,6 +1134,15 @@ function applyAttackBuffsForPlayer(base) {
       mult = def.modifyAttack(mult);
     }
   }
+
+  // ★住宅バフ（戦士の鍛錬屋敷など）
+  if (typeof window.getHousingHouseBuffs === "function") {
+    const hb = window.getHousingHouseBuffs();
+    if (hb && typeof hb.dmgRateAdd === "number" && hb.dmgRateAdd > 0) {
+      mult += hb.dmgRateAdd;
+    }
+  }
+
   return Math.max(1, Math.floor(base * mult));
 }
 
@@ -1157,6 +1166,15 @@ function applyDefenseBuffsForPlayer(damage) {
       mult = def.modifyDefense(mult);
     }
   }
+
+  // ★住宅バフ（戦士の鍛錬屋敷など）
+  if (typeof window.getHousingHouseBuffs === "function") {
+    const hb = window.getHousingHouseBuffs();
+    if (hb && typeof hb.dmgReduceRate === "number" && hb.dmgReduceRate > 0) {
+      mult *= (1.0 - hb.dmgReduceRate);
+    }
+  }
+
   return Math.max(1, Math.floor(damage * mult));
 }
 

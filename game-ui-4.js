@@ -121,6 +121,18 @@ function renderHousingLandStatus() {
       rentText = "家賃: 未設定";
     }
 
+    // 郊外の土地の場合は現在の建築タイプとバフも表示
+    if (current.id === "suburbLand") {
+      const currentHouseId = hs.houseType || "cottage_rustic";
+      const houseDef = (window.HOUSING_HOUSES && window.HOUSING_HOUSES[currentHouseId]) || null;
+      const houseName = houseDef ? `${houseDef.icon || "🏠"} ${houseDef.name}` : "素朴な小屋";
+      const houseSize = houseDef ? `${houseDef.width}×${houseDef.height}` : "3×3";
+      const buffText = houseDef && houseDef.buffDesc ? houseDef.buffDesc : "バフなし";
+
+      rentText += `\n建物: ${houseName}（${houseSize}） | 拠点効果: ${buffText}`;
+    }
+
+    info.style.whiteSpace = "pre-line";
     info.textContent = rentText;
     currentBox.appendChild(info);
 
@@ -159,6 +171,213 @@ function renderHousingLandStatus() {
 
   if (typeof renderHousingFurnitureGrid === "function") {
     renderHousingFurnitureGrid(furnitureArea);
+  }
+
+  // 2.5) 郊外の土地を借りている場合: 住宅の建築・改築メニュー（全5種類）
+  if (current && current.id === "suburbLand" && window.HOUSING_HOUSES) {
+    const houseBuildBox = document.createElement("div");
+    houseBuildBox.className = "status-block";
+    houseBuildBox.style.marginTop = "8px";
+    houseBuildBox.style.border = "1px solid #4a5568";
+
+    const houseBuildHeader = document.createElement("div");
+    houseBuildHeader.style.display = "flex";
+    houseBuildHeader.style.justifyContent = "space-between";
+    houseBuildHeader.style.alignItems = "center";
+    houseBuildHeader.style.marginBottom = "8px";
+
+    const houseBuildTitle = document.createElement("div");
+    houseBuildTitle.style.fontWeight = "bold";
+    houseBuildTitle.style.fontSize = "13px";
+    houseBuildTitle.style.color = "#ecc94b";
+    houseBuildTitle.textContent = "🏡 住宅の建築・改築（郊外専用・全5種）";
+    houseBuildHeader.appendChild(houseBuildTitle);
+
+    const houseBuildNote = document.createElement("div");
+    houseBuildNote.style.fontSize = "11px";
+    houseBuildNote.style.color = "#a0aec0";
+    houseBuildNote.textContent = "費用と素材を用意して住宅を建築・改築できます。";
+    houseBuildHeader.appendChild(houseBuildNote);
+
+    houseBuildBox.appendChild(houseBuildHeader);
+
+    const houses = window.HOUSING_HOUSES;
+    const currentHouseId = hs.houseType || "cottage_rustic";
+
+    Object.keys(houses).forEach(hId => {
+      const house = houses[hId];
+      if (!house) return;
+
+      const isCurrent = (currentHouseId === hId);
+
+      const hCard = document.createElement("div");
+      hCard.style.border = isCurrent ? "2px solid #ecc94b" : "1px solid #4a5568";
+      hCard.style.borderRadius = "6px";
+      hCard.style.padding = "8px";
+      hCard.style.marginBottom = "8px";
+      hCard.style.background = isCurrent ? "#1f1d14" : "#14141e";
+
+      // ヘッダー行: アイコン・名前・タグ・サイズ
+      const topRow = document.createElement("div");
+      topRow.style.display = "flex";
+      topRow.style.justifyContent = "space-between";
+      topRow.style.alignItems = "center";
+      topRow.style.marginBottom = "4px";
+
+      const namePart = document.createElement("div");
+      namePart.style.display = "flex";
+      namePart.style.alignItems = "center";
+      namePart.style.gap = "6px";
+
+      const titleSpan = document.createElement("span");
+      titleSpan.style.fontWeight = "bold";
+      titleSpan.style.fontSize = "13px";
+      titleSpan.style.color = isCurrent ? "#ecc94b" : "#edf2f7";
+      titleSpan.textContent = `${house.icon || "🏠"} ${house.name}`;
+      namePart.appendChild(titleSpan);
+
+      if (house.tag) {
+        const tagBadge = document.createElement("span");
+        tagBadge.style.fontSize = "10px";
+        tagBadge.style.padding = "1px 6px";
+        tagBadge.style.borderRadius = "4px";
+        tagBadge.style.fontWeight = "600";
+        if (house.category === "budget") {
+          tagBadge.style.background = "#2d3748";
+          tagBadge.style.color = "#cbd5e0";
+        } else if (house.category === "standard") {
+          tagBadge.style.background = "#2b6cb0";
+          tagBadge.style.color = "#bee3f8";
+        } else if (house.category === "combat") {
+          tagBadge.style.background = "#9b2c2c";
+          tagBadge.style.color = "#fed7d7";
+        } else if (house.category === "gather") {
+          tagBadge.style.background = "#22543d";
+          tagBadge.style.color = "#c6f6d5";
+        } else if (house.category === "craft") {
+          tagBadge.style.background = "#744210";
+          tagBadge.style.color = "#feebc8";
+        }
+        tagBadge.textContent = house.tag;
+        namePart.appendChild(tagBadge);
+      }
+
+      topRow.appendChild(namePart);
+
+      const sizeSpan = document.createElement("span");
+      sizeSpan.style.fontSize = "11px";
+      sizeSpan.style.color = "#a0aec0";
+      sizeSpan.textContent = `家具スペース: ${house.width}×${house.height} (${house.width * house.height}マス)`;
+      topRow.appendChild(sizeSpan);
+
+      hCard.appendChild(topRow);
+
+      // 説明文
+      const descDiv = document.createElement("div");
+      descDiv.style.fontSize = "11px";
+      descDiv.style.color = "#cbd5e0";
+      descDiv.style.marginBottom = "4px";
+      descDiv.textContent = house.desc;
+      hCard.appendChild(descDiv);
+
+      // バフ情報
+      const buffDiv = document.createElement("div");
+      buffDiv.style.fontSize = "11px";
+      buffDiv.style.marginBottom = "6px";
+      buffDiv.style.fontWeight = "500";
+      if (house.category === "combat") {
+        buffDiv.style.color = "#feb2b2";
+      } else if (house.category === "gather") {
+        buffDiv.style.color = "#9ae6b4";
+      } else if (house.category === "craft") {
+        buffDiv.style.color = "#fbd38d";
+      } else {
+        buffDiv.style.color = "#a0aec0";
+      }
+      buffDiv.textContent = `拠点効果: ${house.buffDesc || "なし"}`;
+      hCard.appendChild(buffDiv);
+
+      // 必要コスト（ゴールド & 素材）
+      const costBox = document.createElement("div");
+      costBox.style.fontSize = "11px";
+      costBox.style.background = "#0d0d14";
+      costBox.style.padding = "4px 8px";
+      costBox.style.borderRadius = "4px";
+      costBox.style.marginBottom = "6px";
+      costBox.style.border = "1px solid #2d3748";
+
+      const costParts = [];
+
+      // ゴールド
+      const goldNeed = (house.cost && house.cost.gold) || 0;
+      const goldHave = (typeof money === "number") ? money : 0;
+      const goldOk = goldHave >= goldNeed;
+      costParts.push(`<span style="color:${goldOk ? '#68d391' : '#fc8181'}">費用: ${goldNeed}G (所持: ${goldHave}G)</span>`);
+
+      // 素材一覧
+      const mats = (house.cost && house.cost.materials) || {};
+      Object.keys(mats).forEach(matId => {
+        const need = mats[matId] | 0;
+        const have = (typeof getItemCountByMeta === "function") ? (getItemCountByMeta(matId) || 0) : 0;
+        const ok = have >= need;
+        let matName = matId;
+        if (typeof getItemName === "function") {
+          matName = getItemName(matId) || matId;
+        }
+        costParts.push(`<span style="color:${ok ? '#68d391' : '#fc8181'}">${matName}: ${have}/${need}</span>`);
+      });
+
+      costBox.innerHTML = `<strong>建築コスト:</strong> ` + costParts.join(" ｜ ");
+      hCard.appendChild(costBox);
+
+      // ボタン行
+      const actionRow = document.createElement("div");
+      actionRow.style.display = "flex";
+      actionRow.style.alignItems = "center";
+      actionRow.style.gap = "8px";
+
+      if (isCurrent) {
+        const currentLabel = document.createElement("span");
+        currentLabel.style.fontSize = "11px";
+        currentLabel.style.color = "#ecc94b";
+        currentLabel.style.fontWeight = "bold";
+        currentLabel.textContent = "✓ 現在建築されている住宅です";
+        actionRow.appendChild(currentLabel);
+      } else {
+        const buildBtn = document.createElement("button");
+        const isRemodel = !!hs.houseType;
+        buildBtn.textContent = isRemodel ? "この住宅に改築する" : "この住宅を建築する";
+        buildBtn.style.fontSize = "11px";
+        buildBtn.style.padding = "3px 10px";
+
+        let check = { ok: true };
+        if (typeof window.canBuildHouse === "function") {
+          check = window.canBuildHouse(hId);
+        }
+
+        if (!check.ok) {
+          buildBtn.disabled = true;
+          const reasonSpan = document.createElement("span");
+          reasonSpan.style.fontSize = "11px";
+          reasonSpan.style.color = "#fc8181";
+          reasonSpan.textContent = `（${check.reason}）`;
+          actionRow.appendChild(buildBtn);
+          actionRow.appendChild(reasonSpan);
+        } else {
+          buildBtn.addEventListener("click", () => {
+            if (typeof window.buildHouse === "function") {
+              window.buildHouse(hId);
+            }
+          });
+          actionRow.appendChild(buildBtn);
+        }
+      }
+
+      hCard.appendChild(actionRow);
+      houseBuildBox.appendChild(hCard);
+    });
+
+    housingRoot.appendChild(houseBuildBox);
   }
 
   // 3) 借りられる土地リスト
@@ -209,8 +428,13 @@ function renderHousingLandStatus() {
       slotText = `${land.baseSlots}`;
     }
 
+    let extraNote = "";
+    if (land.kind === "suburbLand") {
+      extraNote = " ※素朴な小屋(3×3)のほか、4×4住宅や戦闘・採取・クラフト特化の屋敷(全5種)を建築可能";
+    }
+
     infoRow.textContent =
-      `${kindText} 週家賃: ${land.weeklyRent}G / 家具スロット: ${slotText}`;
+      `${kindText} 週家賃: ${land.weeklyRent}G / 家具スロット: ${slotText}${extraNote}`;
     infoRow.style.fontSize = "11px";
     infoRow.style.color = "#c0bedf";
     card.appendChild(infoRow);

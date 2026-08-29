@@ -692,6 +692,17 @@ function addGatherSkillExp(resourceKey){
   const s = gatherSkills[resourceKey];
   if(!s) return;
   s.exp += 1;
+
+  // ★住宅バフ（収穫の園ロッジなど）
+  if (typeof window.getHousingHouseBuffs === "function") {
+    const hb = window.getHousingHouseBuffs();
+    if (hb && typeof hb.gatherExpRate === "number" && hb.gatherExpRate > 0) {
+      if (Math.random() < hb.gatherExpRate) {
+        s.exp += 1;
+      }
+    }
+  }
+
   while(s.exp >= s.expToNext && s.lv < GATHER_SKILL_MAX_LV){
     s.exp -= s.expToNext;
     s.lv++;
@@ -765,6 +776,14 @@ function calcGatherAmount(resourceKey){
 
   // ★ 採取転生ボーナス: この採取1回ぶんの「+1個抽選」をまとめて足す
   total += getGatherRebirthExtraCountOnce();
+
+  // ★ 住宅バフ（収穫の園ロッジなど）
+  if (typeof window.getHousingHouseBuffs === "function") {
+    const hb = window.getHousingHouseBuffs();
+    if (hb && typeof hb.gatherDropAdd === "number" && hb.gatherDropAdd > 0) {
+      total += hb.gatherDropAdd;
+    }
+  }
 
   return Math.max(1, total);
 }

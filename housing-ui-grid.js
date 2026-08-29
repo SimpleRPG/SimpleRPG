@@ -12,7 +12,7 @@
 // 将来、郊外の土地は建物種類や増築で width/height を増やすことを想定。
 
 window.HOUSING_LAYOUTS = window.HOUSING_LAYOUTS || {
-  // ギルド寮（仮: guildDorm_warrior のみ想定）
+  // ギルド寮
   "guildDorm_warrior": {
     width:  2,
     height: 2
@@ -24,11 +24,66 @@ window.HOUSING_LAYOUTS = window.HOUSING_LAYOUTS || {
     height: 2
   },
 
-  // 郊外の土地（3x3 からスタート、將来拡張予定）
+  // 郊外の土地（住宅タイプに応じて3x3または4x4）
   "suburbLand": {
     width:  3,
     height: 3
   }
+};
+
+/**
+ * 土地と住宅タイプに応じた幅・高さを取得
+ */
+function getLandLayoutDimensions(land) {
+  if (!land || !land.id) return { width: 2, height: 2 };
+  if (land.id === "suburbLand") {
+    const hs = (typeof getHousingStateSafe === "function") ? getHousingStateSafe() : (window.housingState || {});
+    const houseType = hs && hs.houseType ? hs.houseType : "cottage_rustic";
+    const houseDef = window.HOUSING_HOUSES && window.HOUSING_HOUSES[houseType];
+    if (houseDef && houseDef.width && houseDef.height) {
+      return { width: houseDef.width, height: houseDef.height };
+    }
+    return { width: 3, height: 3 };
+  }
+  const layouts = window.HOUSING_LAYOUTS || {};
+  return layouts[land.id] || { width: 2, height: 2 };
+}
+
+/**
+ * 住宅サイズ変更時に家具グリッド配列を拡張・同期する
+ */
+window.syncHousingGridToHouseSize = function(landId, newWidth, newHeight) {
+  const root = getHousingGridStateRoot();
+  let state = root[landId];
+  if (!state) {
+    const slots = [];
+    for (let y = 0; y < newHeight; y++) {
+      const row = [];
+      for (let x = 0; x < newWidth; x++) {
+        row.push(null);
+      }
+      slots.push(row);
+    }
+    root[landId] = { width: newWidth, height: newHeight, slots };
+    return;
+  }
+
+  const oldSlots = state.slots || [];
+  const newSlots = [];
+  for (let y = 0; y < newHeight; y++) {
+    const row = [];
+    for (let x = 0; x < newWidth; x++) {
+      if (oldSlots[y] && oldSlots[y][x]) {
+        row.push(oldSlots[y][x]);
+      } else {
+        row.push(null);
+      }
+    }
+    newSlots.push(row);
+  }
+  state.width = newWidth;
+  state.height = newHeight;
+  state.slots = newSlots;
 };
 
 // ==============================
@@ -63,17 +118,16 @@ function getHousingGridStateRoot() {
 function getOrInitGridStateForLand(land) {
   if (!land || !land.id) return null;
 
-  const layouts = window.HOUSING_LAYOUTS || {};
-  const layout = layouts[land.id];
-  if (!layout || !layout.width || !layout.height) return null;
+  const dims = getLandLayoutDimensions(land);
+  if (!dims || !dims.width || !dims.height) return null;
 
   const root = getHousingGridStateRoot();
   let state = root[land.id];
 
   // まだ状態がなければ初期化
   if (!state) {
-    const w = layout.width;
-    const h = layout.height;
+    const w = dims.width;
+    const h = dims.height;
     const slots = [];
     for (let y = 0; y < h; y++) {
       const row = [];
@@ -84,6 +138,10 @@ function getOrInitGridStateForLand(land) {
     }
     state = { width: w, height: h, slots };
     root[land.id] = state;
+  } else if (state.width !== dims.width || state.height !== dims.height) {
+    // 住宅の改築などでサイズが変わった場合は同期
+    syncHousingGridToHouseSize(land.id, dims.width, dims.height);
+    state = root[land.id];
   }
 
   return state;

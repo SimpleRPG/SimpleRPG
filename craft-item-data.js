@@ -460,8 +460,15 @@ window.tools = TOOLS_INIT;
 
 function calcCraftSuccessRate(baseRate, skillLv) {
   const bonus = 0.15 * (skillLv / 100);
-  let rate = baseRate + bonus;
-  if (rate > 0.90) rate = 0.90;
+  let houseBonus = 0;
+  if (typeof window.getHousingHouseBuffs === "function") {
+    const hb = window.getHousingHouseBuffs();
+    if (hb && typeof hb.craftSuccessRateAdd === "number" && hb.craftSuccessRateAdd > 0) {
+      houseBonus = hb.craftSuccessRateAdd;
+    }
+  }
+  let rate = baseRate + bonus + houseBonus;
+  if (rate > 0.95) rate = 0.95;
   return rate;
 }
 

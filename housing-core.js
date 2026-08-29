@@ -17,7 +17,7 @@ if (typeof window.citizenshipUnlocked === "undefined") {
 // ハウジング用ステート（既存フィールドはそのまま残しつつ拡張）
 if (typeof window.housingState === "undefined") {
   window.housingState = {
-    hasBase: false,     // 住宅を取得済みかどうか（將来用）
+    hasBase: false,     // 住宅を取得済みかどうか
     baseLevel: 0,       // 住宅レベル（將来用）
     lastGuildId: null,  // 市民権をくれたギルドID（演出用）
 
@@ -25,7 +25,8 @@ if (typeof window.housingState === "undefined") {
     landId: null,       // 現在借りている土地プランID ("guildDorm_warrior" など)
     rentDueAt: null,    // 次の家賃支払期限（Unix ms）
     rentUnpaid: false,  // 期限超過で滞納中かどうか
-    furnitureSlots: []  // 家具スロット情報（將来の拡張用）
+    furnitureSlots: [], // 家具スロット情報（將来の拡張用）
+    houseType: null     // 郊外に建築された住宅タイプID ("cottage_rustic", "house_standard", "mansion_warrior", "lodge_harvester", "workshop_artisan")
   };
 } else {
   // 既存セーブに対して、追加フィールドだけ安全に補完
@@ -37,7 +38,142 @@ if (typeof window.housingState === "undefined") {
   if (typeof hs.rentDueAt === "undefined") hs.rentDueAt = null;
   if (typeof hs.rentUnpaid === "undefined") hs.rentUnpaid = false;
   if (!Array.isArray(hs.furnitureSlots)) hs.furnitureSlots = [];
+  if (typeof hs.houseType === "undefined") hs.houseType = null;
 }
+
+// ==============================
+// 住宅の種類（郊外の土地向け・全5種）
+// ==============================
+window.HOUSING_HOUSES = window.HOUSING_HOUSES || {
+  // 1. 素朴な小屋（安価・3×3 / T1素材・中間素材）
+  "cottage_rustic": {
+    id: "cottage_rustic",
+    name: "素朴な小屋",
+    icon: "🏡",
+    category: "budget",
+    tag: "安価・初期 (T1素材)",
+    desc: "コストを抑えて手早く建てられる素朴な平屋。居住空間はコンパクトな3×3（9マス）。",
+    width: 3,
+    height: 3,
+    cost: {
+      gold: 500,
+      materials: {
+        "T1_woodPlank": 8,
+        "T1_ironIngot": 4,
+        "T1_wood": 10,
+        "T1_ore": 10
+      }
+    },
+    buffs: {},
+    buffDesc: "バフなし（3×3 標準スペース）"
+  },
+
+  // 2. 標準的な木造住宅（通常・4×4 / T2素材・中間素材）
+  "house_standard": {
+    id: "house_standard",
+    name: "標準的な木造住宅",
+    icon: "🏠",
+    category: "standard",
+    tag: "通常・広大 (T2素材)",
+    desc: "住み心地の良い4×4構造の木造住宅。家具をたっぷり16マス分配置できる。",
+    width: 4,
+    height: 4,
+    cost: {
+      gold: 2500,
+      materials: {
+        "T2_woodPlank": 15,
+        "T2_ironIngot": 10,
+        "T2_toughLeather": 6,
+        "T2_wood": 15,
+        "T2_ore": 15
+      }
+    },
+    buffs: {},
+    buffDesc: "4×4 広大スペース（16マス配置可能）"
+  },
+
+  // 3. 戦士の鍛錬屋敷（戦闘特化・4×4・バフ付 / T3素材・中間素材）
+  "mansion_warrior": {
+    id: "mansion_warrior",
+    name: "戦士の鍛錬屋敷",
+    icon: "⚔️",
+    category: "combat",
+    tag: "戦闘特化 (T3素材)",
+    desc: "鍛錬場と武具手入れ場を備えた武門の館。戦闘時の力と集中力が高まる。",
+    width: 4,
+    height: 4,
+    cost: {
+      gold: 6000,
+      materials: {
+        "T3_woodPlank": 20,
+        "T3_ironIngot": 15,
+        "T3_toughLeather": 12,
+        "T3_ore": 20,
+        "T3_boneChip": 5
+      }
+    },
+    buffs: {
+      dmgRateAdd: 0.05,        // 与ダメージ +5%
+      dmgReduceRate: 0.03,     // 被ダメージ 3% 軽減
+      battleExpRate: 0.05      // 戦闘EXP +5%
+    },
+    buffDesc: "⚔️ 与ダメージ+5% / 被ダメージ-3% / 戦闘EXP+5%"
+  },
+
+  // 4. 収穫の園ロッジ（採取特化・4×4・バフ付 / T3素材・中間素材）
+  "lodge_harvester": {
+    id: "lodge_harvester",
+    name: "収穫の園ロッジ",
+    icon: "🌿",
+    category: "gather",
+    tag: "採取特化 (T3素材)",
+    desc: "自然の恵みを取り入れた開放的なロッジ。採取活動での獲得個数とEXPが増加する。",
+    width: 4,
+    height: 4,
+    cost: {
+      gold: 6000,
+      materials: {
+        "T3_woodPlank": 20,
+        "T3_clothBolt": 15,
+        "T3_mixHerb": 12,
+        "T3_wood": 20,
+        "T3_resin": 5
+      }
+    },
+    buffs: {
+      gatherDropAdd: 1,        // 採取獲得個数 +1
+      gatherExpRate: 0.05      // 採取EXP +5%
+    },
+    buffDesc: "🌿 採取獲得量+1個 / 採取EXP+5%"
+  },
+
+  // 5. 職人の工房邸（クラフト特化・4×4・バフ付 / T3素材・中間素材）
+  "workshop_artisan": {
+    id: "workshop_artisan",
+    name: "職人の工房邸",
+    icon: "🔨",
+    category: "craft",
+    tag: "クラフト特化 (T3素材)",
+    desc: "作業机や精錬炉を完備した職人仕様の家。製作時の成功率とEXPが向上する。",
+    width: 4,
+    height: 4,
+    cost: {
+      gold: 6000,
+      materials: {
+        "T3_woodPlank": 20,
+        "T3_ironIngot": 15,
+        "T3_distilledWater": 12,
+        "T3_ore": 20,
+        "T3_crystal": 5
+      }
+    },
+    buffs: {
+      craftSuccessRateAdd: 0.05, // クラフト成功率 +5%
+      craftExpRate: 0.05          // クラフトEXP +5%
+    },
+    buffDesc: "🔨 クラフト成功率+5% / クラフトEXP+5%"
+  }
+};
 
 // ==============================
 // 土地プラン定義
@@ -397,8 +533,116 @@ window.isHousingActive = function() {
 };
 
 // ==============================
-// UI側から状態を反映するヘルパ（既存＋拡張）
+// 住宅バフ取得・建築ヘルパー
 // ==============================
+
+/**
+ * 現在の拠点で有効な住宅バフを取得
+ */
+window.getHousingHouseBuffs = function() {
+  if (typeof window.isHousingActive === "function" && !window.isHousingActive()) {
+    return {};
+  }
+  const hs = (typeof getHousingStateSafe === "function") ? getHousingStateSafe() : (window.housingState || {});
+  if (!hs || hs.landId !== "suburbLand") {
+    return {};
+  }
+  const houseType = hs.houseType || "cottage_rustic";
+  const def = (window.HOUSING_HOUSES && window.HOUSING_HOUSES[houseType]);
+  return (def && def.buffs) ? def.buffs : {};
+};
+
+/**
+ * 住宅を建築できるかチェック
+ */
+window.canBuildHouse = function(houseId) {
+  const hs = (typeof getHousingStateSafe === "function") ? getHousingStateSafe() : (window.housingState || {});
+  if (!hs.landId) return { ok: false, reason: "土地を借りていない" };
+  if (hs.landId !== "suburbLand") return { ok: false, reason: "郊外の土地でのみ建築可能" };
+  if (hs.rentUnpaid) return { ok: false, reason: "家賃が滞納中" };
+
+  const house = window.HOUSING_HOUSES && window.HOUSING_HOUSES[houseId];
+  if (!house) return { ok: false, reason: "存在しない住宅プラン" };
+
+  if (hs.houseType === houseId) {
+    return { ok: false, reason: "すでに建築済み" };
+  }
+
+  // お金チェック
+  const goldCost = (house.cost && house.cost.gold) || 0;
+  if (typeof money === "number" && money < goldCost) {
+    return { ok: false, reason: `所持金不足（必要: ${goldCost}G）` };
+  }
+
+  // 素材チェック
+  const mats = (house.cost && house.cost.materials) || {};
+  for (const matId of Object.keys(mats)) {
+    const need = mats[matId] | 0;
+    const have = (typeof getItemCountByMeta === "function") ? (getItemCountByMeta(matId) || 0) : 0;
+    if (have < need) {
+      let matName = matId;
+      if (typeof getItemName === "function") {
+        matName = getItemName(matId) || matId;
+      }
+      return { ok: false, reason: `${matName}不足（所持: ${have}/${need}）` };
+    }
+  }
+
+  return { ok: true };
+};
+
+/**
+ * 住宅を建築・改築する処理
+ */
+window.buildHouse = function(houseId) {
+  const check = window.canBuildHouse(houseId);
+  if (!check.ok) {
+    if (typeof appendLog === "function") {
+      appendLog(`[建築] ${check.reason}`);
+    }
+    return false;
+  }
+
+  const hs = (typeof getHousingStateSafe === "function") ? getHousingStateSafe() : (window.housingState || {});
+  const house = window.HOUSING_HOUSES[houseId];
+
+  // お金消費
+  const goldCost = (house.cost && house.cost.gold) || 0;
+  if (typeof money === "number") {
+    money -= goldCost;
+  }
+
+  // 素材消費
+  const mats = (house.cost && house.cost.materials) || {};
+  for (const matId of Object.keys(mats)) {
+    const need = mats[matId] | 0;
+    if (need > 0 && typeof removeItemByMeta === "function") {
+      removeItemByMeta(matId, need);
+    }
+  }
+
+  const isRemodel = !!hs.houseType;
+  hs.houseType = houseId;
+  hs.hasBase = true;
+
+  // グリッド配列の動的リサイズ（既存の家具を保持したままリサイズ）
+  if (typeof syncHousingGridToHouseSize === "function") {
+    syncHousingGridToHouseSize("suburbLand", house.width, house.height);
+  }
+
+  if (typeof appendLog === "function") {
+    const actionName = isRemodel ? "改築" : "建築";
+    appendLog(`[建築] 「${house.name}」を${actionName}した！（費用 ${goldCost}G と素材を消費）`);
+  }
+
+  if (typeof refreshHousingFromState === "function") {
+    try { refreshHousingFromState(); } catch (e) {}
+  }
+  if (typeof updateDisplay === "function") {
+    try { updateDisplay(); } catch (e) {}
+  }
+  return true;
+};
 
 /**
  * 將来、ゲーム起動／ロード時に呼ばれて、
