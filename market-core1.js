@@ -212,7 +212,7 @@ function removeItemForSell(category, itemId, amount){
     if (have < amount) return false;
     toolCounts[itemId] = have - amount;
   } else if(category === "materialBase"){
-    if (itemId === "wood" || itemId === "ore" || itemId === "herb" ||
+    if (itemId === "wood" || itemId === "ore" || itemId === "sand" || itemId === "herb" ||
         itemId === "cloth" || itemId === "leather" || itemId === "water") {
       if (!consumeBaseMaterials(itemId, amount)) return false;
     } else if (itemId === RARE_GATHER_ITEM_ID) {
@@ -241,7 +241,7 @@ function removeItemForSell(category, itemId, amount){
       return false;
     }
   } else if(category === "material"){
-    if (itemId === "wood" || itemId === "ore" || itemId === "herb" ||
+    if (itemId === "wood" || itemId === "ore" || itemId === "sand" || itemId === "herb" ||
         itemId === "cloth" || itemId === "leather" || itemId === "water") {
       if (!consumeBaseMaterials(itemId, amount)) return false;
     }
@@ -294,7 +294,7 @@ function getItemLabel(category, itemId){
     }
     return itemId;
   } else if(category === "materialBase"){
-    const baseNames = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
+    const baseNames = { wood:"木", ore:"鉱石", sand:"砂", herb:"草", cloth:"布", leather:"皮", water:"水" };
     if (baseNames[itemId]) return baseNames[itemId];
     if (itemId === RARE_GATHER_ITEM_ID) return RARE_GATHER_ITEM_NAME;
     return itemId;
@@ -315,7 +315,7 @@ function getItemLabel(category, itemId){
     }
     return itemId;
   } else if(category === "material"){
-    const baseNames = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
+    const baseNames = { wood:"木", ore:"鉱石", sand:"砂", herb:"草", cloth:"布", leather:"皮", water:"水" };
     if (baseNames[itemId]) return baseNames[itemId];
     if (itemId === RARE_GATHER_ITEM_ID) return RARE_GATHER_ITEM_NAME;
 
@@ -506,7 +506,7 @@ function doMarketSell(){
       } else if (uiCategory === "tool") {
         toolCounts[itemId] = (toolCounts[itemId] || 0) + amount;
       } else if (uiCategory === "materialBase" || uiCategory === "material") {
-        if (itemId === "wood" || itemId === "ore" || itemId === "herb" ||
+        if (itemId === "wood" || itemId === "ore" || itemId === "sand" || itemId === "herb" ||
             itemId === "cloth" || itemId === "leather" || itemId === "water") {
           addBaseMaterials(itemId, amount);
         } else if (itemId === RARE_GATHER_ITEM_ID && typeof itemCounts === "object") {
@@ -1034,7 +1034,7 @@ function getTheoreticalCost(category, itemId) {
 
   if (category === "material") {
     // 一次素材
-    if (itemId === "wood" || itemId === "ore" || itemId === "herb" ||
+    if (itemId === "wood" || itemId === "ore" || itemId === "sand" || itemId === "herb" ||
         itemId === "cloth" || itemId === "leather" || itemId === "water") {
       // T1 の価値を代表値として使う（既存仕様を維持）
       return getBaseMaterialCost(itemId, "t1");

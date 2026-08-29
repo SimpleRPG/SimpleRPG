@@ -157,10 +157,14 @@ function initFertilizerSelect() {
   const keys = Object.keys(defs);
   console.log("[initFertilizerSelect] window.FERTILIZERS keys =", keys);
 
+  const typeOrder = { normal: 1, yield: 2, quality: 3, moisture: 4 };
   const ids = keys.sort((a, b) => {
-    const ta = defs[a] && typeof defs[a].tier === "number" ? defs[a].tier : 0;
-    const tb = defs[b] && typeof defs[b].tier === "number" ? defs[b].tier : 0;
-    return ta - tb;
+    const fa = defs[a] || {};
+    const fb = defs[b] || {};
+    const orderA = typeOrder[fa.type || "normal"] || 99;
+    const orderB = typeOrder[fb.type || "normal"] || 99;
+    if (orderA !== orderB) return orderA - orderB;
+    return (fa.tier || 0) - (fb.tier || 0);
   });
   console.log("[initFertilizerSelect] sorted ids =", ids);
 

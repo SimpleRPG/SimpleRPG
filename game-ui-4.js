@@ -880,7 +880,7 @@ function updateGatherMatDetailText() {
   const area  = document.getElementById("gatherMatDetail");
   if (!label || !area || typeof window.materials === "undefined") return;
 
-  const names = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
+  const names = { wood:"木", ore:"鉱石", sand:"砂", herb:"草", cloth:"布", leather:"皮", water:"水" };
 
   let labelText = "所持素材：-";
 
@@ -939,8 +939,8 @@ function renderGatherMaterialsTable(root, prefix) {
 
   box.innerHTML = "";
 
-  const names = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
-  const kinds = ["wood","ore","herb","cloth","leather","water"];
+  const names = { wood:"木", ore:"鉱石", sand:"砂", herb:"草", cloth:"布", leather:"皮", water:"水" };
+  const kinds = ["wood","ore","sand","cloth","leather","water"];
 
   const maxTier = (typeof window.MATERIAL_MAX_T === "number" && window.MATERIAL_MAX_T > 0)
     ? window.MATERIAL_MAX_T

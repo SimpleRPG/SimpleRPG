@@ -327,6 +327,7 @@
     // 通常採取
     if (target === "wood"    && isDailyBonusActive("gather_wood"))    rate += 0.10;
     if (target === "ore"     && isDailyBonusActive("gather_ore"))     rate += 0.10;
+    if (target === "sand"    && isDailyBonusActive("gather_sand"))    rate += 0.10;
     if (target === "herb"    && isDailyBonusActive("gather_herb"))    rate += 0.10;
     if (target === "cloth"   && isDailyBonusActive("gather_cloth"))   rate += 0.10;
     if (target === "leather" && isDailyBonusActive("gather_leather")) rate += 0.10;

@@ -6,11 +6,11 @@
 // =======================
 
 // 通常採取で扱う素材のキー
-// game-core-4.js の target と一致させる前提: wood / ore / herb / cloth / leather / water
+// game-core-4.js の target と一致させる前提: wood / ore / sand / cloth / leather / water
 window.MATERIAL_KEYS = window.MATERIAL_KEYS || [
   "wood",
   "ore",
-  "herb",
+  "sand",
   "cloth",
   "leather",
   "water"
@@ -65,10 +65,30 @@ window.byproductMats = window.byproductMats || {};
     // 旧形式があれば可能な範囲でマイグレーション
     if (prev && prev[key]) {
       const src = prev[key];
-      // 旧仕様の t1/t2/t3 を見る（T3 以降は旧データには存在しない想定）
-      if (typeof src.t1 === "number" && MATERIAL_MAX_T >= 1) arr[0] = src.t1;
-      if (typeof src.t2 === "number" && MATERIAL_MAX_T >= 2) arr[1] = src.t2;
-      if (typeof src.t3 === "number" && MATERIAL_MAX_T >= 3) arr[2] = src.t3;
+      if (Array.isArray(src)) {
+        for (let i = 0; i < Math.min(src.length, MATERIAL_MAX_T); i++) {
+          arr[i] = src[i] || 0;
+        }
+      } else {
+        // 旧仕様の t1/t2/t3 を見る
+        if (typeof src.t1 === "number" && MATERIAL_MAX_T >= 1) arr[0] = src.t1;
+        if (typeof src.t2 === "number" && MATERIAL_MAX_T >= 2) arr[1] = src.t2;
+        if (typeof src.t3 === "number" && MATERIAL_MAX_T >= 3) arr[2] = src.t3;
+      }
+    }
+
+    // 草(herb)から砂(sand)へのマイグレーション（旧セーブデータ互換）
+    if (key === "sand" && prev && prev.herb && (!prev.sand || (Array.isArray(prev.sand) && prev.sand.every(v => v === 0)))) {
+      const src = prev.herb;
+      if (Array.isArray(src)) {
+        for (let i = 0; i < Math.min(src.length, MATERIAL_MAX_T); i++) {
+          arr[i] = src[i] || 0;
+        }
+      } else if (typeof src === "object") {
+        if (typeof src.t1 === "number") arr[0] = src.t1;
+        if (typeof src.t2 === "number") arr[1] = src.t2;
+        if (typeof src.t3 === "number") arr[2] = src.t3;
+      }
     }
 
     newMaterials[key] = arr;
@@ -132,6 +152,7 @@ function getMatTotal(key) {
 const MATERIAL_BASE_NAMES = {
   wood:    "木材",
   ore:     "鉱石",
+  sand:    "砂",
   herb:    "薬草",
   cloth:   "布",
   leather: "皮",
@@ -487,13 +508,13 @@ if (typeof window.registerStorageImpl === "function") {
   const defs = {};
 
   // 通常素材の T1〜T◯（MATERIAL_MAX_T まで）
-  const baseKeys = ["wood", "ore", "herb", "cloth", "leather", "water"];
+  const baseKeys = ["wood", "ore", "sand", "herb", "cloth", "leather", "water"];
 
   baseKeys.forEach(key => {
     for (let tier = 1; tier <= MATERIAL_MAX_T; tier++) {
       const id = `T${tier}_${key}`;
       defs[id] = {
-        name: formatMaterialName(key, tier), // 例: T1木材
+        name: formatMaterialName(key, tier), // 例: T1木材, T1砂
         category: "material",
         storageKind: "materials",
         tier: tier
@@ -534,9 +555,12 @@ if (typeof window.registerStorageImpl === "function") {
   const BYPRODUCT_DEFS = [
     { baseId: "resin",    baseName: "樹脂",   sourceKey: "wood"    },
     { baseId: "crystal",  baseName: "水晶",   sourceKey: "ore"     },
-    { baseId: "essence",  baseName: "精油",   sourceKey: "herb"    },
+    { baseId: "amber",    baseName: "琥珀",   sourceKey: "sand"    },
     { baseId: "thread",   baseName: "金糸",   sourceKey: "cloth"   },
     { baseId: "boneChip", baseName: "骨片",   sourceKey: "leather" },
+    { baseId: "streamStone", baseName: "清流石", sourceKey: "water" },
+    { baseId: "salt",     baseName: "海塩",   sourceKey: "water"   },
+    { baseId: "essence",  baseName: "精油",   sourceKey: "herb"    },
     { baseId: "sand",     baseName: "砂",     sourceKey: "water"   }
   ];
   BYPRODUCT_DEFS.forEach(bp => {

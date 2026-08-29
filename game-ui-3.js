@@ -40,7 +40,7 @@ function renderGatherBaseStatusInto(container) {
   const materialDefs = [
     { key: "wood",    label: "木拠点" },
     { key: "ore",     label: "鉱石拠点" },
-    { key: "herb",    label: "草拠点" },
+    { key: "sand",    label: "砂拠点" },
     { key: "cloth",   label: "布拠点" },
     { key: "leather", label: "皮拠点" },
     { key: "water",   label: "水拠点" }
@@ -126,8 +126,8 @@ function renderBasicMaterialTableInto(container) {
 
   container.innerHTML = "";
 
-  const names = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
-  const keys  = ["wood","ore","herb","cloth","leather","water"];
+  const names = { wood:"木", ore:"鉱石", sand:"砂", herb:"草", cloth:"布", leather:"皮", water:"水" };
+  const keys  = ["wood","ore","sand","cloth","leather","water"];
 
   const table = document.createElement("table");
   table.className = "mat-table";

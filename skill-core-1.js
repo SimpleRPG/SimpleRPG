@@ -594,7 +594,7 @@ function getGatherJobSkillLevelBonus() {
   let maxBonus = 0.25; // 基本上限: 最大+25%
 
   if (jid === 300) {
-    const keys = ["wood", "ore", "herb", "cloth", "leather", "water"];
+    const keys = ["wood", "ore", "sand", "herb", "cloth", "leather", "water"];
     let maxLv = 0;
     keys.forEach(k => {
       const lv = (GS[k] && GS[k].lv) || 0;
@@ -606,7 +606,7 @@ function getGatherJobSkillLevelBonus() {
     if (typeof getGatherBaseLevel === "function") {
       const keys = (typeof GATHER_BASE_MATERIAL_KEYS !== "undefined")
         ? GATHER_BASE_MATERIAL_KEYS
-        : ["wood", "ore", "herb", "cloth", "leather", "water"];
+        : ["wood", "ore", "sand", "herb", "cloth", "leather", "water"];
       keys.forEach(k => {
         const lv = getGatherBaseLevel(k) || 0;
         if (lv > maxBaseLv) maxBaseLv = lv;

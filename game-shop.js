@@ -453,6 +453,7 @@ function buildSellableList() {
     const matNames = {
       wood: "木材",
       ore: "鉱石",
+      sand: "砂",
       herb: "薬草",
       cloth: "布",
       leather: "皮",

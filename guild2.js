@@ -1190,7 +1190,7 @@ function getDeliveryItemDisplayName(del) {
     if (typeof formatMaterialName === "function") {
       return formatMaterialName(key, t);
     }
-    const matNames = { wood: "木材", ore: "鉱石", herb: "薬草", cloth: "布", leather: "皮", water: "水" };
+    const matNames = { wood: "木材", ore: "鉱石", sand: "砂", herb: "薬草", cloth: "布", leather: "皮", water: "水" };
     return `T${t} ${matNames[key] || key}`;
   }
 

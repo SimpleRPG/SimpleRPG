@@ -673,8 +673,8 @@ function doExploreRandomEvent(area) {
     }
 
     const dropCount = 1 + Math.floor(Math.random() * 2);
-    const baseKeys = ["wood","ore","herb","cloth","leather","water"];
-    const baseNames = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
+    const baseKeys = ["wood","ore","sand","cloth","leather","water"];
+    const baseNames = { wood:"木", ore:"鉱石", sand:"砂", herb:"草", cloth:"布", leather:"皮", water:"水" };
 
     for (let i = 0; i < dropCount; i++) {
       const matKey = baseKeys[Math.floor(Math.random() * baseKeys.length)];

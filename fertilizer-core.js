@@ -6,56 +6,162 @@
 // 肥料T1〜T10共通パラメータ生成
 // =======================
 
-// Tごとのコストポイント（T×2）
-function getFertilizerCostPoint(tier) {
-  return tier * 2;
+// Tごとのコストポイント（通常: T×2 / 特化: T×3）
+function getFertilizerCostPoint(tier, type = "normal") {
+  if (type === "yield" || type === "quality" || type === "moisture") {
+    return tier * 3; // 特化肥料はコスト高め
+  }
+  return tier * 2; // 通常汎用肥料
 }
 
-// Tごとの効果（強くしすぎないように上限付き）
-// ・growBonus: 成長ポイント倍率（+5%〜+50%）
-// ・harvestBonus: 収穫量倍率（+4%〜+40%）
-// ・waterSaveRate: 水やり消費軽減率（3%〜30%）
-function getFertilizerEffectByTier(tier) {
+// Tごとの効果（特化型は対象効果のみ少し高め、線形スケール）
+// ・normal: 成長 +5%〜+50%, 収穫量 +4%〜+40%, 節水 3%〜30%
+// ・yield (増産): 収穫量 +8%〜+80%（確率で端数+1）、他0
+// ・quality (品質管理): 品質1段階アップ率 +12%〜+75%、他0
+// ・moisture (保湿): 水消費軽減・保水率 7%〜70%、他0
+function getFertilizerEffectByTier(tier, type = "normal") {
   const t = Math.max(1, Math.min(10, tier));
 
+  if (type === "yield") {
+    return {
+      growBonus: 0,
+      harvestBonus: 0.08 * t, // +8%〜+80%
+      qualityUpChance: 0,
+      waterSaveRate: 0
+    };
+  }
+
+  if (type === "quality") {
+    return {
+      growBonus: 0,
+      harvestBonus: 0,
+      qualityUpChance: 0.07 * t + 0.05, // +12%〜+75% で品質1段階アップ
+      waterSaveRate: 0
+    };
+  }
+
+  if (type === "moisture") {
+    return {
+      growBonus: 0,
+      harvestBonus: 0,
+      qualityUpChance: 0,
+      waterSaveRate: Math.min(0.07 * t, 0.70) // 7%〜70%
+    };
+  }
+
+  // normal (汎用)
   const growBonus    = Math.min(0.05 * t, 0.5); // +5%〜+50%
   const harvestBonus = Math.min(0.04 * t, 0.4); // +4%〜+40%
-  const waterSave    = Math.min(0.03 * t, 0.4); // -3%〜-40%（上限40%）
+  const waterSave    = Math.min(0.03 * t, 0.4); // -3%〜-30%
 
   return {
     growBonus,
     harvestBonus,
+    qualityUpChance: 0,
     waterSaveRate: waterSave
   };
 }
 
 // =======================
-// 肥料データ定義（T1〜T10）
+// 肥料データ定義（T1〜T10 × 4系統）
 // =======================
 //
-// ID: T1_fert 〜 T10_fert
-// costPoint: T×2 （レシピ設計用）
-// uses: 効果が乗る「収穫回数」
-//       例: T1=22回 / T10=40回くらいのイメージ
+// 1. 汎用肥料: T1_fert 〜 T10_fert（バランス型）
+// 2. 増産肥料: T1_fert_yield 〜 T10_fert_yield（収穫数増加特化）
+// 3. 品質管理肥料: T1_fert_quality 〜 T10_fert_quality（品質ランクアップ特化）
+// 4. 保湿肥料: T1_fert_moisture 〜 T10_fert_moisture（水消費ペース削減特化）
 
 const FERTILIZERS = {};
+
 for (let t = 1; t <= 10; t++) {
-  const ef = getFertilizerEffectByTier(t);
+  // 1. 通常肥料
+  const efNorm = getFertilizerEffectByTier(t, "normal");
   FERTILIZERS[`T${t}_fert`] = {
     id: `T${t}_fert`,
     name: `T${t}肥料`,
+    type: "normal",
+    typeName: "汎用",
     tier: t,
-    costPoint: getFertilizerCostPoint(t),
-    desc: `畑の成長・収穫量・水やりに小さなボーナスを与える肥料（T${t}）。`,
-    growBonus: ef.growBonus,
-    harvestBonus: ef.harvestBonus,
-    waterSaveRate: ef.waterSaveRate,
-    uses: 20 + 2 * t // T1=22, T5=30, T10=40
+    costPoint: getFertilizerCostPoint(t, "normal"),
+    desc: `畑の成長・収穫量・水やりにバランスよくボーナスを与える標準肥料（T${t}）。`,
+    growBonus: efNorm.growBonus,
+    harvestBonus: efNorm.harvestBonus,
+    qualityUpChance: 0,
+    waterSaveRate: efNorm.waterSaveRate,
+    uses: 20 + 2 * t
+  };
+
+  // 2. 増産肥料
+  const efYield = getFertilizerEffectByTier(t, "yield");
+  FERTILIZERS[`T${t}_fert_yield`] = {
+    id: `T${t}_fert_yield`,
+    name: `T${t}増産肥料`,
+    type: "yield",
+    typeName: "増産",
+    tier: t,
+    costPoint: getFertilizerCostPoint(t, "yield"),
+    desc: `収穫量増加に特化した肥料。確率で収穫数が増加する（+${Math.round(efYield.harvestBonus * 100)}%）。`,
+    growBonus: 0,
+    harvestBonus: efYield.harvestBonus,
+    qualityUpChance: 0,
+    waterSaveRate: 0,
+    uses: 20 + 2 * t
+  };
+
+  // 3. 品質管理肥料
+  const efQuality = getFertilizerEffectByTier(t, "quality");
+  FERTILIZERS[`T${t}_fert_quality`] = {
+    id: `T${t}_fert_quality`,
+    name: `T${t}品質管理肥料`,
+    type: "quality",
+    typeName: "品質管理",
+    tier: t,
+    costPoint: getFertilizerCostPoint(t, "quality"),
+    desc: `品質向上に特化した肥料。収穫時に${Math.round(efQuality.qualityUpChance * 100)}%の確率で作物品質が1ランク上昇する。`,
+    growBonus: 0,
+    harvestBonus: 0,
+    qualityUpChance: efQuality.qualityUpChance,
+    waterSaveRate: 0,
+    uses: 20 + 2 * t
+  };
+
+  // 4. 保湿肥料
+  const efMoist = getFertilizerEffectByTier(t, "moisture");
+  FERTILIZERS[`T${t}_fert_moisture`] = {
+    id: `T${t}_fert_moisture`,
+    name: `T${t}保湿肥料`,
+    type: "moisture",
+    typeName: "保湿",
+    tier: t,
+    costPoint: getFertilizerCostPoint(t, "moisture"),
+    desc: `土壌保水力に特化した肥料。手入れや散水時の水分消費ペースを${Math.round(efMoist.waterSaveRate * 100)}%軽減する。`,
+    growBonus: 0,
+    harvestBonus: 0,
+    qualityUpChance: 0,
+    waterSaveRate: efMoist.waterSaveRate,
+    uses: 20 + 2 * t
   };
 }
 
 // 他ファイルから参照できるようにグローバルへ
 window.FERTILIZERS = window.FERTILIZERS || FERTILIZERS;
+
+// ITEM_META への一括登録
+if (typeof registerItemDefs === "function") {
+  const fertDefs = {};
+  Object.keys(FERTILIZERS).forEach(fId => {
+    const f = FERTILIZERS[fId];
+    fertDefs[fId] = {
+      name: f.name,
+      category: "fertilizer",
+      storageKind: "itemCounts",
+      storageTab: "items",
+      tier: f.tier,
+      desc: f.desc
+    };
+  });
+  registerItemDefs(fertDefs);
+}
 
 // =======================
 // 畑スロット用の肥料状態アクセス
@@ -168,9 +274,24 @@ function applyFarmFertilizerToHarvest(baseAmount, slotIndex) {
   const base = Math.floor(raw);
   const frac = raw - base;
 
-  const extra = Math.random() < frac ? 1 : 0; // frac=0.2 なら 20% で +1[web:3][web:2]
+  const extra = Math.random() < frac ? 1 : 0; // 確率で端数+1
 
   return Math.max(1, base + extra);
+}
+
+// 品質管理肥料による品質1段階アップヘルパ
+function applyFarmFertilizerToQuality(currentQuality, slotIndex) {
+  const info = getFarmFertilizerInfoForSlot(slotIndex);
+  if (!info || !info.qualityUpChance) return currentQuality;
+
+  const curQ = typeof currentQuality === "number" ? currentQuality : 0;
+  if (curQ >= 2) return 2; // すでに金品質ならそのまま
+
+  // 確率で1段階アップ（普通0 -> 銀1, 銀1 -> 金2）
+  if (Math.random() < info.qualityUpChance) {
+    return curQ + 1;
+  }
+  return curQ;
 }
 
 // 水やりコストに肥料ボーナスを乗せるヘルパ（使う場合）
@@ -181,6 +302,15 @@ function applyFarmFertilizerToWaterCost(baseCost, slotIndex) {
   const c = Math.ceil(baseCost * (1 - info.waterSaveRate));
   return Math.max(0, c);
 }
+
+// グローバル公開
+window.applyFarmFertilizerToGrowth = applyFarmFertilizerToGrowth;
+window.applyFarmFertilizerToHarvest = applyFarmFertilizerToHarvest;
+window.applyFarmFertilizerToQuality = applyFarmFertilizerToQuality;
+window.applyFarmFertilizerToWaterCost = applyFarmFertilizerToWaterCost;
+window.useFarmFertilizerItem = useFarmFertilizerItem;
+window.getFarmFertilizerInfoForSlot = getFarmFertilizerInfoForSlot;
+window.consumeFarmFertilizerUse = consumeFarmFertilizerUse;
 
 // 収穫1回ぶんとして肥料の残り回数を消費（スロット単位）
 function consumeFarmFertilizerUse(slotIndex) {

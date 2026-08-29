@@ -1067,7 +1067,9 @@ function onGatherCompletedForGuild(params) {
       } else if (target === "ore") {
         updateQuestProgress("gather_t1_ore_30", t1, 30);
         updateQuestProgress("gather_t2_ore_30", t2, 30);
-      } else if (target === "herb") {
+      } else if (target === "sand" || target === "herb") {
+        updateQuestProgress("gather_t1_sand_30", t1, 30);
+        updateQuestProgress("gather_t2_sand_30", t2, 30);
         updateQuestProgress("gather_t1_herb_30", t1, 30);
         updateQuestProgress("gather_t2_herb_30", t2, 30);
       } else if (target === "cloth") {

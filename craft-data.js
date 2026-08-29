@@ -421,21 +421,21 @@ const CRAFT_RECIPES = {
     {
       id: "magicStaff_T1",
       name: "魔法の杖T1",
-      cost: { woodPlank_T1: 1, herb: 2 },
+      cost: { woodPlank_T1: 1, sand: 2 },
       baseRate: 0.7,
       kind: "normal"
     },
     {
       id: "magicStaff_T2",
       name: "魔法の杖T2",
-      cost: { woodPlank_T2: 1, herb: 3 },
+      cost: { woodPlank_T2: 1, sand: 3 },
       baseRate: 0.65,
       kind: "normal"
     },
     {
       id: "magicStaff_T3",
       name: "魔法の杖T3",
-      cost: { woodPlank_T3: 1, herb: 4 },
+      cost: { woodPlank_T3: 1, sand: 4 },
       baseRate: 0.6,
       kind: "normal"
     },
@@ -443,21 +443,21 @@ const CRAFT_RECIPES = {
     {
       id: "runeSword_T1",
       name: "ルーンソードT1",
-      cost: { woodPlank_T1: 1, ironIngot_T1: 2, herb: 1 },
+      cost: { woodPlank_T1: 1, ironIngot_T1: 2, sand: 1 },
       baseRate: 0.65,
       kind: "normal"
     },
     {
       id: "runeSword_T2",
       name: "ルーンソードT2",
-      cost: { woodPlank_T2: 1, ironIngot_T2: 2, herb: 2 },
+      cost: { woodPlank_T2: 1, ironIngot_T2: 2, sand: 2 },
       baseRate: 0.6,
       kind: "normal"
     },
     {
       id: "runeSword_T3",
       name: "ルーンソードT3",
-      cost: { woodPlank_T3: 1, ironIngot_T3: 2, herb: 3 },
+      cost: { woodPlank_T3: 1, ironIngot_T3: 2, sand: 3 },
       baseRate: 0.55,
       kind: "normal"
     },

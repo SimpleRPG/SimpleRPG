@@ -24,16 +24,16 @@ const GATHER_FIELDS = [
 // 採取スキルレベルによるフィールド解放条件
 // ※元の field1〜3 の仕様はそのまま、field4〜10 は素直に 10刻みで拡張
 const GATHER_FIELD_REQUIRE_LV = {
-  field1:  { wood: 0,  ore: 0,  herb: 0,  cloth: 0,  leather: 0,  water: 0 },
-  field2:  { wood: 10, ore: 10, herb: 10, cloth: 10, leather: 10, water: 10 },
-  field3:  { wood: 20, ore: 20, herb: 20, cloth: 20, leather: 20, water: 20 },
-  field4:  { wood: 30, ore: 30, herb: 30, cloth: 30, leather: 30, water: 30 },
-  field5:  { wood: 40, ore: 40, herb: 40, cloth: 40, leather: 40, water: 40 },
-  field6:  { wood: 50, ore: 50, herb: 50, cloth: 50, leather: 50, water: 50 },
-  field7:  { wood: 60, ore: 60, herb: 60, cloth: 60, leather: 60, water: 60 },
-  field8:  { wood: 70, ore: 70, herb: 70, cloth: 70, leather: 70, water: 70 },
-  field9:  { wood: 80, ore: 80, herb: 80, cloth: 80, leather: 80, water: 80 },
-  field10: { wood: 90, ore: 90, herb: 90, cloth: 90, leather: 90, water: 90 }
+  field1:  { wood: 0,  ore: 0,  sand: 0,  herb: 0,  cloth: 0,  leather: 0,  water: 0 },
+  field2:  { wood: 10, ore: 10, sand: 10, herb: 10, cloth: 10, leather: 10, water: 10 },
+  field3:  { wood: 20, ore: 20, sand: 20, herb: 20, cloth: 20, leather: 20, water: 20 },
+  field4:  { wood: 30, ore: 30, sand: 30, herb: 30, cloth: 30, leather: 30, water: 30 },
+  field5:  { wood: 40, ore: 40, sand: 40, herb: 40, cloth: 40, leather: 40, water: 40 },
+  field6:  { wood: 50, ore: 50, sand: 50, herb: 50, cloth: 50, leather: 50, water: 50 },
+  field7:  { wood: 60, ore: 60, sand: 60, herb: 60, cloth: 60, leather: 60, water: 60 },
+  field8:  { wood: 70, ore: 70, sand: 70, herb: 70, cloth: 70, leather: 70, water: 70 },
+  field9:  { wood: 80, ore: 80, sand: 80, herb: 80, cloth: 80, leather: 80, water: 80 },
+  field10: { wood: 90, ore: 90, sand: 90, herb: 90, cloth: 90, leather: 90, water: 90 }
 };
 
 // 「星屑の結晶」強化用定数
@@ -74,7 +74,7 @@ function refreshGatherSkillTreeBonus() {
 // =======================
 
 const HOURLY_GATHER_BONUS_CATEGORIES = [
-  "wood", "ore", "herb", "cloth", "leather", "water",
+  "wood", "ore", "sand", "cloth", "leather", "water",
   "hunt", "fish", "farm", "garden"
 ];
 
@@ -117,13 +117,14 @@ function getGatherStatsList() {
   const NORMAL_MAT_NAMES = {
     wood: "木",
     ore: "鉱石",
+    sand: "砂",
     herb: "草",
     cloth: "布",
     leather: "皮",
     water: "水"
   };
 
-  const normalOrder = ["wood", "ore", "herb", "cloth", "leather", "water"];
+  const normalOrder = ["wood", "ore", "sand", "cloth", "leather", "water"];
 
   normalOrder.forEach(id => {
     const stats = window.gatherStats[id];
@@ -213,7 +214,7 @@ function refreshGatherTargetSelect() {
   const targets = [
     { id: "wood",    name: "木" },
     { id: "ore",     name: "鉱石" },
-    { id: "herb",    name: "草" },
+    { id: "sand",    name: "砂" },
     { id: "cloth",   name: "布" },
     { id: "leather", name: "皮" },
     { id: "water",   name: "水" }
@@ -272,7 +273,8 @@ function refreshGatherFieldSelect() {
   const allGatherLv0 =
     gatherSkills.wood.lv      === 0 &&
     gatherSkills.ore.lv       === 0 &&
-    gatherSkills.herb.lv      === 0 &&
+    (gatherSkills.sand ? gatherSkills.sand.lv === 0 : true) &&
+    (gatherSkills.herb ? gatherSkills.herb.lv === 0 : true) &&
     gatherSkills.cloth.lv     === 0 &&
     gatherSkills.leather.lv   === 0 &&
     gatherSkills.water.lv     === 0 &&
@@ -833,6 +835,7 @@ function getGatherBonusChance(target) {
   const weaponPrefixMap = {
     wood:    "gatherAxe",
     ore:     "gatherPick",
+    sand:    "gatherKnife",
     herb:    "gatherKnife",
     cloth:   "gatherShears",
     leather: "gatherDagger",
@@ -842,6 +845,7 @@ function getGatherBonusChance(target) {
   const armorPrefixMap = {
     wood:    "gatherArmorWood",
     ore:     "gatherArmorOre",
+    sand:    "gatherArmorHerb",
     herb:    "gatherArmorHerb",
     cloth:   "gatherArmorCloth",
     leather: "gatherArmorLeather",
@@ -1132,6 +1136,7 @@ function gather(){
   const names = {
     wood: "木",
     ore: "鉱石",
+    sand: "砂",
     herb: "草",
     cloth: "布",
     leather: "皮",
@@ -1182,14 +1187,15 @@ function gather(){
     const BYPRODUCT_MAP = {
       wood:    "resin",
       ore:     "crystal",
+      sand:    "amber",
       herb:    "essence",
       cloth:   "thread",
       leather: "boneChip",
-      water:   "sand"
+      water:   "streamStone"
     };
     const BYPRODUCT_NAMES = {
-      resin: "樹脂", crystal: "水晶", essence: "精油",
-      thread: "金糸", boneChip: "骨片", sand: "砂"
+      resin: "樹脂", crystal: "水晶", amber: "琥珀", essence: "精油",
+      thread: "金糸", boneChip: "骨片", streamStone: "清流石", salt: "海塩", sand: "砂"
     };
 
     const bpBaseId = BYPRODUCT_MAP[target];

@@ -5,7 +5,7 @@
 // 採取対象メタ情報
 // =======================
 //
-// ・基本素材: 木 / 鉱石 / 草 / 布 / 皮 / 水
+// ・基本素材: 木 / 鉱石 / 砂 / 布 / 皮 / 水
 // ・料理用は「採取の場所＆モード」（狩猟/釣り/畑/菜園）で分ける前提なので、
 //
 //   ここではあくまで「素材そのもの」を列挙するだけにとどめる。
@@ -14,7 +14,7 @@
 const GATHER_TARGETS = [
   { id: "wood",    name: "木",    hasBase: true },
   { id: "ore",     name: "鉱石",  hasBase: true },
-  { id: "herb",    name: "草",    hasBase: true },
+  { id: "sand",    name: "砂",    hasBase: true },
   { id: "cloth",   name: "布",    hasBase: true },
   { id: "leather", name: "皮",    hasBase: true },
   { id: "water",   name: "水",    hasBase: true }
@@ -36,7 +36,8 @@ const GATHER_SKILLS_INIT = {
   // 基本素材用スキル
   wood:    { lv: 0, exp: 0, expToNext: 5 },
   ore:     { lv: 0, exp: 0, expToNext: 5 },
-  herb:    { lv: 0, exp: 0, expToNext: 5 },
+  sand:    { lv: 0, exp: 0, expToNext: 5 },
+  herb:    { lv: 0, exp: 0, expToNext: 5 }, // 旧互換用
   cloth:   { lv: 0, exp: 0, expToNext: 5 },
   leather: { lv: 0, exp: 0, expToNext: 5 },
   water:   { lv: 0, exp: 0, expToNext: 5 },

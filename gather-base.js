@@ -5,11 +5,12 @@
 // 採取拠点・自動採取
 // =======================
 
-const GATHER_BASE_MATERIAL_KEYS = ["wood","ore","herb","cloth","leather","water"];
+const GATHER_BASE_MATERIAL_KEYS = ["wood","ore","sand","cloth","leather","water"];
 
 const GATHER_SKILL_LABEL_JA = {
   wood:   "木",
   ore:    "鉱石",
+  sand:   "砂",
   herb:   "草",
   cloth:  "布",
   leather:"皮",
@@ -164,6 +165,32 @@ const GATHER_BASE_UPGRADE_DATA = {
       reqGatherLv: 30,
       costs: {
         intermediate: { ironIngot_T3: 20, woodPlank_T3: 10, clothBolt_T3: 10 },
+        starShard: 1
+      }
+    }
+  },
+  sand: {
+    1: {
+      nextLevel: 1,
+      reqGatherLv: 5,
+      costs: {
+        intermediate: { clothBolt_T1: 8, woodPlank_T1: 4, toughLeather_T1: 4 },
+        starShard: 0
+      }
+    },
+    2: {
+      nextLevel: 2,
+      reqGatherLv: 20,
+      costs: {
+        intermediate: { clothBolt_T2: 12, woodPlank_T2: 6, toughLeather_T2: 6 },
+        starShard: 0
+      }
+    },
+    3: {
+      nextLevel: 3,
+      reqGatherLv: 30,
+      costs: {
+        intermediate: { clothBolt_T3: 16, woodPlank_T3: 8, toughLeather_T3: 8 },
         starShard: 1
       }
     }

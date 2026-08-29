@@ -398,7 +398,10 @@ function harvestFarmSlot(index) {
   if (typeof addCookingMatWithQuality === "function" &&
       typeof rollCookingMatQuality === "function") {
     for (let i = 0; i < amount; i++) {
-      const q = rollCookingMatQuality();
+      let q = rollCookingMatQuality();
+      if (typeof applyFarmFertilizerToQuality === "function") {
+        q = applyFarmFertilizerToQuality(q, index);
+      }
       addCookingMatWithQuality(id, q);
     }
   } else {
@@ -565,19 +568,27 @@ function openFarmFertilizerModal(slotIndex) {
     const name = meta.name || fertId;
     const tierText = (meta.tier != null) ? `T${meta.tier}` : "";
 
-    const growth = (meta.growBonus != null)
-      ? `成長倍率: x${(1 + meta.growBonus).toFixed(2)}`
+    const growth = (meta.growBonus && meta.growBonus > 0)
+      ? `成長速度: +${Math.round(meta.growBonus * 100)}%`
       : "";
 
-    const amount = (meta.harvestBonus != null)
-      ? `収穫倍率: x${(1 + meta.harvestBonus).toFixed(2)}`
+    const amount = (meta.harvestBonus && meta.harvestBonus > 0)
+      ? `収穫量: +${Math.round(meta.harvestBonus * 100)}%`
+      : "";
+
+    const quality = (meta.qualityUpChance && meta.qualityUpChance > 0)
+      ? `品質向上率: +${Math.round(meta.qualityUpChance * 100)}%`
+      : "";
+
+    const water = (meta.waterSaveRate && meta.waterSaveRate > 0)
+      ? `節水・保水: ${Math.round(meta.waterSaveRate * 100)}%`
       : "";
 
     const remainUse = (meta.uses != null)
-      ? `1枠あたり最大${meta.uses}回収穫まで有効`
+      ? `有効: ${meta.uses}回収穫`
       : "";
 
-    const parts = [tierText, growth, amount, remainUse].filter(Boolean);
+    const parts = [tierText, growth, amount, quality, water, remainUse].filter(Boolean);
     descEl.textContent = name + (parts.length ? " / " + parts.join(" / ") : "");
   };
 

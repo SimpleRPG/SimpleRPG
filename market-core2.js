@@ -148,7 +148,7 @@ function addItemForBuy(category, itemId, amount){
   } else if(category === "tool"){
     toolCounts[itemId] = (toolCounts[itemId] || 0) + amount;
   } else if(category === "material"){
-    if (itemId === "wood" || itemId === "ore" || itemId === "herb" ||
+    if (itemId === "wood" || itemId === "ore" || itemId === "sand" || itemId === "herb" ||
         itemId === "cloth" || itemId === "leather" || itemId === "water") {
       addBaseMaterials(itemId, amount);
     }
@@ -426,6 +426,7 @@ function refreshMarketSellItems(){
     const mats = [
       { id:"wood",    name:"木",    count: getMatTotal("wood") },
       { id:"ore",     name:"鉱石",  count: getMatTotal("ore") },
+      { id:"sand",    name:"砂",    count: getMatTotal("sand") },
       { id:"herb",    name:"草",    count: getMatTotal("herb") },
       { id:"cloth",   name:"布",    count: getMatTotal("cloth") },
       { id:"leather", name:"皮",    count: getMatTotal("leather") },
@@ -548,7 +549,7 @@ function refreshMarketSellItems(){
     } else if (category === "tool") {
       newMax = (typeof toolCounts === "object" ? (toolCounts[id] || 0) : 0);
     } else if (category === "materialBase") {
-      if (id === "wood" || id === "ore" || id === "herb" ||
+      if (id === "wood" || id === "ore" || id === "sand" || id === "herb" ||
           id === "cloth" || id === "leather" || id === "water") {
         newMax = getMatTotal(id);
       } else if (id === RARE_GATHER_ITEM_ID && typeof itemCounts === "object") {
@@ -587,7 +588,7 @@ function initMarketOrderItemSelect() {
   };
 
   // 素材（一次＋レア＋中間＋料理完成品）は従来どおり category "material"
-  const baseNames = { wood:"木", ore:"鉱石", herb:"草", cloth:"布", leather:"皮", water:"水" };
+  const baseNames = { wood:"木", ore:"鉱石", sand:"砂", herb:"草", cloth:"布", leather:"皮", water:"水" };
   Object.keys(baseNames).forEach(key => {
     append("material", key, `素材: ${baseNames[key]}`);
   });

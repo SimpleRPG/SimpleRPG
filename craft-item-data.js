@@ -63,6 +63,17 @@ const INTERMEDIATE_MATERIALS = [
   { id: "T9_ironIngot",    name: "T9鉄インゴット",  from: { ore:   { t9: 4 }, "T8_ironIngot": 1 } },
   { id: "T10_ironIngot",   name: "T10鉄インゴット", from: { ore:   { t10: 4 }, "T9_ironIngot": 1 } },
 
+  { id: "T1_glass",        name: "T1ガラス板",      from: { sand:  { t1: 3 } } },
+  { id: "T2_glass",        name: "T2ガラス板",      from: { sand:  { t2: 3 }, "T1_glass": 1 } },
+  { id: "T3_glass",        name: "T3ガラス板",      from: { sand:  { t3: 3 }, "T2_glass": 1 } },
+  { id: "T4_glass",        name: "T4ガラス板",      from: { sand:  { t4: 3 }, "T3_glass": 1 } },
+  { id: "T5_glass",        name: "T5ガラス板",      from: { sand:  { t5: 3 }, "T4_glass": 1 } },
+  { id: "T6_glass",        name: "T6ガラス板",      from: { sand:  { t6: 3 }, "T5_glass": 1 } },
+  { id: "T7_glass",        name: "T7ガラス板",      from: { sand:  { t7: 3 }, "T6_glass": 1 } },
+  { id: "T8_glass",        name: "T8ガラス板",      from: { sand:  { t8: 3 }, "T7_glass": 1 } },
+  { id: "T9_glass",        name: "T9ガラス板",      from: { sand:  { t9: 3 }, "T8_glass": 1 } },
+  { id: "T10_glass",       name: "T10ガラス板",     from: { sand:  { t10: 3 }, "T9_glass": 1 } },
+
   { id: "T1_clothBolt",    name: "T1布束",          from: { cloth: { t1: 3 } } },
   { id: "T2_clothBolt",    name: "T2布束",          from: { cloth: { t2: 3 }, "T1_clothBolt": 1 } },
   { id: "T3_clothBolt",    name: "T3布束",          from: { cloth: { t3: 3 }, "T2_clothBolt": 1 } },
@@ -85,16 +96,16 @@ const INTERMEDIATE_MATERIALS = [
   { id: "T9_toughLeather", name: "T9強化皮",        from: { leather: { t9: 3 }, "T8_toughLeather": 1 } },
   { id: "T10_toughLeather",name: "T10強化皮",       from: { leather: { t10: 3 }, "T9_toughLeather": 1 } },
 
-  { id: "T1_mixHerb",      name: "T1調合用薬草",    from: { herb:  { t1: 3 } } },
-  { id: "T2_mixHerb",      name: "T2調合用薬草",    from: { herb:  { t2: 3 }, "T1_mixHerb": 1 } },
-  { id: "T3_mixHerb",      name: "T3調合用薬草",    from: { herb:  { t3: 3 }, "T2_mixHerb": 1 } },
-  { id: "T4_mixHerb",      name: "T4調合用薬草",    from: { herb:  { t4: 3 }, "T3_mixHerb": 1 } },
-  { id: "T5_mixHerb",      name: "T5調合用薬草",    from: { herb:  { t5: 3 }, "T4_mixHerb": 1 } },
-  { id: "T6_mixHerb",      name: "T6調合用薬草",    from: { herb:  { t6: 3 }, "T5_mixHerb": 1 } },
-  { id: "T7_mixHerb",      name: "T7調合用薬草",    from: { herb:  { t7: 3 }, "T6_mixHerb": 1 } },
-  { id: "T8_mixHerb",      name: "T8調合用薬草",    from: { herb:  { t8: 3 }, "T7_mixHerb": 1 } },
-  { id: "T9_mixHerb",      name: "T9調合用薬草",    from: { herb:  { t9: 3 }, "T8_mixHerb": 1 } },
-  { id: "T10_mixHerb",     name: "T10調合用薬草",   from: { herb:  { t10: 3 }, "T9_mixHerb": 1 } },
+  { id: "T1_mixHerb",      name: "T1調合用薬草",    from: { veg_herb_aroma: 2 } },
+  { id: "T2_mixHerb",      name: "T2調合用薬草",    from: { veg_herb_aroma: 2, "T1_mixHerb": 1 } },
+  { id: "T3_mixHerb",      name: "T3調合用薬草",    from: { veg_herb_aroma: 3, "T2_mixHerb": 1 } },
+  { id: "T4_mixHerb",      name: "T4調合用薬草",    from: { veg_herb_aroma: 3, "T3_mixHerb": 1 } },
+  { id: "T5_mixHerb",      name: "T5調合用薬草",    from: { veg_herb_aroma: 4, "T4_mixHerb": 1 } },
+  { id: "T6_mixHerb",      name: "T6調合用薬草",    from: { veg_herb_aroma: 4, "T5_mixHerb": 1 } },
+  { id: "T7_mixHerb",      name: "T7調合用薬草",    from: { veg_herb_aroma: 5, "T6_mixHerb": 1 } },
+  { id: "T8_mixHerb",      name: "T8調合用薬草",    from: { veg_herb_aroma: 5, "T7_mixHerb": 1 } },
+  { id: "T9_mixHerb",      name: "T9調合用薬草",    from: { veg_herb_aroma: 6, "T8_mixHerb": 1 } },
+  { id: "T10_mixHerb",     name: "T10調合用薬草",   from: { veg_herb_aroma: 6, "T9_mixHerb": 1 } },
 
   { id: "T1_distilledWater", name: "T1蒸留水",      from: { water: { t1: 3 } } },
   { id: "T2_distilledWater", name: "T2蒸留水",      from: { water: { t2: 3 }, "T1_distilledWater": 1 } },
@@ -105,24 +116,50 @@ const INTERMEDIATE_MATERIALS = [
   { id: "T7_distilledWater", name: "T7蒸留水",      from: { water: { t7: 3 }, "T6_distilledWater": 1 } },
   { id: "T8_distilledWater", name: "T8蒸留水",      from: { water: { t8: 3 }, "T7_distilledWater": 1 } },
   { id: "T9_distilledWater", name: "T9蒸留水",      from: { water: { t9: 3 }, "T8_distilledWater": 1 } },
-  { id: "T10_distilledWater",name: "T10蒸留水",     from: { water: { t10: 3 }, "T9_distilledWater": 1 } }
+  { id: "T10_distilledWater",name: "T10蒸留水",     from: { water: { t10: 3 }, "T9_distilledWater": 1 } },
+
+  { id: "T1_emptyBottle",    name: "T1空き瓶",      from: { sand: { t1: 2 } } },
+  { id: "T2_emptyBottle",    name: "T2空き瓶",      from: { sand: { t2: 2 }, "T1_emptyBottle": 1 } },
+  { id: "T3_emptyBottle",    name: "T3空き瓶",      from: { sand: { t3: 2 }, "T2_emptyBottle": 1 } },
+  { id: "T4_emptyBottle",    name: "T4空き瓶",      from: { sand: { t4: 2 }, "T3_emptyBottle": 1 } },
+  { id: "T5_emptyBottle",    name: "T5空き瓶",      from: { sand: { t5: 2 }, "T4_emptyBottle": 1 } },
+  { id: "T6_emptyBottle",    name: "T6空き瓶",      from: { sand: { t6: 2 }, "T5_emptyBottle": 1 } },
+  { id: "T7_emptyBottle",    name: "T7空き瓶",      from: { sand: { t7: 2 }, "T6_emptyBottle": 1 } },
+  { id: "T8_emptyBottle",    name: "T8空き瓶",      from: { sand: { t8: 2 }, "T7_emptyBottle": 1 } },
+  { id: "T9_emptyBottle",    name: "T9空き瓶",      from: { sand: { t9: 2 }, "T8_emptyBottle": 1 } },
+  { id: "T10_emptyBottle",   name: "T10空き瓶",     from: { sand: { t10: 2 }, "T9_emptyBottle": 1 } },
+
+  { id: "T1_flask",          name: "T1フラスコ",    from: { sand: { t1: 2 }, water: { t1: 1 } } },
+  { id: "T2_flask",          name: "T2フラスコ",    from: { sand: { t2: 2 }, water: { t2: 1 }, "T1_flask": 1 } },
+  { id: "T3_flask",          name: "T3フラスコ",    from: { sand: { t3: 2 }, water: { t3: 1 }, "T2_flask": 1 } },
+  { id: "T4_flask",          name: "T4フラスコ",    from: { sand: { t4: 2 }, water: { t4: 1 }, "T3_flask": 1 } },
+  { id: "T5_flask",          name: "T5フラスコ",    from: { sand: { t5: 2 }, water: { t5: 1 }, "T4_flask": 1 } },
+  { id: "T6_flask",          name: "T6フラスコ",    from: { sand: { t6: 2 }, water: { t6: 1 }, "T5_flask": 1 } },
+  { id: "T7_flask",          name: "T7フラスコ",    from: { sand: { t7: 2 }, water: { t7: 1 }, "T6_flask": 1 } },
+  { id: "T8_flask",          name: "T8フラスコ",    from: { sand: { t8: 2 }, water: { t8: 1 }, "T7_flask": 1 } },
+  { id: "T9_flask",          name: "T9フラスコ",    from: { sand: { t9: 2 }, water: { t9: 1 }, "T8_flask": 1 } },
+  { id: "T10_flask",         name: "T10フラスコ",   from: { sand: { t10: 2 }, water: { t10: 1 }, "T9_flask": 1 } }
 ];
 
 // カテゴリ＋ティア表現を itemId にマップするヘルパー（Tier先頭対応）
 function expandIntermediateFromToCost(from) {
   const cost = {};
   Object.keys(from || {}).forEach(cat => {
-    const tierMap = from[cat] || {};
-    Object.keys(tierMap).forEach(tierKey => {
-      const amount = tierMap[tierKey] || 0;
-      if (!amount) return;
+    const tierMap = from[cat];
+    if (tierMap && typeof tierMap === "object" && !Array.isArray(tierMap)) {
+      Object.keys(tierMap).forEach(tierKey => {
+        const amount = tierMap[tierKey] || 0;
+        if (!amount) return;
 
-      const tierNum = parseInt(tierKey.replace("t", ""), 10);
-      if (!tierNum) return;
+        const tierNum = parseInt(tierKey.replace("t", ""), 10);
+        if (!tierNum) return;
 
-      const itemId = `T${tierNum}_${cat}`;
-      cost[itemId] = (cost[itemId] || 0) + amount;
-    });
+        const itemId = `T${tierNum}_${cat}`;
+        cost[itemId] = (cost[itemId] || 0) + amount;
+      });
+    } else if (typeof tierMap === "number" && tierMap > 0) {
+      cost[cat] = (cost[cat] || 0) + tierMap;
+    }
   });
   return cost;
 }
@@ -260,28 +297,32 @@ function buildPotionCost(costKey, tier) {
         [`T${tier}_mixHerb`]:
           tier <= 4 ? 1 : tier <= 6 ? 2 : tier <= 8 ? 3 : tier <= 9 ? 4 : 5,
         [`T${tier}_distilledWater`]:
-          tier <= 3 ? 1 : tier === 4 ? 2 : tier <= 6 ? 3 : tier === 7 ? 3 : tier === 8 ? 4 : tier === 9 ? 4 : 5
+          tier <= 3 ? 1 : tier === 4 ? 2 : tier <= 6 ? 3 : tier === 7 ? 3 : tier === 8 ? 4 : tier === 9 ? 4 : 5,
+        [`T${tier}_emptyBottle`]: 1
       };
     case "mp":
       return {
         [`T${tier}_mixHerb`]:
           tier <= 4 ? 1 : tier <= 6 ? 2 : tier <= 8 ? 3 : tier <= 9 ? 4 : 5,
         [`T${tier}_distilledWater`]:
-          tier <= 3 ? 2 : tier === 4 ? 3 : tier <= 6 ? 4 : tier <= 9 ? 5 : 6
+          tier <= 3 ? 2 : tier === 4 ? 3 : tier <= 6 ? 4 : tier <= 9 ? 5 : 6,
+        [`T${tier}_emptyBottle`]: 1
       };
     case "elixir":
-      return { T3_mixHerb: 2, T3_distilledWater: 2, T3_ironIngot: 1 };
+      return { T3_mixHerb: 2, T3_distilledWater: 2, T3_ironIngot: 1, T3_flask: 1 };
     case "buffAtk":
       return {
         [`T${tier}_mixHerb`]: tier,
         [`T${tier}_ironIngot`]:
-          tier <= 2 ? 1 : tier <= 5 ? 1 : tier <= 7 ? 2 : tier <= 8 ? 2 : tier <= 9 ? 4 : 5
+          tier <= 2 ? 1 : tier <= 5 ? 1 : tier <= 7 ? 2 : tier <= 8 ? 2 : tier <= 9 ? 4 : 5,
+        [`T${tier}_flask`]: 1
       };
     case "buffDef":
       return {
         [`T${tier}_toughLeather`]: tier,
         [`T${tier}_distilledWater`]:
-          tier <= 2 ? 1 : tier <= 4 ? 1 : tier <= 6 ? 2 : tier <= 8 ? 3 : tier <= 9 ? 4 : 5
+          tier <= 2 ? 1 : tier <= 4 ? 1 : tier <= 6 ? 2 : tier <= 8 ? 3 : tier <= 9 ? 4 : 5,
+        [`T${tier}_flask`]: 1
       };
     case "cleanse":
       return {
@@ -290,7 +331,8 @@ function buildPotionCost(costKey, tier) {
           tier === 6 ? 7 : tier === 7 ? 8 : tier === 8 ? 9 : tier === 9 ? 10 : 12,
         [`T${tier}_distilledWater`]:
           tier === 1 ? 1 : tier === 2 ? 2 : tier === 3 ? 2 : tier === 4 ? 3 : tier === 5 ? 3 :
-          tier === 6 ? 4 : tier === 7 ? 4 : tier === 8 ? 5 : tier === 9 ? 5 : 6
+          tier === 6 ? 4 : tier === 7 ? 4 : tier === 8 ? 5 : tier === 9 ? 5 : 6,
+        [`T${tier}_emptyBottle`]: 1
       };
     default:
       return {};
@@ -394,7 +436,8 @@ function buildToolCost(costKey, tier) {
         [`T${tier}_distilledWater`]:
           tier <= 3 ? 1 : tier <= 5 ? 2 : tier <= 7 ? 3 : tier <= 9 ? 4 : 5,
         [`T${tier}_ironIngot`]:
-          tier <= 3 ? 1 : tier <= 5 ? 2 : tier <= 7 ? 2 : tier <= 8 ? 3 : 4
+          tier <= 3 ? 1 : tier <= 5 ? 2 : tier <= 7 ? 2 : tier <= 8 ? 3 : 4,
+        [`T${tier}_emptyBottle`]: 1
       };
     case "bomb":
       return {
@@ -409,7 +452,8 @@ function buildToolCost(costKey, tier) {
           tier <= 2 ? 1 : tier <= 4 ? 2 : tier <= 6 ? 3 : tier <= 8 ? 4 : tier <= 9 ? 5 : 6,
         [`T${tier}_mixHerb`]:
           tier === 1 ? 2 : tier === 2 ? 3 : tier === 3 ? 3 : tier === 4 ? 4 : tier === 5 ? 4 :
-          tier === 6 ? 5 : tier === 7 ? 5 : tier === 8 ? 6 : tier === 9 ? 6 : 7
+          tier === 6 ? 5 : tier === 7 ? 5 : tier === 8 ? 6 : tier === 9 ? 6 : 7,
+        [`T${tier}_emptyBottle`]: 1
       };
     case "poisonNeedle":
       return {
@@ -422,7 +466,8 @@ function buildToolCost(costKey, tier) {
         [`T${tier}_mixHerb`]: tier,
         [`T${tier}_distilledWater`]:
           tier === 1 ? 1 : tier === 2 ? 1 : tier === 3 ? 2 : tier === 4 ? 2 : tier === 5 ? 2 :
-          tier === 6 ? 3 : tier === 7 ? 3 : tier === 8 ? 4 : tier === 9 ? 4 : 5
+          tier === 6 ? 3 : tier === 7 ? 3 : tier === 8 ? 4 : tier === 9 ? 4 : 5,
+        [`T${tier}_flask`]: 1
       };
     default:
       return {};
@@ -630,32 +675,32 @@ function rollQualityBySkillLv(skillLv) {
     {
       baseId: "critPotion", baseName: "集中薬",
       tiers: [
-        { tier:  1, cost: { T1_crystal: 1, T1_mixHerb: 1 }, baseRate: 0.65 },
-        { tier:  2, cost: { T2_crystal: 2, T2_mixHerb: 2 }, baseRate: 0.615 },
-        { tier:  3, cost: { T3_crystal: 3, T3_mixHerb: 3 }, baseRate: 0.58 },
-        { tier:  4, cost: { T4_crystal: 3, T4_mixHerb: 3 }, baseRate: 0.545 },
-        { tier:  5, cost: { T5_crystal: 3, T5_mixHerb: 3 }, baseRate: 0.51 },
-        { tier:  6, cost: { T6_crystal: 3, T6_mixHerb: 3 }, baseRate: 0.475 },
-        { tier:  7, cost: { T7_crystal: 3, T7_mixHerb: 3 }, baseRate: 0.44 },
-        { tier:  8, cost: { T8_crystal: 3, T8_mixHerb: 3 }, baseRate: 0.405 },
-        { tier:  9, cost: { T9_crystal: 3, T9_mixHerb: 3 }, baseRate: 0.37 },
-        { tier: 10, cost: { T10_crystal: 3, T10_mixHerb: 3 }, baseRate: 0.335 }
+        { tier:  1, cost: { T1_crystal: 1, T1_mixHerb: 1, T1_flask: 1 }, baseRate: 0.65 },
+        { tier:  2, cost: { T2_crystal: 2, T2_mixHerb: 2, T2_flask: 1 }, baseRate: 0.615 },
+        { tier:  3, cost: { T3_crystal: 3, T3_mixHerb: 3, T3_flask: 1 }, baseRate: 0.58 },
+        { tier:  4, cost: { T4_crystal: 3, T4_mixHerb: 3, T4_flask: 1 }, baseRate: 0.545 },
+        { tier:  5, cost: { T5_crystal: 3, T5_mixHerb: 3, T5_flask: 1 }, baseRate: 0.51 },
+        { tier:  6, cost: { T6_crystal: 3, T6_mixHerb: 3, T6_flask: 1 }, baseRate: 0.475 },
+        { tier:  7, cost: { T7_crystal: 3, T7_mixHerb: 3, T7_flask: 1 }, baseRate: 0.44 },
+        { tier:  8, cost: { T8_crystal: 3, T8_mixHerb: 3, T8_flask: 1 }, baseRate: 0.405 },
+        { tier:  9, cost: { T9_crystal: 3, T9_mixHerb: 3, T9_flask: 1 }, baseRate: 0.37 },
+        { tier: 10, cost: { T10_crystal: 3, T10_mixHerb: 3, T10_flask: 1 }, baseRate: 0.335 }
       ],
       statusPrefix: "potion_crit_up"
     },
     {
       baseId: "magicPotion", baseName: "魔力薬",
       tiers: [
-        { tier:  1, cost: { T1_essence: 1, T1_distilledWater: 1 }, baseRate: 0.65 },
-        { tier:  2, cost: { T2_essence: 2, T2_distilledWater: 2 }, baseRate: 0.615 },
-        { tier:  3, cost: { T3_essence: 3, T3_distilledWater: 3 }, baseRate: 0.58 },
-        { tier:  4, cost: { T4_essence: 3, T4_distilledWater: 3 }, baseRate: 0.545 },
-        { tier:  5, cost: { T5_essence: 3, T5_distilledWater: 3 }, baseRate: 0.51 },
-        { tier:  6, cost: { T6_essence: 3, T6_distilledWater: 3 }, baseRate: 0.475 },
-        { tier:  7, cost: { T7_essence: 3, T7_distilledWater: 3 }, baseRate: 0.44 },
-        { tier:  8, cost: { T8_essence: 3, T8_distilledWater: 3 }, baseRate: 0.405 },
-        { tier:  9, cost: { T9_essence: 3, T9_distilledWater: 3 }, baseRate: 0.37 },
-        { tier: 10, cost: { T10_essence: 3, T10_distilledWater: 3 }, baseRate: 0.335 }
+        { tier:  1, cost: { T1_essence: 1, T1_distilledWater: 1, T1_flask: 1 }, baseRate: 0.65 },
+        { tier:  2, cost: { T2_essence: 2, T2_distilledWater: 2, T2_flask: 1 }, baseRate: 0.615 },
+        { tier:  3, cost: { T3_essence: 3, T3_distilledWater: 3, T3_flask: 1 }, baseRate: 0.58 },
+        { tier:  4, cost: { T4_essence: 3, T4_distilledWater: 3, T4_flask: 1 }, baseRate: 0.545 },
+        { tier:  5, cost: { T5_essence: 3, T5_distilledWater: 3, T5_flask: 1 }, baseRate: 0.51 },
+        { tier:  6, cost: { T6_essence: 3, T6_distilledWater: 3, T6_flask: 1 }, baseRate: 0.475 },
+        { tier:  7, cost: { T7_essence: 3, T7_distilledWater: 3, T7_flask: 1 }, baseRate: 0.44 },
+        { tier:  8, cost: { T8_essence: 3, T8_distilledWater: 3, T8_flask: 1 }, baseRate: 0.405 },
+        { tier:  9, cost: { T9_essence: 3, T9_distilledWater: 3, T9_flask: 1 }, baseRate: 0.37 },
+        { tier: 10, cost: { T10_essence: 3, T10_distilledWater: 3, T10_flask: 1 }, baseRate: 0.335 }
       ],
       statusPrefix: "potion_magic_up"
     },
@@ -747,16 +792,16 @@ function rollQualityBySkillLv(skillLv) {
     {
       baseId: "smokeBomb", baseName: "煙幕瓶", type: "status",
       tiers: [
-        { tier:  1, power: 0, cost: { T1_sand: 1, T1_distilledWater: 1 }, baseRate: 0.7 },
-        { tier:  2, power: 0, cost: { T2_sand: 2, T2_distilledWater: 2 }, baseRate: 0.655 },
-        { tier:  3, power: 0, cost: { T3_sand: 3, T3_distilledWater: 3 }, baseRate: 0.61 },
-        { tier:  4, power: 0, cost: { T4_sand: 3, T4_distilledWater: 3 }, baseRate: 0.565 },
-        { tier:  5, power: 0, cost: { T5_sand: 3, T5_distilledWater: 3 }, baseRate: 0.52 },
-        { tier:  6, power: 0, cost: { T6_sand: 3, T6_distilledWater: 3 }, baseRate: 0.475 },
-        { tier:  7, power: 0, cost: { T7_sand: 3, T7_distilledWater: 3 }, baseRate: 0.43 },
-        { tier:  8, power: 0, cost: { T8_sand: 3, T8_distilledWater: 3 }, baseRate: 0.385 },
-        { tier:  9, power: 0, cost: { T9_sand: 3, T9_distilledWater: 3 }, baseRate: 0.34 },
-        { tier: 10, power: 0, cost: { T10_sand: 3, T10_distilledWater: 3 }, baseRate: 0.295 }
+        { tier:  1, power: 0, cost: { T1_streamStone: 1, T1_distilledWater: 1, T1_emptyBottle: 1 }, baseRate: 0.7 },
+        { tier:  2, power: 0, cost: { T2_streamStone: 2, T2_distilledWater: 2, T2_emptyBottle: 1 }, baseRate: 0.655 },
+        { tier:  3, power: 0, cost: { T3_streamStone: 3, T3_distilledWater: 3, T3_emptyBottle: 1 }, baseRate: 0.61 },
+        { tier:  4, power: 0, cost: { T4_streamStone: 3, T4_distilledWater: 3, T4_emptyBottle: 1 }, baseRate: 0.565 },
+        { tier:  5, power: 0, cost: { T5_streamStone: 3, T5_distilledWater: 3, T5_emptyBottle: 1 }, baseRate: 0.52 },
+        { tier:  6, power: 0, cost: { T6_streamStone: 3, T6_distilledWater: 3, T6_emptyBottle: 1 }, baseRate: 0.475 },
+        { tier:  7, power: 0, cost: { T7_streamStone: 3, T7_distilledWater: 3, T7_emptyBottle: 1 }, baseRate: 0.43 },
+        { tier:  8, power: 0, cost: { T8_streamStone: 3, T8_distilledWater: 3, T8_emptyBottle: 1 }, baseRate: 0.385 },
+        { tier:  9, power: 0, cost: { T9_streamStone: 3, T9_distilledWater: 3, T9_emptyBottle: 1 }, baseRate: 0.34 },
+        { tier: 10, power: 0, cost: { T10_streamStone: 3, T10_distilledWater: 3, T10_emptyBottle: 1 }, baseRate: 0.295 }
       ]
     }
   ];
