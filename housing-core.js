@@ -26,7 +26,8 @@ if (typeof window.housingState === "undefined") {
     rentDueAt: null,    // 次の家賃支払期限（Unix ms）
     rentUnpaid: false,  // 期限超過で滞納中かどうか
     furnitureSlots: [], // 家具スロット情報（將来の拡張用）
-    houseType: null     // 郊外に建築された住宅タイプID ("cottage_rustic", "house_standard", "mansion_warrior", "lodge_harvester", "workshop_artisan")
+    houseType: null,    // 郊外に建築された住宅タイプID ("cottage_rustic", "house_standard", "mansion_warrior", "lodge_harvester", "workshop_artisan")
+    outdoorExpanded: false // 野外（庭園フロア）を増築済みかどうか
   };
 } else {
   // 既存セーブに対して、追加フィールドだけ安全に補完
@@ -39,6 +40,7 @@ if (typeof window.housingState === "undefined") {
   if (typeof hs.rentUnpaid === "undefined") hs.rentUnpaid = false;
   if (!Array.isArray(hs.furnitureSlots)) hs.furnitureSlots = [];
   if (typeof hs.houseType === "undefined") hs.houseType = null;
+  if (typeof hs.outdoorExpanded === "undefined") hs.outdoorExpanded = false;
 }
 
 // ==============================
@@ -553,8 +555,299 @@ window.getHousingHouseBuffs = function() {
 };
 
 /**
- * 住宅を建築できるかチェック
+ * 野外（庭園）増築の定義（T3特化住宅建築後に増築可能）
  */
+window.HOUSING_OUTDOOR_EXPANSION = {
+  id: "outdoor_garden_expansion",
+  name: "野外（庭園フロア）増築",
+  icon: "🌳",
+  desc: "特化住宅の敷地を拡張し、スプリンクラーや果樹、案山子などの野外専用設備を配置できる庭園を開拓する。",
+  cost: {
+    gold: 3000,
+    materials: {
+      "T3_woodPlank": 15,
+      "T3_ironIngot": 10,
+      "T3_distilledWater": 10
+    }
+  }
+};
+
+/**
+ * 野外（庭園）増築が完了していて利用可能か判定
+ */
+window.isHousingOutdoorUnlocked = function() {
+  const hs = (typeof getHousingStateSafe === "function") ? getHousingStateSafe() : (window.housingState || {});
+  if (!hs.landId || hs.landId !== "suburbLand") return false;
+  if (hs.rentUnpaid) return false;
+  const t3SpecializedHouses = ["mansion_warrior", "lodge_harvester", "workshop_artisan"];
+  if (!t3SpecializedHouses.includes(hs.houseType)) return false;
+  return !!hs.outdoorExpanded;
+};
+
+/**
+ * 野外増築を実行可能かチェック
+ */
+window.canExpandOutdoorGarden = function() {
+  const hs = (typeof getHousingStateSafe === "function") ? getHousingStateSafe() : (window.housingState || {});
+  if (!hs.landId || hs.landId !== "suburbLand") {
+    return { ok: false, reason: "郊外の土地を借りている必要があります" };
+  }
+  if (hs.rentUnpaid) {
+    return { ok: false, reason: "家賃滞納中は増築できません" };
+  }
+  const t3SpecializedHouses = ["mansion_warrior", "lodge_harvester", "workshop_artisan"];
+  if (!t3SpecializedHouses.includes(hs.houseType)) {
+    return { ok: false, reason: "先にT3素材による特化住宅（戦士の鍛錬屋敷 / 収穫の園ロッジ / 職人の工房邸）を建築する必要があります" };
+  }
+  if (hs.outdoorExpanded) {
+    return { ok: false, reason: "すでに野外増築済みです" };
+  }
+
+  const expDef = window.HOUSING_OUTDOOR_EXPANSION;
+  const goldCost = (expDef.cost && expDef.cost.gold) || 0;
+  if (typeof money === "number" && money < goldCost) {
+    return { ok: false, reason: `所持金不足（必要: ${goldCost}G）` };
+  }
+
+  const mats = (expDef.cost && expDef.cost.materials) || {};
+  for (const matId of Object.keys(mats)) {
+    const need = mats[matId] | 0;
+    const have = (typeof getItemCountByMeta === "function") ? (getItemCountByMeta(matId) || 0) : 0;
+    if (have < need) {
+      let matName = matId;
+      if (typeof getItemName === "function") {
+        matName = getItemName(matId) || matId;
+      }
+      return { ok: false, reason: `${matName}不足（所持: ${have}/${need}）` };
+    }
+  }
+
+  return { ok: true };
+};
+
+/**
+ * 野外増築を実行する処理
+ */
+window.buildOutdoorGardenExpansion = function() {
+  const check = window.canExpandOutdoorGarden();
+  if (!check.ok) {
+    if (typeof appendLog === "function") {
+      appendLog(`[増築] ${check.reason}`);
+    }
+    return false;
+  }
+
+  const hs = (typeof getHousingStateSafe === "function") ? getHousingStateSafe() : (window.housingState || {});
+  const expDef = window.HOUSING_OUTDOOR_EXPANSION;
+
+  // お金消費
+  const goldCost = (expDef.cost && expDef.cost.gold) || 0;
+  if (typeof money === "number") {
+    money -= goldCost;
+  }
+
+  // 素材消費
+  const mats = (expDef.cost && expDef.cost.materials) || {};
+  for (const matId of Object.keys(mats)) {
+    const need = mats[matId] | 0;
+    if (need > 0 && typeof removeItemByMeta === "function") {
+      removeItemByMeta(matId, need);
+    }
+  }
+
+  hs.outdoorExpanded = true;
+
+  if (typeof appendLog === "function") {
+    appendLog(`🌳【野外増築完了】特化住宅の敷地に「野外（庭園フロア）」を増築しました！スプリンクラーや果樹を配置可能です。`);
+  }
+
+  if (typeof refreshHousingFromState === "function") {
+    try { refreshHousingFromState(); } catch (e) {}
+  }
+  if (typeof updateDisplay === "function") {
+    try { updateDisplay(); } catch (e) {}
+  }
+  return true;
+};
+
+/**
+ * 家具が指定のエリア（indoor / outdoor）に設置可能かチェック
+ */
+window.canPlaceFurnitureInArea = function(furnitureId, areaType) {
+  if (!furnitureId) return { ok: false, reason: "家具が指定されていません" };
+  const meta = (typeof getItemMeta === "function") ? getItemMeta(furnitureId) : null;
+  if (!meta) return { ok: false, reason: "家具データが存在しません" };
+
+  const placement = meta.placement || "both"; // デフォルトは両用
+  if (areaType === "indoor" && placement === "outdoor") {
+    return { ok: false, reason: "この家具は【野外（庭園）専用】です。屋内に置くことはできません。" };
+  }
+  if (areaType === "outdoor" && placement === "indoor") {
+    return { ok: false, reason: "この家具は【屋内専用】です。野外に置くことはできません。" };
+  }
+
+  // ギルド所属条件
+  if (meta.guildReq) {
+    const currentGuildId = (typeof window.playerGuildId !== "undefined") ? window.playerGuildId : null;
+    if (currentGuildId !== meta.guildReq) {
+      const guildNames = { warrior: "戦士ギルド", craft: "鍛冶ギルド", food: "食材ギルド", gather: "採取ギルド" };
+      const reqName = guildNames[meta.guildReq] || meta.guildReq;
+      return { ok: false, reason: `設置には「${reqName}」への所属が必要です。` };
+    }
+  }
+
+  // スキルレベル条件
+  if (meta.skillReq && meta.skillReq.skill) {
+    const sId = meta.skillReq.skill;
+    const reqLv = meta.skillReq.lv || 1;
+    let currentLv = 0;
+    if (typeof getCraftSkillLevel === "function") {
+      currentLv = Math.max(currentLv, getCraftSkillLevel(sId) || 0);
+    }
+    if (typeof getGatherSkillLevel === "function") {
+      currentLv = Math.max(currentLv, getGatherSkillLevel(sId) || 0);
+    }
+    if (typeof window.weaponSkillLevels === "object" && window.weaponSkillLevels[sId]) {
+      currentLv = Math.max(currentLv, window.weaponSkillLevels[sId] || 0);
+    }
+    if (currentLv < reqLv) {
+      return { ok: false, reason: `設置には「${sId}スキル Lv${reqLv}以上」が必要です（現在Lv: ${currentLv}）。` };
+    }
+  }
+
+  return { ok: true };
+};
+
+/**
+ * 設置中のスプリンクラーの自動散水処理
+ * （農場の成長処理時に呼ばれ、稼働中のスプリンクラーがあれば燃料を消費してボーナス成長を付与）
+ */
+window.triggerOutdoorSprinklerWatering = function() {
+  if (!window.isHousingOutdoorUnlocked()) return { watered: false, bonus: 0 };
+
+  const root = (typeof getHousingGridStateRoot === "function")
+    ? getHousingGridStateRoot()
+    : ((window.housingState && window.housingState.furnitureGrid) ? window.housingState.furnitureGrid : null);
+  if (!root || !root.suburbLand) return { watered: false, bonus: 0 };
+
+  const state = root.suburbLand;
+  const outdoorSlots = state.outdoorSlots;
+  if (!Array.isArray(outdoorSlots)) return { watered: false, bonus: 0 };
+
+  let bestBonus = 0;
+  let usedSprinklerName = "";
+  let remainFuel = 0;
+  let sprinklerFound = false;
+
+  for (let y = 0; y < outdoorSlots.length; y++) {
+    for (let x = 0; x < outdoorSlots[y].length; x++) {
+      let cell = outdoorSlots[y][x];
+      if (!cell) continue;
+
+      let fId = typeof cell === "string" ? cell : cell.id;
+      let fuel = typeof cell === "object" && typeof cell.fuel === "number" ? cell.fuel : 0;
+
+      if (fId && fId.includes("sprinkler")) {
+        const meta = (typeof getItemMeta === "function") ? getItemMeta(fId) : null;
+        const bonus = (meta && meta.sprinkler && meta.sprinkler.growthBonus) ? meta.sprinkler.growthBonus : 1;
+
+        if (fuel > 0) {
+          // 燃料消費
+          fuel -= 1;
+          if (typeof cell === "object") {
+            cell.fuel = fuel;
+          } else {
+            outdoorSlots[y][x] = { id: fId, fuel: fuel };
+          }
+          if (bonus > bestBonus) {
+            bestBonus = bonus;
+            usedSprinklerName = (meta && meta.name) || fId;
+            remainFuel = fuel;
+          }
+          sprinklerFound = true;
+          break; // 1回の散水につき1台稼働
+        }
+      }
+    }
+    if (sprinklerFound) break;
+  }
+
+  if (sprinklerFound && bestBonus > 0) {
+    return {
+      watered: true,
+      bonus: bestBonus,
+      sprinklerName: usedSprinklerName,
+      remainFuel: remainFuel
+    };
+  }
+
+  return { watered: false, bonus: 0 };
+};
+
+/**
+ * シードメーカーで種抽出を実行
+ */
+window.processSeedMakerExtraction = function(cropId, seedMakerTier) {
+  if (!cropId) return { ok: false, reason: "作物が指定されていません" };
+
+  // cookingMats に存在するかチェック
+  if (typeof cookingMats !== "object" || !cookingMats[cropId]) {
+    return { ok: false, reason: "所持していない作物です" };
+  }
+
+  const entry = cookingMats[cropId];
+  const have = (entry && typeof entry === "object" && typeof entry.total === "number")
+    ? entry.total
+    : (typeof entry === "number" ? entry : 0);
+
+  if (have < 1) {
+    return { ok: false, reason: "作物の在庫が足りません" };
+  }
+
+  // 作物を1つ消費
+  if (typeof consumeItemByMeta === "function") {
+    consumeItemByMeta(cropId, 1);
+  } else if (entry && typeof entry === "object") {
+    entry.total -= 1;
+    cookingMats[cropId] = entry;
+  }
+
+  const tier = seedMakerTier || 1;
+  const multiplier = 2 + (tier >= 5 ? 1 : 0);
+  const bonusRoll = Math.random();
+  const bonus = (bonusRoll < (0.05 * tier)) ? 1 : 0;
+  const yieldCount = multiplier + bonus;
+
+  // 専用の種アイテムIDを取得
+  let seedId = null;
+  if (typeof window.getSeedIdByCropId === "function") {
+    seedId = window.getSeedIdByCropId(cropId);
+  }
+
+  const targetItemId = seedId || cropId;
+
+  // 種アイテム（または作物在庫）を増加
+  if (typeof addItemByMeta === "function") {
+    addItemByMeta(targetItemId, yieldCount);
+  } else if (seedId) {
+    window.itemCounts = window.itemCounts || {};
+    window.itemCounts[seedId] = (window.itemCounts[seedId] || 0) + yieldCount;
+  } else {
+    // フォールバック
+    cookingMats[cropId] = (cookingMats[cropId] || 0) + yieldCount;
+  }
+
+  const cropMeta = (typeof getItemMeta === "function") ? getItemMeta(cropId) : null;
+  const seedMeta = seedId && (typeof getItemMeta === "function") ? getItemMeta(seedId) : null;
+  const cropName = (cropMeta && cropMeta.name) || cropId;
+  const seedName = (seedMeta && seedMeta.name) || `${cropName}の種`;
+
+  if (typeof appendLog === "function") {
+    appendLog(`🌱【シードメーカー】「${cropName}」から「${seedName}」を抽出し、${yieldCount}個入手しました！${bonus > 0 ? "（大成功ボーナス+1）" : ""}`);
+  }
+
+  return { ok: true, count: yieldCount, cropName: cropName, seedName: seedName };
+};
 window.canBuildHouse = function(houseId) {
   const hs = (typeof getHousingStateSafe === "function") ? getHousingStateSafe() : (window.housingState || {});
   if (!hs.landId) return { ok: false, reason: "土地を借りていない" };

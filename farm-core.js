@@ -118,12 +118,22 @@ function addFarmGrowthPoint(source) {
 
   let anyChanged = false;
 
+  // ★野外スプリンクラーの自動散水チェック
+  let sprinklerBonus = 0;
+  let sprinklerInfo = null;
+  if (typeof window.triggerOutdoorSprinklerWatering === "function") {
+    sprinklerInfo = window.triggerOutdoorSprinklerWatering();
+    if (sprinklerInfo && sprinklerInfo.watered) {
+      sprinklerBonus = sprinklerInfo.bonus || 1;
+    }
+  }
+
   st.slots.forEach((slot, idx) => {
     if (!slot) return;
     if (!slot.cropId) return;   // 何も植えてない
     if (slot.ready) return;     // すでに成熟
 
-    let delta = baseDelta;
+    let delta = baseDelta + sprinklerBonus;
     // 肥料による成長ボーナスがあれば適用
     if (typeof applyFarmFertilizerToGrowth === "function") {
       delta = applyFarmFertilizerToGrowth(delta, idx);
@@ -146,6 +156,10 @@ function addFarmGrowthPoint(source) {
       anyChanged = true;
     }
   });
+
+  if (sprinklerInfo && sprinklerInfo.watered && anyChanged && typeof appendLog === "function") {
+    appendLog(`💧【${sprinklerInfo.sprinklerName}】自動散水が稼働！作物が勢いよく成長した（燃料残: ${sprinklerInfo.remainFuel}）`);
+  }
 
   if (anyChanged && typeof updateFarmUI === "function") {
     updateFarmUI();
@@ -180,7 +194,7 @@ function addFarmSkillExpByCropId(cropId) {
 // =======================
 
 // スロットに作物を植える
-// index: 0〜3, selectedId: 畑で育てられる cookingMat の id or FARM_MYSTERY_SEED_ID
+// index: 0〜3, selectedId: 畑で育てられる cookingMat の id or seed_id or FARM_MYSTERY_SEED_ID
 function plantFarmSlot(index, selectedId) {
   const slot = getFarmSlot(index);
   if (!slot) return;
@@ -204,68 +218,97 @@ function plantFarmSlot(index, selectedId) {
     return;
   }
 
+  // selectedId が種アイテムID（seed_...）か作物IDかを判定
+  let cropId = selectedId;
+  let seedId = null;
+
+  if (typeof window.getCropIdBySeedId === "function" && window.getCropIdBySeedId(selectedId)) {
+    cropId = window.getCropIdBySeedId(selectedId);
+    seedId = selectedId;
+  } else if (typeof window.getSeedIdByCropId === "function") {
+    seedId = window.getSeedIdByCropId(cropId);
+  }
+
   // 通常作物の場合は ITEM_META 上で「畑で育てられるか」チェック
-  const cropId = selectedId;
   const farmMeta = getFarmCropMeta(cropId);
   if (!farmMeta) {
     appendLog("この作物は畑では育てられない");
     return;
   }
 
-  // 手持ちの作物を1つ消費（連作でも毎回）
-  if (typeof cookingMats !== "object") {
-    appendLog("料理素材の保管オブジェクトが未定義です（cookingMats）");
-    return;
+  // 種アイテムを所持しているか確認（優先消費）
+  let seedCount = 0;
+  if (seedId) {
+    seedCount = (typeof getItemCountByMeta === "function")
+      ? getItemCountByMeta(seedId)
+      : ((typeof itemCounts === "object" && itemCounts[seedId]) || 0);
   }
 
-  const entry = cookingMats[cropId];
-  const have =
-    (entry && typeof entry === "object" && typeof entry.total === "number")
-      ? entry.total
-      : (typeof entry === "number" ? entry : 0);
+  let usedSeed = false;
 
-  if (have <= 0) {
-    const name = (farmMeta && farmMeta.name) || cropId;
-    appendLog(`${name}を持っていないので植えられない`);
-    return;
-  }
-
-  // 在庫を1つ減らす（新構造と旧構造の両方に対応）
-  if (entry && typeof entry === "object" && typeof entry.total === "number") {
-    entry.total = have - 1;
-
-    // 品質内訳からも1つ減らす（普通→銀→金の優先順、仕様がなければ簡易ルール）
-    const q = entry.quality || { 0: 0, 1: 0, 2: 0 };
-    if (q[0] > 0) {
-      q[0] -= 1;
-    } else if (q[1] > 0) {
-      q[1] -= 1;
-    } else if (q[2] > 0) {
-      q[2] -= 1;
+  if (seedCount > 0) {
+    // 種アイテムを1つ消費
+    if (typeof consumeItemByMeta === "function") {
+      consumeItemByMeta(seedId, 1);
+    } else if (typeof itemCounts === "object") {
+      itemCounts[seedId] = Math.max(0, (itemCounts[seedId] || 0) - 1);
+      if (itemCounts[seedId] <= 0) delete itemCounts[seedId];
     }
-    entry.quality = q;
-    cookingMats[cropId] = entry;
-
-    // 互換ビュー cookingMatsQuality があれば更新
-    if (typeof window.cookingMatsQuality === "object") {
-      const qEntry = window.cookingMatsQuality[cropId] || { 0: 0, 1: 0, 2: 0 };
-      qEntry[0] = entry.quality[0] || 0;
-      qEntry[1] = entry.quality[1] || 0;
-      qEntry[2] = entry.quality[2] || 0;
-      window.cookingMatsQuality[cropId] = qEntry;
-    }
+    usedSeed = true;
   } else {
-    // 旧形式セーブ互換: 純粋な number として減らす
-    cookingMats[cropId] = have - 1;
+    // 手持ちの作物を1つ消費（フォールバック）
+    if (typeof cookingMats !== "object") {
+      appendLog("料理素材の保管オブジェクトが未定義です（cookingMats）");
+      return;
+    }
+
+    const entry = cookingMats[cropId];
+    const have =
+      (entry && typeof entry === "object" && typeof entry.total === "number")
+        ? entry.total
+        : (typeof entry === "number" ? entry : 0);
+
+    if (have <= 0) {
+      const name = (farmMeta && farmMeta.name) || cropId;
+      const seedDef = (typeof getSeedDef === "function" && seedId) ? getSeedDef(seedId) : null;
+      const seedName = (seedDef && seedDef.name) || `${name}の種`;
+      appendLog(`「${seedName}」または「${name}」を持っていないので植えられない（ショップやシードメーカーで種を入手できます）`);
+      return;
+    }
+
+    // 在庫を1つ減らす
+    if (entry && typeof entry === "object" && typeof entry.total === "number") {
+      entry.total = have - 1;
+      const q = entry.quality || { 0: 0, 1: 0, 2: 0 };
+      if (q[0] > 0) {
+        q[0] -= 1;
+      } else if (q[1] > 0) {
+        q[1] -= 1;
+      } else if (q[2] > 0) {
+        q[2] -= 1;
+      }
+      entry.quality = q;
+      cookingMats[cropId] = entry;
+
+      if (typeof window.cookingMatsQuality === "object") {
+        const qEntry = window.cookingMatsQuality[cropId] || { 0: 0, 1: 0, 2: 0 };
+        qEntry[0] = entry.quality[0] || 0;
+        qEntry[1] = entry.quality[1] || 0;
+        qEntry[2] = entry.quality[2] || 0;
+        window.cookingMatsQuality[cropId] = qEntry;
+      }
+    } else {
+      cookingMats[cropId] = have - 1;
+    }
   }
 
-  // ここまで来たら cropId は必ず有効な畑作物ID
+  // スロットに作物をセット
   slot.cropId = cropId;
   slot.growth = 0;
   slot.ready  = false;
 
   const name = (farmMeta && farmMeta.name) || cropId;
-  appendLog(`畑に ${name} の種を植えた`);
+  appendLog(`畑に「${name}」${usedSeed ? "の種" : "（手持ち作物）"}を植えた`);
   if (typeof updateFarmUI === "function") {
     updateFarmUI();
   }
@@ -815,7 +858,7 @@ function openFarmPlantModal(slotIndex) {
   {
     const optMystery = document.createElement("option");
     optMystery.value = FARM_MYSTERY_SEED_ID;
-    optMystery.textContent = "謎の種（ランダム）";
+    optMystery.textContent = "❓ 謎の種（無料・ランダム収穫）";
     select.appendChild(optMystery);
   }
 
@@ -823,9 +866,28 @@ function openFarmPlantModal(slotIndex) {
   const farmIds = getAllFarmCropIds();
   farmIds.forEach(id => {
     const meta = getItemMeta(id) || {};
+    const seedId = (typeof getSeedIdByCropId === "function") ? getSeedIdByCropId(id) : null;
+    const seedDef = (typeof getSeedDef === "function" && seedId) ? getSeedDef(seedId) : null;
+
+    const seedCount = seedId
+      ? ((typeof getItemCountByMeta === "function")
+          ? getItemCountByMeta(seedId)
+          : ((typeof itemCounts === "object" && itemCounts[seedId]) || 0))
+      : 0;
+
+    const cropCount = (typeof cookingMats === "object" && cookingMats[id])
+      ? ((typeof cookingMats[id] === "object" && typeof cookingMats[id].total === "number")
+          ? cookingMats[id].total
+          : (typeof cookingMats[id] === "number" ? cookingMats[id] : 0))
+      : 0;
+
     const opt = document.createElement("option");
     opt.value = id;
-    opt.textContent = meta.name || id;
+    const icon = (seedDef && seedDef.icon) || "🌱";
+    const name = meta.name || id;
+    const catLabel = (meta.farmCategory === "garden") ? "菜園" : "畑";
+
+    opt.textContent = `${icon} 【${catLabel}】${name} (種:${seedCount}個 / 作物:${cropCount}個)`;
     select.appendChild(opt);
   });
 
@@ -844,16 +906,15 @@ function openFarmPlantModal(slotIndex) {
 
   const getCropDescription = (cropId) => {
     if (cropId === FARM_MYSTERY_SEED_ID) {
-      return "何が育つか分からない不思議な種。農園で育てられる作物からランダムに育つ。";
+      return "何が育つか分からない不思議な種。農園で作付け可能な作物からランダムに育ちます（種消費なし）。";
     }
     const fm = getFarmCropMeta(cropId);
     if (!fm) return "";
-    if (fm.category === "field") {
-      return "畑で育てやすい作物です（植えるときに手持ちから1つ消費）。";
-    } else if (fm.category === "garden") {
-      return "菜園向きの作物です（植えるときに手持ちから1つ消費）。";
-    }
-    return "";
+    const seedId = (typeof getSeedIdByCropId === "function") ? getSeedIdByCropId(cropId) : null;
+    const seedDef = (typeof getSeedDef === "function" && seedId) ? getSeedDef(seedId) : null;
+    const priceText = seedDef ? ` (種購入目安: ${seedDef.price}G)` : "";
+    const catText = (fm.category === "garden") ? "菜園向きの作物です" : "畑で育てやすい作物です";
+    return `${catText}。植える際に専用の種（または手持ちの作物）を1つ消費します${priceText}。`;
   };
 
   const updateDesc = () => {

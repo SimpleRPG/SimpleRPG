@@ -377,6 +377,147 @@ function renderHousingLandStatus() {
       houseBuildBox.appendChild(hCard);
     });
 
+    // ==========================================
+    // 2.6) 特化住宅建築後の「野外（庭園）増築」メニュー
+    // ==========================================
+    const t3SpecializedHouses = ["mansion_warrior", "lodge_harvester", "workshop_artisan"];
+    const isSpecializedHouseBuilt = t3SpecializedHouses.includes(currentHouseId);
+    const expDef = window.HOUSING_OUTDOOR_EXPANSION;
+
+    if (expDef) {
+      const expCard = document.createElement("div");
+      expCard.style.marginTop = "12px";
+      expCard.style.border = hs.outdoorExpanded ? "2px solid #48bb78" : (isSpecializedHouseBuilt ? "1px solid #38a169" : "1px dashed #4a5568");
+      expCard.style.borderRadius = "6px";
+      expCard.style.padding = "8px";
+      expCard.style.background = hs.outdoorExpanded ? "#12281d" : (isSpecializedHouseBuilt ? "#101e16" : "#14141e");
+
+      const expTopRow = document.createElement("div");
+      expTopRow.style.display = "flex";
+      expTopRow.style.justifyContent = "space-between";
+      expTopRow.style.alignItems = "center";
+      expTopRow.style.marginBottom = "4px";
+
+      const expNamePart = document.createElement("div");
+      expNamePart.style.display = "flex";
+      expNamePart.style.alignItems = "center";
+      expNamePart.style.gap = "6px";
+
+      const expTitle = document.createElement("span");
+      expTitle.style.fontWeight = "bold";
+      expTitle.style.fontSize = "13px";
+      expTitle.style.color = hs.outdoorExpanded ? "#68d391" : (isSpecializedHouseBuilt ? "#9ae6b4" : "#a0aec0");
+      expTitle.textContent = `${expDef.icon || "🌳"} ${expDef.name}`;
+      expNamePart.appendChild(expTitle);
+
+      const expBadge = document.createElement("span");
+      expBadge.style.fontSize = "10px";
+      expBadge.style.padding = "1px 6px";
+      expBadge.style.borderRadius = "4px";
+      expBadge.style.fontWeight = "600";
+      if (hs.outdoorExpanded) {
+        expBadge.style.background = "#22543d";
+        expBadge.style.color = "#9ae6b4";
+        expBadge.textContent = "増築完了";
+      } else if (isSpecializedHouseBuilt) {
+        expBadge.style.background = "#2b6cb0";
+        expBadge.style.color = "#bee3f8";
+        expBadge.textContent = "増築可能";
+      } else {
+        expBadge.style.background = "#2d3748";
+        expBadge.style.color = "#a0aec0";
+        expBadge.textContent = "特化住宅の建築が必要";
+      }
+      expNamePart.appendChild(expBadge);
+      expTopRow.appendChild(expNamePart);
+      expCard.appendChild(expTopRow);
+
+      const expDesc = document.createElement("div");
+      expDesc.style.fontSize = "11px";
+      expDesc.style.color = "#cbd5e0";
+      expDesc.style.marginBottom = "6px";
+      expDesc.textContent = expDef.desc;
+      expCard.appendChild(expDesc);
+
+      // コスト表示
+      const expCostBox = document.createElement("div");
+      expCostBox.style.fontSize = "11px";
+      expCostBox.style.background = "#0d0d14";
+      expCostBox.style.padding = "4px 8px";
+      expCostBox.style.borderRadius = "4px";
+      expCostBox.style.marginBottom = "6px";
+      expCostBox.style.border = "1px solid #2d3748";
+
+      const expCostParts = [];
+      const expGoldNeed = (expDef.cost && expDef.cost.gold) || 0;
+      const expGoldHave = (typeof money === "number") ? money : 0;
+      const expGoldOk = expGoldHave >= expGoldNeed;
+      expCostParts.push(`<span style="color:${expGoldOk ? '#68d391' : '#fc8181'}">費用: ${expGoldNeed}G (所持: ${expGoldHave}G)</span>`);
+
+      const expMats = (expDef.cost && expDef.cost.materials) || {};
+      Object.keys(expMats).forEach(matId => {
+        const need = expMats[matId] | 0;
+        const have = (typeof getItemCountByMeta === "function") ? (getItemCountByMeta(matId) || 0) : 0;
+        const ok = have >= need;
+        let matName = matId;
+        if (typeof getItemName === "function") {
+          matName = getItemName(matId) || matId;
+        }
+        expCostParts.push(`<span style="color:${ok ? '#68d391' : '#fc8181'}">${matName}: ${have}/${need}</span>`);
+      });
+
+      expCostBox.innerHTML = `<strong>増築コスト:</strong> ` + expCostParts.join(" ｜ ");
+      expCard.appendChild(expCostBox);
+
+      // アクション行
+      const expActionRow = document.createElement("div");
+      expActionRow.style.display = "flex";
+      expActionRow.style.alignItems = "center";
+      expActionRow.style.gap = "8px";
+
+      if (hs.outdoorExpanded) {
+        const doneLabel = document.createElement("span");
+        doneLabel.style.fontSize = "11px";
+        doneLabel.style.color = "#68d391";
+        doneLabel.style.fontWeight = "bold";
+        doneLabel.textContent = "✓ 野外（庭園フロア）は増築済みです（家具置き場の野外タブから利用可能）";
+        expActionRow.appendChild(doneLabel);
+      } else {
+        const expandBtn = document.createElement("button");
+        expandBtn.textContent = "野外（庭園フロア）を増築する";
+        expandBtn.style.fontSize = "11px";
+        expandBtn.style.padding = "3px 10px";
+        expandBtn.style.background = isSpecializedHouseBuilt ? "#22543d" : "#2d3748";
+        expandBtn.style.color = isSpecializedHouseBuilt ? "#c6f6d5" : "#a0aec0";
+        expandBtn.style.borderColor = isSpecializedHouseBuilt ? "#38a169" : "#4a5568";
+
+        let check = { ok: true };
+        if (typeof window.canExpandOutdoorGarden === "function") {
+          check = window.canExpandOutdoorGarden();
+        }
+
+        if (!check.ok) {
+          expandBtn.disabled = true;
+          const reasonSpan = document.createElement("span");
+          reasonSpan.style.fontSize = "11px";
+          reasonSpan.style.color = "#fc8181";
+          reasonSpan.textContent = `（${check.reason}）`;
+          expActionRow.appendChild(expandBtn);
+          expActionRow.appendChild(reasonSpan);
+        } else {
+          expandBtn.addEventListener("click", () => {
+            if (typeof window.buildOutdoorGardenExpansion === "function") {
+              window.buildOutdoorGardenExpansion();
+            }
+          });
+          expActionRow.appendChild(expandBtn);
+        }
+      }
+
+      expCard.appendChild(expActionRow);
+      houseBuildBox.appendChild(expCard);
+    }
+
     housingRoot.appendChild(houseBuildBox);
   }
 

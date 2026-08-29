@@ -25,6 +25,7 @@ const shopData = {
     // 爆弾は道具扱い（T1固定）とし、potionId は使わず、id だけで判別する
     { id: "bomb_T1_shop",  potionId: null,       name: "爆弾T1",           price: 100, desc: "敵にダメージを与える攻撃アイテム（道具,T1）。" }
   ],
+  seed: [], // 動的または FARM_SEED_DEFS からロード
   service: [
     { id: "inn_hp",   name: "宿屋で休む(HP)",      price: 500,  desc: "HPを全回復します。",             type: "service", kind: "innHP" },
     { id: "inn_full", name: "宿屋で休む(HP/MP)",   price: 800,  desc: "HPとMPを全回復します。",         type: "service", kind: "innFull" },
@@ -32,6 +33,22 @@ const shopData = {
     { id: "setmeal",  name: "定食を食べる",        price: 130,  desc: "空腹と水分が少し回復する定食。", type: "service", kind: "meal" }
   ]
 };
+
+// 種アイテムのショップ商品リストを取得（FARM_SEED_DEFS に連動）
+function getShopSeedList() {
+  if (Array.isArray(window.FARM_SEED_DEFS) && window.FARM_SEED_DEFS.length > 0) {
+    return window.FARM_SEED_DEFS.map(d => ({
+      id: `${d.seedId}_shop`,
+      seedId: d.seedId,
+      cropId: d.cropId,
+      name: `${d.icon || "🌱"} ${d.name}`,
+      price: d.price,
+      desc: `${d.desc}（畑・菜園に植えて確実に育成可能）`,
+      category: "seed"
+    }));
+  }
+  return [];
+}
 
 let shopCurrentCategory = "item";   // "item" / "service" / "sell"
 let shopSelectedItem    = null;     // 購入時: shopDataの要素 / 売却時: buildSellableList の要素
@@ -568,6 +585,54 @@ function buildSellableList() {
     });
   }
 
+  // 料理素材（cookingMats） - 作物など
+  if (typeof cookingMats === "object" && cookingMats !== null) {
+    Object.keys(cookingMats).forEach(id => {
+      const entry = cookingMats[id];
+      const cnt = (entry && typeof entry === "object" && typeof entry.total === "number")
+        ? entry.total
+        : (typeof entry === "number" ? entry : 0);
+      if (cnt <= 0) return;
+
+      const meta = (typeof getItemMeta === "function") ? getItemMeta(id) : null;
+      const name = (meta && meta.name) || id;
+      // 基準価格10G → 売値5G
+      const baseVal = (meta && typeof meta.price === "number") ? meta.price : 10;
+      const price = getSellPriceFromValue(baseVal);
+      if (price <= 0) return;
+
+      list.push({
+        kind: "cookingMat",
+        id,
+        name,
+        count: cnt,
+        price
+      });
+    });
+  }
+
+  // その他インベントリアイテム（itemCounts: 種・肥料など）
+  if (typeof itemCounts === "object" && itemCounts !== null) {
+    Object.keys(itemCounts).forEach(id => {
+      const cnt = itemCounts[id] || 0;
+      if (cnt <= 0) return;
+
+      const meta = (typeof getItemMeta === "function") ? getItemMeta(id) : null;
+      const name = (meta && meta.name) || id;
+      const baseVal = (meta && typeof meta.price === "number") ? meta.price : 6;
+      const price = getSellPriceFromValue(baseVal);
+      if (price <= 0) return;
+
+      list.push({
+        kind: "itemCount",
+        id,
+        name,
+        count: cnt,
+        price
+      });
+    });
+  }
+
   return list;
 }
 
@@ -736,6 +801,37 @@ function sellMultipleItems(entry, amount) {
           }
         }
         return false;
+      case "cookingMat":
+        if (typeof cookingMats === "object" && cookingMats[entry.id]) {
+          const cEntry = cookingMats[entry.id];
+          const have = (cEntry && typeof cEntry === "object" && typeof cEntry.total === "number")
+            ? cEntry.total
+            : (typeof cEntry === "number" ? cEntry : 0);
+          if (have > 0) {
+            if (typeof consumeItemByMeta === "function") {
+              consumeItemByMeta(entry.id, 1);
+            } else if (typeof cEntry === "object") {
+              cEntry.total = have - 1;
+              cookingMats[entry.id] = cEntry;
+            } else {
+              cookingMats[entry.id] = have - 1;
+            }
+            successAmount++;
+            return true;
+          }
+        }
+        return false;
+      case "itemCount":
+        if (typeof itemCounts === "object") {
+          const have = itemCounts[entry.id] || 0;
+          if (have > 0) {
+            itemCounts[entry.id] = have - 1;
+            if (itemCounts[entry.id] <= 0) delete itemCounts[entry.id];
+            successAmount++;
+            return true;
+          }
+        }
+        return false;
       case "armor":
         if (Array.isArray(armorInstances)) {
           const idx = entry.instanceIndex;
@@ -881,7 +977,13 @@ function renderShopList() {
     buyBtn.textContent = "購入する";
   }
 
-  const items = shopData[shopCurrentCategory] || [];
+  let items = [];
+  if (shopCurrentCategory === "seed") {
+    items = getShopSeedList();
+  } else {
+    items = shopData[shopCurrentCategory] || [];
+  }
+
   if (!items.length) {
     const msg = document.createElement("div");
     msg.className = "shop-empty-message";
@@ -904,7 +1006,14 @@ function renderShopList() {
 
     const metaEl = document.createElement("div");
     metaEl.className = "shop-item-meta";
-    metaEl.textContent = (shopCurrentCategory === "service") ? "サービス" : "消耗品";
+    if (shopCurrentCategory === "seed") {
+      const have = (typeof getItemCountByMeta === "function")
+        ? getItemCountByMeta(item.seedId)
+        : ((typeof itemCounts === "object" && itemCounts[item.seedId]) || 0);
+      metaEl.textContent = `種 / 所持: ${have}個`;
+    } else {
+      metaEl.textContent = (shopCurrentCategory === "service") ? "サービス" : "消耗品";
+    }
 
     main.appendChild(nameEl);
     main.appendChild(metaEl);
@@ -1064,6 +1173,17 @@ function buyShopItem(item) {
         return;
       }
     }
+  } else if (shopCurrentCategory === "seed") {
+    // 作物の種購入
+    money -= priceToPay;
+    const seedId = item.seedId || item.id;
+    if (typeof addItemByMeta === "function") {
+      addItemByMeta(seedId, qty);
+    } else {
+      window.itemCounts = window.itemCounts || {};
+      window.itemCounts[seedId] = (window.itemCounts[seedId] || 0) + qty;
+    }
+    appendLog(`${item.name} を ${qty}個購入した（種としてインベントリに追加された）。`);
   } else if (shopCurrentCategory === "service") {
     // サービスは常に1回分だけ効果を適用
     money -= priceToPay;
@@ -1093,6 +1213,7 @@ function buyShopItem(item) {
 
   updateShopGoldDisplay();
   updateDisplay();
+  renderShopList();
 }
 
 // =======================

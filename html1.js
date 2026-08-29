@@ -491,6 +491,7 @@ function buildAppLayout() {
 
                 <div class="shop-tabs">
                   <button class="shop-category-button" data-category="item">消耗品</button>
+                  <button class="shop-category-button" data-category="seed">作物の種</button>
                   <button class="shop-category-button" data-category="service">サービス</button>
                   <button class="shop-category-button" data-category="sell">売却</button>
                 </div>
