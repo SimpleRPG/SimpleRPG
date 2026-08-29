@@ -779,3 +779,132 @@ function executeBulkGuildDelivery() {
 }
 window.executeBulkGuildDelivery = executeBulkGuildDelivery;
 
+// =======================
+// 装備許可証（ライセンス）システム
+// =======================
+window.guildEquipLicenses = window.guildEquipLicenses || {};
+
+window.EQUIP_LICENSE_WEAPON_TYPES = [
+  { key: "dagger",     name: "短剣",   icon: "🗡️" },
+  { key: "sword",      name: "片手剣", icon: "⚔️" },
+  { key: "greatSword", name: "大剣",   icon: "🪓" },
+  { key: "staff",      name: "杖",     icon: "🪄" },
+  { key: "runeSword",  name: "魔剣",   icon: "🔮" },
+  { key: "shield",     name: "盾",     icon: "🛡️" }
+];
+
+window.EQUIP_LICENSE_ARMOR_TYPES = [
+  { key: "light",  name: "軽装", icon: "🥋" },
+  { key: "medium", name: "中装", icon: "🦺" },
+  { key: "heavy",  name: "重装", icon: "🛡️" }
+];
+
+window.getEquipLicenseReqLv = function(tier) {
+  if (tier <= 1) return 0;
+  return (tier - 1) * 10; // Tier 2 -> 10, Tier 3 -> 20, ..., Tier 10 -> 90
+};
+
+window.getEquipLicenseCost = function(tier) {
+  const costs = {
+    2: 25,
+    3: 50,
+    4: 80,
+    5: 120,
+    6: 170,
+    7: 230,
+    8: 300,
+    9: 380,
+    10: 480
+  };
+  return costs[tier] || (tier * 50);
+};
+
+function hasEquipLicense(category, typeKey, tier) {
+  if (tier <= 1) return true;
+  if (!category || !typeKey) return true;
+  const key = `${category}_${typeKey}_T${tier}`;
+  return Boolean(window.guildEquipLicenses && window.guildEquipLicenses[key]);
+}
+window.hasEquipLicense = hasEquipLicense;
+
+function getEquipLicenseMaxTier(category, typeKey) {
+  if (!category || !typeKey) return 1;
+  let max = 1;
+  for (let t = 2; t <= 10; t++) {
+    if (hasEquipLicense(category, typeKey, t)) {
+      max = t;
+    }
+  }
+  return max;
+}
+window.getEquipLicenseMaxTier = getEquipLicenseMaxTier;
+
+function buyEquipLicense(category, typeKey, tier) {
+  if (tier <= 1) return false;
+  const reqLv = window.getEquipLicenseReqLv(tier);
+  const cost = window.getEquipLicenseCost(tier);
+
+  // 前Tierの所持チェック（Tier3以上の場合、Tier-1を所持しているか）
+  if (tier > 2 && !hasEquipLicense(category, typeKey, tier - 1)) {
+    if (typeof appendLog === "function") {
+      appendLog(`⚠️ 先に Tier ${tier - 1} の許可証を取得してください。`);
+    }
+    return false;
+  }
+
+  // 既習得チェック
+  if (hasEquipLicense(category, typeKey, tier)) {
+    if (typeof appendLog === "function") {
+      appendLog("この装備許可証は既に取得済みです。");
+    }
+    return false;
+  }
+
+  // スキルレベルチェック
+  let curLv = 0;
+  let typeName = "";
+  if (category === "weapon") {
+    const s = window.weaponSkills && window.weaponSkills[typeKey];
+    curLv = s ? s.lv : 0;
+    const def = window.EQUIP_LICENSE_WEAPON_TYPES.find(x => x.key === typeKey);
+    typeName = def ? def.name : "武器";
+  } else if (category === "armor") {
+    const s = window.armorSkills && window.armorSkills[typeKey];
+    curLv = s ? s.lv : 0;
+    const def = window.EQUIP_LICENSE_ARMOR_TYPES.find(x => x.key === typeKey);
+    typeName = def ? def.name : "防具";
+  }
+
+  if (curLv < reqLv) {
+    if (typeof appendLog === "function") {
+      appendLog(`🔒【スキルレベル不足】Tier ${tier} ${typeName}装備許可証の取得には、${typeName}スキル Lv${reqLv}以上が必要です。（現在: Lv${curLv}）`);
+    }
+    return false;
+  }
+
+  // コインチェック＆消費
+  if (!spendGuildCoins(cost)) {
+    if (typeof appendLog === "function") {
+      appendLog(`ギルドコインが足りません（所持: ${getGuildCoins()}枚 / 必要: ${cost}枚）`);
+    }
+    return false;
+  }
+
+  // 許可証フラグ設定
+  window.guildEquipLicenses = window.guildEquipLicenses || {};
+  const key = `${category}_${typeKey}_T${tier}`;
+  window.guildEquipLicenses[key] = true;
+
+  if (typeof appendLog === "function") {
+    appendLog(`🎖️【装備許可証取得】「Tier ${tier} ${typeName}装備許可証」を取得しました！（ギルドコイン -${cost}枚） Tier ${tier} の${typeName}が装備可能になりました！`);
+  }
+
+  if (typeof renderGuildShop === "function") renderGuildShop();
+  if (typeof renderGuildHeader === "function") renderGuildHeader();
+  if (typeof renderStatusSkillLevels === "function") renderStatusSkillLevels();
+  if (typeof refreshWarehouseUI === "function") refreshWarehouseUI();
+  return true;
+}
+window.buyEquipLicense = buyEquipLicense;
+
+

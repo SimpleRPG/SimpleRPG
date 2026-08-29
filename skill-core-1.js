@@ -564,6 +564,10 @@ function getPhysSkillRateMultiplier() {
     const j = getJobBonuses(jobId);
     if (j && typeof j.physSkillRate === "number") rate += j.physSkillRate;
   }
+  // ★装備中武器スキルの物理スキル倍率
+  if (typeof window !== "undefined" && window.equippedWeaponSkillBonus && typeof window.equippedWeaponSkillBonus.physSkillRate === "number") {
+    rate += window.equippedWeaponSkillBonus.physSkillRate;
+  }
   // ★採取ギルド職（採集士/採取監督官/狩猟師/漁師/農夫）: 対応する採取レベルに応じてスキル倍率が伸びる
   rate += getGatherJobSkillLevelBonus();
   return rate;
@@ -642,6 +646,10 @@ function getMagicSkillRateMultiplier() {
   if (typeof getJobBonuses === "function" && typeof jobId !== "undefined") {
     const j = getJobBonuses(jobId);
     if (j && typeof j.magicSkillRate === "number") rate += j.magicSkillRate;
+  }
+  // ★装備中武器スキルの魔法スキル倍率
+  if (typeof window !== "undefined" && window.equippedWeaponSkillBonus && typeof window.equippedWeaponSkillBonus.magicSkillRate === "number") {
+    rate += window.equippedWeaponSkillBonus.magicSkillRate;
   }
   return rate;
 }
@@ -1124,6 +1132,11 @@ function castMagicFromUI() {
   if (!skill) {
     appendLog("その魔法は使用できない");
     return;
+  }
+
+  // スキル種別（攻撃魔法 or 回復・防御魔法）に応じたスキルEXP加算
+  if (typeof handleSkillExpOnUse === "function") {
+    handleSkillExpOnUse(skillId);
   }
 
   const guildId = typeof window !== "undefined" ? window.playerGuildId : null;

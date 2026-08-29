@@ -158,11 +158,230 @@ window.intermediateMats = window.intermediateMats || {};
 let intermediateMats = window.intermediateMats;
 
 // =======================
-// 採取・クラフトスキル
+// 採取・クラフト・武器種・防具種スキル
 // =======================
+
+window.WEAPON_SKILL_MAX_LV = 100;
+window.ARMOR_SKILL_MAX_LV = 100;
+
+window.getWeaponSkillExpToNext = function(lv) {
+  if (lv >= (window.WEAPON_SKILL_MAX_LV || 100)) return 0;
+  // 草原(0転生Lv100)でLv20〜25、森(10転生)でLv45〜50、洞窟(20転生)でLv60〜65、鉱山(40転生)でLv75〜80、エンドでLv100を目指す美しい多項式曲線
+  return Math.floor(10 + lv * 12 + Math.pow(lv, 1.8) * 6);
+};
+
+window.getArmorSkillExpToNext = function(lv) {
+  if (lv >= (window.ARMOR_SKILL_MAX_LV || 100)) return 0;
+  return Math.floor(10 + lv * 12 + Math.pow(lv, 1.8) * 6);
+};
+
+window.WEAPON_SKILLS_INIT = {
+  dagger:     { lv: 0, exp: 0, expToNext: window.getWeaponSkillExpToNext(0) },
+  sword:      { lv: 0, exp: 0, expToNext: window.getWeaponSkillExpToNext(0) },
+  greatSword: { lv: 0, exp: 0, expToNext: window.getWeaponSkillExpToNext(0) },
+  staff:      { lv: 0, exp: 0, expToNext: window.getWeaponSkillExpToNext(0) },
+  runeSword:  { lv: 0, exp: 0, expToNext: window.getWeaponSkillExpToNext(0) },
+  shield:     { lv: 0, exp: 0, expToNext: window.getWeaponSkillExpToNext(0) }
+};
+
+window.ARMOR_SKILLS_INIT = {
+  light:  { lv: 0, exp: 0, expToNext: window.getArmorSkillExpToNext(0) },
+  medium: { lv: 0, exp: 0, expToNext: window.getArmorSkillExpToNext(0) },
+  heavy:  { lv: 0, exp: 0, expToNext: window.getArmorSkillExpToNext(0) }
+};
 
 let gatherSkills = JSON.parse(JSON.stringify(GATHER_SKILLS_INIT));
 let craftSkills  = JSON.parse(JSON.stringify(CRAFT_SKILLS_INIT));
+let weaponSkills = JSON.parse(JSON.stringify(window.WEAPON_SKILLS_INIT));
+let armorSkills  = JSON.parse(JSON.stringify(window.ARMOR_SKILLS_INIT));
+
+window.gatherSkills = gatherSkills;
+window.craftSkills  = craftSkills;
+window.weaponSkills = weaponSkills;
+window.armorSkills  = armorSkills;
+
+// 武器種・防具種判定ヘルパー
+function getWeaponTypeFromItemId(itemId) {
+  if (!itemId || typeof itemId !== "string") return null;
+  if (itemId.includes("dagger")) return "dagger";
+  if (itemId.includes("short") || itemId.includes("long")) return "sword";
+  if (itemId.includes("great") && !itemId.includes("greatShield")) return "greatSword";
+  if (itemId.includes("magicStaff") || itemId.includes("staff")) return "staff";
+  if (itemId.includes("runeSword")) return "runeSword";
+  if (itemId.includes("greatShield") || itemId.includes("shield")) return "shield";
+  return null;
+}
+
+function getArmorTypeFromItemId(itemId) {
+  if (!itemId || typeof itemId !== "string") return null;
+  if (itemId.includes("leatherVest") || itemId.includes("leather")) return "light";
+  if (itemId.includes("chainmail") || itemId.includes("chain")) return "medium";
+  if (itemId.includes("ironArmor") || itemId.includes("plate") || itemId.includes("iron")) return "heavy";
+  return null;
+}
+
+function getEquippedWeaponType() {
+  const wIdx = (typeof window !== "undefined" && typeof window.equippedWeaponIndex === "number")
+    ? window.equippedWeaponIndex
+    : (typeof equippedWeaponIndex === "number" ? equippedWeaponIndex : null);
+  const wInsts = (typeof window !== "undefined" && Array.isArray(window.weaponInstances))
+    ? window.weaponInstances
+    : (typeof weaponInstances !== "undefined" ? weaponInstances : []);
+  if (wIdx != null && wInsts && wInsts[wIdx]) {
+    return getWeaponTypeFromItemId(wInsts[wIdx].id);
+  }
+  return null;
+}
+
+function getEquippedArmorType() {
+  const aIdx = (typeof window !== "undefined" && typeof window.equippedArmorIndex === "number")
+    ? window.equippedArmorIndex
+    : (typeof equippedArmorIndex === "number" ? equippedArmorIndex : null);
+  const aInsts = (typeof window !== "undefined" && Array.isArray(window.armorInstances))
+    ? window.armorInstances
+    : (typeof armorInstances !== "undefined" ? armorInstances : []);
+  if (aIdx != null && aInsts && aInsts[aIdx]) {
+    return getArmorTypeFromItemId(aInsts[aIdx].id);
+  }
+  return null;
+}
+
+window.getWeaponTypeFromItemId = getWeaponTypeFromItemId;
+window.getArmorTypeFromItemId = getArmorTypeFromItemId;
+window.getEquippedWeaponType = getEquippedWeaponType;
+window.getEquippedArmorType = getEquippedArmorType;
+
+// 武器・防具スキル経験値加算ヘルパー
+function addWeaponSkillExp(type, amount = 1) {
+  const ws = (typeof window !== "undefined" && window.weaponSkills) ? window.weaponSkills : weaponSkills;
+  if (!type || !ws || !ws[type]) return;
+  const s = ws[type];
+  s.exp = (s.exp || 0) + amount;
+  const maxLv = (typeof window !== "undefined" && window.WEAPON_SKILL_MAX_LV) ? window.WEAPON_SKILL_MAX_LV : 100;
+  let leveledUp = false;
+  if (!s.expToNext || s.expToNext <= 0) {
+    s.expToNext = (typeof window.getWeaponSkillExpToNext === "function") ? window.getWeaponSkillExpToNext(s.lv) : 10;
+  }
+  while (s.exp >= s.expToNext && s.lv < maxLv) {
+    s.exp -= s.expToNext;
+    s.lv++;
+    s.expToNext = (typeof window.getWeaponSkillExpToNext === "function") ? window.getWeaponSkillExpToNext(s.lv) : (s.expToNext + 15);
+    leveledUp = true;
+
+    const names = {
+      dagger: "短剣",
+      sword: "片手剣",
+      greatSword: "大剣",
+      staff: "杖",
+      runeSword: "魔剣",
+      shield: "盾"
+    };
+    const label = names[type] || type;
+    if (typeof appendLog === "function") {
+      appendLog(`${label}スキルがLv${s.lv}になった！`);
+    }
+  }
+  if (leveledUp) {
+    if (typeof recalcStats === "function") recalcStats();
+    if (typeof updateStatusUI === "function") updateStatusUI();
+  }
+}
+
+function addArmorSkillExp(type, amount = 1) {
+  const as = (typeof window !== "undefined" && window.armorSkills) ? window.armorSkills : armorSkills;
+  if (!type || !as || !as[type]) return;
+  const s = as[type];
+  s.exp = (s.exp || 0) + amount;
+  const maxLv = (typeof window !== "undefined" && window.ARMOR_SKILL_MAX_LV) ? window.ARMOR_SKILL_MAX_LV : 100;
+  let leveledUp = false;
+  if (!s.expToNext || s.expToNext <= 0) {
+    s.expToNext = (typeof window.getArmorSkillExpToNext === "function") ? window.getArmorSkillExpToNext(s.lv) : 10;
+  }
+  while (s.exp >= s.expToNext && s.lv < maxLv) {
+    s.exp -= s.expToNext;
+    s.lv++;
+    s.expToNext = (typeof window.getArmorSkillExpToNext === "function") ? window.getArmorSkillExpToNext(s.lv) : (s.expToNext + 15);
+    leveledUp = true;
+
+    const names = {
+      light: "軽装",
+      medium: "中装",
+      heavy: "重装"
+    };
+    const label = names[type] || type;
+    if (typeof appendLog === "function") {
+      appendLog(`${label}防具スキルがLv${s.lv}になった！`);
+    }
+  }
+  if (leveledUp) {
+    if (typeof recalcStats === "function") recalcStats();
+    if (typeof updateStatusUI === "function") updateStatusUI();
+  }
+}
+
+window.addWeaponSkillExp = addWeaponSkillExp;
+window.addArmorSkillExp  = addArmorSkillExp;
+
+// 攻撃系 / 防御系（回復含む）スキルの判定と経験値付与
+function isOffensiveSkill(skillId) {
+  if (!skillId || typeof skillId !== "string") return false;
+  const offensiveList = [
+    // 物理攻撃スキル
+    "powerSlash", "shieldBlow", "guardImpact", "beastSlash", "greatshieldSmash",
+    "armorCrush", "consecutiveStrike", "packSlash", "sandToss", "overseerStrike",
+    "hunterSnare", "vitalStrike", "harpoonThrust", "castNet", "earthTiller",
+    "spiceBlind", "hungerBurst", "digestDrain",
+    // 攻撃魔法
+    "fireBolt", "iceLance", "chainLightning", "manaBurst",
+    "curseStrike", "witherHex", "darkVeil", "ruinCurse"
+  ];
+  return offensiveList.includes(skillId);
+}
+
+function isDefensiveOrHealSkill(skillId) {
+  if (!skillId || typeof skillId !== "string") return false;
+  const defHealList = [
+    // 防御・強化・構えバフ
+    "braveCharge", "animalLink", "beastRoar", "greatshieldCounter", "greatshieldFortify",
+    "greatshieldGuardStance", "whetstoneSharpen", "parryCounter", "potionBoost",
+    "itemBoost", "packRally", "packFrenzy", "wildHerbPoultice", "interceptFormation",
+    "harvestBlessing", "nourishingSoup",
+    // 回復・保護魔法
+    "beastHeal", "safeBrew", "packMend"
+  ];
+  return defHealList.includes(skillId);
+}
+
+function handleSkillExpOnUse(skillId) {
+  if (!skillId) return;
+  const wType = (typeof getEquippedWeaponType === "function") ? getEquippedWeaponType() : null;
+  const aType = (typeof getEquippedArmorType === "function") ? getEquippedArmorType() : null;
+
+  if (isOffensiveSkill(skillId)) {
+    // 攻撃系スキル: 武器スキルEXP加算
+    if (wType && typeof addWeaponSkillExp === "function") {
+      addWeaponSkillExp(wType, 1);
+    }
+  } else if (isDefensiveOrHealSkill(skillId)) {
+    // 防御・回復系スキル: 防具スキルEXP加算
+    if (aType && typeof addArmorSkillExp === "function") {
+      addArmorSkillExp(aType, 1);
+    }
+    // 盾を装備している場合は盾スキルEXPも加算
+    if (wType === "shield" && typeof addWeaponSkillExp === "function") {
+      addWeaponSkillExp("shield", 1);
+    }
+  } else {
+    // フォールバック
+    if (wType && typeof addWeaponSkillExp === "function") {
+      addWeaponSkillExp(wType, 1);
+    }
+  }
+}
+
+window.isOffensiveSkill = isOffensiveSkill;
+window.isDefensiveOrHealSkill = isDefensiveOrHealSkill;
+window.handleSkillExpOnUse = handleSkillExpOnUse;
 
 // =======================
 // 探索・戦闘
@@ -373,12 +592,114 @@ function recalcStats() {
     }
   }
 
+  // ★ 武器・防具種別スキルボーナスの計算（装備中のみ恩恵を適用）
+  const eqWType = getEquippedWeaponType();
+  const eqAType = getEquippedArmorType();
+
+  const ws = (typeof window !== "undefined" && window.weaponSkills) ? window.weaponSkills : weaponSkills;
+  const as = (typeof window !== "undefined" && window.armorSkills) ? window.armorSkills : armorSkills;
+
+  let weaponSkillBonus = {
+    str: 0,
+    int: 0,
+    vit: 0,
+    dex: 0,
+    atk: 0,
+    def: 0,
+    mpMax: 0,
+    critRate: 0,
+    critMult: 0,
+    hitRate: 0,
+    evaRate: 0,
+    guardRate: 0,
+    guardReduce: 0,
+    physSkillRate: 0,
+    magicSkillRate: 0
+  };
+
+  if (eqWType && ws && ws[eqWType]) {
+    const lv = ws[eqWType].lv || 0;
+    if (lv > 0) {
+      if (eqWType === "dagger") {
+        weaponSkillBonus.atk += Math.floor(lv * 1.0);
+        weaponSkillBonus.critRate += lv * 0.003;
+        weaponSkillBonus.hitRate += lv * 0.002;
+        weaponSkillBonus.dex += Math.floor(lv / 5);
+        weaponSkillBonus.evaRate += lv * 0.002;
+      } else if (eqWType === "sword") {
+        weaponSkillBonus.atk += Math.floor(lv * 1.5);
+        weaponSkillBonus.physSkillRate += lv * 0.004;
+        weaponSkillBonus.hitRate += lv * 0.003;
+        weaponSkillBonus.str += Math.floor(lv / 5);
+      } else if (eqWType === "greatSword") {
+        weaponSkillBonus.atk += Math.floor(lv * 2.5);
+        weaponSkillBonus.critMult += lv * 0.008;
+        weaponSkillBonus.str += Math.floor(lv / 4);
+      } else if (eqWType === "staff") {
+        weaponSkillBonus.atk += Math.floor(lv * 0.5);
+        weaponSkillBonus.magicSkillRate += lv * 0.006;
+        weaponSkillBonus.mpMax += lv * 2;
+        weaponSkillBonus.int += Math.floor(lv / 4);
+      } else if (eqWType === "runeSword") {
+        weaponSkillBonus.atk += Math.floor(lv * 1.2);
+        weaponSkillBonus.physSkillRate += lv * 0.003;
+        weaponSkillBonus.magicSkillRate += lv * 0.003;
+        weaponSkillBonus.str += Math.floor(lv / 5);
+        weaponSkillBonus.int += Math.floor(lv / 5);
+      } else if (eqWType === "shield") {
+        weaponSkillBonus.def += Math.floor(lv * 2.0);
+        weaponSkillBonus.guardRate += lv * 0.003;
+        weaponSkillBonus.guardReduce += lv * 0.003;
+        weaponSkillBonus.vit += Math.floor(lv / 4);
+      }
+    }
+  }
+
+  let armorSkillBonus = {
+    str: 0,
+    int: 0,
+    vit: 0,
+    dex: 0,
+    def: 0,
+    hpMax: 0,
+    spMax: 0,
+    evaRate: 0,
+    damageReduce: 0
+  };
+
+  if (eqAType && as && as[eqAType]) {
+    const lv = as[eqAType].lv || 0;
+    if (lv > 0) {
+      if (eqAType === "light") {
+        armorSkillBonus.evaRate += lv * 0.003;
+        armorSkillBonus.spMax += lv * 2;
+        armorSkillBonus.dex += Math.floor(lv / 4);
+      } else if (eqAType === "medium") {
+        armorSkillBonus.def += Math.floor(lv * 1.5);
+        armorSkillBonus.hpMax += lv * 3;
+        armorSkillBonus.spMax += lv * 1;
+        armorSkillBonus.vit += Math.floor(lv / 5);
+        armorSkillBonus.dex += Math.floor(lv / 5);
+      } else if (eqAType === "heavy") {
+        armorSkillBonus.def += Math.floor(lv * 3.0);
+        armorSkillBonus.hpMax += lv * 5;
+        armorSkillBonus.vit += Math.floor(lv / 3);
+        armorSkillBonus.damageReduce += lv * 0.0015;
+      }
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    window.equippedWeaponSkillBonus = weaponSkillBonus;
+    window.equippedArmorSkillBonus = armorSkillBonus;
+  }
+
   // ★ 接頭語による基礎ステ%補正を適用（素のステに対して）
-  let effSTR = baseSTR;
-  let effVIT = baseVIT;
-  let effINT = baseINT;
+  let effSTR = baseSTR + weaponSkillBonus.str + armorSkillBonus.str;
+  let effVIT = baseVIT + weaponSkillBonus.vit + armorSkillBonus.vit;
+  let effINT = baseINT + weaponSkillBonus.int + armorSkillBonus.int;
   // ★修正: 防具のbonusDex（armorBonusDex）が集計だけされて一度も加算されていなかったバグを修正
-  let effDEX = baseDEX + armorBonusDex;
+  let effDEX = baseDEX + armorBonusDex + weaponSkillBonus.dex + armorSkillBonus.dex;
   let effLUK = baseLUK;
 
   if (prefixMods.strPct) {
@@ -436,9 +757,9 @@ function recalcStats() {
   if (armorQuality === 1) armorQualityRate += QUALITY_GOOD_RATE;
   else if (armorQuality === 2) armorQualityRate += QUALITY_EX_RATE;
 
-  // ★品質・強化まで反映した武器・防具の基礎値
-  let enhancedWeaponAtk = Math.floor(weaponAtk * weaponEnhRate * weaponQualityRate);
-  let enhancedArmorDef  = Math.floor(armorDef * armorEnhRate  * armorQualityRate);
+  // ★品質・強化まで反映した武器・防具の基礎値（＋装備中スキルレベル恩恵）
+  let enhancedWeaponAtk = Math.floor(weaponAtk * weaponEnhRate * weaponQualityRate) + weaponSkillBonus.atk;
+  let enhancedArmorDef  = Math.floor(armorDef * armorEnhRate  * armorQualityRate) + weaponSkillBonus.def + armorSkillBonus.def;
 
   // ステータス由来の攻撃
   let atkFromStr = Math.floor(effSTR * 0.5);
@@ -466,9 +787,9 @@ function recalcStats() {
   const mpFromInt = Math.floor(effINT * MP_PER_INT_POINT);
   const spFromDex = Math.floor(effDEX * SP_PER_DEX_POINT);
 
-  baseHpMax += hpFromVit;
-  baseMpMax += mpFromInt;
-  baseSpMax += spFromDex;
+  baseHpMax += hpFromVit + armorSkillBonus.hpMax;
+  baseMpMax += mpFromInt + weaponSkillBonus.mpMax;
+  baseSpMax += spFromDex + armorSkillBonus.spMax;
 
   // ===== スキルツリーの最大値ボーナスを反映 =====
   if (hpMaxRate !== 0) {
@@ -666,6 +987,12 @@ function initGame() {
 
   gatherSkills = JSON.parse(JSON.stringify(GATHER_SKILLS_INIT));
   craftSkills  = JSON.parse(JSON.stringify(CRAFT_SKILLS_INIT));
+  weaponSkills = JSON.parse(JSON.stringify(window.WEAPON_SKILLS_INIT || {}));
+  armorSkills  = JSON.parse(JSON.stringify(window.ARMOR_SKILLS_INIT || {}));
+  window.gatherSkills = gatherSkills;
+  window.craftSkills  = craftSkills;
+  window.weaponSkills = weaponSkills;
+  window.armorSkills  = armorSkills;
 
   exploringArea = null;
   isExploring   = false;
@@ -979,6 +1306,132 @@ function updateDisplay() {
   if (skCraftMaterial && craftSkills.material)  skCraftMaterial.textContent  = craftSkills.material.lv;
   if (skCraftCooking  && craftSkills.cooking)   skCraftCooking.textContent   = craftSkills.cooking.lv;
   if (skCraftFurniture && craftSkills.furniture) skCraftFurniture.textContent = craftSkills.furniture.lv;
+
+  // 武器種別スキル表示
+  const ws = (typeof window !== "undefined" && window.weaponSkills) ? window.weaponSkills : weaponSkills;
+  const skWDagger = document.getElementById("skWeaponDaggerLv");
+  const skWSword  = document.getElementById("skWeaponSwordLv");
+  const skWGreat  = document.getElementById("skWeaponGreatLv");
+  const skWStaff  = document.getElementById("skWeaponStaffLv");
+  const skWRune   = document.getElementById("skWeaponRuneLv");
+  const skWShield = document.getElementById("skWeaponShieldLv");
+
+  if (skWDagger && ws.dagger)     skWDagger.textContent = ws.dagger.lv;
+  if (skWSword  && ws.sword)      skWSword.textContent  = ws.sword.lv;
+  if (skWGreat  && ws.greatSword) skWGreat.textContent  = ws.greatSword.lv;
+  if (skWStaff  && ws.staff)      skWStaff.textContent  = ws.staff.lv;
+  if (skWRune   && ws.runeSword)  skWRune.textContent   = ws.runeSword.lv;
+  if (skWShield && ws.shield)     skWShield.textContent = ws.shield.lv;
+
+  // 装備中チップの強調表示（武器）
+  const eqWType = getEquippedWeaponType();
+  const wChipMap = {
+    dagger: { chip: "chipWeaponDagger", ind: "indWeaponDagger", lic: "licWeaponDagger" },
+    sword: { chip: "chipWeaponSword", ind: "indWeaponSword", lic: "licWeaponSword" },
+    greatSword: { chip: "chipWeaponGreat", ind: "indWeaponGreat", lic: "licWeaponGreat" },
+    staff: { chip: "chipWeaponStaff", ind: "indWeaponStaff", lic: "licWeaponStaff" },
+    runeSword: { chip: "chipWeaponRune", ind: "indWeaponRune", lic: "licWeaponRune" },
+    shield: { chip: "chipWeaponShield", ind: "indWeaponShield", lic: "licWeaponShield" }
+  };
+
+  Object.keys(wChipMap).forEach(k => {
+    const elChip = document.getElementById(wChipMap[k].chip);
+    const elInd  = document.getElementById(wChipMap[k].ind);
+    const elLic  = document.getElementById(wChipMap[k].lic);
+    const isEq = (eqWType === k);
+    if (elChip) elChip.classList.toggle("equipped", isEq);
+    if (elInd) elInd.textContent = isEq ? "装備中" : "";
+    if (elLic) {
+      const maxTier = (typeof getEquipLicenseMaxTier === "function") ? getEquipLicenseMaxTier("weapon", k) : 1;
+      elLic.textContent = `T${maxTier}`;
+      elLic.title = `Tier ${maxTier} 装備許可取得済み`;
+    }
+  });
+
+  const elWBonusNote = document.getElementById("weaponSkillEquipBonusNote");
+  if (elWBonusNote) {
+    if (eqWType && ws[eqWType] && ws[eqWType].lv > 0) {
+      const b = window.equippedWeaponSkillBonus || {};
+      const parts = [];
+      if (b.atk) parts.push(`ATK +${b.atk}`);
+      if (b.def) parts.push(`DEF +${b.def}`);
+      if (b.str) parts.push(`STR +${b.str}`);
+      if (b.int) parts.push(`INT +${b.int}`);
+      if (b.dex) parts.push(`DEX +${b.dex}`);
+      if (b.vit) parts.push(`VIT +${b.vit}`);
+      if (b.mpMax) parts.push(`最大MP +${b.mpMax}`);
+      if (b.critRate) parts.push(`会心率 +${(b.critRate * 100).toFixed(1)}%`);
+      if (b.critMult) parts.push(`会心倍率 +${(b.critMult * 100).toFixed(1)}%`);
+      if (b.hitRate) parts.push(`命中率 +${(b.hitRate * 100).toFixed(1)}%`);
+      if (b.evaRate) parts.push(`回避率 +${(b.evaRate * 100).toFixed(1)}%`);
+      if (b.guardRate) parts.push(`ガード率 +${(b.guardRate * 100).toFixed(1)}%`);
+      if (b.physSkillRate) parts.push(`物理スキル +${(b.physSkillRate * 100).toFixed(1)}%`);
+      if (b.magicSkillRate) parts.push(`魔法スキル +${(b.magicSkillRate * 100).toFixed(1)}%`);
+      elWBonusNote.textContent = parts.length > 0 ? `★ 装備中恩恵: ${parts.join(" / ")}` : "";
+      elWBonusNote.style.display = parts.length > 0 ? "block" : "none";
+    } else if (eqWType) {
+      elWBonusNote.textContent = `※ 装備中の武器種に対応するスキルレベルが上がると恩恵が発揮されます。`;
+      elWBonusNote.style.display = "block";
+    } else {
+      elWBonusNote.textContent = `※ 武器を装備すると、対応する武器種スキルレベルの恩恵を受けられます。`;
+      elWBonusNote.style.display = "block";
+    }
+  }
+
+  // 防具種別スキル表示
+  const as = (typeof window !== "undefined" && window.armorSkills) ? window.armorSkills : armorSkills;
+  const skALight  = document.getElementById("skArmorLightLv");
+  const skAMedium = document.getElementById("skArmorMediumLv");
+  const skAHeavy  = document.getElementById("skArmorHeavyLv");
+
+  if (skALight  && as.light)  skALight.textContent  = as.light.lv;
+  if (skAMedium && as.medium) skAMedium.textContent = as.medium.lv;
+  if (skAHeavy  && as.heavy)  skAHeavy.textContent  = as.heavy.lv;
+
+  // 装備中チップの強調表示（防具）
+  const eqAType = getEquippedArmorType();
+  const aChipMap = {
+    light: { chip: "chipArmorLight", ind: "indArmorLight", lic: "licArmorLight" },
+    medium: { chip: "chipArmorMedium", ind: "indArmorMedium", lic: "licArmorMedium" },
+    heavy: { chip: "chipArmorHeavy", ind: "indArmorHeavy", lic: "licArmorHeavy" }
+  };
+
+  Object.keys(aChipMap).forEach(k => {
+    const elChip = document.getElementById(aChipMap[k].chip);
+    const elInd  = document.getElementById(aChipMap[k].ind);
+    const elLic  = document.getElementById(aChipMap[k].lic);
+    const isEq = (eqAType === k);
+    if (elChip) elChip.classList.toggle("equipped", isEq);
+    if (elInd) elInd.textContent = isEq ? "装備中" : "";
+    if (elLic) {
+      const maxTier = (typeof getEquipLicenseMaxTier === "function") ? getEquipLicenseMaxTier("armor", k) : 1;
+      elLic.textContent = `T${maxTier}`;
+      elLic.title = `Tier ${maxTier} 装備許可取得済み`;
+    }
+  });
+
+  const elABonusNote = document.getElementById("armorSkillEquipBonusNote");
+  if (elABonusNote) {
+    if (eqAType && as[eqAType] && as[eqAType].lv > 0) {
+      const b = window.equippedArmorSkillBonus || {};
+      const parts = [];
+      if (b.def) parts.push(`DEF +${b.def}`);
+      if (b.vit) parts.push(`VIT +${b.vit}`);
+      if (b.dex) parts.push(`DEX +${b.dex}`);
+      if (b.hpMax) parts.push(`最大HP +${b.hpMax}`);
+      if (b.spMax) parts.push(`最大SP +${b.spMax}`);
+      if (b.evaRate) parts.push(`回避率 +${(b.evaRate * 100).toFixed(1)}%`);
+      if (b.damageReduce) parts.push(`被ダメ軽減 +${(b.damageReduce * 100).toFixed(1)}%`);
+      elABonusNote.textContent = parts.length > 0 ? `★ 装備中恩恵: ${parts.join(" / ")}` : "";
+      elABonusNote.style.display = parts.length > 0 ? "block" : "none";
+    } else if (eqAType) {
+      elABonusNote.textContent = `※ 装備中の防具種に対応するスキルレベルが上がると恩恵が発揮されます。`;
+      elABonusNote.style.display = "block";
+    } else {
+      elABonusNote.textContent = `※ 防具を装備すると、対応する防具種スキルレベルの恩恵を受けられます。`;
+      elABonusNote.style.display = "block";
+    }
+  }
 
   // ★追加：ペットタブの表示を最新化（倉庫タブ / 拠点タブ共用）
   if (typeof renderPetList === "function" && typeof renderPetCareBox === "function") {

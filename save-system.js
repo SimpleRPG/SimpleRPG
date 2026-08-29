@@ -25,7 +25,7 @@ function makeSaveData() {
   let farmSafe, fishDexSafe;
   let marketListingsSafe, marketBuyOrdersSafe, marketTradeLogsSafe, marketOrderIdSeqSafe, marketListingIdSeqSafe;
   let playerGuildIdSafe, guildFameSafe, guildQuestProgressSafe, combatGuildTreeUnlockedSafe, combatGuildSkillPointsSafe;
-  let guildCoinsSafe, guildLearnedRecipesSafe, guildDeliveryStatsSafe, guildDailyDateSafe, guildDailyTakenDateSafe, guildDailyProgressSafe;
+  let guildCoinsSafe, guildLearnedRecipesSafe, guildEquipLicensesSafe, guildDeliveryStatsSafe, guildDailyDateSafe, guildDailyTakenDateSafe, guildDailyProgressSafe;
   let citizenshipUnlockedSafe, housingStateSafe;
   let rareGatherItemsSafe; // ★追加: レア素材（星屑の結晶など）の専用在庫
   let byproductMatsSafe;   // ★追加: 副産物素材の専用在庫
@@ -205,6 +205,7 @@ function makeSaveData() {
     combatGuildSkillPointsSafe  = (typeof window !== "undefined") ? (window.combatGuildSkillPoints || 0) : 0;
     guildCoinsSafe           = (typeof window !== "undefined" && typeof window.guildCoins === "number") ? window.guildCoins : 0;
     guildLearnedRecipesSafe  = (typeof window !== "undefined" && Array.isArray(window.guildLearnedRecipes)) ? window.guildLearnedRecipes : [];
+    guildEquipLicensesSafe   = (typeof window !== "undefined" && window.guildEquipLicenses && typeof window.guildEquipLicenses === "object") ? window.guildEquipLicenses : {};
     guildDeliveryStatsSafe   = (typeof window !== "undefined" && window.guildDeliveryStats) ? window.guildDeliveryStats : {};
     guildDailyDateSafe       = (typeof window !== "undefined") ? window.guildDailyDate : null;
     guildDailyTakenDateSafe  = (typeof window !== "undefined") ? window.guildDailyTakenDate : null;
@@ -375,6 +376,7 @@ function makeSaveData() {
     combatGuildSkillPoints:  combatGuildSkillPointsSafe,
     guildCoins:              guildCoinsSafe,
     guildLearnedRecipes:     guildLearnedRecipesSafe,
+    guildEquipLicenses:      guildEquipLicensesSafe,
     guildDeliveryStats:      guildDeliveryStatsSafe,
     guildDailyDate:          guildDailyDateSafe,
     guildDailyTakenDate:     guildDailyTakenDateSafe,
@@ -969,6 +971,9 @@ function applySaveData(data) {
       }
       if (Array.isArray(data.guildLearnedRecipes)) {
         window.guildLearnedRecipes = data.guildLearnedRecipes;
+      }
+      if (data.guildEquipLicenses && typeof data.guildEquipLicenses === "object") {
+        window.guildEquipLicenses = data.guildEquipLicenses;
       }
       if (data.guildDeliveryStats && typeof data.guildDeliveryStats === "object") {
         window.guildDeliveryStats = data.guildDeliveryStats;

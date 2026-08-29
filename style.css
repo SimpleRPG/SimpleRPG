@@ -924,6 +924,73 @@ input[type="text"] {
   font-weight: 600;
 }
 
+.skill-chips-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.skill-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  font-size: 0.88rem;
+  color: var(--text-sub);
+  transition: all 0.2s ease;
+}
+
+.skill-chip.equipped {
+  background: rgba(46, 180, 110, 0.16);
+  border-color: #38b575;
+  color: #85f0b5;
+  font-weight: bold;
+}
+
+.skill-chip.equipped span {
+  color: #85f0b5 !important;
+}
+
+.chip-tag {
+  font-size: 0.72rem;
+  padding: 1px 5px;
+  background: #2e7559;
+  color: #ffffff;
+  border-radius: 3px;
+  font-weight: bold;
+  display: none;
+}
+
+.chip-lic {
+  font-size: 0.72rem;
+  padding: 1px 5px;
+  background: rgba(255, 215, 0, 0.15);
+  color: #ffd700;
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  border-radius: 3px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+.skill-chip.equipped .chip-tag {
+  display: inline-block;
+}
+
+.equip-bonus-note {
+  margin-top: 6px;
+  padding: 5px 10px;
+  font-size: 0.85rem;
+  color: #85f0b5;
+  background: rgba(46, 180, 110, 0.12);
+  border-radius: 4px;
+  border-left: 3px solid #38b575;
+  line-height: 1.4;
+}
+
 #pageStatus h3 {
   margin: 8px 0 4px;
   font-size: 1.05rem;

@@ -840,6 +840,16 @@ function getGuardBonusForGreatshieldJob() {
     }
   }
 
+  // ★追加：装備中盾スキルボーナスを加算
+  if (typeof window !== "undefined" && window.equippedWeaponSkillBonus) {
+    if (typeof window.equippedWeaponSkillBonus.guardRate === "number") {
+      rateAdd += window.equippedWeaponSkillBonus.guardRate;
+    }
+    if (typeof window.equippedWeaponSkillBonus.guardReduce === "number") {
+      reduceAdd += window.equippedWeaponSkillBonus.guardReduce;
+    }
+  }
+
   return {
     guardRate: guardRate,
     greatshieldGuardRateAdd: rateAdd,

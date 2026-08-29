@@ -289,8 +289,15 @@ function refreshEquipSelects(){
         const opt  = document.createElement("option");
         const enh  = w.enhance || 0;
         const name = enh > 0 ? `${w.name}+${enh}` : w.name;
+        const m = w.id.match(/(?:^T(\d+)_|_t(\d+)$)/i);
+        const tier = m ? parseInt(m[1] || m[2], 10) : 1;
+        const wType = (typeof getWeaponTypeFromItemId === "function") ? getWeaponTypeFromItemId(w.id) : null;
+        let lockTag = "";
+        if (tier >= 2 && wType && typeof hasEquipLicense === "function" && !hasEquipLicense("weapon", wType, tier)) {
+          lockTag = " [🔒要許可証]";
+        }
         opt.value = w.id;
-        opt.textContent = `${name}（所持${weaponCounts[w.id]}）`;
+        opt.textContent = `${name}${lockTag}（所持${weaponCounts[w.id]}）`;
         wSel.appendChild(opt);
       }
     });
@@ -303,8 +310,15 @@ function refreshEquipSelects(){
         const opt  = document.createElement("option");
         const enh  = a.enhance || 0;
         const name = enh > 0 ? `${a.name}+${enh}` : a.name;
+        const m = a.id.match(/(?:^T(\d+)_|_t(\d+)$)/i);
+        const tier = m ? parseInt(m[1] || m[2], 10) : 1;
+        const aType = (typeof getArmorTypeFromItemId === "function") ? getArmorTypeFromItemId(a.id) : null;
+        let lockTag = "";
+        if (tier >= 2 && aType && typeof hasEquipLicense === "function" && !hasEquipLicense("armor", aType, tier)) {
+          lockTag = " [🔒要許可証]";
+        }
         opt.value = a.id;
-        opt.textContent = `${name}（所持${armorCounts[a.id]}）`;
+        opt.textContent = `${name}${lockTag}（所持${armorCounts[a.id]}）`;
         aSel.appendChild(opt);
       }
     });

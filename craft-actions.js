@@ -82,6 +82,10 @@ function craftWeapon(){
 
   consumeMaterials(recipe.cost);
   addCraftSkillExp("weapon");
+  const wType = (typeof getWeaponTypeFromItemId === "function") ? getWeaponTypeFromItemId(recipe.id) : null;
+  if (wType && typeof addWeaponSkillExp === "function") {
+    addWeaponSkillExp(wType, 1);
+  }
 
   const roll = Math.random();
   const success = roll < successRate;
@@ -398,6 +402,10 @@ function craftArmor(){
 
   consumeMaterials(recipe.cost);
   addCraftSkillExp("armor");
+  const aType = (typeof getArmorTypeFromItemId === "function") ? getArmorTypeFromItemId(recipe.id) : null;
+  if (aType && typeof addArmorSkillExp === "function") {
+    addArmorSkillExp(aType, 1);
+  }
 
   const roll = Math.random();
   const success = roll < successRate;

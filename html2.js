@@ -61,25 +61,54 @@
 
         <h3>採取スキル</h3>
         <div id="gatherSkillBox" class="status-block">
-          木: Lv<span id="skGatherWoodLv">0</span>,
-          鉱石: Lv<span id="skGatherOreLv">0</span>,
-          草: Lv<span id="skGatherHerbLv">0</span><br>
-          布: Lv<span id="skGatherClothLv">0</span>,
-          皮: Lv<span id="skGatherLeatherLv">0</span>,
-          水: Lv<span id="skGatherWaterLv">0</span><br>
-          狩猟: Lv<span id="skGatherHuntLv">0</span>,
-          釣り: Lv<span id="skGatherFishLv">0</span>,
-          畑: Lv<span id="skGatherFarmLv">0</span>
+          <div class="skill-chips-container">
+            <span class="skill-chip">🌲 木: Lv<span id="skGatherWoodLv">0</span></span>
+            <span class="skill-chip">⛏️ 鉱石: Lv<span id="skGatherOreLv">0</span></span>
+            <span class="skill-chip">🌿 草: Lv<span id="skGatherHerbLv">0</span></span>
+            <span class="skill-chip">🧵 布: Lv<span id="skGatherClothLv">0</span></span>
+            <span class="skill-chip">🥋 皮: Lv<span id="skGatherLeatherLv">0</span></span>
+            <span class="skill-chip">💧 水: Lv<span id="skGatherWaterLv">0</span></span>
+            <span class="skill-chip">🏹 狩猟: Lv<span id="skGatherHuntLv">0</span></span>
+            <span class="skill-chip">🎣 釣り: Lv<span id="skGatherFishLv">0</span></span>
+            <span class="skill-chip">🌾 畑: Lv<span id="skGatherFarmLv">0</span></span>
+            <span class="skill-chip">🏡 庭園: Lv<span id="skGatherGardenLv">0</span></span>
+          </div>
         </div>
 
         <h3>クラフトスキル</h3>
         <div id="craftSkillBox" class="status-block">
-          武器: Lv<span id="skCraftWeaponLv">0</span>,
-          防具: Lv<span id="skCraftArmorLv">0</span>,
-          ポーション: Lv<span id="skCraftPotionLv">0</span>,
-          道具: Lv<span id="skCraftToolLv">0</span>,
-          素材: Lv<span id="skCraftMaterialLv">0</span>,
-          料理: Lv<span id="skCraftCookingLv">0</span>
+          <div class="skill-chips-container">
+            <span class="skill-chip">⚔️ 武器: Lv<span id="skCraftWeaponLv">0</span></span>
+            <span class="skill-chip">🛡️ 防具: Lv<span id="skCraftArmorLv">0</span></span>
+            <span class="skill-chip">🧪 ポーション: Lv<span id="skCraftPotionLv">0</span></span>
+            <span class="skill-chip">🔨 道具: Lv<span id="skCraftToolLv">0</span></span>
+            <span class="skill-chip">🧱 素材: Lv<span id="skCraftMaterialLv">0</span></span>
+            <span class="skill-chip">🍳 料理: Lv<span id="skCraftCookingLv">0</span></span>
+            <span class="skill-chip">🪑 家具: Lv<span id="skCraftFurnitureLv">0</span></span>
+          </div>
+        </div>
+
+        <h3>武器種スキル</h3>
+        <div id="weaponSkillBox" class="status-block">
+          <div class="skill-chips-container">
+            <span class="skill-chip" id="chipWeaponDagger">短剣: Lv<span id="skWeaponDaggerLv">0</span><small class="chip-lic" id="licWeaponDagger">T1</small><small class="chip-tag" id="indWeaponDagger"></small></span>
+            <span class="skill-chip" id="chipWeaponSword">片手剣: Lv<span id="skWeaponSwordLv">0</span><small class="chip-lic" id="licWeaponSword">T1</small><small class="chip-tag" id="indWeaponSword"></small></span>
+            <span class="skill-chip" id="chipWeaponGreat">大剣: Lv<span id="skWeaponGreatLv">0</span><small class="chip-lic" id="licWeaponGreat">T1</small><small class="chip-tag" id="indWeaponGreat"></small></span>
+            <span class="skill-chip" id="chipWeaponStaff">杖: Lv<span id="skWeaponStaffLv">0</span><small class="chip-lic" id="licWeaponStaff">T1</small><small class="chip-tag" id="indWeaponStaff"></small></span>
+            <span class="skill-chip" id="chipWeaponRune">魔剣: Lv<span id="skWeaponRuneLv">0</span><small class="chip-lic" id="licWeaponRune">T1</small><small class="chip-tag" id="indWeaponRune"></small></span>
+            <span class="skill-chip" id="chipWeaponShield">盾: Lv<span id="skWeaponShieldLv">0</span><small class="chip-lic" id="licWeaponShield">T1</small><small class="chip-tag" id="indWeaponShield"></small></span>
+          </div>
+          <div id="weaponSkillEquipBonusNote" class="equip-bonus-note" style="display:none;"></div>
+        </div>
+
+        <h3>防具種スキル</h3>
+        <div id="armorSkillBox" class="status-block">
+          <div class="skill-chips-container">
+            <span class="skill-chip" id="chipArmorLight">軽装: Lv<span id="skArmorLightLv">0</span><small class="chip-lic" id="licArmorLight">T1</small><small class="chip-tag" id="indArmorLight"></small></span>
+            <span class="skill-chip" id="chipArmorMedium">中装: Lv<span id="skArmorMediumLv">0</span><small class="chip-lic" id="licArmorMedium">T1</small><small class="chip-tag" id="indArmorMedium"></small></span>
+            <span class="skill-chip" id="chipArmorHeavy">重装: Lv<span id="skArmorHeavyLv">0</span><small class="chip-lic" id="licArmorHeavy">T1</small><small class="chip-tag" id="indArmorHeavy"></small></span>
+          </div>
+          <div id="armorSkillEquipBonusNote" class="equip-bonus-note" style="display:none;"></div>
         </div>
 
         <h3 class="pet-only">ペットステータス（動物使いのみ）</h3>

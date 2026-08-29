@@ -84,15 +84,26 @@ function getPlayerEffectiveDex() {
 }
 
 // ★DEXから「プレイヤーの回避率」を計算（敵の攻撃をかわす確率）
-// 下限5%・上限70%
+// 下限5%・上限70%（装備中スキル補正を含む）
 function getPlayerEvasionRateFromDex() {
-  return calcDexRate(getPlayerEffectiveDex(), 0.05, 0.70);
+  let rate = calcDexRate(getPlayerEffectiveDex(), 0.05, 0.70);
+  if (typeof window !== "undefined" && window.equippedWeaponSkillBonus && typeof window.equippedWeaponSkillBonus.evaRate === "number") {
+    rate += window.equippedWeaponSkillBonus.evaRate;
+  }
+  if (typeof window !== "undefined" && window.equippedArmorSkillBonus && typeof window.equippedArmorSkillBonus.evaRate === "number") {
+    rate += window.equippedArmorSkillBonus.evaRate;
+  }
+  return Math.min(0.85, rate);
 }
 
 // ★DEXから「プレイヤーの命中率」を計算（敵への攻撃が当たる確率）
-// 下限30%・上限95%
+// 下限30%・上限95%（装備中スキル補正を含む）
 function getPlayerHitRateFromDex() {
-  return calcDexRate(getPlayerEffectiveDex(), 0.30, 0.95);
+  let rate = calcDexRate(getPlayerEffectiveDex(), 0.30, 0.95);
+  if (typeof window !== "undefined" && window.equippedWeaponSkillBonus && typeof window.equippedWeaponSkillBonus.hitRate === "number") {
+    rate += window.equippedWeaponSkillBonus.hitRate;
+  }
+  return Math.min(0.99, rate);
 }
 
 // ★敵側の回避率（enemy-data.js の dex フィールドから算出）
@@ -601,6 +612,12 @@ function playerAttack() {
   // 命中判定は「敵に向けた攻撃」の時だけ行う（自傷は必中扱い）
   let isHit = true;
   if (targetType === "enemy") {
+    // 武器種別スキルEXPを加算
+    const wType = (typeof getEquippedWeaponType === "function") ? getEquippedWeaponType() : null;
+    if (wType && typeof addWeaponSkillExp === "function") {
+      addWeaponSkillExp(wType, 1);
+    }
+
     let hitRate = getPlayerHitRateFromDex();
     hitRate = modifyAccuracyForPlayer(hitRate);
     if (Math.random() > hitRate) {
@@ -819,6 +836,10 @@ function enemyTurn() {
       }
       if (Math.random() > enemyHitRate) {
         appendLog(`${currentEnemy.name}の攻撃！ しかし外れた！`);
+        const aType = (typeof getEquippedArmorType === "function") ? getEquippedArmorType() : null;
+        if (aType && typeof addArmorSkillExp === "function") addArmorSkillExp(aType, 1);
+        const eqWType = (typeof getEquippedWeaponType === "function") ? getEquippedWeaponType() : null;
+        if (eqWType === "shield" && typeof addWeaponSkillExp === "function") addWeaponSkillExp("shield", 1);
         tickSkillBuffTurns();
         renderPlayerStatusIcons();
         updateEnemyStatusUI();
@@ -832,6 +853,10 @@ function enemyTurn() {
       const evaRate = getPlayerEvasionRateFromDex();
       if (Math.random() < evaRate) {
         appendLog(`${currentEnemy.name}の攻撃！ しかしあなたは攻撃を回避した！`);
+        const aType = (typeof getEquippedArmorType === "function") ? getEquippedArmorType() : null;
+        if (aType && typeof addArmorSkillExp === "function") addArmorSkillExp(aType, 1);
+        const eqWType = (typeof getEquippedWeaponType === "function") ? getEquippedWeaponType() : null;
+        if (eqWType === "shield" && typeof addWeaponSkillExp === "function") addWeaponSkillExp("shield", 1);
         tickSkillBuffTurns();
         renderPlayerStatusIcons();
         updateEnemyStatusUI();
@@ -919,6 +944,24 @@ function enemyTurn() {
     if (battleSkillTreeBonus.combatGuardReductionRate > 0) {
       const rate = battleSkillTreeBonus.combatGuardReductionRate;
       dmg = Math.max(1, Math.floor(dmg * (1 - rate)));
+    }
+
+    // ★防具種別スキルによる常時被ダメージ軽減ボーナス
+    if (typeof window !== "undefined" && window.equippedArmorSkillBonus && typeof window.equippedArmorSkillBonus.damageReduce === "number") {
+      const r = window.equippedArmorSkillBonus.damageReduce;
+      if (r > 0) {
+        dmg = Math.max(1, Math.floor(dmg * (1 - r)));
+      }
+    }
+
+    // 防具種別・盾スキルEXP加算
+    const aType = (typeof getEquippedArmorType === "function") ? getEquippedArmorType() : null;
+    if (aType && typeof addArmorSkillExp === "function") {
+      addArmorSkillExp(aType, 1);
+    }
+    const eqWType = (typeof getEquippedWeaponType === "function") ? getEquippedWeaponType() : null;
+    if (eqWType === "shield" && typeof addWeaponSkillExp === "function") {
+      addWeaponSkillExp("shield", 1);
     }
 
     hp -= dmg;
@@ -1169,6 +1212,18 @@ function winBattle(killFlag, killSource) {
 
   // ★戦闘統計に「勝利」を反映（ここから debugRecordBattle も呼ばれる）
   commitCurrentBattleStats("win");
+
+  // ★勝利時: 装備中武器・防具のスキルEXPを獲得
+  if (killFlag) {
+    const wType = (typeof getEquippedWeaponType === "function") ? getEquippedWeaponType() : null;
+    if (wType && typeof addWeaponSkillExp === "function") {
+      addWeaponSkillExp(wType, isBossBattle ? 3 : 1);
+    }
+    const aType = (typeof getEquippedArmorType === "function") ? getEquippedArmorType() : null;
+    if (aType && typeof addArmorSkillExp === "function") {
+      addArmorSkillExp(aType, isBossBattle ? 3 : 1);
+    }
+  }
 
   // ★スキルツリー: 戦闘後HP追加回復（勝利時）
   if (killFlag && typeof hp === "number" && typeof hpMax === "number") {

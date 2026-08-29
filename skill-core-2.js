@@ -36,6 +36,11 @@ function useSkillFromUI() {
     return;
   }
 
+  // スキル種別（攻撃系 or 防御・回復系）に応じたスキルEXP加算
+  if (typeof handleSkillExpOnUse === "function") {
+    handleSkillExpOnUse(skillId);
+  }
+
   const guildId = typeof window !== "undefined" ? window.playerGuildId : null;
   // ★ ガードインパクトは戦士ギルド所属中のみ使用可能
   if (skillId === "guardImpact" && guildId !== "warrior") {

@@ -1192,6 +1192,9 @@ function modifyAccuracyForPlayer(acc) {
       a = def.modifyAccuracy(a);
     }
   }
+  if (typeof window !== "undefined" && window.equippedWeaponSkillBonus && typeof window.equippedWeaponSkillBonus.hitRate === "number") {
+    a += window.equippedWeaponSkillBonus.hitRate;
+  }
   return a;
 }
 
@@ -1216,6 +1219,9 @@ function modifyCritRateForPlayer(baseRate) {
       r = def.modifyCritRate(r);
     }
   }
+  if (typeof window !== "undefined" && window.equippedWeaponSkillBonus && typeof window.equippedWeaponSkillBonus.critRate === "number") {
+    r += window.equippedWeaponSkillBonus.critRate;
+  }
   // ソフトキャップ／ハード上限として 70% にクランプ
   r = Math.min(r, 0.7);
   return r;
@@ -1230,6 +1236,9 @@ function modifyCritMultForPlayer(baseMult) {
     if (def && def.modifyCritMult) {
       m = def.modifyCritMult(m);
     }
+  }
+  if (typeof window !== "undefined" && window.equippedWeaponSkillBonus && typeof window.equippedWeaponSkillBonus.critMult === "number") {
+    m += window.equippedWeaponSkillBonus.critMult;
   }
   return m;
 }

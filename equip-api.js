@@ -17,7 +17,7 @@ function afterEquipChange() {
   }
 }
 
-// ギルドランクとTierの整合性チェック
+// 装備許可証＆ギルドランクとTierの整合性チェック
 function checkGuildRankForTier(itemId, inst) {
   let tier = 1;
   if (inst && typeof inst.tier === "number") {
@@ -32,13 +32,38 @@ function checkGuildRankForTier(itemId, inst) {
 
   if (tier <= 1) return true;
 
-  const curRank = (typeof getGuildRankTier === "function") ? getGuildRankTier() : 1;
-  if (curRank < tier) {
-    if (typeof appendLog === "function") {
-      appendLog(`🔒【ギルドランク不足】Tier ${tier} の装備を扱うには、ギルドランク ${tier}（Tier ${tier}認可）以上が必要です。（現在のギルドランク: ${curRank}）`);
+  // 1. 装備許可証（ライセンス）チェック
+  if (typeof hasEquipLicense === "function") {
+    let wType = (typeof getWeaponTypeFromItemId === "function") ? getWeaponTypeFromItemId(itemId) : null;
+    let aType = (typeof getArmorTypeFromItemId === "function") ? getArmorTypeFromItemId(itemId) : null;
+
+    if (wType) {
+      if (!hasEquipLicense("weapon", wType, tier)) {
+        const wNames = { dagger: "短剣", sword: "片手剣", greatSword: "大剣", staff: "杖", runeSword: "魔剣", shield: "盾" };
+        const typeName = wNames[wType] || "武器";
+        const reqLv = (tier - 1) * 10;
+        const curLv = (window.weaponSkills && window.weaponSkills[wType]) ? window.weaponSkills[wType].lv : 0;
+        const cost = (typeof getEquipLicenseCost === "function") ? getEquipLicenseCost(tier) : 25;
+        if (typeof appendLog === "function") {
+          appendLog(`🔒【装備許可証が必要】Tier ${tier} の${typeName}を装備するには、ギルド交換所で「Tier ${tier} ${typeName}装備許可証」（🪙 ${cost}枚 / 必要: ${typeName}スキル Lv${reqLv}以上、現在: Lv${curLv}）を購入・習得してください。`);
+        }
+        return false;
+      }
+    } else if (aType) {
+      if (!hasEquipLicense("armor", aType, tier)) {
+        const aNames = { light: "軽装", medium: "中装", heavy: "重装" };
+        const typeName = aNames[aType] || "防具";
+        const reqLv = (tier - 1) * 10;
+        const curLv = (window.armorSkills && window.armorSkills[aType]) ? window.armorSkills[aType].lv : 0;
+        const cost = (typeof getEquipLicenseCost === "function") ? getEquipLicenseCost(tier) : 25;
+        if (typeof appendLog === "function") {
+          appendLog(`🔒【装備許可証が必要】Tier ${tier} の${typeName}を装備するには、ギルド交換所で「Tier ${tier} ${typeName}装備許可証」（🪙 ${cost}枚 / 必要: ${typeName}スキル Lv${reqLv}以上、現在: Lv${curLv}）を購入・習得してください。`);
+        }
+        return false;
+      }
     }
-    return false;
   }
+
   return true;
 }
 window.checkGuildRankForTier = checkGuildRankForTier;

@@ -1635,6 +1635,192 @@ function renderGuildShop() {
       container.appendChild(card);
     });
   }
+
+  // ===== 4. 装備許可証（Tier 2〜10 ライセンス）セクション =====
+  const licenseHeader = document.createElement("div");
+  licenseHeader.style.fontWeight = "bold";
+  licenseHeader.style.fontSize = "13px";
+  licenseHeader.style.color = "#ffb84d";
+  licenseHeader.style.marginTop = "16px";
+  licenseHeader.style.marginBottom = "6px";
+  licenseHeader.style.paddingBottom = "4px";
+  licenseHeader.style.borderBottom = "1px solid #553311";
+  licenseHeader.innerHTML = `🎖️ 装備許可証（ギルド公認 Tier装備ライセンス）`;
+  container.appendChild(licenseHeader);
+
+  const licenseDesc = document.createElement("div");
+  licenseDesc.style.fontSize = "11px";
+  licenseDesc.style.color = "#bbb";
+  licenseDesc.style.marginBottom = "10px";
+  licenseDesc.textContent = "Tier 2以上の武器・防具を装備するために必要な許可証です。スキルレベル10毎（Lv10, 20, 30...）に上位Tierの許可証が解放され、ギルドコインで交換できます。";
+  container.appendChild(licenseDesc);
+
+  // カテゴリフィルタータブ
+  window._guildShopLicenseCategory = window._guildShopLicenseCategory || "all";
+  const filterRow = document.createElement("div");
+  filterRow.style.display = "flex";
+  filterRow.style.flexWrap = "wrap";
+  filterRow.style.gap = "6px";
+  filterRow.style.marginBottom = "10px";
+
+  const filterBtns = [
+    { key: "all", label: "すべて" },
+    { key: "weapon", label: "⚔️ 武器許可証" },
+    { key: "armor", label: "🛡️ 防具許可証" }
+  ];
+
+  filterBtns.forEach(fb => {
+    const b = document.createElement("button");
+    b.className = "smallBtn";
+    b.textContent = fb.label;
+    b.style.fontSize = "11px";
+    b.style.padding = "4px 10px";
+    b.style.borderRadius = "4px";
+    b.style.cursor = "pointer";
+    b.style.background = (window._guildShopLicenseCategory === fb.key) ? "#5c4815" : "#222";
+    b.style.color = (window._guildShopLicenseCategory === fb.key) ? "#ffd700" : "#aaa";
+    b.style.borderColor = (window._guildShopLicenseCategory === fb.key) ? "#ffd700" : "#444";
+    b.addEventListener("click", () => {
+      window._guildShopLicenseCategory = fb.key;
+      renderGuildShop();
+    });
+    filterRow.appendChild(b);
+  });
+  container.appendChild(filterRow);
+
+  const weaponDefs = (window.EQUIP_LICENSE_WEAPON_TYPES || []);
+  const armorDefs  = (window.EQUIP_LICENSE_ARMOR_TYPES || []);
+
+  const listToRender = [];
+  if (window._guildShopLicenseCategory === "all" || window._guildShopLicenseCategory === "weapon") {
+    weaponDefs.forEach(def => {
+      listToRender.push({ category: "weapon", ...def });
+    });
+  }
+  if (window._guildShopLicenseCategory === "all" || window._guildShopLicenseCategory === "armor") {
+    armorDefs.forEach(def => {
+      listToRender.push({ category: "armor", ...def });
+    });
+  }
+
+  listToRender.forEach(item => {
+    const curLv = item.category === "weapon"
+      ? (window.weaponSkills && window.weaponSkills[item.key] ? window.weaponSkills[item.key].lv : 0)
+      : (window.armorSkills && window.armorSkills[item.key] ? window.armorSkills[item.key].lv : 0);
+
+    const maxTier = (typeof getEquipLicenseMaxTier === "function")
+      ? getEquipLicenseMaxTier(item.category, item.key)
+      : 1;
+
+    const nextTier = maxTier + 1;
+    const isMax = nextTier > 10;
+
+    const card = document.createElement("div");
+    card.className = "guild-shop-card";
+    card.style.border = "1px solid #443a22";
+    card.style.borderRadius = "6px";
+    card.style.padding = "9px 12px";
+    card.style.marginBottom = "8px";
+    card.style.background = "#1b1812";
+
+    const topRow = document.createElement("div");
+    topRow.style.display = "flex";
+    topRow.style.justifyContent = "space-between";
+    topRow.style.alignItems = "center";
+    topRow.style.flexWrap = "wrap";
+    topRow.style.gap = "6px";
+
+    const title = document.createElement("span");
+    title.style.fontWeight = "bold";
+    title.style.fontSize = "13px";
+    title.style.color = "#ffda6a";
+    title.innerHTML = `${item.icon} ${item.name} <small style="color:#aaa; font-size:11px; margin-left:4px;">(現在スキル: Lv${curLv} / 認可: Tier ${maxTier})</small>`;
+    topRow.appendChild(title);
+
+    const statusBadge = document.createElement("span");
+    statusBadge.style.fontSize = "11px";
+    statusBadge.style.padding = "2px 8px";
+    statusBadge.style.borderRadius = "4px";
+    statusBadge.style.fontWeight = "bold";
+    if (isMax) {
+      statusBadge.style.background = "#1b3d22";
+      statusBadge.style.color = "#9fef9f";
+      statusBadge.style.border = "1px solid #30603a";
+      statusBadge.textContent = "🏆 Tier 10 認可完了";
+    } else {
+      const nextCost = (typeof getEquipLicenseCost === "function") ? getEquipLicenseCost(nextTier) : (nextTier * 40);
+      statusBadge.style.background = "#2a2810";
+      statusBadge.style.color = "#ffd700";
+      statusBadge.style.border = "1px solid #554411";
+      statusBadge.textContent = `次: Tier ${nextTier} (🪙 ${nextCost}枚)`;
+    }
+    topRow.appendChild(statusBadge);
+    card.appendChild(topRow);
+
+    // 次のTierの購入情報行
+    const bottomRow = document.createElement("div");
+    bottomRow.style.display = "flex";
+    bottomRow.style.justifyContent = "space-between";
+    bottomRow.style.alignItems = "center";
+    bottomRow.style.flexWrap = "wrap";
+    bottomRow.style.gap = "8px";
+    bottomRow.style.marginTop = "8px";
+    bottomRow.style.paddingTop = "6px";
+    bottomRow.style.borderTop = "1px dashed #333";
+
+    if (isMax) {
+      const maxInfo = document.createElement("div");
+      maxInfo.style.fontSize = "12px";
+      maxInfo.style.color = "#7cfc00";
+      maxInfo.textContent = "✨ すべてのTierの装備許可証を取得済みです。";
+      bottomRow.appendChild(maxInfo);
+    } else {
+      const reqLv = (typeof getEquipLicenseReqLv === "function") ? getEquipLicenseReqLv(nextTier) : (nextTier - 1) * 10;
+      const nextCost = (typeof getEquipLicenseCost === "function") ? getEquipLicenseCost(nextTier) : (nextTier * 40);
+      const isLvMet = curLv >= reqLv;
+      const canAfford = currentCoins >= nextCost;
+
+      const reqInfo = document.createElement("div");
+      reqInfo.style.fontSize = "12px";
+      if (isLvMet) {
+        reqInfo.innerHTML = `<span style="color:#80d080;">✓ 認可条件達成: ${item.name} Lv${reqLv}以上（現在: Lv${curLv}）</span>`;
+      } else {
+        reqInfo.innerHTML = `<span style="color:#ff8888;">🔒 必要条件: ${item.name} Lv${reqLv}以上（現在: Lv${curLv} / あとLv${reqLv - curLv}）</span>`;
+      }
+      bottomRow.appendChild(reqInfo);
+
+      const btn = document.createElement("button");
+      btn.className = "smallBtn";
+      btn.style.padding = "4px 12px";
+      btn.style.fontWeight = "bold";
+      btn.style.borderRadius = "4px";
+      btn.style.cursor = isLvMet && canAfford ? "pointer" : "default";
+
+      if (!isLvMet) {
+        btn.textContent = `Lv${reqLv}で解放`;
+        btn.disabled = true;
+        btn.style.opacity = "0.4";
+      } else if (canAfford) {
+        btn.textContent = `Tier ${nextTier} 認可取得`;
+        btn.style.background = "#5c4815";
+        btn.style.color = "#ffd700";
+        btn.style.borderColor = "#886e25";
+        btn.addEventListener("click", () => {
+          if (typeof buyEquipLicense === "function") {
+            buyEquipLicense(item.category, item.key, nextTier);
+          }
+        });
+      } else {
+        btn.textContent = `コイン不足 (${nextCost}枚)`;
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
+      }
+      bottomRow.appendChild(btn);
+    }
+
+    card.appendChild(bottomRow);
+    container.appendChild(card);
+  });
 }
 
 window.renderGuildDeliveries = renderGuildDeliveries;
