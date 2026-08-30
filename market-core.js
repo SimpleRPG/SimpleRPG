@@ -394,7 +394,7 @@ function doMarketSell(){
     categoryForMarket = "material";
   }
 
-  // 出品枠（5種）チェック（事前チェック）
+  // 出品枠（デフォルト3種）チェック（事前チェック）
   {
     let myId = "player";
     if (window.globalSocket && window.globalSocket.id) {
@@ -414,10 +414,11 @@ function doMarketSell(){
       kindSet.add(`${cat}:${id}:${p}`);
     }
 
+    const maxSlots = (typeof getMaxMarketListingSlots === "function") ? getMaxMarketListingSlots() : 3;
     const newKey = `${categoryForMarket}:${itemId}:${price}`;
-    if (!kindSet.has(newKey) && kindSet.size >= 5) {
+    if (!kindSet.has(newKey) && kindSet.size >= maxSlots) {
       if (typeof appendLog === "function") {
-        appendLog("出品枠は5種類までです（価格違いも別枠として数えられます）");
+        appendLog(`出品枠は最大${maxSlots}枠までです（価格違いも別枠として数えられます）`);
       }
       return;
     }
@@ -470,7 +471,8 @@ function doMarketSell(){
     itemId,
     price,
     amount,
-    owner: "player"
+    owner: "player",
+    createdAt: Date.now()
   };
   marketListings.push(listing);
 

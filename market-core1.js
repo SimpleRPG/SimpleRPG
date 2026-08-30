@@ -342,7 +342,120 @@ function buildStackKey(category, itemId){
 }
 
 // =======================
-// 自分の出品一覧を描画（表形式）
+// 出品枠設定（デフォルト3枠）
+window.maxMarketListingSlots = window.maxMarketListingSlots || 3;
+function getMaxMarketListingSlots() {
+  return typeof window.maxMarketListingSlots === "number" ? window.maxMarketListingSlots : 3;
+}
+
+// 短時間取り下げ・ペナルティ管理
+window.marketQuickCancelCount = window.marketQuickCancelCount || 0;
+window.marketCancelPenaltyLevel = window.marketCancelPenaltyLevel || 0;
+window.marketCancelCooldownUntil = window.marketCancelCooldownUntil || 0;
+
+function getMarketCancelCooldownRemainingSec() {
+  const now = Date.now();
+  if (window.marketCancelCooldownUntil && window.marketCancelCooldownUntil > now) {
+    return Math.ceil((window.marketCancelCooldownUntil - now) / 1000);
+  }
+  return 0;
+}
+
+// 自分の出品を取り下げる（キャンセル）
+function doMarketCancelListing(listingId) {
+  if (!listingId) return;
+
+  const remSec = getMarketCancelCooldownRemainingSec();
+  if (remSec > 0) {
+    const m = Math.floor(remSec / 60);
+    const s = remSec % 60;
+    const timeStr = m > 0 ? `${m}分${s}秒` : `${s}秒`;
+    if (typeof appendLog === "function") {
+      appendLog(`[市] 連続即時取り下げペナルティ適用中のため、あと ${timeStr} は取り下げできません。`);
+    }
+    return;
+  }
+
+  let myId = "player";
+  if (window.globalSocket && window.globalSocket.id) {
+    myId = window.globalSocket.id;
+  }
+
+  const src = Array.isArray(window.marketListings) ? window.marketListings : [];
+  const listing = src.find(l => String(l.id) === String(listingId) && (l.sellerId === myId || l.owner === myId));
+
+  if (!listing) {
+    if (typeof appendLog === "function") appendLog("[市] 対象の出品が見つかりません");
+    return;
+  }
+
+  // 出品から取り下げまでの経過時間（ミリ秒）
+  const createdAt = listing.createdAt || Date.now();
+  const elapsedMs = Date.now() - createdAt;
+  const isQuickCancel = elapsedMs < 60 * 1000; // 60秒以内の取り下げを「即座の取り下げ」と判定
+
+  const proceedCancel = () => {
+    // 短時間での取り下げカウント処理
+    if (isQuickCancel) {
+      window.marketQuickCancelCount = (window.marketQuickCancelCount || 0) + 1;
+      if (window.marketQuickCancelCount >= 3) {
+        window.marketCancelPenaltyLevel = (window.marketCancelPenaltyLevel || 0) + 1;
+        const penaltyMinutes = window.marketCancelPenaltyLevel * 3; // 3分, 6分, 9分, 12分...
+        window.marketCancelCooldownUntil = Date.now() + (penaltyMinutes * 60 * 1000);
+        window.marketQuickCancelCount = 0;
+        if (typeof appendLog === "function") {
+          appendLog(`[市] ⚠️ 短時間での出品・取り下げが3回連続で行われたため、ペナルティとして取り下げが【${penaltyMinutes}分間】禁止されます。`);
+        }
+      } else {
+        if (typeof appendLog === "function") {
+          appendLog(`[市] 即時取り下げを検知しました（${window.marketQuickCancelCount}/3回。3回連続で出品直後に取り下げるとクールタイムが発生します）`);
+        }
+      }
+    } else {
+      // 十分な時間が経った後の取り下げなら即時カウントをリセット
+      window.marketQuickCancelCount = 0;
+    }
+
+    // アイテムを倉庫・インベントリに返却
+    const cat = listing.category || "material";
+    const itemId = listing.itemKey || listing.itemId;
+    const amount = listing.amount || 1;
+    addItemForBuy(cat, itemId, amount);
+
+    const label = getItemLabel(cat, itemId);
+    if (typeof appendLog === "function") {
+      appendLog(`[市] 出品を取り下げました: ${label} x${amount}`);
+    }
+
+    // ローカル配列から削除
+    if (Array.isArray(window.marketListings)) {
+      const idx = window.marketListings.findIndex(l => String(l.id) === String(listingId));
+      if (idx !== -1) window.marketListings.splice(idx, 1);
+    }
+
+    if (typeof updateDisplay === "function") updateDisplay();
+    if (typeof refreshWarehouseUI === "function") refreshWarehouseUI();
+    if (typeof refreshMarketSellCandidates === "function") refreshMarketSellCandidates();
+    if (typeof refreshMarketSellItems === "function") refreshMarketSellItems();
+    if (typeof refreshMarketBuyList === "function") refreshMarketBuyList();
+    renderMyListings();
+  };
+
+  if (window.globalSocket && listing.sellerId === window.globalSocket.id) {
+    window.globalSocket.emit("market:cancelListing", { id: listingId }, (res) => {
+      if (!res || !res.ok) {
+        const errMsg = res && res.error ? res.error : "出品取り下げに失敗しました";
+        if (typeof appendLog === "function") appendLog(`[市] ${errMsg}`);
+        return;
+      }
+      proceedCancel();
+    });
+  } else {
+    proceedCancel();
+  }
+}
+
+// 自分の出品一覧を描画
 // =======================
 function renderMyListings() {
   const el = document.getElementById("marketInfo");
@@ -354,50 +467,65 @@ function renderMyListings() {
   }
 
   const src = Array.isArray(window.marketListings) ? window.marketListings : [];
-
   const myListings = src.filter(l => l.sellerId === myId || l.owner === myId);
+  const maxSlots = getMaxMarketListingSlots();
+
+  const remSec = getMarketCancelCooldownRemainingSec();
+  let penaltyBadge = "";
+  if (remSec > 0) {
+    const m = Math.floor(remSec / 60);
+    const s = remSec % 60;
+    const timeStr = m > 0 ? `${m}分${s}秒` : `${s}秒`;
+    penaltyBadge = `<div style="background:#fff1f0; border:1px solid #ffa39e; color:#cf1322; padding:4px 8px; border-radius:4px; font-size:12px; margin-bottom:6px;">⚠️ 連続取り下げペナルティ適用中（残り: <strong>${timeStr}</strong>）</div>`;
+  }
 
   if (myListings.length === 0) {
-    el.textContent = "あなたの現在の出品はありません。";
+    el.innerHTML = `${penaltyBadge}<div style="color:#666; font-size:13px;">現在の出品はありません（出品枠: 0 / ${maxSlots}枠）</div>`;
     el.style.whiteSpace = "normal";
     el.style.fontFamily = "";
     return;
   }
 
-  const grouped = new Map();
-  for (const l of myListings) {
-    const category = l.category;
-    const itemKey  = l.itemKey || l.itemId;
-    const price    = l.price || 0;
-    const key = `${category}:${itemKey}:${price}`;
+  let html = `${penaltyBadge}<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+    <strong style="font-size:13px;">出品中 （${myListings.length} / ${maxSlots}枠）</strong>
+  </div>
+  <table style="width:100%; border-collapse:collapse; font-size:12px; text-align:left;">
+    <thead>
+      <tr style="border-bottom:1px solid #ddd; background:#fafafa; color:#555;">
+        <th style="padding:4px 6px;">アイテム</th>
+        <th style="padding:4px 6px; text-align:right;">数量</th>
+        <th style="padding:4px 6px; text-align:right;">単価</th>
+        <th style="padding:4px 6px; text-align:center;">操作</th>
+      </tr>
+    </thead>
+    <tbody>`;
 
-    const cur = grouped.get(key) || { category, itemId: itemKey, price, amount: 0 };
-    cur.amount += l.amount || 0;
-    grouped.set(key, cur);
-  }
+  myListings.forEach(l => {
+    const cat = l.category;
+    const itemId = l.itemKey || l.itemId;
+    const label = getItemLabel(cat, itemId);
+    const price = l.price || 0;
+    const amount = l.amount || 0;
+    const isCooling = remSec > 0;
+    const btnText = isCooling ? `待機中 (${remSec}s)` : "取消";
+    const btnDisabled = isCooling ? "disabled" : "";
 
-  const arr = Array.from(grouped.values()).sort((a, b) => {
-    if (a.category !== b.category) {
-      return a.category.localeCompare(b.category);
-    }
-    const la = getItemLabel(a.category, a.itemId);
-    const lb = getItemLabel(b.category, b.itemId);
-    if (la !== lb) return la.localeCompare(lb);
-    return a.price - b.price;
+    html += `
+      <tr style="border-bottom:1px solid #eee;">
+        <td style="padding:5px 6px; font-weight:500;">${label}</td>
+        <td style="padding:5px 6px; text-align:right;">x${amount}</td>
+        <td style="padding:5px 6px; text-align:right; color:#d46b08; font-weight:bold;">${price}G</td>
+        <td style="padding:5px 6px; text-align:center;">
+          <button style="font-size:11px; padding:2px 6px; cursor:${isCooling ? 'not-allowed' : 'pointer'}; background:${isCooling ? '#f5f5f5' : '#fff'}; border:1px solid ${isCooling ? '#d9d9d9' : '#ff4d4f'}; color:${isCooling ? '#bfbfbf' : '#ff4d4f'}; border-radius:3px;" ${btnDisabled} onclick="doMarketCancelListing('${l.id}')">${btnText}</button>
+        </td>
+      </tr>
+    `;
   });
 
-  const header = "名前           数量   単価";
-  const rows = arr.map(g => {
-    const label = getItemLabel(g.category, g.itemId);
-    const nameCol = (label + "              ").slice(0, 12);
-    const amountCol = String(g.amount).padStart(3, " ");
-    const priceCol  = (String(g.price) + "G").padStart(6, " ");
-    return `${nameCol}  x${amountCol}  @${priceCol}`;
-  });
-
-  el.textContent = ["出品中", header].concat(rows).join("\n");
-  el.style.whiteSpace = "pre";
-  el.style.fontFamily = "monospace";
+  html += `</tbody></table>`;
+  el.innerHTML = html;
+  el.style.whiteSpace = "normal";
+  el.style.fontFamily = "inherit";
 }
 
 // =======================
@@ -482,10 +610,11 @@ function doMarketSell(){
       kindSet.add(`${cat}:${id}:${p}`);
     }
 
+    const maxSlots = getMaxMarketListingSlots();
     const newKey = `${categoryForMarket}:${itemId}:${price}`;
-    if (!kindSet.has(newKey) && kindSet.size >= 5) {
+    if (!kindSet.has(newKey) && kindSet.size >= maxSlots) {
       if (typeof appendLog === "function") {
-        appendLog("[市] 出品枠は5種類までです（価格違いも別枠として数えられます）");
+        appendLog(`[市] 出品枠は最大${maxSlots}枠までです（価格違いも別枠として数えられます）`);
       }
       return;
     }
@@ -591,7 +720,8 @@ function doMarketSell(){
                 price: serverListing.price !=null ? serverListing.price : price,
                 amount: serverListing.amount,
                 sellerId: serverListing.sellerId || myId,
-                owner: serverListing.sellerId || myId
+                owner: serverListing.sellerId || myId,
+                createdAt: serverListing.createdAt || Date.now()
               };
               window.marketListings.push(newListing);
             }
@@ -648,7 +778,8 @@ function doMarketSell(){
     itemKey: itemId,
     category: categoryForMarket,
     amount,
-    price
+    price,
+    createdAt: Date.now()
   };
   marketListings.push(listing);
 

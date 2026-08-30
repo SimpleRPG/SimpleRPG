@@ -24,6 +24,7 @@ function makeSaveData() {
   let gatherBasesSafe, gatherBaseStockTicksSafe;
   let farmSafe, fishDexSafe;
   let marketListingsSafe, marketBuyOrdersSafe, marketTradeLogsSafe, marketOrderIdSeqSafe, marketListingIdSeqSafe;
+  let maxMarketListingSlotsSafe, marketQuickCancelCountSafe, marketCancelPenaltyLevelSafe, marketCancelCooldownUntilSafe;
   let playerGuildIdSafe, guildFameSafe, guildQuestProgressSafe, combatGuildTreeUnlockedSafe, combatGuildSkillPointsSafe;
   let guildCoinsSafe, guildLearnedRecipesSafe, guildEquipLicensesSafe, guildDeliveryStatsSafe, guildDailyDateSafe, guildDailyTakenDateSafe, guildDailyProgressSafe;
   let citizenshipUnlockedSafe, housingStateSafe;
@@ -193,6 +194,10 @@ function makeSaveData() {
     marketTradeLogsSafe  = marketTradeLogs;
     marketOrderIdSeqSafe = marketOrderIdSeq;
     marketListingIdSeqSafe = marketListingIdSeq;
+    maxMarketListingSlotsSafe = (typeof window !== "undefined" && typeof window.maxMarketListingSlots === "number") ? window.maxMarketListingSlots : 3;
+    marketQuickCancelCountSafe = (typeof window !== "undefined" && typeof window.marketQuickCancelCount === "number") ? window.marketQuickCancelCount : 0;
+    marketCancelPenaltyLevelSafe = (typeof window !== "undefined" && typeof window.marketCancelPenaltyLevel === "number") ? window.marketCancelPenaltyLevel : 0;
+    marketCancelCooldownUntilSafe = (typeof window !== "undefined" && typeof window.marketCancelCooldownUntil === "number") ? window.marketCancelCooldownUntil : 0;
   } catch (e) {
     throw e;
   }
@@ -365,6 +370,10 @@ function makeSaveData() {
     marketTradeLogs:  marketTradeLogsSafe,
     marketOrderIdSeq: marketOrderIdSeqSafe,
     marketListingIdSeq: marketListingIdSeqSafe,
+    maxMarketListingSlots: maxMarketListingSlotsSafe,
+    marketQuickCancelCount: marketQuickCancelCountSafe,
+    marketCancelPenaltyLevel: marketCancelPenaltyLevelSafe,
+    marketCancelCooldownUntil: marketCancelCooldownUntilSafe,
 
     // --------------------------------
     // ギルド関連
@@ -929,6 +938,20 @@ function applySaveData(data) {
     }
     if (typeof marketListingIdSeq !== "undefined" && typeof data.marketListingIdSeq === "number") {
       marketListingIdSeq = data.marketListingIdSeq;
+    }
+    if (typeof window !== "undefined") {
+      if (typeof data.maxMarketListingSlots === "number") {
+        window.maxMarketListingSlots = data.maxMarketListingSlots;
+      }
+      if (typeof data.marketQuickCancelCount === "number") {
+        window.marketQuickCancelCount = data.marketQuickCancelCount;
+      }
+      if (typeof data.marketCancelPenaltyLevel === "number") {
+        window.marketCancelPenaltyLevel = data.marketCancelPenaltyLevel;
+      }
+      if (typeof data.marketCancelCooldownUntil === "number") {
+        window.marketCancelCooldownUntil = data.marketCancelCooldownUntil;
+      }
     }
   } catch (e) {
     throw e;

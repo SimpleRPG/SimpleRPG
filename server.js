@@ -417,7 +417,8 @@ io.on("connection", (socket) => {
           itemKey,
           category,
           amount: remainingAmount,
-          price
+          price,
+          createdAt: Date.now()
         };
         marketListings.push(listing);
       }
@@ -510,6 +511,56 @@ io.on("connection", (socket) => {
       io.emit("market:update", marketListings);
     } catch (e) {
       console.error("market:consume error", e);
+      if (typeof ack === "function") {
+        ack({ ok: false, error: "server_error" });
+      }
+    }
+  });
+
+  // ★マーケット: 出品取り下げ（キャンセル）
+  socket.on("market:cancelListing", (payload, ack) => {
+    try {
+      console.log("market:cancelListing payload:", payload);
+
+      const { id } = payload || {};
+      if (!id) {
+        console.log("market:cancelListing invalid_payload");
+        if (typeof ack === "function") {
+          ack({ ok: false, error: "invalid_payload" });
+        }
+        return;
+      }
+
+      const idx = marketListings.findIndex(l => l && l.id === id);
+      if (idx === -1) {
+        console.log("market:cancelListing not_found:", id);
+        if (typeof ack === "function") {
+          ack({ ok: false, error: "not_found" });
+        }
+        return;
+      }
+
+      const listing = marketListings[idx];
+      // 出品者本人か確認
+      if (listing.sellerId !== socket.id) {
+        console.log("market:cancelListing forbidden:", id, "sellerId:", listing.sellerId, "socketId:", socket.id);
+        if (typeof ack === "function") {
+          ack({ ok: false, error: "forbidden" });
+        }
+        return;
+      }
+
+      // 出品から削除
+      const removed = marketListings.splice(idx, 1)[0];
+
+      if (typeof ack === "function") {
+        ack({ ok: true, listing: removed });
+      }
+
+      console.log("market:cancelListing done, remaining listings:", marketListings.length);
+      io.emit("market:update", marketListings);
+    } catch (e) {
+      console.error("market:cancelListing error", e);
       if (typeof ack === "function") {
         ack({ ok: false, error: "server_error" });
       }
