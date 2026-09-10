@@ -253,21 +253,33 @@ function setupStatusStatsTabs() {
   if (tabGather) {
     tabGather.addEventListener("click", () => {
       activate(tabGather, "statusStatsPageGather");
+      if (typeof renderGatherMaterialTables === "function") {
+        renderGatherMaterialTables();
+      }
     });
   }
   if (tabCraft) {
     tabCraft.addEventListener("click", () => {
       activate(tabCraft, "statusStatsPageCraft");
+      if (typeof initStatusCraftStats === "function") {
+        initStatusCraftStats();
+      }
     });
   }
   if (tabBattle) {
     tabBattle.addEventListener("click", () => {
       activate(tabBattle, "statusStatsPageBattle");
+      if (typeof initStatusBattleStats === "function") {
+        initStatusBattleStats();
+      }
     });
   }
   if (tabFish) {
     tabFish.addEventListener("click", () => {
       activate(tabFish, "statusStatsPageFish");
+      if (typeof renderFishDexInGatherTab === "function") {
+        renderFishDexInGatherTab();
+      }
     });
   }
 

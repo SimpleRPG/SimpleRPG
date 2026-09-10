@@ -738,9 +738,13 @@ function recalcStats() {
   baseAtk = effSTR + Math.floor(level * 0.5);
   baseDef = effVIT + Math.floor(level * 0.5);
 
-  // 強化補正（1 段階あたり +5% 想定）
+  // 強化補正（1 段階あたり +5% 想定。武具使いの enhanceBonusRate 等で強化効果増幅）
   let WEAPON_ENH_RATE   = 0.05;
   let ARMOR_ENH_RATE    = 0.05;
+  if (jobBonus && typeof jobBonus.enhanceBonusRate === "number" && jobBonus.enhanceBonusRate > 0) {
+    WEAPON_ENH_RATE *= (1 + jobBonus.enhanceBonusRate);
+    ARMOR_ENH_RATE  *= (1 + jobBonus.enhanceBonusRate);
+  }
 
   // 品質補正（良品 10% / 傑作 20%）
   let QUALITY_GOOD_RATE = 0.10; // quality=1

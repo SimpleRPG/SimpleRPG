@@ -299,6 +299,8 @@ function initStatusCraftStats() {
   renderCraftStatsTable();
 }
 
+window.initStatusCraftStats = initStatusCraftStats;
+
 // ==========================
 // 戦闘統計: テーブル描画
 // ==========================
@@ -364,3 +366,5 @@ function renderBattleStatsTable() {
 function initStatusBattleStats() {
   renderBattleStatsTable();
 }
+
+window.initStatusBattleStats = initStatusBattleStats;

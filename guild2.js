@@ -836,10 +836,43 @@ function renderGuildQuests() {
       status.textContent = prog.done
         ? `状態: 完了（動物使い転生 ${prog.count}/1）`
         : `状態: 進行中（動物使い転生 ${prog.count}/1）`;
-    } else {
+    } else if (q.id === "warrior_job_unlock_1") {
       status.textContent = prog.done
-        ? "状態: 完了"
-        : "状態: 進行中（システム実装予定）";
+        ? `状態: 完了（戦闘転生 ${prog.count}/1）`
+        : `状態: 進行中（戦闘転生 ${prog.count}/1）`;
+    } else if (q.id === "mage_job_unlock_1") {
+      status.textContent = prog.done
+        ? `状態: 完了（戦闘転生 ${prog.count}/1）`
+        : `状態: 進行中（戦闘転生 ${prog.count}/1）`;
+    } else if (q.id === "tamer_job_unlock_1") {
+      status.textContent = prog.done
+        ? `状態: 完了（戦闘転生 ${prog.count}/1）`
+        : `状態: 進行中（戦闘転生 ${prog.count}/1）`;
+    } else if (q.id === "smith_job_unlock_1") {
+      status.textContent = prog.done
+        ? `状態: 完了（クラフト転生 ${prog.count}/1）`
+        : `状態: 進行中（クラフト転生 ${prog.count}/1）`;
+    } else if (q.id === "alch_job_unlock_1") {
+      status.textContent = prog.done
+        ? `状態: 完了（クラフト転生 ${prog.count}/1）`
+        : `状態: 進行中（クラフト転生 ${prog.count}/1）`;
+    } else if (q.id === "cooking_job_unlock_1") {
+      status.textContent = prog.done
+        ? `状態: 完了（クラフト転生 ${prog.count}/1）`
+        : `状態: 進行中（クラフト転生 ${prog.count}/1）`;
+    } else if (q.id === "gather_job_unlock_1") {
+      status.textContent = prog.done
+        ? `状態: 完了（採取転生 ${prog.count}/1）`
+        : `状態: 進行中（採取転生 ${prog.count}/1）`;
+    } else if (q.id === "food_job_unlock_1") {
+      status.textContent = prog.done
+        ? `状態: 完了（採取転生 ${prog.count}/1）`
+        : `状態: 進行中（採取転生 ${prog.count}/1）`;
+    } else {
+      const targetCount = q.target || 1;
+      status.textContent = prog.done
+        ? `状態: 完了（${prog.count || 0}/${targetCount}）`
+        : `状態: 進行中（${prog.count || 0}/${targetCount}）`;
     }
     box.appendChild(status);
 
@@ -1045,48 +1078,54 @@ function renderGuildRewards() {
   bonusLine.style.fontSize = "11px";
   bonusLine.style.color = "#8cf";
 
-  const battleBonus = getGuildBattleBonus();
-  const gatherBonus = getGuildGatherExtraBonusChance();
+  const battleBonus = (typeof getGuildBattleBonus === "function") ? getGuildBattleBonus() : { phys: 0, magic: 0, pet: 0 };
+  const gatherBonus = (typeof getGuildGatherExtraBonusChance === "function") ? getGuildGatherExtraBonusChance() : 0;
 
-  if (g.type === "battle") {
-    if (battleBonus.phys > 0) {
-      bonusLine.textContent = `現在のランクボーナス: 物理スキルダメージ +${Math.round(battleBonus.phys * 100)}%`;
-    } else if (battleBonus.magic > 0) {
-      bonusLine.textContent = `現在のランクボーナス: 魔法スキルダメージ +${Math.round(battleBonus.magic * 100)}%`;
-    } else if (battleBonus.pet > 0) {
-      bonusLine.textContent = `現在のランクボーナス: ペットの与ダメージ +${Math.round(battleBonus.pet * 100)}%`;
-    } else {
-      bonusLine.textContent = "現在のランクボーナス: まだ発生していません（名声を稼いでランクを上げよう）";
-    }
-  } else if (g.type === "gather") {
-    if (gatherBonus > 0) {
-      bonusLine.textContent = `現在のランクボーナス: +1個ボーナス抽選 +${Math.round(gatherBonus * 100)}%`;
-    } else {
-      bonusLine.textContent = "現在のランクボーナス: まだ発生していません（名声を稼いでランクを上げよう）";
-    }
+  if (g.id === "warrior") {
+    const pct = Math.round(battleBonus.phys * 100);
+    bonusLine.textContent = (pct > 0)
+      ? `現在のランクボーナス: 物理スキルダメージ +${pct}%`
+      : "現在のランクボーナス: なし（名声20でRank 1到達時: 物理スキルダメージ +2%）";
+  } else if (g.id === "mage") {
+    const pct = Math.round(battleBonus.magic * 100);
+    bonusLine.textContent = (pct > 0)
+      ? `現在のランクボーナス: 魔法スキルダメージ +${pct}%`
+      : "現在のランクボーナス: なし（名声20でRank 1到達時: 魔法スキルダメージ +2%）";
+  } else if (g.id === "tamer") {
+    const pct = Math.round(battleBonus.pet * 100);
+    bonusLine.textContent = (pct > 0)
+      ? `現在のランクボーナス: ペットの与ダメージ +${pct}%`
+      : "現在のランクボーナス: なし（名声20でRank 1到達時: ペットの与ダメージ +2%）";
   } else if (g.id === "smith") {
     const smithBonus = (typeof getGuildSmithEnhanceBonus === "function") ? getGuildSmithEnhanceBonus() : 0;
-    if (smithBonus > 0) {
-      bonusLine.textContent = `現在のランクボーナス: 装備強化成功率 +${Math.round(smithBonus * 100)}%`;
-    } else {
-      bonusLine.textContent = "現在のランクボーナス: まだ発生していません（名声を稼いでランクを上げよう）";
-    }
+    const pct = Math.round(smithBonus * 100);
+    bonusLine.textContent = (pct > 0)
+      ? `現在のランクボーナス: 装備強化成功率および武具製作成功率 +${pct}%`
+      : "現在のランクボーナス: なし（名声20でRank 1到達時: 装備強化および武具製作成功率 +2%）";
   } else if (g.id === "alchemist") {
     const alcBonus = (typeof getGuildCraftSuccessBonus === "function") ? getGuildCraftSuccessBonus("potion") : 0;
-    if (alcBonus > 0) {
-      bonusLine.textContent = `現在のランクボーナス: ポーション・道具の製作成功率 +${Math.round(alcBonus * 100)}%`;
-    } else {
-      bonusLine.textContent = "現在のランクボーナス: まだ発生していません（名声を稼いでランクを上げよう）";
-    }
+    const pct = Math.round(alcBonus * 100);
+    bonusLine.textContent = (pct > 0)
+      ? `現在のランクボーナス: ポーション・道具の製作成功率 +${pct}%`
+      : "現在のランクボーナス: なし（名声20でRank 1到達時: ポーション・道具の製作成功率 +2%）";
   } else if (g.id === "cooking") {
     const cookBonus = (typeof getGuildCraftSuccessBonus === "function") ? getGuildCraftSuccessBonus("food") : 0;
-    if (cookBonus > 0) {
-      bonusLine.textContent = `現在のランクボーナス: 料理・飲み物の製作成功率 +${Math.round(cookBonus * 100)}%`;
-    } else {
-      bonusLine.textContent = "現在のランクボーナス: まだ発生していません（名声を稼いでランクを上げよう）";
-    }
+    const pct = Math.round(cookBonus * 100);
+    bonusLine.textContent = (pct > 0)
+      ? `現在のランクボーナス: 料理・飲み物の製作成功率 +${pct}%`
+      : "現在のランクボーナス: なし（名声20でRank 1到達時: 料理・飲み物の製作成功率 +2%）";
+  } else if (g.id === "gather") {
+    const pct = Math.round(gatherBonus * 100);
+    bonusLine.textContent = (pct > 0)
+      ? `現在のランクボーナス: 通常素材採取時の+1個ボーナス抽選 +${pct}%`
+      : "現在のランクボーナス: なし（名声20でRank 1到達時: 通常素材採取+1個ボーナス抽選 +2%）";
+  } else if (g.id === "food") {
+    const pct = Math.round(gatherBonus * 100);
+    bonusLine.textContent = (pct > 0)
+      ? `現在のランクボーナス: 料理素材採取時の+1個ボーナス抽選 +${pct}%`
+      : "現在のランクボーナス: なし（名声20でRank 1到達時: 料理素材採取+1個ボーナス抽選 +2%）";
   } else {
-    bonusLine.textContent = "現在のランクボーナス: 今後のアップデートで追加予定。";
+    bonusLine.textContent = "現在のランクボーナス: なし";
   }
 
   listEl.appendChild(bonusLine);
@@ -1149,7 +1188,16 @@ function renderGuildRewards() {
     tr.appendChild(fameTd);
 
     const sumTd = document.createElement("td");
-    sumTd.textContent = `ギルド効果 +${r.id * 2}% / Tier ${r.tier || r.id} 武具・素材の取り扱い認可`;
+    let perkText = `ギルド効果 +${r.id * 2}% / Tier ${r.tier || r.id} 認可`;
+    if (g.id === "warrior") perkText = `物理スキルダメージ +${r.id * 2}% / Tier ${r.tier || r.id} 装備認可`;
+    else if (g.id === "mage") perkText = `魔法スキルダメージ +${r.id * 2}% / Tier ${r.tier || r.id} 装備認可`;
+    else if (g.id === "tamer") perkText = `ペット与ダメ +${r.id * 2}% / Tier ${r.tier || r.id} 装備認可`;
+    else if (g.id === "smith") perkText = `強化・武具製作成功率 +${r.id * 2}% / Tier ${r.tier || r.id} 武具認可`;
+    else if (g.id === "alchemist") perkText = `薬・道具製作成功率 +${r.id * 2}% / Tier ${r.tier || r.id} 薬品・道具認可`;
+    else if (g.id === "cooking") perkText = `料理・飲料製作成功率 +${r.id * 2}% / Tier ${r.tier || r.id} 料理認可`;
+    else if (g.id === "gather") perkText = `通常素材採取+1個抽選 +${r.id * 2}% / Tier ${r.tier || r.id} 採取認可`;
+    else if (g.id === "food") perkText = `料理食材採取+1個抽選 +${r.id * 2}% / Tier ${r.tier || r.id} 食材採取認可`;
+    sumTd.textContent = perkText;
     tr.appendChild(sumTd);
 
     const stateTd = document.createElement("td");

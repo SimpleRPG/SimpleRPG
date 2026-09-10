@@ -764,7 +764,11 @@ function calcCraftSuccessRate(baseRate, skillLv) {
       houseBonus = hb.craftSuccessRateAdd;
     }
   }
-  let rate = baseRate + bonus + houseBonus;
+  let jobBonus = 0;
+  if (typeof getJobBonus === "function") {
+    jobBonus = getJobBonus("craftBonus", 0) || 0;
+  }
+  let rate = baseRate + bonus + houseBonus + jobBonus;
   if (rate > 0.95) rate = 0.95;
   return rate;
 }

@@ -228,11 +228,15 @@ let craftSkillTreeBonus = {
 };
 
 function refreshCraftSkillTreeBonus() {
+  let jobCostReduce = 0;
+  if (typeof getJobBonus === "function") {
+    jobCostReduce = getJobBonus("craftCostReduceRate", 0) || 0;
+  }
   if (typeof getGlobalSkillTreeBonus === "function") {
     const b = getGlobalSkillTreeBonus() || {};
-    craftSkillTreeBonus.craftCostReduceRate = b.craftCostReduceRate || 0;
+    craftSkillTreeBonus.craftCostReduceRate = (b.craftCostReduceRate || 0) + jobCostReduce;
   } else {
-    craftSkillTreeBonus.craftCostReduceRate = 0;
+    craftSkillTreeBonus.craftCostReduceRate = jobCostReduce;
   }
 }
 
