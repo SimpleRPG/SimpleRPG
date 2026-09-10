@@ -163,6 +163,125 @@ function renderEconomyStatsTableDebug() {
 }
 
 // =======================
+// デバッグマトリクス（条件×敵の勝率一括シミュレーション）
+// =======================
+// debug-matrix-core.js の window.runMatrixBattleTest(conditions, enemyIds, trials, options) を
+// GMデバッグタブから操作するためのUI。
+
+let debugMatrixConditions = [];
+let debugMatrixResults = null;
+
+function debugMatrixBuildJobOptions() {
+  if (typeof JOB_DEFS === "undefined" || !Array.isArray(JOB_DEFS)) return "";
+  return JOB_DEFS.map(j => `<option value="${j.id}">${j.name}(${j.id})</option>`).join("");
+}
+
+function debugMatrixBuildWeaponOptions() {
+  if (typeof window.weapons === "undefined" || !Array.isArray(window.weapons) || window.weapons.length === 0) {
+    return "<option value=\"\">(なし)</option>";
+  }
+  return "<option value=\"\">(なし)</option>" +
+    window.weapons.map(w => `<option value="${w.id}">${w.name}</option>`).join("");
+}
+
+function debugMatrixBuildArmorOptions() {
+  if (typeof window.armors === "undefined" || !Array.isArray(window.armors) || window.armors.length === 0) {
+    return "<option value=\"\">(なし)</option>";
+  }
+  return "<option value=\"\">(なし)</option>" +
+    window.armors.map(a => `<option value="${a.id}">${a.name}</option>`).join("");
+}
+
+function debugMatrixBuildEnemyCheckboxes() {
+  if (typeof ENEMIES === "undefined") return "";
+  return Object.keys(ENEMIES).map(id => {
+    const e = ENEMIES[id] || {};
+    return `<label style="display:inline-block; width:140px; font-size:11px;">` +
+      `<input type="checkbox" class="debugMatrixEnemyCk" value="${id}"> ${e.name || id}${e.isBoss ? "★" : ""}` +
+      `</label>`;
+  }).join("");
+}
+
+function renderDebugMatrixConditionList() {
+  const el = document.getElementById("debugMatrixConditionList");
+  if (!el) return;
+
+  if (debugMatrixConditions.length === 0) {
+    el.innerHTML = "<div style=\"font-size:11px; color:#aaa;\">条件が追加されていません。</div>";
+    return;
+  }
+
+  const rows = [];
+  rows.push("<table class=\"debug-table\">");
+  rows.push("<tr><th>ラベル</th><th>Lv</th><th>職業</th><th>武器</th><th>防具</th><th>転生pt</th><th></th></tr>");
+
+  debugMatrixConditions.forEach((c, i) => {
+    const jobName = (typeof JOB_DEFS !== "undefined" && Array.isArray(JOB_DEFS))
+      ? ((JOB_DEFS.find(j => j.id === c.jobId) || {}).name || c.jobId)
+      : c.jobId;
+    rows.push(
+      `<tr>` +
+      `<td>${c.label}</td>` +
+      `<td>${c.level}</td>` +
+      `<td>${jobName}</td>` +
+      `<td>${c.weaponId || "-"}</td>` +
+      `<td>${c.armorId || "-"}</td>` +
+      `<td>${c.rebirthCombatPt || 0}</td>` +
+      `<td><button type="button" class="debugMatrixRemoveCondBtn" data-index="${i}" style="font-size:10px;">削除</button></td>` +
+      `</tr>`
+    );
+  });
+
+  rows.push("</table>");
+  el.innerHTML = rows.join("");
+
+  el.querySelectorAll(".debugMatrixRemoveCondBtn").forEach(btn => {
+    btn.onclick = function () {
+      const idx = parseInt(btn.getAttribute("data-index"), 10);
+      debugMatrixConditions.splice(idx, 1);
+      renderDebugMatrixConditionList();
+    };
+  });
+}
+
+function renderDebugMatrixResultsTable() {
+  const el = document.getElementById("debugMatrixResultsContainer");
+  if (!el) return;
+
+  if (!debugMatrixResults) {
+    el.innerHTML = "<div style=\"font-size:11px; color:#aaa;\">まだ実行していません。</div>";
+    return;
+  }
+  if (debugMatrixResults.length === 0) {
+    el.innerHTML = "<div style=\"font-size:11px; color:#aaa;\">結果がありません。</div>";
+    return;
+  }
+
+  const rows = [];
+  rows.push("<table class=\"debug-table\">");
+  rows.push("<tr><th>条件</th><th>敵</th><th>試行</th><th>勝率</th><th>敗北率</th><th>逃走率</th><th>時間切れ率</th><th>平均ターン</th></tr>");
+
+  debugMatrixResults.forEach(r => {
+    const warnStyle = (r.winRate < 30) ? " style=\"color:#f88;\"" : "";
+    rows.push(
+      `<tr${warnStyle}>` +
+      `<td>${r.label}</td>` +
+      `<td>${r.enemyName}</td>` +
+      `<td>${r.trials}</td>` +
+      `<td>${r.winRate}%</td>` +
+      `<td>${r.loseRate}%</td>` +
+      `<td>${r.escapeRate}%</td>` +
+      `<td>${r.timeoutRate}%</td>` +
+      `<td>${r.avgTurns}</td>` +
+      `</tr>`
+    );
+  });
+
+  rows.push("</table>");
+  el.innerHTML = rows.join("");
+}
+
+// =======================
 // 評価系UI: 最新セッション評価
 // =======================
 
@@ -661,6 +780,7 @@ function renderGmDebugPanel() {
   const battleByArea  = (typeof debugGetBattleStatsByArea === "function") ? debugGetBattleStatsByArea() : {};
 
   const hasTestChan = (typeof window.runTestChan === "function");
+  const hasMatrix = (typeof window.runMatrixBattleTest === "function");
 
   const currentAiLevel     = window.tetoAiLevel || "normal";
   const currentBuildStyle  = window.tetoTestBuildStyle || "";
@@ -724,6 +844,45 @@ function renderGmDebugPanel() {
       <div style="font-size:10px; color:#aaa; margin-top:4px;">
         ※ テトちゃん停止時に、自動でセッション評価がログに出ます（debug-stats-core2.js が有効な場合）。
       </div>
+    </div>
+
+    <h4>戦闘マトリクステスト（デバッグマトリクス）</h4>
+    <div style="font-size:12px; margin-bottom:8px; padding:6px; border:1px solid #555;">
+      ${hasMatrix ? "" : `<div style="font-size:11px; color:#f88; margin-bottom:4px;">
+        runMatrixBattleTest が見つかりません。debug-matrix-core.js の読み込みを確認してください。
+      </div>`}
+      <div style="font-size:11px; color:#c0bedf; margin-bottom:4px;">条件を追加</div>
+      <div style="font-size:11px; margin-bottom:4px; display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+        <span>ラベル: <input id="debugMatrixLabelInput" type="text" placeholder="任意" style="width:90px; font-size:11px;"></span>
+        <span>Lv: <input id="debugMatrixLevelInput" type="number" value="1" min="1" style="width:50px; font-size:11px;"></span>
+        <span>職業: <select id="debugMatrixJobSelect" style="font-size:11px;">${debugMatrixBuildJobOptions()}</select></span>
+        <span>武器: <select id="debugMatrixWeaponSelect" style="font-size:11px;">${debugMatrixBuildWeaponOptions()}</select></span>
+        <span>防具: <select id="debugMatrixArmorSelect" style="font-size:11px;">${debugMatrixBuildArmorOptions()}</select></span>
+        <span>転生pt: <input id="debugMatrixRebirthInput" type="number" value="0" min="0" style="width:60px; font-size:11px;"></span>
+      </div>
+      <div style="margin-bottom:6px;">
+        <button type="button" id="debugMatrixAddCondBtn" style="font-size:11px; padding:2px 6px;">条件を追加</button>
+        <button type="button" id="debugMatrixClearCondBtn" style="font-size:11px; padding:2px 6px;">条件を全削除</button>
+      </div>
+      <div id="debugMatrixConditionList" style="margin-bottom:8px;"></div>
+
+      <div style="font-size:11px; color:#c0bedf; margin-bottom:4px;">対象の敵</div>
+      <div id="debugMatrixEnemyChecks" style="margin-bottom:6px; max-height:100px; overflow:auto; border:1px solid #444; padding:4px;">
+        ${debugMatrixBuildEnemyCheckboxes()}
+      </div>
+
+      <div style="font-size:11px; margin-bottom:6px;">
+        試行回数/条件: <input id="debugMatrixTrialsInput" type="number" value="30" min="1" max="500" style="width:55px; font-size:11px;">
+        最大ターン: <input id="debugMatrixMaxTurnsInput" type="number" value="60" min="1" max="500" style="width:55px; font-size:11px;">
+      </div>
+
+      <div style="margin-bottom:6px;">
+        <button type="button" id="debugMatrixRunBtn" ${hasMatrix ? "" : "disabled"} style="font-size:11px; padding:2px 6px;">マトリクステスト実行</button>
+      </div>
+      <div id="debugMatrixStatusText" style="font-size:11px; color:#ccc; margin-bottom:6px;"></div>
+
+      <div style="font-size:11px; color:#c0bedf; margin-bottom:4px;">結果</div>
+      <div id="debugMatrixResultsContainer"></div>
     </div>
 
     <h4>テトちゃん最新セッション評価</h4>
@@ -872,6 +1031,99 @@ function renderGmDebugPanel() {
     };
   }
 
+  // デバッグマトリクス操作
+  const matrixAddBtn   = document.getElementById("debugMatrixAddCondBtn");
+  const matrixClearBtn = document.getElementById("debugMatrixClearCondBtn");
+  const matrixRunBtn   = document.getElementById("debugMatrixRunBtn");
+  const matrixStatusEl = document.getElementById("debugMatrixStatusText");
+
+  if (matrixAddBtn) {
+    matrixAddBtn.onclick = function () {
+      const labelInput   = document.getElementById("debugMatrixLabelInput");
+      const levelInput   = document.getElementById("debugMatrixLevelInput");
+      const jobSelect    = document.getElementById("debugMatrixJobSelect");
+      const weaponSelect = document.getElementById("debugMatrixWeaponSelect");
+      const armorSelect  = document.getElementById("debugMatrixArmorSelect");
+      const rebirthInput = document.getElementById("debugMatrixRebirthInput");
+
+      const level = parseInt(levelInput && levelInput.value, 10) || 1;
+      const jobId = jobSelect ? parseInt(jobSelect.value, 10) : undefined;
+      const weaponId = (weaponSelect && weaponSelect.value) ? weaponSelect.value : undefined;
+      const armorId = (armorSelect && armorSelect.value) ? armorSelect.value : undefined;
+      const rebirthCombatPt = parseInt(rebirthInput && rebirthInput.value, 10) || 0;
+
+      const jobName = (typeof JOB_DEFS !== "undefined" && Array.isArray(JOB_DEFS))
+        ? ((JOB_DEFS.find(j => j.id === jobId) || {}).name || jobId)
+        : jobId;
+      const autoLabel = `Lv${level} ${jobName}${rebirthCombatPt ? " 転生" + rebirthCombatPt : ""}`;
+      const label = (labelInput && labelInput.value.trim()) ? labelInput.value.trim() : autoLabel;
+
+      const cond = { label, level, jobId };
+      if (weaponId) cond.weaponId = weaponId;
+      if (armorId) cond.armorId = armorId;
+      if (rebirthCombatPt > 0) cond.rebirthCombatPt = rebirthCombatPt;
+
+      debugMatrixConditions.push(cond);
+      renderDebugMatrixConditionList();
+
+      if (labelInput) labelInput.value = "";
+    };
+  }
+
+  if (matrixClearBtn) {
+    matrixClearBtn.onclick = function () {
+      debugMatrixConditions = [];
+      renderDebugMatrixConditionList();
+    };
+  }
+
+  if (matrixRunBtn && hasMatrix) {
+    matrixRunBtn.onclick = function () {
+      const enemyIds = Array.from(document.querySelectorAll(".debugMatrixEnemyCk:checked")).map(ck => ck.value);
+      const trialsInput = document.getElementById("debugMatrixTrialsInput");
+      const maxTurnsInput = document.getElementById("debugMatrixMaxTurnsInput");
+      const trials = parseInt(trialsInput && trialsInput.value, 10) || 30;
+      const maxTurns = parseInt(maxTurnsInput && maxTurnsInput.value, 10) || 60;
+
+      if (debugMatrixConditions.length === 0) {
+        if (matrixStatusEl) matrixStatusEl.textContent = "条件を1つ以上追加してください。";
+        return;
+      }
+      if (enemyIds.length === 0) {
+        if (matrixStatusEl) matrixStatusEl.textContent = "敵を1体以上選択してください。";
+        return;
+      }
+
+      if (matrixStatusEl) matrixStatusEl.textContent = "実行中...（同期処理のため一瞬画面が固まります）";
+
+      // ボタン押下の描画を先に反映させてから重い同期処理に入る
+      setTimeout(function () {
+        try {
+          debugMatrixResults = window.runMatrixBattleTest(
+            debugMatrixConditions,
+            enemyIds,
+            trials,
+            { maxTurns: maxTurns }
+          );
+        } catch (e) {
+          console.error("runMatrixBattleTest error", e);
+          if (matrixStatusEl) matrixStatusEl.textContent = "エラーが発生しました。コンソールを確認してください。";
+          return;
+        }
+
+        if (matrixStatusEl) {
+          matrixStatusEl.textContent = debugMatrixResults
+            ? `完了: ${debugMatrixResults.length}件の結果`
+            : "実行に失敗しました（コンソールを確認してください）。";
+        }
+        renderDebugMatrixResultsTable();
+      }, 10);
+    };
+  }
+
+  renderDebugMatrixConditionList();
+  renderDebugMatrixResultsTable();
+
   // 初回描画
   renderTetoEvaluationPanel();
   renderTetoImpactPanel();
@@ -913,4 +1165,7 @@ if (typeof window !== "undefined") {
   window.getAiCoverageSummary = getAiCoverageSummary;
   window.getSessionTimeline = getSessionTimeline;
   window.renderSessionTimeline = renderSessionTimeline;
+
+  window.renderDebugMatrixConditionList = renderDebugMatrixConditionList;
+  window.renderDebugMatrixResultsTable = renderDebugMatrixResultsTable;
 }
