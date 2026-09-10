@@ -162,6 +162,108 @@ function renderEconomyStatsTableDebug() {
   el.innerHTML = rows.join("");
 }
 
+// 戦闘統計（レベル帯別）テーブル描画
+function renderBattleStatsByLevelBandTableDebug(data) {
+  const el = document.getElementById("battleByLevelBandTable");
+  if (!el) return;
+  const stats = data || (typeof debugGetBattleStatsByLevelBand === "function" ? debugGetBattleStatsByLevelBand() : {});
+  const keys = Object.keys(stats);
+
+  if (keys.length === 0) {
+    el.innerHTML = "<div style=\"font-size:11px; color:#aaa;\">データがありません。</div>";
+    return;
+  }
+
+  const rows = [];
+  rows.push("<table class=\"debug-table\">");
+  rows.push("<tr><th>レベル帯</th><th>総戦闘</th><th>勝利</th><th>敗北</th><th>勝率</th><th>平均ターン</th></tr>");
+  keys.forEach(band => {
+    const s = stats[band] || {};
+    const total = s.total || 0;
+    const win = s.win || 0;
+    const lose = s.lose || 0;
+    const rate = total > 0 ? (win / total * 100) : 0;
+    const avgTurns = total > 0 ? (s.totalTurns || 0) / total : 0;
+    rows.push(
+      `<tr>` +
+      `<td>${band}</td>` +
+      `<td>${total}</td>` +
+      `<td>${win}</td>` +
+      `<td>${lose}</td>` +
+      `<td>${rate.toFixed(1)}%</td>` +
+      `<td>${avgTurns.toFixed(1)}</td>` +
+      `</tr>`
+    );
+  });
+  rows.push("</table>");
+  el.innerHTML = rows.join("");
+}
+
+// 死亡統計テーブル描画
+function renderDeathStatsTableDebug(data) {
+  const el = document.getElementById("deathStatsTable");
+  if (!el) return;
+  const stats = data || (typeof debugGetDeathStats === "function" ? debugGetDeathStats() : { totalDeaths: 0, byCause: {} });
+  const byCause = stats.byCause || {};
+  const causes = Object.keys(byCause);
+
+  if (stats.totalDeaths === 0 || causes.length === 0) {
+    el.innerHTML = "<div style=\"font-size:11px; color:#aaa;\">死亡記録がありません。</div>";
+    return;
+  }
+
+  const rows = [];
+  rows.push(`<div style="font-size:11px; margin-bottom:4px;">総死亡数: ${stats.totalDeaths}</div>`);
+  rows.push("<table class=\"debug-table\">");
+  rows.push("<tr><th>原因</th><th>件数</th><th>装備破損</th><th>損失金額</th></tr>");
+  causes.forEach(cause => {
+    const c = byCause[cause] || {};
+    rows.push(
+      `<tr>` +
+      `<td>${cause}</td>` +
+      `<td>${c.count || 0}</td>` +
+      `<td>${c.equipBrokenCount || 0}</td>` +
+      `<td>${c.totalMoneyLost || 0}</td>` +
+      `</tr>`
+    );
+  });
+  rows.push("</table>");
+  el.innerHTML = rows.join("");
+}
+
+// アイテム使用統計テーブル描画
+function renderItemUseStatsTableDebug(data) {
+  const el = document.getElementById("itemUseStatsTable");
+  if (!el) return;
+  const stats = data || (typeof debugGetItemUseStats === "function" ? debugGetItemUseStats() : { totalUses: 0, byType: {} });
+  const byType = stats.byType || {};
+  const types = Object.keys(byType);
+
+  if (stats.totalUses === 0 || types.length === 0) {
+    el.innerHTML = "<div style=\"font-size:11px; color:#aaa;\">使用記録がありません。</div>";
+    return;
+  }
+
+  const rows = [];
+  rows.push(`<div style="font-size:11px; margin-bottom:4px;">総使用数: ${stats.totalUses}</div>`);
+  rows.push("<table class=\"debug-table\">");
+  rows.push("<tr><th>種別</th><th>件数</th><th>フィールド</th><th>戦闘</th><th>倉庫</th></tr>");
+  types.forEach(type => {
+    const t = byType[type] || {};
+    rows.push(
+      `<tr>` +
+      `<td>${type}</td>` +
+      `<td>${t.count || 0}</td>` +
+      `<td>${t.fieldUse || 0}</td>` +
+      `<td>${t.battleUse || 0}</td>` +
+      `<td>${t.warehouseUse || 0}</td>` +
+      `</tr>`
+    );
+  });
+  rows.push("</table>");
+  el.innerHTML = rows.join("");
+}
+
 // =======================
 // デバッグマトリクス（条件×敵の勝率一括シミュレーション）
 // =======================
@@ -778,6 +880,9 @@ function renderGmDebugPanel() {
   const econStats     = (typeof debugGetEconomyStats === "function") ? debugGetEconomyStats() : {};
   const battleByEnemy = (typeof debugGetBattleStatsByEnemy === "function") ? debugGetBattleStatsByEnemy() : {};
   const battleByArea  = (typeof debugGetBattleStatsByArea === "function") ? debugGetBattleStatsByArea() : {};
+  const battleByLevelBand = (typeof debugGetBattleStatsByLevelBand === "function") ? debugGetBattleStatsByLevelBand() : {};
+  const deathStats     = (typeof debugGetDeathStats === "function") ? debugGetDeathStats() : { totalDeaths: 0, byCause: {} };
+  const itemUseStats   = (typeof debugGetItemUseStats === "function") ? debugGetItemUseStats() : { totalUses: 0, byType: {} };
 
   const hasTestChan = (typeof window.runTestChan === "function");
   const hasMatrix = (typeof window.runMatrixBattleTest === "function");
@@ -919,6 +1024,12 @@ function renderGmDebugPanel() {
     <pre style="font-size:11px; max-height:160px; overflow:auto;">${JSON.stringify(battleByEnemy, null, 2)}</pre>
     <h4>戦闘: エリア別</h4>
     <pre style="font-size:11px; max-height:160px; overflow:auto;">${JSON.stringify(battleByArea, null, 2)}</pre>
+    <h4>戦闘: レベル帯別</h4>
+    <div id="battleByLevelBandTable" style="margin-bottom:8px;"></div>
+    <h4>死亡統計（テトAI実行時のみ記録）</h4>
+    <div id="deathStatsTable" style="margin-bottom:8px;"></div>
+    <h4>アイテム使用統計（テトAI実行時のみ記録）</h4>
+    <div id="itemUseStatsTable" style="margin-bottom:8px;"></div>
     <h4>経済</h4>
     <pre style="font-size:11px; max-height:160px; overflow:auto;">${JSON.stringify(econStats, null, 2)}</pre>
     <div style="margin-top:8px;">
@@ -926,6 +1037,10 @@ function renderGmDebugPanel() {
       <button type="button" id="debugExportCsvBtn">CSV出力</button>
     </div>
   `;
+
+  renderBattleStatsByLevelBandTableDebug(battleByLevelBand);
+  renderDeathStatsTableDebug(deathStats);
+  renderItemUseStatsTableDebug(itemUseStats);
 
   // テトちゃん設定 UI のイベント紐付け
   const aiLevelSel     = document.getElementById("debugTetoAiLevelSelect");
@@ -1151,6 +1266,9 @@ if (typeof window !== "undefined") {
   window.renderCraftStatsTableDebug = renderCraftStatsTableDebug;
   window.renderBattleStatsTableDebug = renderBattleStatsTableDebug;
   window.renderEconomyStatsTableDebug = renderEconomyStatsTableDebug;
+  window.renderBattleStatsByLevelBandTableDebug = renderBattleStatsByLevelBandTableDebug;
+  window.renderDeathStatsTableDebug = renderDeathStatsTableDebug;
+  window.renderItemUseStatsTableDebug = renderItemUseStatsTableDebug;
   window.renderGmDebugPanel = renderGmDebugPanel;
   window.renderTetoEvaluationPanel = renderTetoEvaluationPanel;
   window.renderTetoImpactPanel = renderTetoImpactPanel;
