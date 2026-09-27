@@ -933,6 +933,263 @@ window.cookingMatsQuality = window.cookingMatsQuality || {};
     }
   ];
 
+
+  // ---- 季節追加料理 ----
+  // 既存の料理バフ定義だけを再利用し、既存の基準料理を超えない回復量にする。
+  const SEASONAL_FOOD_TEMPLATES = [
+    {
+      baseId: "food_spring_salad",
+      name: "春野菜サラダ",
+      kind: "food",
+      tierStart: 1,
+      tierEnd: 3,
+      buildEffect(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        return {
+          kind: "food",
+          defUp: t === 1 ? 2 : t === 2 ? 4 : 6,
+          resistUp: t === 1 ? 2 : t === 2 ? 4 : 6,
+          duration: t === 1 ? 60 : t === 2 ? 90 : 120,
+          statusId: `food_veg_def_T${t}`,
+          durationTurns: t === 1 ? 30 : t === 2 ? 45 : 60,
+          hungerRecover: t === 1 ? 5 : t === 2 ? 7 : 9,
+          thirstRecover: t === 1 ? 8 : t === 2 ? 10 : 12
+        };
+      },
+      buildRequires(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        const base = ["veg_spring_bean", "veg_spring_sprout"];
+        if (t >= 2) base.push("grain_mochi");
+        if (t >= 3) base.push("spice_premium");
+        return base.map(id => ({ id, amount: 1 }));
+      }
+    },
+    {
+      baseId: "food_spring_bean_porridge",
+      name: "春豆の滋養粥",
+      kind: "food",
+      tierStart: 1,
+      tierEnd: 3,
+      buildEffect(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        return {
+          kind: "food",
+          intUp: t === 1 ? 2 : t === 2 ? 4 : 6,
+          mpRegen: t === 1 ? 2 : t === 2 ? 4 : 6,
+          duration: t === 1 ? 60 : t === 2 ? 90 : 120,
+          statusId: `food_fish_int_T${t}`,
+          durationTurns: t === 1 ? 30 : t === 2 ? 45 : 60,
+          hpRegen: t === 1 ? 4 : t === 2 ? 8 : 14,
+          hungerRecover: t === 1 ? 6 : t === 2 ? 9 : 12,
+          thirstRecover: t === 1 ? 5 : t === 2 ? 7 : 9
+        };
+      },
+      buildRequires(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        const base = ["veg_spring_bean", "grain_mochi"];
+        if (t >= 2) base.push("veg_spring_sprout");
+        if (t >= 3) base.push("veg_herb_aroma");
+        return base.map(id => ({ id, amount: 1 }));
+      }
+    },
+    {
+      baseId: "food_summer_grill",
+      name: "夏トマトの香味焼き",
+      kind: "food",
+      tierStart: 1,
+      tierEnd: 3,
+      buildEffect(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        return {
+          kind: "food",
+          hpRegen: t === 1 ? 5 : t === 2 ? 10 : 18,
+          atkUp: t === 1 ? 2 : t === 2 ? 4 : 6,
+          duration: t === 1 ? 60 : t === 2 ? 90 : 120,
+          statusId: `food_meat_atk_T${t}`,
+          durationTurns: t === 1 ? 30 : t === 2 ? 45 : 60,
+          hungerRecover: t === 1 ? 8 : t === 2 ? 12 : 16,
+          thirstRecover: t === 1 ? 3 : t === 2 ? 5 : 7
+        };
+      },
+      buildRequires(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        const base = ["veg_summer_tomato", "spice_pepper"];
+        if (t >= 2) base.push("veg_premium");
+        if (t >= 3) base.push("grain_refined");
+        return base.map(id => ({ id, amount: 1 }));
+      }
+    },
+    {
+      baseId: "food_summer_fruit_bowl",
+      name: "夏果実の涼味盛り",
+      kind: "food",
+      tierStart: 1,
+      tierEnd: 3,
+      buildEffect(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        return {
+          kind: "food",
+          intUp: t === 1 ? 2 : t === 2 ? 4 : 6,
+          mpRegen: t === 1 ? 2 : t === 2 ? 4 : 7,
+          duration: t === 1 ? 60 : t === 2 ? 90 : 120,
+          statusId: `food_fish_int_T${t}`,
+          durationTurns: t === 1 ? 30 : t === 2 ? 45 : 60,
+          hpRegen: t === 1 ? 4 : t === 2 ? 8 : 14,
+          hungerRecover: t === 1 ? 5 : t === 2 ? 8 : 11,
+          thirstRecover: t === 1 ? 8 : t === 2 ? 12 : 16
+        };
+      },
+      buildRequires(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        const base = ["veg_summer_melon"];
+        if (t >= 2) base.push("veg_premium");
+        if (t >= 3) base.push("grain_refined");
+        return base.map(id => ({ id, amount: 1 }));
+      }
+    },
+    {
+      baseId: "food_autumn_pumpkin_stew",
+      name: "秋かぼちゃの煮込み",
+      kind: "food",
+      tierStart: 1,
+      tierEnd: 3,
+      buildEffect(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        return {
+          kind: "food",
+          defUp: t === 1 ? 2 : t === 2 ? 4 : 6,
+          resistUp: t === 1 ? 2 : t === 2 ? 4 : 6,
+          duration: t === 1 ? 60 : t === 2 ? 90 : 120,
+          statusId: `food_veg_def_T${t}`,
+          durationTurns: t === 1 ? 30 : t === 2 ? 45 : 60,
+          hungerRecover: t === 1 ? 7 : t === 2 ? 10 : 13,
+          thirstRecover: t === 1 ? 6 : t === 2 ? 9 : 12
+        };
+      },
+      buildRequires(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        const base = ["veg_autumn_pumpkin", "grain_ancient"];
+        if (t >= 2) base.push("veg_root_rough");
+        if (t >= 3) base.push("spice_premium");
+        return base.map(id => ({ id, amount: 1 }));
+      }
+    },
+    {
+      baseId: "food_autumn_nut_roast",
+      name: "秋木の実ロースト",
+      kind: "food",
+      tierStart: 1,
+      tierEnd: 3,
+      buildEffect(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        return {
+          kind: "food",
+          hpRegen: t === 1 ? 5 : t === 2 ? 10 : 18,
+          atkUp: t === 1 ? 2 : t === 2 ? 4 : 6,
+          duration: t === 1 ? 60 : t === 2 ? 90 : 120,
+          statusId: `food_meat_atk_T${t}`,
+          durationTurns: t === 1 ? 30 : t === 2 ? 45 : 60,
+          hungerRecover: t === 1 ? 8 : t === 2 ? 12 : 16,
+          thirstRecover: 0
+        };
+      },
+      buildRequires(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        const base = ["veg_autumn_nut", "grain_ancient"];
+        if (t >= 2) base.push("spice_premium");
+        if (t >= 3) base.push("veg_root_rough");
+        return base.map(id => ({ id, amount: 1 }));
+      }
+    },
+    {
+      baseId: "food_winter_cabbage_hotpot",
+      name: "冬キャベツ鍋",
+      kind: "food",
+      tierStart: 1,
+      tierEnd: 3,
+      buildEffect(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        return {
+          kind: "food",
+          defUp: t === 1 ? 2 : t === 2 ? 4 : 6,
+          resistUp: t === 1 ? 2 : t === 2 ? 4 : 6,
+          duration: t === 1 ? 60 : t === 2 ? 90 : 120,
+          statusId: `food_veg_def_T${t}`,
+          durationTurns: t === 1 ? 30 : t === 2 ? 45 : 60,
+          hungerRecover: t === 1 ? 8 : t === 2 ? 11 : 14,
+          thirstRecover: t === 1 ? 8 : t === 2 ? 11 : 14
+        };
+      },
+      buildRequires(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        const base = ["veg_winter_cabbage", "grain_coarse", "spice_salt_rock"];
+        if (t >= 2) base.push("veg_dried");
+        if (t >= 3) base.push("spice_secret");
+        return base.map(id => ({ id, amount: 1 }));
+      }
+    }
+  ];
+
+  const SEASONAL_DRINK_TEMPLATES = [
+    {
+      baseId: "drink_summer_fruit",
+      name: "夏果実の冷たい飲み物",
+      kind: "drink",
+      tierStart: 1,
+      tierEnd: 3,
+      buildEffect(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        return {
+          kind: "drink",
+          spMaxUp: t === 1 ? 5 : t === 2 ? 10 : 15,
+          moveSpeedUp: t === 1 ? 5 : t === 2 ? 10 : 15,
+          duration: t === 1 ? 60 : t === 2 ? 90 : 120,
+          statusId: `drink_sp_buff_T${t}`,
+          durationTurns: t === 1 ? 30 : t === 2 ? 45 : 60,
+          hungerRecover: 0,
+          thirstRecover: t === 1 ? 10 : t === 2 ? 15 : 20
+        };
+      },
+      buildRequires(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        const base = ["veg_summer_melon"];
+        if (t >= 2) base.push("grain_refined");
+        if (t >= 3) base.push("spice_pepper");
+        return base.map(id => ({ id, amount: 1 }));
+      }
+    },
+    {
+      baseId: "drink_winter_ginger",
+      name: "冬生姜湯",
+      kind: "drink",
+      tierStart: 1,
+      tierEnd: 3,
+      buildEffect(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        return {
+          kind: "drink",
+          mpRegen: t === 1 ? 4 : t === 2 ? 8 : 16,
+          spRegen: t === 1 ? 4 : t === 2 ? 8 : 16,
+          duration: t === 1 ? 60 : t === 2 ? 90 : 120,
+          statusId: `drink_mp_regen_T${t}`,
+          durationTurns: t === 1 ? 30 : t === 2 ? 45 : 60,
+          hungerRecover: 0,
+          thirstRecover: t === 1 ? 8 : t === 2 ? 12 : 16
+        };
+      },
+      buildRequires(tierLabel) {
+        const t = buildTierNumber(tierLabel);
+        const base = ["veg_winter_ginger"];
+        if (t >= 2) base.push("grain_coarse");
+        if (t >= 3) base.push("veg_herb_aroma");
+        return base.map(id => ({ id, amount: 1 }));
+      }
+    }
+  ];
+
+  FOOD_TEMPLATES.push(...SEASONAL_FOOD_TEMPLATES);
+  DRINK_TEMPLATES.push(...SEASONAL_DRINK_TEMPLATES);
+
   const food = [];
   const drink = [];
 
@@ -1326,7 +1583,17 @@ window.cookingMatsQuality = window.cookingMatsQuality || {};
     spice_salt_rock:    { id: "spice_salt_rock",    name: "岩塩",         farmGrowable: true, farmCategory: "garden", season: "winter" },
     spice_pepper:       { id: "spice_pepper",       name: "胡椒",         farmGrowable: true, farmCategory: "garden", season: "summer" },
     spice_premium:      { id: "spice_premium",      name: "高級スパイス", farmGrowable: true, farmCategory: "garden", season: "autumn" },
-    spice_secret:       { id: "spice_secret",       name: "秘伝スパイス", farmGrowable: true, farmCategory: "garden", season: "winter" }
+    spice_secret:       { id: "spice_secret",       name: "秘伝スパイス", farmGrowable: true, farmCategory: "garden", season: "winter" },
+
+    // 季節追加作物
+    veg_spring_bean:    { id: "veg_spring_bean",    name: "春豆",         farmGrowable: true, farmCategory: "field",  season: "spring" },
+    veg_spring_sprout:  { id: "veg_spring_sprout",  name: "芽吹き菜",     farmGrowable: true, farmCategory: "garden", season: "spring" },
+    veg_summer_tomato:  { id: "veg_summer_tomato",  name: "夏トマト",     farmGrowable: true, farmCategory: "field",  season: "summer" },
+    veg_summer_melon:   { id: "veg_summer_melon",   name: "夏果実",       farmGrowable: true, farmCategory: "garden", season: "summer" },
+    veg_autumn_pumpkin: { id: "veg_autumn_pumpkin", name: "秋かぼちゃ",   farmGrowable: true, farmCategory: "field",  season: "autumn" },
+    veg_autumn_nut:     { id: "veg_autumn_nut",     name: "木の実",       farmGrowable: true, farmCategory: "garden", season: "autumn" },
+    veg_winter_cabbage: { id: "veg_winter_cabbage", name: "冬キャベツ",   farmGrowable: true, farmCategory: "field",  season: "winter" },
+    veg_winter_ginger:  { id: "veg_winter_ginger",  name: "冬生姜",       farmGrowable: true, farmCategory: "garden", season: "winter" }
   };
 
   Object.keys(cookingMatDefs).forEach(id => {
@@ -1343,6 +1610,7 @@ window.cookingMatsQuality = window.cookingMatsQuality || {};
       // 畑用メタ（あるものだけ）
       farmGrowable: !!base.farmGrowable,
       farmCategory: base.farmCategory || null,
+      season: base.season || null,
 
       // 釣り用メタ（魚だけに有効）
       fishRarity: base.fishRarity || null,

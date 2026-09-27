@@ -170,6 +170,88 @@
       tier: 3,
       category: "garden",
       desc: "秘伝スパイスが育つ幻の種。最高峰の料理にのみ用いられる極上の香辛料。"
+    },
+
+    // --- 季節追加作物 ---
+    {
+      seedId: "seed_veg_spring_bean",
+      cropId: "veg_spring_bean",
+      name: "春豆の種",
+      icon: "🫘",
+      price: 4,
+      tier: 1,
+      category: "field",
+      desc: "春に旬を迎える豆。春の料理に使いやすい基本的な作物。"
+    },
+    {
+      seedId: "seed_veg_spring_sprout",
+      cropId: "veg_spring_sprout",
+      name: "芽吹き菜の種",
+      icon: "🌱",
+      price: 4,
+      tier: 1,
+      category: "garden",
+      desc: "春の芽吹きを食材にした若菜。軽い料理や春の滋養食に向く。"
+    },
+    {
+      seedId: "seed_veg_summer_tomato",
+      cropId: "veg_summer_tomato",
+      name: "夏トマトの種",
+      icon: "🍅",
+      price: 7,
+      tier: 2,
+      category: "field",
+      desc: "夏の日差しで育つ香味野菜。焼き料理に向く。"
+    },
+    {
+      seedId: "seed_veg_summer_melon",
+      cropId: "veg_summer_melon",
+      name: "夏果実の種",
+      icon: "🍈",
+      price: 8,
+      tier: 2,
+      category: "garden",
+      desc: "暑い季節に実る甘い果実。飲み物や軽食に向く。"
+    },
+    {
+      seedId: "seed_veg_autumn_pumpkin",
+      cropId: "veg_autumn_pumpkin",
+      name: "秋かぼちゃの種",
+      icon: "🎃",
+      price: 7,
+      tier: 2,
+      category: "field",
+      desc: "秋に実るかぼちゃ。煮込み料理の主材料になる。"
+    },
+    {
+      seedId: "seed_veg_autumn_nut",
+      cropId: "veg_autumn_nut",
+      name: "木の実の種",
+      icon: "🌰",
+      price: 9,
+      tier: 2,
+      category: "garden",
+      desc: "秋に実る木の実。香ばしい料理に使える。"
+    },
+    {
+      seedId: "seed_veg_winter_cabbage",
+      cropId: "veg_winter_cabbage",
+      name: "冬キャベツの種",
+      icon: "🥬",
+      price: 4,
+      tier: 1,
+      category: "field",
+      desc: "寒さで甘みを増す冬野菜。鍋料理に向く。"
+    },
+    {
+      seedId: "seed_veg_winter_ginger",
+      cropId: "veg_winter_ginger",
+      name: "冬生姜の種",
+      icon: "🫚",
+      price: 7,
+      tier: 2,
+      category: "garden",
+      desc: "冬の身体を温める香味作物。温かい飲み物に向く。"
     }
   ];
 
