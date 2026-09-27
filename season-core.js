@@ -18,7 +18,7 @@ const SEASON_LABEL_JA = {
 };
 
 // 季節外の作物に掛けるペナルティ倍率（要バランス調整）
-const FARM_OFF_SEASON_GROWTH_RATE  = 0.5; // 成長速度: 半減
+const FARM_OFF_SEASON_GROWTH_RATE  = 0.75; // 成長速度: 75%
 const FARM_OFF_SEASON_HARVEST_RATE = 0.7; // 収穫量: -30%
 
 // =======================
